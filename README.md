@@ -65,12 +65,12 @@ No path, file content, prompt, command or evidence is sent.
 
 ## Write a principle
 
-A principle is a directory:
+A principle is a directory, and its name is the principle's id:
 
 ```text
 avoid-late/
-  principle.md      the advice, with a short header
-  detector.ts       export function* detect(ctx)
+  principle.md      the advice: a heading, one sentence of summary, then the rest
+  detector.ts       export function* detect(ctx), plus the events and globs it runs on
   cases/
     fires-on-new-field.dart
     quiet-on-comment.dart

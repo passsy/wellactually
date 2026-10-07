@@ -1,180 +1,147 @@
 import { EVENTS, type EventName } from "@wellactually/sdk";
 
-/** The frontmatter of `principle.md`. */
+/**
+ * What a host needs to know about a principle without running it.
+ *
+ * Nobody writes this. The build reads it out of the principle: title and
+ * summary from `principle.md`, events and globs from what `detector.ts`
+ * exports, languages from the globs.
+ */
 export interface Manifest {
-  /** The slug, unique per advisor: lower case letters, digits and dashes. */
-  id: string;
+  /** The `# heading` of principle.md. */
   title: string;
-  /** One sentence. Shown in lists and injected for a `pointer` finding. */
+  /** The first paragraph of principle.md. Shown in lists and injected for a `pointer` finding. */
   summary: string;
-  /** Display tags, e.g. ["dart"]. They do not filter anything; `globs` does. */
+  /** Display tags, e.g. ["dart"], derived from the extensions in `globs`. They filter nothing. */
   languages: string[];
-  /** Which events run the detector. Defaults to ["write"]. */
+  /** Which events run the detector. */
   events: EventName[];
   /** Which files run the detector on `write` and `read`. Empty means every file. */
   globs: string[];
 }
 
 export interface ParsedPrinciple {
-  manifest: Manifest;
-  /** The markdown below the frontmatter: the advice an agent gets to read. */
+  title: string;
+  summary: string;
+  /** The whole of principle.md: the advice an agent gets to read. */
   advice: string;
 }
 
 export class ManifestError extends Error {}
 
-const SLUG = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
+const PRINCIPLE_ID = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
+const MAX_SUMMARY_LENGTH = 200;
 
-/** Splits `principle.md` into its manifest and its advice text, and validates both. */
+/** Whether a name can be a principle's id. The id is its folder name, or the name given on the website. */
+export function isPrincipleId(name: string): boolean {
+  return PRINCIPLE_ID.test(name);
+}
+
+export const PRINCIPLE_ID_RULE = "3 to 64 characters of a-z, 0-9 and dashes";
+
+/**
+ * Reads the title and the summary out of `principle.md`.
+ *
+ * The file is plain markdown. Its `# heading` is the title and the paragraph
+ * right below it is the summary, so neither is written twice.
+ */
 export function parsePrinciple(source: string): ParsedPrinciple {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(source);
-  if (!match) {
-    throw new ManifestError("principle.md must start with a frontmatter block between two --- lines");
+  const advice = source.trim();
+  const lines = advice.split(/\r?\n/);
+  if (lines[0] === "---") {
+    throw new ManifestError(
+      "principle.md no longer has a header. Remove the block between the --- lines: the id is the folder name, the title is the # heading, the summary is the paragraph below it, and events and globs are exports of detector.ts.",
+    );
   }
-  const fields = parseFrontmatter(match[1] ?? "");
-  const advice = (match[2] ?? "").trim();
+  const heading = /^#\s+(.+?)\s*#*$/.exec(lines[0] ?? "");
+  if (!heading) {
+    throw new ManifestError("principle.md must start with a # heading; it is the principle's title");
+  }
+  const title = plain(heading[1] ?? "");
 
-  const id = text(fields, "id");
-  if (!SLUG.test(id)) {
-    throw new ManifestError(`id "${id}" must be 3 to 64 characters of a-z, 0-9 and dashes`);
+  let index = 1;
+  while (index < lines.length && (lines[index] ?? "").trim() === "") {
+    index++;
   }
-  const title = text(fields, "title");
-  const summary = text(fields, "summary");
-  if (summary.length > 200) {
-    throw new ManifestError("summary must be one sentence of at most 200 characters");
+  const paragraph: string[] = [];
+  while (index < lines.length && (lines[index] ?? "").trim() !== "") {
+    paragraph.push((lines[index] ?? "").trim());
+    index++;
   }
-  if (advice.length < 40) {
-    throw new ManifestError("the advice text below the frontmatter is missing or too short to be advice");
+  if (paragraph.length === 0 || /^(#|```|~~~|[-*+]\s|\d+\.\s|>|\||<)/.test(paragraph[0] ?? "")) {
+    throw new ManifestError(
+      "principle.md needs one plain sentence right below the heading. It is the summary shown in lists, so say what to do instead, and why.",
+    );
+  }
+  const summary = plain(paragraph.join(" "));
+  if (summary.length > MAX_SUMMARY_LENGTH) {
+    throw new ManifestError(
+      `the paragraph below the heading is the summary and may be at most ${MAX_SUMMARY_LENGTH} characters, this one has ${summary.length}. Keep it to one sentence and start a new paragraph for the rest.`,
+    );
+  }
+
+  const body = lines.slice(index).join("\n").trim();
+  if (body.length < 40) {
+    throw new ManifestError("the advice below the summary is missing or too short to be advice");
   }
   if (advice.length > 20_000) {
     throw new ManifestError("the advice text is longer than 20000 characters; an agent has to read all of it");
   }
-
-  const events = list(fields, "events");
-  for (const event of events) {
-    if (!EVENTS.includes(event as EventName)) {
-      throw new ManifestError(`unknown event "${event}"; known events are ${EVENTS.join(", ")}`);
-    }
-  }
-
-  return {
-    manifest: {
-      id,
-      title,
-      summary,
-      languages: list(fields, "languages"),
-      events: events.length > 0 ? (events as EventName[]) : ["write"],
-      globs: list(fields, "globs"),
-    },
-    advice,
-  };
+  return { title, summary, advice };
 }
 
-type Fields = Map<string, string | string[]>;
+/** Markdown inline marks removed, for places that show text as it is. */
+function plain(markdown: string): string {
+  return markdown
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/(\*\*|__)(.+?)\1/g, "$2")
+    .trim();
+}
 
-/**
- * The YAML subset a manifest needs: `key: value`, `key: [a, b]`, and a key
- * followed by `- item` lines. Anything else is an error rather than a guess.
- */
-function parseFrontmatter(block: string): Fields {
-  const fields: Fields = new Map();
-  let openList: string[] | null = null;
-  for (const raw of block.split(/\r?\n/)) {
-    if (raw.trim() === "" || raw.trim().startsWith("#")) {
-      continue;
-    }
-    const item = /^\s+-\s+(.*)$/.exec(raw);
-    if (item) {
-      if (!openList) {
-        throw new ManifestError(`list item without a key: ${raw.trim()}`);
+/** Validates what `detector.ts` exports as `events` and `globs`. Missing means: every written file. */
+export function readSettings(exported: { events?: unknown; globs?: unknown }): Pick<Manifest, "events" | "globs"> {
+  const events = exported.events ?? ["write"];
+  if (!Array.isArray(events) || events.length === 0 || events.some((event) => !EVENTS.includes(event as EventName))) {
+    throw new ManifestError(`detector.ts must export events as a list of ${EVENTS.join(", ")}, for example: export const events = ["write"];`);
+  }
+  const globs = exported.globs ?? [];
+  if (!Array.isArray(globs) || globs.some((glob) => typeof glob !== "string" || glob === "")) {
+    throw new ManifestError('detector.ts must export globs as a list of strings, for example: export const globs = ["**/*.ts"];');
+  }
+  return { events: [...new Set(events as EventName[])], globs: globs as string[] };
+}
+
+const LANGUAGE_OF_EXTENSION: Record<string, string> = {
+  ts: "typescript",
+  tsx: "typescript",
+  mts: "typescript",
+  cts: "typescript",
+  js: "javascript",
+  jsx: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  py: "python",
+  rb: "ruby",
+  rs: "rust",
+  kt: "kotlin",
+  kts: "kotlin",
+  cs: "csharp",
+  sh: "shell",
+  md: "markdown",
+  yml: "yaml",
+};
+
+/** The languages a list of globs selects, read off their file extensions. */
+export function languagesOf(globs: string[]): string[] {
+  const languages = new Set<string>();
+  for (const glob of globs) {
+    const extension = /\.(?:\{([a-z0-9,]+)\}|([a-z0-9]+))$/.exec(glob);
+    for (const name of (extension?.[1] ?? extension?.[2] ?? "").split(",")) {
+      if (name !== "") {
+        languages.add(LANGUAGE_OF_EXTENSION[name] ?? name);
       }
-      openList.push(unquote(item[1] ?? ""));
-      continue;
     }
-    const pair = /^([A-Za-z][\w-]*):\s*(.*)$/.exec(raw);
-    if (!pair) {
-      throw new ManifestError(`cannot read frontmatter line: ${raw.trim()}`);
-    }
-    const key = pair[1] ?? "";
-    const value = (pair[2] ?? "").trim();
-    openList = null;
-    if (value === "") {
-      openList = [];
-      fields.set(key, openList);
-      continue;
-    }
-    if (value.startsWith("[") && value.endsWith("]")) {
-      const inner = value.slice(1, -1).trim();
-      fields.set(key, inner === "" ? [] : splitInlineList(inner).map(unquote));
-      continue;
-    }
-    fields.set(key, unquote(value));
   }
-  return fields;
-}
-
-/** Splits on commas that are not inside quotes or braces, so `"**\/*.{ts,tsx}"` stays whole. */
-function splitInlineList(inner: string): string[] {
-  const items: string[] = [];
-  let current = "";
-  let quote = "";
-  let braces = 0;
-  for (const char of inner) {
-    if (quote) {
-      current += char;
-      if (char === quote) {
-        quote = "";
-      }
-      continue;
-    }
-    if (char === '"' || char === "'") {
-      quote = char;
-      current += char;
-      continue;
-    }
-    if (char === "{") {
-      braces++;
-    }
-    if (char === "}") {
-      braces--;
-    }
-    if (char === "," && braces === 0) {
-      items.push(current.trim());
-      current = "";
-      continue;
-    }
-    current += char;
-  }
-  if (current.trim() !== "") {
-    items.push(current.trim());
-  }
-  return items;
-}
-
-function unquote(value: string): string {
-  const trimmed = value.trim();
-  const first = trimmed[0];
-  if (trimmed.length >= 2 && (first === '"' || first === "'") && trimmed.endsWith(first)) {
-    return trimmed.slice(1, -1);
-  }
-  return trimmed;
-}
-
-function text(fields: Fields, key: string): string {
-  const value = fields.get(key);
-  if (typeof value !== "string" || value === "") {
-    throw new ManifestError(`frontmatter is missing "${key}"`);
-  }
-  return value;
-}
-
-function list(fields: Fields, key: string): string[] {
-  const value = fields.get(key);
-  if (value === undefined) {
-    return [];
-  }
-  if (typeof value === "string") {
-    return [value];
-  }
-  return value;
+  return [...languages];
 }

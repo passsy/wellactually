@@ -1,4 +1,6 @@
-import type { Ctx, Finding } from "@wellactually/sdk";
+import type { Ctx, EventName, Finding } from "@wellactually/sdk";
+
+export const events: EventName[] = ["command"];
 
 const PREFIX = /(?:-m|--message)[= ]+["'](?:feat|fix|chore|docs|refactor|test|style|perf|build|ci|revert)(?:\([^)"']*\))?!?:/;
 

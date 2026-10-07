@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Engineering principles that run inside your coding agent, from the advisors you choose.",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "plugins": [
     {
       "name": "wellactually",
       "description": "Runs the principles on your Well Actually board while your agent works, and lets it author and rate them.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "author": {
         "name": "Pascal Welsch"
       },

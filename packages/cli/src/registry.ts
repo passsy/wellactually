@@ -122,10 +122,10 @@ export interface DraftResult {
   report: CheckReport;
 }
 
-/** Uploads a principle as a private draft. The registry rebuilds it and reruns every case. */
-export async function publishDraft(files: FileMap, note = ""): Promise<DraftResult> {
+/** Uploads a principle as a private draft of `slug`. The registry rebuilds it and reruns every case. */
+export async function publishDraft(slug: string, files: FileMap, note = ""): Promise<DraftResult> {
   requireToken();
-  const response = await call("/api/drafts", { method: "POST", body: { files, note } });
+  const response = await call("/api/drafts", { method: "POST", body: { slug, files, note } });
   if (response.status !== 201 && response.status !== 422) {
     throw await failure(response);
   }

@@ -19,8 +19,12 @@ import {
 
 const AUTHORING_GUIDE = `A principle is a directory with three parts:
 
-- principle.md: frontmatter (id, title, summary, languages, events, globs) and the advice an agent reads.
+The name of the directory is the principle's id.
+
+- principle.md: plain markdown, the advice an agent reads. No header.
+  Its \`# heading\` is the title. The paragraph right below it is the summary shown in lists: one sentence, at most 200 characters.
 - detector.ts: \`export function* detect(ctx)\` yielding findings \`{ line?, evidence, depth? }\`.
+  It also says when it runs: \`export const events = ["write"]\` (write, read, prompt, command) and \`export const globs = ["**/*.ts"]\`.
   It runs in an isolate without filesystem, network or process. It may import @wellactually/sdk and its own relative files.
   Evidence must be text that occurs verbatim in the input, or the host drops the finding.
 - cases/: one file per case. \`fires-*\` must produce a finding, \`quiet-*\` must produce none.
@@ -43,7 +47,7 @@ function text(value: string) {
 
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
-  const server = new McpServer({ name: "wellactually", version: "0.1.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.2.0" }, { instructions: AUTHORING_GUIDE });
 
   server.registerTool(
     "scaffold",
@@ -51,7 +55,7 @@ export async function serveMcp(): Promise<void> {
       description:
         "Create a new principle directory that already passes run_cases. Returns the path. Edit principle.md, detector.ts and cases/ from there.",
       inputSchema: {
-        slug: z.string().describe("The principle's id: 3 to 64 characters of a-z, 0-9 and dashes, e.g. avoid-late"),
+        slug: z.string().describe("The principle's id, which becomes the directory name: 3 to 64 characters of a-z, 0-9 and dashes, e.g. avoid-late"),
         parent: z.string().describe("Absolute path of the directory to create it in"),
       },
     },

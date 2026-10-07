@@ -1,8 +1,8 @@
 import type { Ctx, EventName, Finding } from "@wellactually/sdk";
 import { buildBundle, BundleError, byteLength, detectorEntry, type FileMap } from "./bundle.ts";
 import { applies, fileCtx, textCtx } from "./ctx.ts";
-import { ManifestError, parsePrinciple, type Manifest } from "./manifest.ts";
-import { DEFAULT_LIMITS, runDetector } from "./sandbox.ts";
+import { languagesOf, ManifestError, parsePrinciple, readSettings, type Manifest } from "./manifest.ts";
+import { DEFAULT_LIMITS, readExports, runDetector } from "./sandbox.ts";
 import { scanAdvice } from "./scan.ts";
 
 /** A principle that compiled: everything a host needs to run it. */
@@ -82,8 +82,16 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
   if (source === undefined) {
     throw new ManifestError("principle.md is missing");
   }
-  const { manifest, advice } = parsePrinciple(source);
+  const { title, summary, advice } = parsePrinciple(source);
   const bundle = await buildBundle(files);
+  let exported: { events?: unknown; globs?: unknown };
+  try {
+    exported = await readExports(bundle);
+  } catch (error) {
+    throw new BundleError((error as Error).message);
+  }
+  const { events, globs } = readSettings(exported);
+  const manifest: Manifest = { title, summary, languages: languagesOf(globs), events, globs };
   return { manifest, advice, bundle, hash: await hashPrinciple(manifest, advice, bundle) };
 }
 
@@ -241,7 +249,7 @@ async function runCase(built: BuiltPrinciple, spec: CaseSpec): Promise<CaseResul
   if (!applies(built.manifest, ctx)) {
     const reason = built.manifest.events.includes(spec.event)
       ? `the globs do not match ${spec.path}`
-      : `the manifest does not list the ${spec.event} event`;
+      : `detector.ts does not list the ${spec.event} event in its events`;
     if (spec.kind === "quiet") {
       return { ...base, passed: true, message: `Quiet: ${reason}, so the detector does not run.`, findings: [], ms: 0 };
     }

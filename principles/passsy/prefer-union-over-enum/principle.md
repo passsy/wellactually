@@ -1,13 +1,6 @@
----
-id: prefer-union-over-enum
-title: Prefer a union of literals over a TypeScript enum
-summary: A TypeScript enum emits runtime code and breaks type stripping; a union of string literals gives the same safety with nothing emitted.
-languages: [typescript]
-events: [write]
-globs: ["**/*.{ts,tsx,mts,cts}"]
----
-
 # Prefer a union of literals over a TypeScript enum
+
+A TypeScript enum emits runtime code and breaks type stripping; a union of string literals gives the same safety with nothing emitted.
 
 `enum` is one of the few TypeScript features that is not just types.
 It emits an object at runtime, so it cannot be erased, and Node's type stripping refuses the file.

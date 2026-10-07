@@ -1,4 +1,7 @@
-import { blankCommentsAndStrings, writtenLines, type Ctx, type Finding } from "@wellactually/sdk";
+import { blankCommentsAndStrings, writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
+
+export const events: EventName[] = ["write"];
+export const globs = ["**/*.{ts,tsx,mts,cts}"];
 
 const ENUM = /^\s*(?:export\s+)?(?:declare\s+)?(?:const\s+)?enum\s+[A-Za-z_$]/;
 

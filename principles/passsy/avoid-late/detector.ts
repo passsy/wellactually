@@ -1,4 +1,7 @@
-import { blankCommentsAndStrings, findWord, mentioned, writtenLines, type Ctx, type Finding } from "@wellactually/sdk";
+import { blankCommentsAndStrings, findWord, mentioned, writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
+
+export const events: EventName[] = ["write", "prompt"];
+export const globs = ["**/*.dart"];
 
 /**
  * Bare "late" is not in the word list. In conversation it is almost always

@@ -44,17 +44,25 @@ const RUN = `
 })()
 `;
 
+const SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs })`;
+
 /**
- * Runs one bundled detector against one context inside a fresh isolate.
+ * Reads what a bundled detector exports as `events` and `globs`.
  *
- * The isolate gets the context as a JSON string and hands back a JSON string.
- * It has no filesystem, no network, no process and no way to call the host.
- * A detector that runs out of time or memory ends with an error, never with
- * a hung hook.
+ * The bundle is evaluated once, at build time, under the limits a detector
+ * run gets. The result is unvalidated: whatever the module exported.
  */
-export async function runDetector(bundle: string, ctx: Ctx, limits: Limits = DEFAULT_LIMITS): Promise<DetectorRun> {
+export async function readExports(bundle: string, limits: Limits = DEFAULT_LIMITS): Promise<{ events?: unknown; globs?: unknown }> {
+  const { json, error } = await evaluate(`${bundle}\n;${SETTINGS}`, null, limits);
+  if (json === null) {
+    throw new Error(`detector.ts could not be loaded: ${error ?? "it returned nothing"}`);
+  }
+  return JSON.parse(json) as { events?: unknown; globs?: unknown };
+}
+
+/** Evaluates a script in a fresh isolate and returns the string it ends with. */
+async function evaluate(script: string, ctx: Ctx | null, limits: Limits): Promise<{ json: string | null; error: string | null }> {
   const QuickJS = await loadSandbox();
-  const started = performance.now();
   const runtime = QuickJS.newRuntime();
   runtime.setMemoryLimit(limits.memoryBytes);
   runtime.setMaxStackSize(512 * 1024);
@@ -64,11 +72,12 @@ export async function runDetector(bundle: string, ctx: Ctx, limits: Limits = DEF
   let json: string | null = null;
   let error: string | null = null;
   try {
-    const input = vm.newString(JSON.stringify(ctx));
-    vm.setProp(vm.global, "__ctx", input);
-    input.dispose();
-
-    const result = vm.evalCode(`${bundle}\n;${RUN}`, "detector.js");
+    if (ctx) {
+      const input = vm.newString(JSON.stringify(ctx));
+      vm.setProp(vm.global, "__ctx", input);
+      input.dispose();
+    }
+    const result = vm.evalCode(script, "detector.js");
     if (result.error) {
       error = describeError(vm.dump(result.error), limits);
       result.error.dispose();
@@ -82,7 +91,20 @@ export async function runDetector(bundle: string, ctx: Ctx, limits: Limits = DEF
     vm.dispose();
     runtime.dispose();
   }
+  return { json, error };
+}
 
+/**
+ * Runs one bundled detector against one context inside a fresh isolate.
+ *
+ * The isolate gets the context as a JSON string and hands back a JSON string.
+ * It has no filesystem, no network, no process and no way to call the host.
+ * A detector that runs out of time or memory ends with an error, never with
+ * a hung hook.
+ */
+export async function runDetector(bundle: string, ctx: Ctx, limits: Limits = DEFAULT_LIMITS): Promise<DetectorRun> {
+  const started = performance.now();
+  const { json, error } = await evaluate(`${bundle}\n;${RUN}`, ctx, limits);
   const ms = performance.now() - started;
   if (json === null) {
     return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };

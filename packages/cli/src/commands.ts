@@ -4,6 +4,8 @@ import {
   applies,
   buildPrinciple,
   checkPrinciple,
+  isPrincipleId,
+  PRINCIPLE_ID_RULE,
   fileCtx,
   frame,
   probeRepo,
@@ -35,9 +37,25 @@ export interface TestResult {
   report: CheckReport;
 }
 
-export async function testPrinciple(dir: string): Promise<TestResult> {
+/** A principle's id is the name of its folder. */
+function idOf(dir: string): string {
+  return path.basename(path.resolve(dir));
+}
+
+/** The check a principle directory has to pass, including that its folder name can be an id. */
+async function checkDir(dir: string) {
   const { built, report } = await checkPrinciple(readPrincipleDir(path.resolve(dir)));
-  return { id: built?.manifest.id ?? null, title: built?.manifest.title ?? null, report };
+  const id = idOf(dir);
+  if (isPrincipleId(id)) {
+    return { id, built, report };
+  }
+  const problem = `the folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}; rename the folder`;
+  return { id, built, report: { ...report, ok: false, problems: [problem, ...report.problems] } };
+}
+
+export async function testPrinciple(dir: string): Promise<TestResult> {
+  const { id, built, report } = await checkDir(dir);
+  return { id, title: built?.manifest.title ?? null, report };
 }
 
 export interface TryInput {
@@ -50,7 +68,7 @@ export interface TryInput {
 }
 
 export interface TryResult {
-  /** False when the manifest's events or globs exclude this input, so the detector never ran. */
+  /** False when the detector's events or globs exclude this input, so it never ran. */
   applies: boolean;
   run: DetectorRun | null;
   /** What the agent would be shown, empty when nothing fired. */
@@ -64,7 +82,7 @@ export async function tryPrinciple(dir: string, input: TryInput): Promise<TryRes
     return { applies: false, run: null, injected: "" };
   }
   const run = await runDetector(built.bundle, ctx);
-  const injected = frame(ctx, run.findings.length > 0 ? [{ principle: asLocal(built), findings: run.findings }] : []);
+  const injected = frame(ctx, run.findings.length > 0 ? [{ principle: asLocal(built, idOf(dir)), findings: run.findings }] : []);
   return { applies: true, run, injected };
 }
 
@@ -90,7 +108,11 @@ export async function probePrinciple(dir: string, repo: string): Promise<ProbeRe
 }
 
 export async function publishPrinciple(dir: string, note = ""): Promise<DraftResult> {
-  return publishDraft(readPrincipleDir(path.resolve(dir)), note);
+  const id = idOf(dir);
+  if (!isPrincipleId(id)) {
+    throw new Error(`The folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}. Rename the folder, then publish again.`);
+  }
+  return publishDraft(id, readPrincipleDir(path.resolve(dir)), note);
 }
 
 export async function principleHistory(id: string): Promise<History> {
@@ -155,8 +177,8 @@ export function renderPull(result: PullResult): string {
   return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).\nEdit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
 }
 
-function asLocal(built: BuiltPrinciple) {
-  return { ...built, id: `local/${built.manifest.id}`, version: 0 };
+function asLocal(built: BuiltPrinciple, id: string) {
+  return { ...built, id: `local/${id}`, version: 0 };
 }
 
 /**
@@ -166,11 +188,11 @@ function asLocal(built: BuiltPrinciple) {
  * hash, so editing the directory changes nothing until it is added again.
  */
 export async function addLocal(dir: string): Promise<TestResult> {
-  const { built, report } = await checkPrinciple(readPrincipleDir(path.resolve(dir)));
+  const { id, built, report } = await checkDir(dir);
   if (!built || !report.ok) {
-    return { id: built?.manifest.id ?? null, title: built?.manifest.title ?? null, report };
+    return { id, title: built?.manifest.title ?? null, report };
   }
-  const principle = asLocal(built);
+  const principle = asLocal(built, id);
   writeCached(principle);
   const lockfile = readLockfile();
   const entries = lockfile.entries.filter((entry) => entry.id !== principle.id);
@@ -229,7 +251,7 @@ export function renderProbe(report: ProbeReport): string {
 
 export function renderTry(result: TryResult): string {
   if (!result.applies || !result.run) {
-    return "The manifest's events or globs do not select this input, so the detector does not run.";
+    return "The events and globs that detector.ts exports do not select this input, so the detector does not run.";
   }
   const { run } = result;
   if (run.error) {

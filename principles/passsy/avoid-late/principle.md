@@ -1,13 +1,6 @@
----
-id: avoid-late
-title: Avoid the late keyword
-summary: A late field moves a compile time guarantee to a runtime crash; initialize in the constructor or make the field nullable.
-languages: [dart]
-events: [write, prompt]
-globs: ["**/*.dart"]
----
-
 # Avoid the late keyword
+
+A late field moves a compile time guarantee to a runtime crash; initialize in the constructor or make the field nullable.
 
 `late` tells the compiler to stop checking that a field is initialized before it is read.
 The check still happens, at runtime, as a `LateInitializationError` in production.

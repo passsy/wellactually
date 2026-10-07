@@ -1,6 +1,5 @@
 import type { FileMap } from "./bundle.ts";
-
-const SLUG = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
+import { isPrincipleId, PRINCIPLE_ID_RULE } from "./manifest.ts";
 
 /**
  * The files of a new principle that already passes its check.
@@ -10,8 +9,8 @@ const SLUG = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
  * these to a directory and the website opens them in its editor.
  */
 export function scaffoldFiles(slug: string): FileMap {
-  if (!SLUG.test(slug)) {
-    throw new Error(`"${slug}" must be 3 to 64 characters of a-z, 0-9 and dashes`);
+  if (!isPrincipleId(slug)) {
+    throw new Error(`"${slug}" must be ${PRINCIPLE_ID_RULE}`);
   }
   const title = slug
     .split("-")
@@ -19,18 +18,12 @@ export function scaffoldFiles(slug: string): FileMap {
     .join(" ");
 
   return {
-    "principle.md": `---
-id: ${slug}
-title: ${title}
-summary: One sentence that says what to do instead, and why.
-languages: [typescript]
-events: [write]
-globs: ["**/*.ts"]
----
+    "principle.md": `# ${title}
 
-# ${title}
+One sentence that says what to do instead, and why.
 
-Say what the problem is, in two or three sentences.
+The heading above is the title and that first sentence is the summary shown in lists.
+From here on, say what the problem is.
 An agent reads this in the middle of a task, so lead with what to do.
 
 ## Instead
@@ -50,7 +43,13 @@ if (items.length === 0) {
 Name the cases where the principle does not apply.
 The detector should stay quiet on exactly those, and a quiet case should prove it.
 `,
-    "detector.ts": `import { writtenLines, type Ctx, type Finding } from "@wellactually/sdk";
+    "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
+
+/** When the detector runs: write, read, prompt, command. */
+export const events: EventName[] = ["write"];
+
+/** Which files it runs on. Leave the list empty for every file. */
+export const globs = ["**/*.ts"];
 
 /**
  * Runs inside an isolate: no filesystem, no network, no process.

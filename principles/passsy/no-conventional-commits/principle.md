@@ -1,12 +1,6 @@
----
-id: no-conventional-commits
-title: No conventional commit prefixes
-summary: Write the subject as a sentence about the change; prefixes like feat and fix spend the best characters of the line on a category.
-languages: [git]
-events: [command]
----
-
 # No conventional commit prefixes
+
+Write the subject as a sentence about the change; prefixes like feat and fix spend the best characters of the line on a category.
 
 A commit subject has about fifty characters to say what changed.
 `feat(auth): add login` spends eleven of them on a category the diff already shows.

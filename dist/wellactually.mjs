@@ -8299,7 +8299,7 @@ var require_core = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text3, msg) => text3 + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text2, msg) => text2 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -10847,8 +10847,8 @@ var require_dist = __commonJS({
         return ajv;
       }
       const [formats, exportName] = opts.mode === "fast" ? [formats_1.fastFormats, fastName] : [formats_1.fullFormats, fullName];
-      const list2 = opts.formats || formats_1.formatNames;
-      addFormats(ajv, list2, formats, exportName);
+      const list = opts.formats || formats_1.formatNames;
+      addFormats(ajv, list, formats, exportName);
       if (opts.keywords)
         (0, limit_1.default)(ajv);
       return ajv;
@@ -10860,11 +10860,11 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list2, fs7, exportName) {
+    function addFormats(ajv, list, fs7, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
-      for (const f of list2)
+      for (const f of list)
         ajv.addFormat(f, fs7[f]);
     }
     module.exports = exports = formatsPlugin;
@@ -10929,8 +10929,8 @@ var DETECTOR_ENTRIES = ["detector.ts", "detector.js", "detector.mjs"];
 function detectorEntry(files) {
   return DETECTOR_ENTRIES.find((name) => name in files) ?? null;
 }
-function byteLength(text3) {
-  return new TextEncoder().encode(text3).length;
+function byteLength(text2) {
+  return new TextEncoder().encode(text2).length;
 }
 function normalize(path7) {
   const out = [];
@@ -11083,7 +11083,7 @@ function fileCtx(event, relativePath, content, written) {
   const name = path7.slice(path7.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
-  const allLines = lines.map((text3, index) => ({ line: index + 1, text: text3 }));
+  const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
   return {
     event,
     file: {
@@ -11100,11 +11100,11 @@ function fileCtx(event, relativePath, content, written) {
     isConversation: false
   };
 }
-function textCtx(event, text3) {
+function textCtx(event, text2) {
   return {
     event,
     file: null,
-    text: text3,
+    text: text2,
     isUserPrompt: event === "prompt",
     isCommand: event === "command",
     isConversation: true
@@ -11126,143 +11126,98 @@ var EVENTS = ["write", "read", "prompt", "command"];
 // packages/core/src/manifest.ts
 var ManifestError = class extends Error {
 };
-var SLUG = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
+var PRINCIPLE_ID = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
+var MAX_SUMMARY_LENGTH = 200;
+function isPrincipleId(name) {
+  return PRINCIPLE_ID.test(name);
+}
+var PRINCIPLE_ID_RULE = "3 to 64 characters of a-z, 0-9 and dashes";
 function parsePrinciple(source) {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(source);
-  if (!match) {
-    throw new ManifestError("principle.md must start with a frontmatter block between two --- lines");
+  const advice = source.trim();
+  const lines = advice.split(/\r?\n/);
+  if (lines[0] === "---") {
+    throw new ManifestError(
+      "principle.md no longer has a header. Remove the block between the --- lines: the id is the folder name, the title is the # heading, the summary is the paragraph below it, and events and globs are exports of detector.ts."
+    );
   }
-  const fields = parseFrontmatter(match[1] ?? "");
-  const advice = (match[2] ?? "").trim();
-  const id = text(fields, "id");
-  if (!SLUG.test(id)) {
-    throw new ManifestError(`id "${id}" must be 3 to 64 characters of a-z, 0-9 and dashes`);
+  const heading = /^#\s+(.+?)\s*#*$/.exec(lines[0] ?? "");
+  if (!heading) {
+    throw new ManifestError("principle.md must start with a # heading; it is the principle's title");
   }
-  const title = text(fields, "title");
-  const summary = text(fields, "summary");
-  if (summary.length > 200) {
-    throw new ManifestError("summary must be one sentence of at most 200 characters");
+  const title = plain(heading[1] ?? "");
+  let index = 1;
+  while (index < lines.length && (lines[index] ?? "").trim() === "") {
+    index++;
   }
-  if (advice.length < 40) {
-    throw new ManifestError("the advice text below the frontmatter is missing or too short to be advice");
+  const paragraph = [];
+  while (index < lines.length && (lines[index] ?? "").trim() !== "") {
+    paragraph.push((lines[index] ?? "").trim());
+    index++;
+  }
+  if (paragraph.length === 0 || /^(#|```|~~~|[-*+]\s|\d+\.\s|>|\||<)/.test(paragraph[0] ?? "")) {
+    throw new ManifestError(
+      "principle.md needs one plain sentence right below the heading. It is the summary shown in lists, so say what to do instead, and why."
+    );
+  }
+  const summary = plain(paragraph.join(" "));
+  if (summary.length > MAX_SUMMARY_LENGTH) {
+    throw new ManifestError(
+      `the paragraph below the heading is the summary and may be at most ${MAX_SUMMARY_LENGTH} characters, this one has ${summary.length}. Keep it to one sentence and start a new paragraph for the rest.`
+    );
+  }
+  const body = lines.slice(index).join("\n").trim();
+  if (body.length < 40) {
+    throw new ManifestError("the advice below the summary is missing or too short to be advice");
   }
   if (advice.length > 2e4) {
     throw new ManifestError("the advice text is longer than 20000 characters; an agent has to read all of it");
   }
-  const events = list(fields, "events");
-  for (const event of events) {
-    if (!EVENTS.includes(event)) {
-      throw new ManifestError(`unknown event "${event}"; known events are ${EVENTS.join(", ")}`);
-    }
-  }
-  return {
-    manifest: {
-      id,
-      title,
-      summary,
-      languages: list(fields, "languages"),
-      events: events.length > 0 ? events : ["write"],
-      globs: list(fields, "globs")
-    },
-    advice
-  };
+  return { title, summary, advice };
 }
-function parseFrontmatter(block) {
-  const fields = /* @__PURE__ */ new Map();
-  let openList = null;
-  for (const raw of block.split(/\r?\n/)) {
-    if (raw.trim() === "" || raw.trim().startsWith("#")) {
-      continue;
-    }
-    const item = /^\s+-\s+(.*)$/.exec(raw);
-    if (item) {
-      if (!openList) {
-        throw new ManifestError(`list item without a key: ${raw.trim()}`);
+function plain(markdown) {
+  return markdown.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/`([^`]*)`/g, "$1").replace(/(\*\*|__)(.+?)\1/g, "$2").trim();
+}
+function readSettings(exported) {
+  const events = exported.events ?? ["write"];
+  if (!Array.isArray(events) || events.length === 0 || events.some((event) => !EVENTS.includes(event))) {
+    throw new ManifestError(`detector.ts must export events as a list of ${EVENTS.join(", ")}, for example: export const events = ["write"];`);
+  }
+  const globs = exported.globs ?? [];
+  if (!Array.isArray(globs) || globs.some((glob) => typeof glob !== "string" || glob === "")) {
+    throw new ManifestError('detector.ts must export globs as a list of strings, for example: export const globs = ["**/*.ts"];');
+  }
+  return { events: [...new Set(events)], globs };
+}
+var LANGUAGE_OF_EXTENSION = {
+  ts: "typescript",
+  tsx: "typescript",
+  mts: "typescript",
+  cts: "typescript",
+  js: "javascript",
+  jsx: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  py: "python",
+  rb: "ruby",
+  rs: "rust",
+  kt: "kotlin",
+  kts: "kotlin",
+  cs: "csharp",
+  sh: "shell",
+  md: "markdown",
+  yml: "yaml"
+};
+function languagesOf(globs) {
+  const languages = /* @__PURE__ */ new Set();
+  for (const glob of globs) {
+    const extension = /\.(?:\{([a-z0-9,]+)\}|([a-z0-9]+))$/.exec(glob);
+    for (const name of (extension?.[1] ?? extension?.[2] ?? "").split(",")) {
+      if (name !== "") {
+        languages.add(LANGUAGE_OF_EXTENSION[name] ?? name);
       }
-      openList.push(unquote(item[1] ?? ""));
-      continue;
     }
-    const pair = /^([A-Za-z][\w-]*):\s*(.*)$/.exec(raw);
-    if (!pair) {
-      throw new ManifestError(`cannot read frontmatter line: ${raw.trim()}`);
-    }
-    const key = pair[1] ?? "";
-    const value = (pair[2] ?? "").trim();
-    openList = null;
-    if (value === "") {
-      openList = [];
-      fields.set(key, openList);
-      continue;
-    }
-    if (value.startsWith("[") && value.endsWith("]")) {
-      const inner = value.slice(1, -1).trim();
-      fields.set(key, inner === "" ? [] : splitInlineList(inner).map(unquote));
-      continue;
-    }
-    fields.set(key, unquote(value));
   }
-  return fields;
-}
-function splitInlineList(inner) {
-  const items = [];
-  let current = "";
-  let quote = "";
-  let braces = 0;
-  for (const char of inner) {
-    if (quote) {
-      current += char;
-      if (char === quote) {
-        quote = "";
-      }
-      continue;
-    }
-    if (char === '"' || char === "'") {
-      quote = char;
-      current += char;
-      continue;
-    }
-    if (char === "{") {
-      braces++;
-    }
-    if (char === "}") {
-      braces--;
-    }
-    if (char === "," && braces === 0) {
-      items.push(current.trim());
-      current = "";
-      continue;
-    }
-    current += char;
-  }
-  if (current.trim() !== "") {
-    items.push(current.trim());
-  }
-  return items;
-}
-function unquote(value) {
-  const trimmed = value.trim();
-  const first = trimmed[0];
-  if (trimmed.length >= 2 && (first === '"' || first === "'") && trimmed.endsWith(first)) {
-    return trimmed.slice(1, -1);
-  }
-  return trimmed;
-}
-function text(fields, key) {
-  const value = fields.get(key);
-  if (typeof value !== "string" || value === "") {
-    throw new ManifestError(`frontmatter is missing "${key}"`);
-  }
-  return value;
-}
-function list(fields, key) {
-  const value = fields.get(key);
-  if (value === void 0) {
-    return [];
-  }
-  if (typeof value === "string") {
-    return [value];
-  }
-  return value;
+  return [...languages];
 }
 
 // packages/core/src/sandbox.ts
@@ -11287,9 +11242,17 @@ var RUN = `
   return JSON.stringify(out);
 })()
 `;
-async function runDetector(bundle, ctx, limits = DEFAULT_LIMITS) {
+var SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs })`;
+async function readExports(bundle, limits = DEFAULT_LIMITS) {
+  const { json: json2, error: error62 } = await evaluate(`${bundle}
+;${SETTINGS}`, null, limits);
+  if (json2 === null) {
+    throw new Error(`detector.ts could not be loaded: ${error62 ?? "it returned nothing"}`);
+  }
+  return JSON.parse(json2);
+}
+async function evaluate(script, ctx, limits) {
   const QuickJS = await loadSandbox();
-  const started = performance.now();
   const runtime = QuickJS.newRuntime();
   runtime.setMemoryLimit(limits.memoryBytes);
   runtime.setMaxStackSize(512 * 1024);
@@ -11298,11 +11261,12 @@ async function runDetector(bundle, ctx, limits = DEFAULT_LIMITS) {
   let json2 = null;
   let error62 = null;
   try {
-    const input2 = vm.newString(JSON.stringify(ctx));
-    vm.setProp(vm.global, "__ctx", input2);
-    input2.dispose();
-    const result = vm.evalCode(`${bundle}
-;${RUN}`, "detector.js");
+    if (ctx) {
+      const input2 = vm.newString(JSON.stringify(ctx));
+      vm.setProp(vm.global, "__ctx", input2);
+      input2.dispose();
+    }
+    const result = vm.evalCode(script, "detector.js");
     if (result.error) {
       error62 = describeError(vm.dump(result.error), limits);
       result.error.dispose();
@@ -11316,6 +11280,12 @@ async function runDetector(bundle, ctx, limits = DEFAULT_LIMITS) {
     vm.dispose();
     runtime.dispose();
   }
+  return { json: json2, error: error62 };
+}
+async function runDetector(bundle, ctx, limits = DEFAULT_LIMITS) {
+  const started = performance.now();
+  const { json: json2, error: error62 } = await evaluate(`${bundle}
+;${RUN}`, ctx, limits);
   const ms = performance.now() - started;
   if (json2 === null) {
     return { findings: [], error: error62 ?? "the detector returned nothing", dropped: [], ms };
@@ -11463,8 +11433,16 @@ async function buildPrinciple(files) {
   if (source === void 0) {
     throw new ManifestError("principle.md is missing");
   }
-  const { manifest, advice } = parsePrinciple(source);
+  const { title, summary, advice } = parsePrinciple(source);
   const bundle = await buildBundle(files);
+  let exported;
+  try {
+    exported = await readExports(bundle);
+  } catch (error62) {
+    throw new BundleError(error62.message);
+  }
+  const { events, globs } = readSettings(exported);
+  const manifest = { title, summary, languages: languagesOf(globs), events, globs };
   return { manifest, advice, bundle, hash: await hashPrinciple(manifest, advice, bundle) };
 }
 async function hashPrinciple(manifest, advice, bundle) {
@@ -11579,7 +11557,7 @@ async function runCase(built, spec) {
   const ctx = caseCtx(spec);
   const base = { name: spec.name, kind: spec.kind, event: spec.event };
   if (!applies(built.manifest, ctx)) {
-    const reason = built.manifest.events.includes(spec.event) ? `the globs do not match ${spec.path}` : `the manifest does not list the ${spec.event} event`;
+    const reason = built.manifest.events.includes(spec.event) ? `the globs do not match ${spec.path}` : `detector.ts does not list the ${spec.event} event in its events`;
     if (spec.kind === "quiet") {
       return { ...base, passed: true, message: `Quiet: ${reason}, so the detector does not run.`, findings: [], ms: 0 };
     }
@@ -11621,25 +11599,18 @@ function describeFindings(findings) {
 }
 
 // packages/core/src/scaffold.ts
-var SLUG2 = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
 function scaffoldFiles(slug) {
-  if (!SLUG2.test(slug)) {
-    throw new Error(`"${slug}" must be 3 to 64 characters of a-z, 0-9 and dashes`);
+  if (!isPrincipleId(slug)) {
+    throw new Error(`"${slug}" must be ${PRINCIPLE_ID_RULE}`);
   }
   const title = slug.split("-").map((word, index) => index === 0 ? `${word[0]?.toUpperCase() ?? ""}${word.slice(1)}` : word).join(" ");
   return {
-    "principle.md": `---
-id: ${slug}
-title: ${title}
-summary: One sentence that says what to do instead, and why.
-languages: [typescript]
-events: [write]
-globs: ["**/*.ts"]
----
+    "principle.md": `# ${title}
 
-# ${title}
+One sentence that says what to do instead, and why.
 
-Say what the problem is, in two or three sentences.
+The heading above is the title and that first sentence is the summary shown in lists.
+From here on, say what the problem is.
 An agent reads this in the middle of a task, so lead with what to do.
 
 ## Instead
@@ -11659,7 +11630,13 @@ if (items.length === 0) {
 Name the cases where the principle does not apply.
 The detector should stay quiet on exactly those, and a quiet case should prove it.
 `,
-    "detector.ts": `import { writtenLines, type Ctx, type Finding } from "@wellactually/sdk";
+    "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
+
+/** When the detector runs: write, read, prompt, command. */
+export const events: EventName[] = ["write"];
+
+/** Which files it runs on. Leave the list empty for every file. */
+export const globs = ["**/*.ts"];
 
 /**
  * Runs inside an isolate: no filesystem, no network, no process.
@@ -12139,9 +12116,9 @@ async function whoami() {
   }
   return (await response.json()).handle;
 }
-async function publishDraft(files, note = "") {
+async function publishDraft(slug, files, note = "") {
   requireToken();
-  const response = await call("/api/drafts", { method: "POST", body: { files, note } });
+  const response = await call("/api/drafts", { method: "POST", body: { slug, files, note } });
   if (response.status !== 201 && response.status !== 422) {
     throw await failure(response);
   }
@@ -12241,9 +12218,21 @@ async function ratePrinciple(id, rating) {
 }
 
 // packages/cli/src/commands.ts
-async function testPrinciple(dir) {
+function idOf(dir) {
+  return path5.basename(path5.resolve(dir));
+}
+async function checkDir(dir) {
   const { built, report } = await checkPrinciple(readPrincipleDir(path5.resolve(dir)));
-  return { id: built?.manifest.id ?? null, title: built?.manifest.title ?? null, report };
+  const id = idOf(dir);
+  if (isPrincipleId(id)) {
+    return { id, built, report };
+  }
+  const problem = `the folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}; rename the folder`;
+  return { id, built, report: { ...report, ok: false, problems: [problem, ...report.problems] } };
+}
+async function testPrinciple(dir) {
+  const { id, built, report } = await checkDir(dir);
+  return { id, title: built?.manifest.title ?? null, report };
 }
 async function tryPrinciple(dir, input2) {
   const built = await buildPrinciple(readPrincipleDir(path5.resolve(dir)));
@@ -12252,7 +12241,7 @@ async function tryPrinciple(dir, input2) {
     return { applies: false, run: null, injected: "" };
   }
   const run = await runDetector(built.bundle, ctx);
-  const injected = frame(ctx, run.findings.length > 0 ? [{ principle: asLocal(built), findings: run.findings }] : []);
+  const injected = frame(ctx, run.findings.length > 0 ? [{ principle: asLocal(built, idOf(dir)), findings: run.findings }] : []);
   return { applies: true, run, injected };
 }
 function tryCtx(input2) {
@@ -12275,7 +12264,11 @@ async function probePrinciple(dir, repo) {
   return probeRepo(built, path5.resolve(repo));
 }
 async function publishPrinciple(dir, note = "") {
-  return publishDraft(readPrincipleDir(path5.resolve(dir)), note);
+  const id = idOf(dir);
+  if (!isPrincipleId(id)) {
+    throw new Error(`The folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}. Rename the folder, then publish again.`);
+  }
+  return publishDraft(id, readPrincipleDir(path5.resolve(dir)), note);
 }
 async function principleHistory(id) {
   return fetchHistory(id);
@@ -12319,15 +12312,15 @@ function renderPull(result) {
   return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).
 Edit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
 }
-function asLocal(built) {
-  return { ...built, id: `local/${built.manifest.id}`, version: 0 };
+function asLocal(built, id) {
+  return { ...built, id: `local/${id}`, version: 0 };
 }
 async function addLocal(dir) {
-  const { built, report } = await checkPrinciple(readPrincipleDir(path5.resolve(dir)));
+  const { id, built, report } = await checkDir(dir);
   if (!built || !report.ok) {
-    return { id: built?.manifest.id ?? null, title: built?.manifest.title ?? null, report };
+    return { id, title: built?.manifest.title ?? null, report };
   }
-  const principle = asLocal(built);
+  const principle = asLocal(built, id);
   writeCached(principle);
   const lockfile = readLockfile();
   const entries = lockfile.entries.filter((entry) => entry.id !== principle.id);
@@ -12381,7 +12374,7 @@ function renderProbe(report) {
 }
 function renderTry(result) {
   if (!result.applies || !result.run) {
-    return "The manifest's events or globs do not select this input, so the detector does not run.";
+    return "The events and globs that detector.ts exports do not select this input, so the detector does not run.";
   }
   const { run } = result;
   if (run.error) {
@@ -12426,9 +12419,9 @@ async function runHook(stdin) {
     recordDetections(run.firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
   }
   const parts = [];
-  const text3 = frame(ctx, run.firings, shown);
-  if (text3) {
-    parts.push(text3);
+  const text2 = frame(ctx, run.firings, shown);
+  if (text2) {
+    parts.push(text2);
   }
   const newFailures = run.failures.filter((failure3) => !shown.has(`failure:${failure3.id}`));
   if (newFailures.length > 0) {
@@ -12517,7 +12510,7 @@ function locate(content, fragments) {
       }
     }
   }
-  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text3]) => ({ line, text: text3 }));
+  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text2]) => ({ line, text: text2 }));
 }
 function readText2(file2) {
   let stat;
@@ -25493,8 +25486,8 @@ function ko_default() {
 }
 
 // node_modules/zod/v4/locales/lt.js
-var capitalizeFirstCharacter = (text3) => {
-  return text3.charAt(0).toUpperCase() + text3.slice(1);
+var capitalizeFirstCharacter = (text2) => {
+  return text2.charAt(0).toUpperCase() + text2.slice(1);
 };
 function getUnitTypeFromNumber(number4) {
   const abs = Math.abs(number4);
@@ -32340,8 +32333,8 @@ var contributors = {
 function aggregateChecks(schema) {
   const agg = {};
   const def = schema._zod.def;
-  const list2 = schema._zod.traits.has("$ZodCheck") ? [schema, ...def.checks ?? []] : def.checks ?? [];
-  for (const ch of list2)
+  const list = schema._zod.traits.has("$ZodCheck") ? [schema, ...def.checks ?? []] : def.checks ?? [];
+  for (const ch of list)
     contributors[ch._zod.def.check]?.(agg, ch._zod.def);
   const bag = schema._zod.bag;
   if (bag.minimum !== void 0)
@@ -41833,8 +41826,12 @@ var StdioServerTransport = class {
 // packages/cli/src/mcp.ts
 var AUTHORING_GUIDE = `A principle is a directory with three parts:
 
-- principle.md: frontmatter (id, title, summary, languages, events, globs) and the advice an agent reads.
+The name of the directory is the principle's id.
+
+- principle.md: plain markdown, the advice an agent reads. No header.
+  Its \`# heading\` is the title. The paragraph right below it is the summary shown in lists: one sentence, at most 200 characters.
 - detector.ts: \`export function* detect(ctx)\` yielding findings \`{ line?, evidence, depth? }\`.
+  It also says when it runs: \`export const events = ["write"]\` (write, read, prompt, command) and \`export const globs = ["**/*.ts"]\`.
   It runs in an isolate without filesystem, network or process. It may import @wellactually/sdk and its own relative files.
   Evidence must be text that occurs verbatim in the input, or the host drops the finding.
 - cases/: one file per case. \`fires-*\` must produce a finding, \`quiet-*\` must produce none.
@@ -41850,21 +41847,21 @@ A draft is private. Releasing it is a click by the human on the website, where t
 
 Rating: when advice in an <wellactually> block was shown to you, tell its advisor how it went with rate_principle, once per principle and task.
 It is feedback to the author, not part of your task, and it never needs the user's attention.`;
-function text2(value) {
+function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
 async function serveMcp() {
-  const server = new McpServer({ name: "wellactually", version: "0.1.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.2.0" }, { instructions: AUTHORING_GUIDE });
   server.registerTool(
     "scaffold",
     {
       description: "Create a new principle directory that already passes run_cases. Returns the path. Edit principle.md, detector.ts and cases/ from there.",
       inputSchema: {
-        slug: external_exports.string().describe("The principle's id: 3 to 64 characters of a-z, 0-9 and dashes, e.g. avoid-late"),
+        slug: external_exports.string().describe("The principle's id, which becomes the directory name: 3 to 64 characters of a-z, 0-9 and dashes, e.g. avoid-late"),
         parent: external_exports.string().describe("Absolute path of the directory to create it in")
       }
     },
-    async ({ slug, parent }) => text2(`Created ${scaffold(slug, parent)}
+    async ({ slug, parent }) => text(`Created ${scaffold(slug, parent)}
 
 ${AUTHORING_GUIDE}`)
   );
@@ -41874,7 +41871,7 @@ ${AUTHORING_GUIDE}`)
       description: "Build a principle and run every case in the real isolate with the real limits. Reports each case, the publish gates and warnings about the advice text.",
       inputSchema: { dir: external_exports.string().describe("Absolute path of the principle directory") }
     },
-    async ({ dir }) => text2(renderReport(await testPrinciple(dir)))
+    async ({ dir }) => text(renderReport(await testPrinciple(dir)))
   );
   server.registerTool(
     "try",
@@ -41888,7 +41885,7 @@ ${AUTHORING_GUIDE}`)
         command: external_exports.string().optional().describe("A shell command the agent is about to run")
       }
     },
-    async ({ dir, ...input2 }) => text2(renderTry(await tryPrinciple(dir, input2)))
+    async ({ dir, ...input2 }) => text(renderTry(await tryPrinciple(dir, input2)))
   );
   server.registerTool(
     "probe",
@@ -41899,7 +41896,7 @@ ${AUTHORING_GUIDE}`)
         repo: external_exports.string().describe("Absolute path of the repository to probe")
       }
     },
-    async ({ dir, repo }) => text2(renderProbe(await probePrinciple(dir, repo)))
+    async ({ dir, repo }) => text(renderProbe(await probePrinciple(dir, repo)))
   );
   server.registerTool(
     "publish_draft",
@@ -41914,11 +41911,11 @@ ${AUTHORING_GUIDE}`)
       const result = await publishPrinciple(dir, note ?? "");
       const report = renderReport({ id: result.id, title: null, report: result.report });
       if (!result.accepted) {
-        return text2(`The registry refused the draft.
+        return text(`The registry refused the draft.
 
 ${report}`);
       }
-      return text2(`Draft ${result.id} version ${result.version} uploaded.
+      return text(`Draft ${result.id} version ${result.version} uploaded.
 A human releases it at ${result.url}
 
 ${report}`);
@@ -41934,7 +41931,7 @@ ${report}`);
         force: external_exports.boolean().optional().describe("Replace the files of a directory that already has some. Discards local edits.")
       }
     },
-    async ({ id, dir, force }) => text2(renderPull(await pullPrinciple(id, dir, force ?? false)))
+    async ({ id, dir, force }) => text(renderPull(await pullPrinciple(id, dir, force ?? false)))
   );
   server.registerTool(
     "history",
@@ -41942,7 +41939,7 @@ ${report}`);
       description: "Show a principle's versions, newest first, like a commit log: version, hash, date, the author's note and which files changed. Includes the user's own unreleased draft.",
       inputSchema: { id: external_exports.string().describe("advisor/principle, or just the principle id for one of the user's own") }
     },
-    async ({ id }) => text2(renderHistory(await principleHistory(id)))
+    async ({ id }) => text(renderHistory(await principleHistory(id)))
   );
   server.registerTool(
     "rate_principle",
@@ -41955,10 +41952,10 @@ ${report}`);
     },
     async ({ id, rating }) => {
       try {
-        return text2(await ratePrinciple(id, rating));
+        return text(await ratePrinciple(id, rating));
       } catch (error62) {
         if (error62 instanceof RegistryError) {
-          return text2(`The rating was not recorded: ${error62.message} Carry on with your task.`);
+          return text(`The rating was not recorded: ${error62.message} Carry on with your task.`);
         }
         throw error62;
       }
