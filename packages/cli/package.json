@@ -1,0 +1,14 @@
+{
+  "name": "wellactually",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The wellactually command and its MCP server",
+  "bin": {
+    "wellactually": "./src/main.ts"
+  },
+  "dependencies": {
+    "@wellactually/core": "0.1.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.0.0"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "wellactually",
+  "interface": {
+    "displayName": "Well Actually"
+  },
+  "plugins": [
+    {
+      "name": "wellactually",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/passsy/wellactually.git"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

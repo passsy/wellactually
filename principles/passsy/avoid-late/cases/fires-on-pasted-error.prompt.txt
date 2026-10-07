@@ -1,0 +1,1 @@
+The app crashes on startup with LateInitializationError: Field 'user' has not been initialized. Can you take a look?

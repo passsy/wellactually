@@ -1,0 +1,9 @@
+{
+  "name": "@wellactually/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Types and helpers a principle's detector may import. Bundled into the detector at publish time.",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

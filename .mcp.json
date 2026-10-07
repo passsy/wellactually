@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "wellactually": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs",
+        "mcp"
+      ]
+    }
+  }
+}

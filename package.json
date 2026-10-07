@@ -1,0 +1,24 @@
+{
+  "name": "wellactually-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The Well Actually plugin, command and sandbox",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p packages/tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0",
+    "vitest": "^4.0.0"
+  }
+}

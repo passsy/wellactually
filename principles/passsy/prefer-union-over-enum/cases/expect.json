@@ -1,0 +1,4 @@
+{
+  "fires-on-enum.ts": { "lines": [1] },
+  "quiet-on-declaration-file.ts": { "path": "types/vendor.d.ts" }
+}
