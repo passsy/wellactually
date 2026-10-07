@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { SDK_SOURCE } from "../src/sdk-source.generated.ts";
+import { SDK_SOURCES } from "../src/sdk-source.generated.ts";
 import { buildBundle, fileCtx, runDetector, textCtx } from "../src/node.ts";
 
 async function bundleOf(detector: string): Promise<string> {
@@ -95,8 +95,9 @@ describe("the isolate", () => {
 
 describe("the bundler", () => {
   test("the SDK source compiled into the core matches the SDK", () => {
-    const sdk = fs.readFileSync(path.resolve(import.meta.dirname, "../../sdk/src/index.ts"), "utf8");
-    expect(SDK_SOURCE, "run `node scripts/embed-sdk.mjs`").toBe(sdk);
+    const dir = path.resolve(import.meta.dirname, "../../sdk/src");
+    const sdk = Object.fromEntries(fs.readdirSync(dir).map((name) => [name, fs.readFileSync(path.join(dir, name), "utf8")]));
+    expect(SDK_SOURCES, "run `node scripts/embed-sdk.mjs`").toEqual(sdk);
   });
 
   test("builds the same bundle when a detector.ts exists in the working directory", async () => {

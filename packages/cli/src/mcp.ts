@@ -27,15 +27,18 @@ The name of the directory is the principle's id.
   It also says when it runs: \`export const events = ["write"]\` (write, read, prompt, command) and \`export const globs = ["**/*.ts"]\`.
   It runs in an isolate without filesystem, network or process. It may import @wellactually/sdk and its own relative files.
   Evidence must be text that occurs verbatim in the input, or the host drops the finding.
-- cases/: one file per case. \`fires-*\` must produce a finding, \`quiet-*\` must produce none.
-  \`.prompt.txt\` is a user message, \`.command.txt\` a shell command, \`.read.<ext>\` a file the agent only read; anything else is a file the agent wrote.
-  cases/expect.json may pin the lines a firing case reports and the path the detector sees.
+- *.test.ts: the tests. Any number of files, each complete on its own, with the source it tests written inline.
+  A test builds the event a detector receives and checks what the detector reports:
+  \`expect(detect(write("lib/a.dart", content))).toEqual([{ line: 2, evidence: "late String name;" }])\`.
+  Events come from \`write(path, content)\`, \`edit(path, contentAfterTheEdit, { written })\`, \`read(path, content)\`, \`prompt(text)\` and \`command(text)\`.
+  \`edit\` is how to show that code which was already there is left alone: only \`written\` counts as written.
+  Import all of it, with \`test\`, \`describe\`, \`expect\` and \`source\`, from @wellactually/sdk/test.
 
-A principle needs at least one fires-* case that passes and one quiet-* case.
-The registry runs the cases again on upload, and its result is the one that counts.
+The tests must pass, make the detector fire at least once, and run it at least once on something it stays quiet on.
+The registry runs the tests again on upload, and its result is the one that counts.
 
-Loop: scaffold, edit, run_cases until green, probe against a real repository, add quiet cases for false positives, publish_draft.
-To change an existing principle: pull it, edit, run_cases, publish_draft. That creates the draft of its next version.
+Loop: scaffold, edit, run_tests until green, probe against a real repository, add a quiet test for every false positive, publish_draft.
+To change an existing principle: pull it, edit, run_tests, publish_draft. That creates the draft of its next version.
 A draft is private. Releasing it is a click by the human on the website, where the same files can also be edited.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its advisor how it went with rate_principle, once per principle and task.
@@ -47,13 +50,13 @@ function text(value: string) {
 
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
-  const server = new McpServer({ name: "wellactually", version: "0.2.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.3.0" }, { instructions: AUTHORING_GUIDE });
 
   server.registerTool(
     "scaffold",
     {
       description:
-        "Create a new principle directory that already passes run_cases. Returns the path. Edit principle.md, detector.ts and cases/ from there.",
+        "Create a new principle directory that already passes run_tests. Returns the path. Edit principle.md, detector.ts and detector.test.ts from there.",
       inputSchema: {
         slug: z.string().describe("The principle's id, which becomes the directory name: 3 to 64 characters of a-z, 0-9 and dashes, e.g. avoid-late"),
         parent: z.string().describe("Absolute path of the directory to create it in"),
@@ -63,10 +66,10 @@ export async function serveMcp(): Promise<void> {
   );
 
   server.registerTool(
-    "run_cases",
+    "run_tests",
     {
       description:
-        "Build a principle and run every case in the real isolate with the real limits. Reports each case, the publish gates and warnings about the advice text.",
+        "Build a principle and run its tests in the real isolate with the real limits. Reports each test, the publish gates and warnings about the advice text.",
       inputSchema: { dir: z.string().describe("Absolute path of the principle directory") },
     },
     async ({ dir }) => text(renderReport(await testPrinciple(dir))),
@@ -105,7 +108,7 @@ export async function serveMcp(): Promise<void> {
     "publish_draft",
     {
       description:
-        "Upload a principle to the registry as a private draft. The registry rebuilds it and reruns every case. Returns the URL where the human reviews and releases it. Needs `wellactually login` to have been run once.",
+        "Upload a principle to the registry as a private draft. The registry rebuilds it and reruns the tests. Returns the URL where the human reviews and releases it. Needs `wellactually login` to have been run once.",
       inputSchema: {
         dir: z.string().describe("Absolute path of the principle directory"),
         note: z.string().optional().describe("One line on what changed and why, like a commit subject. Shown in the principle's history."),
@@ -125,7 +128,7 @@ export async function serveMcp(): Promise<void> {
     "pull",
     {
       description:
-        "Download an existing principle's files from the registry into a directory, to update it. Returns the user's own draft when one is waiting, including edits made in the browser, otherwise the newest release. Then edit, run_cases and publish_draft.",
+        "Download an existing principle's files from the registry into a directory, to update it. Returns the user's own draft when one is waiting, including edits made in the browser, otherwise the newest release. Then edit, run_tests and publish_draft.",
       inputSchema: {
         id: z.string().describe("advisor/principle, or just the principle id for one of the user's own. Append @3 for a specific version."),
         dir: z.string().describe("Absolute path of the directory to write the files to"),

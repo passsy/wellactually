@@ -33,4 +33,5 @@ export * from "./index.ts";
 export * from "./board.ts";
 export * from "./detections.ts";
 export * from "./fs.ts";
+export * from "./payload.ts";
 export * from "./probe.ts";

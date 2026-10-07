@@ -211,3 +211,81 @@ export function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIK
   }
   return out.join("");
 }
+
+/**
+ * The event for a file the agent wrote or read.
+ *
+ * On `write`, `written` defaults to every line: a new file is written whole.
+ * On `read` nothing was written, whatever is passed.
+ */
+export function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: WrittenLine[]): Ctx {
+  const path = relativePath.replaceAll("\\", "/");
+  const name = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name.lastIndexOf(".");
+  const lines = content.split("\n");
+  const allLines = lines.map((text, index) => ({ line: index + 1, text }));
+  return {
+    event,
+    file: {
+      path,
+      name,
+      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
+      content,
+      lines,
+      written: event === "read" ? [] : (written ?? allLines),
+    },
+    text: content,
+    isUserPrompt: false,
+    isCommand: false,
+    isConversation: false,
+  };
+}
+
+/** The event for text: what the user typed, or a command about to run. */
+export function textCtx(event: "prompt" | "command", text: string): Ctx {
+  return {
+    event,
+    file: null,
+    text,
+    isUserPrompt: event === "prompt",
+    isCommand: event === "command",
+    isConversation: true,
+  };
+}
+
+/**
+ * The lines of `content` the agent just wrote, given the text it inserted.
+ *
+ * The file after the edit is the truth. A fragment is found there as a whole
+ * first; when it is not, for instance because a formatter ran, its lines are
+ * matched one by one.
+ */
+export function locateWritten(content: string, fragments: readonly string[]): WrittenLine[] {
+  const lines = content.split("\n");
+  const written = new Map<number, string>();
+  for (const fragment of fragments) {
+    if (fragment.trim() === "") {
+      continue;
+    }
+    const at = content.indexOf(fragment);
+    if (at !== -1) {
+      const first = content.slice(0, at).split("\n").length;
+      const count = fragment.split("\n").length;
+      for (let line = first; line < first + count && line <= lines.length; line++) {
+        written.set(line, lines[line - 1] ?? "");
+      }
+      continue;
+    }
+    for (const wanted of fragment.split("\n")) {
+      const trimmed = wanted.trim();
+      if (trimmed === "") {
+        continue;
+      }
+      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);
+      if (index !== -1) {
+        written.set(index + 1, lines[index] ?? "");
+      }
+    }
+  }
+  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text]) => ({ line, text }));
+}

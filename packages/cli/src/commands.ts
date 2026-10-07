@@ -218,8 +218,19 @@ export function renderReport(result: TestResult): string {
   if (result.id) {
     lines.push(`${result.id}  ${result.title ?? ""}`.trimEnd());
   }
-  for (const item of result.report.cases) {
-    lines.push(`  ${item.passed ? "✓" : "✗"} ${item.name}  ${item.message} (${item.ms.toFixed(1)} ms)`);
+  let file = "";
+  for (const item of result.report.tests) {
+    if (item.file !== file) {
+      file = item.file;
+      lines.push(`  ${file}`);
+    }
+    lines.push(`    ${item.passed ? "✓" : "✗"} ${item.name}`);
+    if (!item.passed) {
+      lines.push(...item.message.split("\n").map((line) => `        ${line}`));
+    }
+  }
+  if (result.report.tests.length > 0) {
+    lines.push(`  Slowest detector run ${result.report.slowestMs.toFixed(1)} ms.`);
   }
   for (const warning of result.report.warnings) {
     lines.push(`  ! ${warning}`);

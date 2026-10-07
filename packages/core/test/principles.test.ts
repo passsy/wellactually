@@ -10,7 +10,7 @@ describe("the example principles", () => {
     for (const slug of fs.readdirSync(path.join(root, advisor))) {
       test(`${advisor}/${slug} passes its cases and the publish gates`, async () => {
         const { report } = await checkPrinciple(readPrincipleDir(path.join(root, advisor, slug)));
-        expect(report.cases.filter((result) => !result.passed)).toEqual([]);
+        expect(report.tests.filter((result) => !result.passed)).toEqual([]);
         expect(report.problems).toEqual([]);
         expect(report.ok).toBe(true);
       });
@@ -18,32 +18,122 @@ describe("the example principles", () => {
   }
 });
 
-describe("the publish gates", () => {
+describe("the tests of a principle", () => {
   const principle = ["# No TODO", "", "Finish it or file it.", "", "A TODO in code is a ticket nobody can find. File it or finish it."].join("\n");
-  const detector = `export function detect(ctx) { return ctx.text.includes("TODO") ? [{ evidence: "TODO" }] : []; }`;
+  const detector = `
+    import { writtenLines } from "@wellactually/sdk";
+    export const globs = ["**/*.ts"];
+    export function* detect(ctx) {
+      for (const written of writtenLines(ctx)) {
+        if (written.text.includes("TODO")) yield { line: written.line, evidence: "TODO" };
+      }
+    }`;
+  const check = (tests: Record<string, string>, source = detector) => checkPrinciple({ "principle.md": principle, "detector.ts": source, ...tests });
+  const header = `import { detect, edit, expect, prompt, read, source, test, write } from "@wellactually/sdk/test";`;
+  const fires = `test("fires", () => { expect(detect(write("a.ts", "// TODO"))).toEqual([{ line: 1, evidence: "TODO" }]); });`;
+  const quiet = `test("quiet", () => { expect(detect(write("a.ts", "const a = 1;"))).toEqual([]); });`;
 
-  test("a principle without quiet cases is refused", async () => {
-    const { report } = await checkPrinciple({
-      "principle.md": principle,
-      "detector.ts": detector,
-      "cases/fires-on-todo.ts": "// TODO\n",
-    });
-    expect(report.ok).toBe(false);
-    expect(report.problems.join("\n")).toMatch(/at least 1 case named cases\/quiet-/);
+  test("a principle whose tests fire and stay quiet may be published", async () => {
+    const { report } = await check({ "detector.test.ts": [header, fires, quiet].join("\n") });
+    expect(report.problems).toEqual([]);
+    expect(report.ok).toBe(true);
+    expect(report.tests.map((result) => [result.file, result.name, result.passed])).toEqual([
+      ["detector.test.ts", "fires", true],
+      ["detector.test.ts", "quiet", true],
+    ]);
+    expect(report.tests[0]?.calls).toMatchObject([{ event: "write", path: "a.ts", text: "// TODO", written: [1], ran: true, findings: [{ line: 1, evidence: "TODO" }] }]);
   });
 
-  test("a failing case is reported with what happened", async () => {
-    const { report } = await checkPrinciple({
-      "principle.md": principle,
-      "detector.ts": detector,
-      "cases/fires-on-todo.ts": "// TODO\n",
-      "cases/quiet-a.ts": "// TODO, but the author hoped not\n",
-      "cases/quiet-b.ts": "const a = 1;\n",
-    });
-    expect(report.ok).toBe(false);
-    const failed = report.cases.find((result) => result.name === "quiet-a.ts");
-    expect(failed?.message).toMatch(/Expected nothing, got "TODO"/);
+  test("tests may be spread over several files", async () => {
+    const { report } = await check({ "fires.test.ts": [header, fires].join("\n"), "more/quiet.test.ts": [header, quiet].join("\n") });
+    expect(report.ok).toBe(true);
+    expect(report.tests.map((result) => result.file)).toEqual(["fires.test.ts", "more/quiet.test.ts"]);
   });
+
+  test("a principle without test files is refused", async () => {
+    const { report } = await check({});
+    expect(report.problems).toEqual(["needs at least one test file named *.test.ts."]);
+  });
+
+  test("a principle that still has cases is told what replaced them", async () => {
+    const { report } = await check({ "cases/fires-on-todo.ts": "// TODO" });
+    expect(report.problems.join("\n")).toMatch(/The cases\/ folder is no longer read/);
+  });
+
+  test("a failing test is reported with expected and received", async () => {
+    const wrong = `test("wrong", () => { expect(detect(write("a.ts", "// TODO"))).toEqual([]); });`;
+    const { report } = await check({ "detector.test.ts": [header, fires, quiet, wrong].join("\n") });
+    expect(report.ok).toBe(false);
+    expect(report.problems).toEqual(["1 of 3 tests failed"]);
+    expect(report.tests[2]?.message).toMatch(/Expected to equal\n\[\]\nReceived\n\[\n\s+\{\n\s+"evidence": "TODO"/);
+  });
+
+  test("tests that never make the detector fire are refused", async () => {
+    const { report } = await check({ "detector.test.ts": [header, quiet].join("\n") });
+    expect(report.problems).toEqual(["no passing test makes the detector fire, so nothing shows that it ever does"]);
+  });
+
+  test("an event the globs exclude does not count as staying quiet", async () => {
+    const excluded = `test("python", () => { expect(detect(write("a.py", "# TODO"))).toEqual([]); });`;
+    const { report } = await check({ "detector.test.ts": [header, fires, excluded].join("\n") });
+    expect(report.tests[1]?.calls).toMatchObject([{ ran: false }]);
+    expect(report.problems.join("\n")).toMatch(/no passing test runs the detector on something it stays quiet on/);
+  });
+
+  test("a test that asserts nothing cannot satisfy the gates", async () => {
+    const { report } = await check({ "detector.test.ts": [header, `test("empty", () => {});`].join("\n") });
+    expect(report.ok).toBe(false);
+    expect(report.problems).toHaveLength(2);
+  });
+
+  test("an edit counts only the text the agent wrote as written", async () => {
+    const legacy = `test("legacy", () => {
+      const file = source\`
+        // TODO old
+        const a = 2;
+      \`;
+      expect(detect(edit("a.ts", file, { written: "const a = 2;" }))).toEqual([]);
+      expect(detect(edit("a.ts", file, { written: "// TODO old" }))).toEqual([{ line: 1, evidence: "TODO" }]);
+      expect(detect(read("a.ts", file))).toEqual([]);
+    });`;
+    const { report } = await check({ "detector.test.ts": [header, legacy].join("\n") });
+    expect(report.problems).toEqual([]);
+    expect(report.tests[0]?.calls.map((call) => call.written)).toEqual([[2], [1], []]);
+  });
+
+  test("detect throws when the detector reports evidence on the wrong line", async () => {
+    const offByOne = detector.replace("line: written.line", "line: written.line + 1");
+    const { report } = await check({ "detector.test.ts": [header, `test("fires", () => { detect(write("a.ts", "// TODO\\nconst a = 1;")); });`].join("\n") }, offByOne);
+    expect(report.tests[0]?.message).toMatch(/The host dropped a finding on line 2 whose evidence is not on that line: "TODO"/);
+  });
+
+  test("detect throws when the detector fails", async () => {
+    const broken = `export function detect() { throw new Error("boom"); }`;
+    const { report } = await check({ "detector.test.ts": [header, fires].join("\n") }, broken);
+    expect(report.tests[0]?.message).toBe("The detector failed: Error: boom");
+  });
+
+  test("describe and test.each name their tests", async () => {
+    const table = `import { describe } from "@wellactually/sdk/test";
+      describe("prompts", () => { test.each(["a", "b"])("quiet on %s", (text) => { expect(detect(prompt(text))).toEqual([]); }); });`;
+    const { report } = await check({ "detector.test.ts": [header, table].join("\n") });
+    expect(report.tests.map((result) => result.name)).toEqual(["prompts > quiet on a", "prompts > quiet on b"]);
+  });
+
+  test("a test file cannot reach outside the isolate", async () => {
+    const { report } = await check({ "detector.test.ts": `import fs from "node:fs"; ${header}\ntest("reads", () => { fs.readFileSync("/etc/passwd"); });` });
+    expect(report.problems.join("\n")).toMatch(/"node:fs" cannot be imported/);
+  });
+
+  test("a detector cannot import the test framework", async () => {
+    const { report } = await check({ "detector.test.ts": [header, fires].join("\n") }, `import { write } from "@wellactually/sdk/test"; export function detect() { return [write("a.ts", "")].slice(1); }`);
+    expect(report.problems.join("\n")).toMatch(/is for test files. A detector cannot import it/);
+  });
+
+  test("a test file that never ends is stopped", async () => {
+    const { report } = await check({ "detector.test.ts": [header, `test("loop", () => { for (;;) {} });`].join("\n") });
+    expect(report.problems.join("\n")).toMatch(/The tests could not run: the tests ran longer than 5000 ms/);
+  }, 15_000);
 });
 
 describe("principle.md", () => {

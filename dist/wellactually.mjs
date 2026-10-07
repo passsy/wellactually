@@ -6936,8 +6936,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path7) {
-      let input2 = path7;
+    function removeDotSegments(path8) {
+      let input2 = path8;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -7346,8 +7346,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path7 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
+        const path8 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -10917,7 +10917,10 @@ function loadSandbox() {
 }
 
 // packages/core/src/sdk-source.generated.ts
-var SDK_SOURCE = '/**\n * Everything a detector may import.\n *\n * A detector runs inside an isolate with no filesystem, no network and no\n * process. This module is bundled into it at publish time, so it must stay\n * free of Node imports and of any state.\n */\n\n/**\n * What happened in the session.\n *\n * - `write`: the agent wrote or edited a file. `ctx.file.written` holds the lines it wrote.\n * - `read`: the agent read a file. It did not write this code.\n * - `prompt`: the user typed a message.\n * - `command`: the agent is about to run a shell command.\n */\nexport type EventName = "write" | "read" | "prompt" | "command";\n\nexport const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command"];\n\n/** A line the agent wrote in this event. */\nexport interface WrittenLine {\n  /** 1-based line in the file. */\n  line: number;\n  /** The line as written, untrimmed. */\n  text: string;\n}\n\nexport interface FileContext {\n  /** Path relative to the project root, with forward slashes. */\n  path: string;\n  /** Basename, e.g. "config_loader.dart". */\n  name: string;\n  /** Extension including the dot, lower case. Empty when there is none. */\n  ext: string;\n  content: string;\n  /** `content` split into lines. */\n  lines: string[];\n  /** The lines the agent wrote. Empty on `read`. */\n  written: WrittenLine[];\n}\n\n/** Everything a detector can look at. It is plain data, parsed from JSON. */\nexport interface Ctx {\n  event: EventName;\n  /** Null when the event carries text instead of a file. */\n  file: FileContext | null;\n  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`. */\n  text: string;\n  /** The user typed this. A request for work that has not happened yet. */\n  isUserPrompt: boolean;\n  /** A shell command the agent is about to run. */\n  isCommand: boolean;\n  /** The event carries text rather than a file. */\n  isConversation: boolean;\n}\n\n/**\n * How much of the advice a finding deserves.\n *\n * A word match established a topic and asks for a `pointer`: title and summary.\n * Code that breaks the principle asks for `full`: the whole advice text.\n */\nexport type Depth = "pointer" | "full";\n\nexport interface Finding {\n  /** 1-based. Omit when the finding is not about a line. */\n  line?: number;\n  /**\n   * The text that triggered the finding.\n   * It must occur verbatim in `ctx.text`; the host drops findings whose evidence does not.\n   */\n  evidence: string;\n  /** Omitted means `full`. */\n  depth?: Depth;\n}\n\n/** What `detect` returns: a generator or any other iterable of findings. */\nexport type Findings = Iterable<Finding>;\n\n/** The shape of a detector module. */\nexport interface Detector {\n  detect: (ctx: Ctx) => Findings | null | undefined;\n}\n\nconst WORD_CHAR = /[A-Za-z0-9_$]/;\n\n/**\n * Index of `word` in `text` where it stands alone, or -1.\n * `findWord("isolate", "late")` is -1; `findWord("late final x", "late")` is 0.\n */\nexport function findWord(text: string, word: string, from = 0): number {\n  let at = text.indexOf(word, from);\n  while (at !== -1) {\n    const before = at === 0 ? "" : (text[at - 1] ?? "");\n    const after = text[at + word.length] ?? "";\n    if (!WORD_CHAR.test(before) && !WORD_CHAR.test(after)) {\n      return at;\n    }\n    at = text.indexOf(word, at + 1);\n  }\n  return -1;\n}\n\n/**\n * Pointer findings for each of `names` that occurs in a conversation event.\n *\n * This is a name check for a named technology, not a keyword cloud.\n * Pass the few phrases that can only mean your topic.\n */\nexport function* mentioned(ctx: Ctx, names: readonly string[]): Generator<Finding> {\n  if (!ctx.isConversation) {\n    return;\n  }\n  const haystack = ctx.text.toLowerCase();\n  for (const name of names) {\n    const at = findWord(haystack, name.toLowerCase());\n    if (at === -1) {\n      continue;\n    }\n    yield { evidence: ctx.text.slice(at, at + name.length), depth: "pointer" };\n    return;\n  }\n}\n\n/** The lines the agent wrote in this event. Empty when no file is involved. */\nexport function writtenLines(ctx: Ctx): WrittenLine[] {\n  return ctx.file?.written ?? [];\n}\n\n/** 1-based line of a character offset in `text`. */\nexport function lineAt(text: string, offset: number): number {\n  let line = 1;\n  for (let i = 0; i < offset && i < text.length; i++) {\n    if (text[i] === "\\n") {\n      line++;\n    }\n  }\n  return line;\n}\n\nexport interface CodeSyntax {\n  /** Starts a comment that runs to the end of the line. */\n  lineComment?: string;\n  /** Opens and closes a block comment. */\n  blockComment?: readonly [string, string];\n  /** Characters that open and close a string literal. */\n  quotes?: readonly string[];\n}\n\n/** Comments and strings as written in C, Dart, Java, JavaScript, Kotlin, Swift and friends. */\nexport const C_LIKE: CodeSyntax = {\n  lineComment: "//",\n  blockComment: ["/*", "*/"],\n  quotes: [\'"\', "\'", "`"],\n};\n\n/** Comments and strings as written in Python, Ruby, shell and YAML. */\nexport const HASH_LIKE: CodeSyntax = {\n  lineComment: "#",\n  quotes: [\'"\', "\'"],\n};\n\n/**\n * `text` with comments and string contents replaced by spaces.\n *\n * Positions and line breaks are preserved, so an offset or line found in the\n * result points at the same place in the original. Use it to keep a keyword\n * inside a comment or a string from counting as code.\n */\nexport function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIKE): string {\n  const out: string[] = [];\n  const quotes = syntax.quotes ?? [];\n  let i = 0;\n  while (i < text.length) {\n    const char = text[i] ?? "";\n    if (syntax.lineComment && text.startsWith(syntax.lineComment, i)) {\n      while (i < text.length && text[i] !== "\\n") {\n        out.push(" ");\n        i++;\n      }\n      continue;\n    }\n    if (syntax.blockComment && text.startsWith(syntax.blockComment[0], i)) {\n      const close = text.indexOf(syntax.blockComment[1], i + syntax.blockComment[0].length);\n      const end = close === -1 ? text.length : close + syntax.blockComment[1].length;\n      for (; i < end; i++) {\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n      }\n      continue;\n    }\n    if (quotes.includes(char)) {\n      out.push(char);\n      i++;\n      while (i < text.length && text[i] !== char) {\n        if (text[i] === "\\\\" && i + 1 < text.length) {\n          out.push(" ");\n          i++;\n        }\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n        i++;\n      }\n      if (i < text.length) {\n        out.push(char);\n        i++;\n      }\n      continue;\n    }\n    out.push(char);\n    i++;\n  }\n  return out.join("");\n}\n';
+var SDK_SOURCES = {
+  "index.ts": '/**\n * Everything a detector may import.\n *\n * A detector runs inside an isolate with no filesystem, no network and no\n * process. This module is bundled into it at publish time, so it must stay\n * free of Node imports and of any state.\n */\n\n/**\n * What happened in the session.\n *\n * - `write`: the agent wrote or edited a file. `ctx.file.written` holds the lines it wrote.\n * - `read`: the agent read a file. It did not write this code.\n * - `prompt`: the user typed a message.\n * - `command`: the agent is about to run a shell command.\n */\nexport type EventName = "write" | "read" | "prompt" | "command";\n\nexport const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command"];\n\n/** A line the agent wrote in this event. */\nexport interface WrittenLine {\n  /** 1-based line in the file. */\n  line: number;\n  /** The line as written, untrimmed. */\n  text: string;\n}\n\nexport interface FileContext {\n  /** Path relative to the project root, with forward slashes. */\n  path: string;\n  /** Basename, e.g. "config_loader.dart". */\n  name: string;\n  /** Extension including the dot, lower case. Empty when there is none. */\n  ext: string;\n  content: string;\n  /** `content` split into lines. */\n  lines: string[];\n  /** The lines the agent wrote. Empty on `read`. */\n  written: WrittenLine[];\n}\n\n/** Everything a detector can look at. It is plain data, parsed from JSON. */\nexport interface Ctx {\n  event: EventName;\n  /** Null when the event carries text instead of a file. */\n  file: FileContext | null;\n  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`. */\n  text: string;\n  /** The user typed this. A request for work that has not happened yet. */\n  isUserPrompt: boolean;\n  /** A shell command the agent is about to run. */\n  isCommand: boolean;\n  /** The event carries text rather than a file. */\n  isConversation: boolean;\n}\n\n/**\n * How much of the advice a finding deserves.\n *\n * A word match established a topic and asks for a `pointer`: title and summary.\n * Code that breaks the principle asks for `full`: the whole advice text.\n */\nexport type Depth = "pointer" | "full";\n\nexport interface Finding {\n  /** 1-based. Omit when the finding is not about a line. */\n  line?: number;\n  /**\n   * The text that triggered the finding.\n   * It must occur verbatim in `ctx.text`; the host drops findings whose evidence does not.\n   */\n  evidence: string;\n  /** Omitted means `full`. */\n  depth?: Depth;\n}\n\n/** What `detect` returns: a generator or any other iterable of findings. */\nexport type Findings = Iterable<Finding>;\n\n/** The shape of a detector module. */\nexport interface Detector {\n  detect: (ctx: Ctx) => Findings | null | undefined;\n}\n\nconst WORD_CHAR = /[A-Za-z0-9_$]/;\n\n/**\n * Index of `word` in `text` where it stands alone, or -1.\n * `findWord("isolate", "late")` is -1; `findWord("late final x", "late")` is 0.\n */\nexport function findWord(text: string, word: string, from = 0): number {\n  let at = text.indexOf(word, from);\n  while (at !== -1) {\n    const before = at === 0 ? "" : (text[at - 1] ?? "");\n    const after = text[at + word.length] ?? "";\n    if (!WORD_CHAR.test(before) && !WORD_CHAR.test(after)) {\n      return at;\n    }\n    at = text.indexOf(word, at + 1);\n  }\n  return -1;\n}\n\n/**\n * Pointer findings for each of `names` that occurs in a conversation event.\n *\n * This is a name check for a named technology, not a keyword cloud.\n * Pass the few phrases that can only mean your topic.\n */\nexport function* mentioned(ctx: Ctx, names: readonly string[]): Generator<Finding> {\n  if (!ctx.isConversation) {\n    return;\n  }\n  const haystack = ctx.text.toLowerCase();\n  for (const name of names) {\n    const at = findWord(haystack, name.toLowerCase());\n    if (at === -1) {\n      continue;\n    }\n    yield { evidence: ctx.text.slice(at, at + name.length), depth: "pointer" };\n    return;\n  }\n}\n\n/** The lines the agent wrote in this event. Empty when no file is involved. */\nexport function writtenLines(ctx: Ctx): WrittenLine[] {\n  return ctx.file?.written ?? [];\n}\n\n/** 1-based line of a character offset in `text`. */\nexport function lineAt(text: string, offset: number): number {\n  let line = 1;\n  for (let i = 0; i < offset && i < text.length; i++) {\n    if (text[i] === "\\n") {\n      line++;\n    }\n  }\n  return line;\n}\n\nexport interface CodeSyntax {\n  /** Starts a comment that runs to the end of the line. */\n  lineComment?: string;\n  /** Opens and closes a block comment. */\n  blockComment?: readonly [string, string];\n  /** Characters that open and close a string literal. */\n  quotes?: readonly string[];\n}\n\n/** Comments and strings as written in C, Dart, Java, JavaScript, Kotlin, Swift and friends. */\nexport const C_LIKE: CodeSyntax = {\n  lineComment: "//",\n  blockComment: ["/*", "*/"],\n  quotes: [\'"\', "\'", "`"],\n};\n\n/** Comments and strings as written in Python, Ruby, shell and YAML. */\nexport const HASH_LIKE: CodeSyntax = {\n  lineComment: "#",\n  quotes: [\'"\', "\'"],\n};\n\n/**\n * `text` with comments and string contents replaced by spaces.\n *\n * Positions and line breaks are preserved, so an offset or line found in the\n * result points at the same place in the original. Use it to keep a keyword\n * inside a comment or a string from counting as code.\n */\nexport function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIKE): string {\n  const out: string[] = [];\n  const quotes = syntax.quotes ?? [];\n  let i = 0;\n  while (i < text.length) {\n    const char = text[i] ?? "";\n    if (syntax.lineComment && text.startsWith(syntax.lineComment, i)) {\n      while (i < text.length && text[i] !== "\\n") {\n        out.push(" ");\n        i++;\n      }\n      continue;\n    }\n    if (syntax.blockComment && text.startsWith(syntax.blockComment[0], i)) {\n      const close = text.indexOf(syntax.blockComment[1], i + syntax.blockComment[0].length);\n      const end = close === -1 ? text.length : close + syntax.blockComment[1].length;\n      for (; i < end; i++) {\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n      }\n      continue;\n    }\n    if (quotes.includes(char)) {\n      out.push(char);\n      i++;\n      while (i < text.length && text[i] !== char) {\n        if (text[i] === "\\\\" && i + 1 < text.length) {\n          out.push(" ");\n          i++;\n        }\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n        i++;\n      }\n      if (i < text.length) {\n        out.push(char);\n        i++;\n      }\n      continue;\n    }\n    out.push(char);\n    i++;\n  }\n  return out.join("");\n}\n\n/**\n * The event for a file the agent wrote or read.\n *\n * On `write`, `written` defaults to every line: a new file is written whole.\n * On `read` nothing was written, whatever is passed.\n */\nexport function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: WrittenLine[]): Ctx {\n  const path = relativePath.replaceAll("\\\\", "/");\n  const name = path.slice(path.lastIndexOf("/") + 1);\n  const dot = name.lastIndexOf(".");\n  const lines = content.split("\\n");\n  const allLines = lines.map((text, index) => ({ line: index + 1, text }));\n  return {\n    event,\n    file: {\n      path,\n      name,\n      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",\n      content,\n      lines,\n      written: event === "read" ? [] : (written ?? allLines),\n    },\n    text: content,\n    isUserPrompt: false,\n    isCommand: false,\n    isConversation: false,\n  };\n}\n\n/** The event for text: what the user typed, or a command about to run. */\nexport function textCtx(event: "prompt" | "command", text: string): Ctx {\n  return {\n    event,\n    file: null,\n    text,\n    isUserPrompt: event === "prompt",\n    isCommand: event === "command",\n    isConversation: true,\n  };\n}\n\n/**\n * The lines of `content` the agent just wrote, given the text it inserted.\n *\n * The file after the edit is the truth. A fragment is found there as a whole\n * first; when it is not, for instance because a formatter ran, its lines are\n * matched one by one.\n */\nexport function locateWritten(content: string, fragments: readonly string[]): WrittenLine[] {\n  const lines = content.split("\\n");\n  const written = new Map<number, string>();\n  for (const fragment of fragments) {\n    if (fragment.trim() === "") {\n      continue;\n    }\n    const at = content.indexOf(fragment);\n    if (at !== -1) {\n      const first = content.slice(0, at).split("\\n").length;\n      const count = fragment.split("\\n").length;\n      for (let line = first; line < first + count && line <= lines.length; line++) {\n        written.set(line, lines[line - 1] ?? "");\n      }\n      continue;\n    }\n    for (const wanted of fragment.split("\\n")) {\n      const trimmed = wanted.trim();\n      if (trimmed === "") {\n        continue;\n      }\n      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);\n      if (index !== -1) {\n        written.set(index + 1, lines[index] ?? "");\n      }\n    }\n  }\n  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text]) => ({ line, text }));\n}\n',
+  "test.ts": '/**\n * The test framework for a principle.\n *\n * A test builds the event a detector receives and asks what the detector\n * says about it:\n *\n *     test("fires on a late field", () => {\n *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1, evidence: "late String name;" }]);\n *     });\n *\n * Tests run inside the isolate: in `wellactually test`, in the browser editor\n * and on the registry, always the same way. `detect` does not call the\n * detector directly. It asks the host, which runs the real detector the way\n * the hook does and keeps a record, so the registry knows what was shown to\n * fire and what was shown to stay quiet.\n */\nimport { fileCtx, locateWritten, textCtx, type Ctx, type Finding } from "./index.ts";\n\n/** The agent wrote this file in full. Every line counts as written. */\nexport function write(path: string, content: string): Ctx {\n  return fileCtx("write", path, content);\n}\n\n/**\n * The agent edited a file. `content` is the file after the edit and\n * `change.written` is the text the agent put in, as one piece or several.\n */\nexport function edit(path: string, content: string, change: { written: string | readonly string[] }): Ctx {\n  const fragments = typeof change.written === "string" ? [change.written] : change.written;\n  const written = locateWritten(content, fragments);\n  if (written.length === 0) {\n    throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);\n  }\n  return fileCtx("write", path, content, written);\n}\n\n/** The agent read this file. It wrote none of it. */\nexport function read(path: string, content: string): Ctx {\n  return fileCtx("read", path, content);\n}\n\n/** The user typed this. */\nexport function prompt(text: string): Ctx {\n  return textCtx("prompt", text);\n}\n\n/** The agent is about to run this shell command. */\nexport function command(text: string): Ctx {\n  return textCtx("command", text);\n}\n\n/**\n * A multi-line string without the indentation of the test around it.\n *\n * `${` and a backtick inside it need a backslash, as in any template string.\n */\nexport function source(strings: TemplateStringsArray, ...values: unknown[]): string {\n  const text = strings.raw.reduce((out, part, index) => out + part.replace(/\\\\([`$\\\\])/g, "$1") + (index < values.length ? String(values[index]) : ""), "");\n  const lines = text.split("\\n");\n  if (lines[0]?.trim() === "") {\n    lines.shift();\n  }\n  if (lines.at(-1)?.trim() === "") {\n    lines.pop();\n  }\n  const indent = Math.min(...lines.filter((line) => line.trim() !== "").map((line) => /^[ \\t]*/.exec(line)?.[0].length ?? 0));\n  return lines.map((line) => line.slice(Number.isFinite(indent) ? indent : 0)).join("\\n");\n}\n\ninterface Host {\n  __detect?: (event: string) => string;\n  __begin?: (test: string) => void;\n}\n\nconst host = globalThis as Host;\n\n/**\n * What the detector reports for an event: the findings that passed the host\'s checks.\n *\n * It is empty when the detector\'s `events` or `globs` do not select the event,\n * exactly as in a session. It throws when the detector fails or reports a\n * finding the host would drop, so a test cannot pass on a broken detector.\n */\nexport function detect(event: Ctx): Finding[] {\n  if (!host.__detect) {\n    throw new Error("detect() only works inside the principle test runner: `wellactually test`, the editor\'s Run tests, or the registry.");\n  }\n  const answer = JSON.parse(host.__detect(JSON.stringify(event))) as { findings?: Finding[]; error?: string };\n  if (answer.error !== undefined) {\n    throw new Error(answer.error);\n  }\n  return answer.findings ?? [];\n}\n\ninterface Registered {\n  file: string;\n  name: string;\n  run: () => unknown;\n}\n\nconst MAX_TESTS = 100;\nconst registered: Registered[] = [];\nconst groups: string[] = [];\nlet currentFile = "";\n\n/** Groups tests under a name. */\nexport function describe(name: string, body: () => void): void {\n  groups.push(name);\n  try {\n    body();\n  } finally {\n    groups.pop();\n  }\n}\n\nfunction register(name: string, run: () => unknown): void {\n  registered.push({ file: currentFile, name: [...groups, name].join(" > "), run });\n}\n\nfunction each<Row>(rows: readonly Row[]) {\n  return (name: string, body: (row: Row) => unknown): void => {\n    for (const row of rows) {\n      const shown = typeof row === "string" ? row : JSON.stringify(row);\n      register(name.includes("%s") ? name.replace("%s", shown) : `${name} (${shown})`, () => body(row));\n    }\n  };\n}\n\n/** Declares one test. `test.each(rows)(name, body)` declares one per row; `%s` in the name is the row. */\nexport const test = Object.assign(register, { each });\nexport const it = test;\n\nfunction show(value: unknown): string {\n  return value === undefined ? "undefined" : JSON.stringify(value, null, 2);\n}\n\n/** Deep equality that ignores properties set to undefined, as a finding without a line has no `line`. */\nfunction equal(a: unknown, b: unknown): boolean {\n  if (a === b) {\n    return true;\n  }\n  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) {\n    return false;\n  }\n  const left = a as Record<string, unknown>;\n  const right = b as Record<string, unknown>;\n  const keys = new Set([...Object.keys(left), ...Object.keys(right)].filter((key) => left[key] !== undefined || right[key] !== undefined));\n  if (Array.isArray(a) && a.length !== (b as unknown[]).length) {\n    return false;\n  }\n  return [...keys].every((key) => equal(left[key], right[key]));\n}\n\n/** Whether `actual` has everything `expected` has. Arrays must match item by item. */\nfunction matches(actual: unknown, expected: unknown): boolean {\n  if (typeof expected !== "object" || expected === null) {\n    return equal(actual, expected);\n  }\n  if (typeof actual !== "object" || actual === null || Array.isArray(actual) !== Array.isArray(expected)) {\n    return false;\n  }\n  if (Array.isArray(expected)) {\n    return (actual as unknown[]).length === expected.length && expected.every((item, index) => matches((actual as unknown[])[index], item));\n  }\n  return Object.entries(expected).every(([key, value]) => matches((actual as Record<string, unknown>)[key], value));\n}\n\nexport interface Expectation {\n  /** Deeply equal. */\n  toEqual(expected: unknown): void;\n  /** The same value. */\n  toBe(expected: unknown): void;\n  toHaveLength(length: number): void;\n  /** An array holding an item deeply equal to `item`. */\n  toContainEqual(item: unknown): void;\n  /** Has everything `expected` has, and may have more. */\n  toMatchObject(expected: unknown): void;\n  not: Expectation;\n}\n\nfunction expectation(actual: unknown, negated: boolean): Expectation {\n  const check = (passed: boolean, what: string, expected: unknown): void => {\n    if (passed === negated) {\n      throw new Error(`Expected ${negated ? "not " : ""}${what}\\n${show(expected)}\\nReceived\\n${show(actual)}`);\n    }\n  };\n  return {\n    toEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toBe: (expected) => check(Object.is(actual, expected), "to be", expected),\n    toHaveLength: (length) => check((actual as { length?: unknown } | null)?.length === length, "length", length),\n    toContainEqual: (item) => check(Array.isArray(actual) && actual.some((candidate) => equal(candidate, item)), "to contain", item),\n    toMatchObject: (expected) => check(matches(actual, expected), "to match", expected),\n    get not() {\n      return expectation(actual, !negated);\n    },\n  };\n}\n\nexport function expect(actual: unknown): Expectation {\n  return expectation(actual, false);\n}\n\n/** Called by the runner before a test file is loaded, so its tests carry its name. */\nexport function __file(name: string): void {\n  currentFile = name;\n}\n\n/** Called by the runner once every test file is loaded. Returns the results as JSON. */\nexport function __run(): string {\n  if (registered.length > MAX_TESTS) {\n    throw new Error(`a principle may hold at most ${MAX_TESTS} tests, this one has ${registered.length}`);\n  }\n  const results = registered.map((entry) => {\n    host.__begin?.(JSON.stringify({ file: entry.file, name: entry.name }));\n    try {\n      const returned = entry.run();\n      if (typeof (returned as { then?: unknown } | null)?.then === "function") {\n        throw new Error("A test must not be async. detect() answers immediately.");\n      }\n      return { file: entry.file, name: entry.name, passed: true, message: "" };\n    } catch (error) {\n      return { file: entry.file, name: entry.name, passed: false, message: error instanceof Error ? error.message : String(error) };\n    }\n  });\n  return JSON.stringify(results);\n}\n'
+};
 
 // packages/core/src/bundle.ts
 var BundleError = class extends Error {
@@ -10925,16 +10928,22 @@ var BundleError = class extends Error {
 var BUNDLE_GLOBAL = "__principle";
 var MAX_BUNDLE_BYTES = 256 * 1024;
 var SDK = "@wellactually/sdk";
+var SDK_TEST = "@wellactually/sdk/test";
 var DETECTOR_ENTRIES = ["detector.ts", "detector.js", "detector.mjs"];
+var TEST_ENTRY = "__tests__.ts";
+var TESTS_GLOBAL = "__tests";
 function detectorEntry(files) {
   return DETECTOR_ENTRIES.find((name) => name in files) ?? null;
+}
+function testFiles(files) {
+  return Object.keys(files).filter((name) => /\.test\.(ts|js|mjs)$/.test(name)).sort();
 }
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
 }
-function normalize(path7) {
+function normalize(path8) {
   const out = [];
-  for (const part of path7.split("/")) {
+  for (const part of path8.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -10946,24 +10955,45 @@ function normalize(path7) {
   }
   return out.join("/");
 }
-function dirname(path7) {
-  const slash = path7.lastIndexOf("/");
-  return slash === -1 ? "" : path7.slice(0, slash);
+function dirname(path8) {
+  const slash = path8.lastIndexOf("/");
+  return slash === -1 ? "" : path8.slice(0, slash);
 }
 async function buildBundle(files) {
   const entry = detectorEntry(files);
   if (!entry) {
     throw new BundleError(`no detector found; expected one of ${DETECTOR_ENTRIES.join(", ")}`);
   }
+  return build(files, entry, BUNDLE_GLOBAL, false);
+}
+async function buildTestBundle(files) {
+  const tests = testFiles(files);
+  if (tests.length === 0) {
+    return null;
+  }
+  const entry = [`import { __run } from "${SDK_TEST}";`, ...tests.map((name) => `import "./${name}";`), "export const run = __run;", ""].join("\n");
+  return build({ ...files, [TEST_ENTRY]: entry }, TEST_ENTRY, TESTS_GLOBAL, true);
+}
+async function build(files, entry, globalName, isTest) {
+  const tests = new Set(isTest ? testFiles(files) : []);
   const virtual = {
     name: "principle-files",
-    setup(build) {
-      build.onResolve({ filter: /.*/ }, (args) => {
+    setup(build2) {
+      build2.onResolve({ filter: /.*/ }, (args) => {
         if (args.kind === "entry-point") {
           return { path: normalize(args.path), namespace: "principle" };
         }
         if (args.path === SDK) {
           return { path: "index.ts", namespace: "sdk" };
+        }
+        if (args.path === SDK_TEST) {
+          if (!isTest) {
+            return { errors: [{ text: `${SDK_TEST} is for test files. A detector cannot import it.` }] };
+          }
+          return { path: "test.ts", namespace: "sdk" };
+        }
+        if (args.namespace === "sdk" && args.path.startsWith("./")) {
+          return { path: args.path.slice(2), namespace: "sdk" };
         }
         if (args.namespace === "principle" && args.path.startsWith(".")) {
           const joined = normalize(`${dirname(args.importer)}/${args.path}`);
@@ -10976,18 +11006,25 @@ async function buildBundle(files) {
         return {
           errors: [
             {
-              text: `"${args.path}" cannot be imported. A detector may import its own relative files and ${SDK}, nothing else.`
+              text: `"${args.path}" cannot be imported. A ${isTest ? "test" : "detector"} may import its own relative files and ${SDK}${isTest ? ` and ${SDK_TEST}` : ""}, nothing else.`
             }
           ]
         };
       });
-      build.onLoad({ filter: /.*/, namespace: "sdk" }, () => ({ contents: SDK_SOURCE, loader: "ts" }));
-      build.onLoad({ filter: /.*/, namespace: "principle" }, (args) => {
+      build2.onLoad({ filter: /.*/, namespace: "sdk" }, (args) => {
+        const contents = SDK_SOURCES[args.path];
+        return contents === void 0 ? { errors: [{ text: `the SDK has no file "${args.path}"` }] } : { contents, loader: "ts" };
+      });
+      build2.onLoad({ filter: /.*/, namespace: "principle" }, (args) => {
         const contents = files[args.path];
         if (contents === void 0) {
           return { errors: [{ text: `"${args.path}" is not one of the principle's files` }] };
         }
-        return { contents, loader: args.path.endsWith(".ts") ? "ts" : "js" };
+        const loader = args.path.endsWith(".ts") ? "ts" : "js";
+        if (tests.has(args.path)) {
+          return { contents: `import { __file as __wellactuallyFile } from "${SDK_TEST}";__wellactuallyFile(${JSON.stringify(args.path)});${contents}`, loader };
+        }
+        return { contents, loader };
       });
     }
   };
@@ -10998,7 +11035,7 @@ async function buildBundle(files) {
       bundle: true,
       write: false,
       format: "iife",
-      globalName: BUNDLE_GLOBAL,
+      globalName,
       platform: "neutral",
       target: "es2020",
       logLevel: "silent",
@@ -11011,7 +11048,7 @@ async function buildBundle(files) {
     throw new BundleError(messages.join("\n"));
   }
   if (byteLength(code) > MAX_BUNDLE_BYTES) {
-    throw new BundleError(`the bundled detector is larger than ${MAX_BUNDLE_BYTES / 1024} KB`);
+    throw new BundleError(`the bundled ${isTest ? "tests are" : "detector is"} larger than ${MAX_BUNDLE_BYTES / 1024} KB`);
   }
   return code;
 }
@@ -11020,21 +11057,85 @@ function formatMessage(message) {
   return `${where}${message.text}`;
 }
 
+// packages/sdk/src/index.ts
+var EVENTS = ["write", "read", "prompt", "command"];
+function fileCtx(event, relativePath, content, written) {
+  const path8 = relativePath.replaceAll("\\", "/");
+  const name = path8.slice(path8.lastIndexOf("/") + 1);
+  const dot = name.lastIndexOf(".");
+  const lines = content.split("\n");
+  const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
+  return {
+    event,
+    file: {
+      path: path8,
+      name,
+      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
+      content,
+      lines,
+      written: event === "read" ? [] : written ?? allLines
+    },
+    text: content,
+    isUserPrompt: false,
+    isCommand: false,
+    isConversation: false
+  };
+}
+function textCtx(event, text2) {
+  return {
+    event,
+    file: null,
+    text: text2,
+    isUserPrompt: event === "prompt",
+    isCommand: event === "command",
+    isConversation: true
+  };
+}
+function locateWritten(content, fragments) {
+  const lines = content.split("\n");
+  const written = /* @__PURE__ */ new Map();
+  for (const fragment of fragments) {
+    if (fragment.trim() === "") {
+      continue;
+    }
+    const at = content.indexOf(fragment);
+    if (at !== -1) {
+      const first = content.slice(0, at).split("\n").length;
+      const count2 = fragment.split("\n").length;
+      for (let line = first; line < first + count2 && line <= lines.length; line++) {
+        written.set(line, lines[line - 1] ?? "");
+      }
+      continue;
+    }
+    for (const wanted of fragment.split("\n")) {
+      const trimmed = wanted.trim();
+      if (trimmed === "") {
+        continue;
+      }
+      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);
+      if (index !== -1) {
+        written.set(index + 1, lines[index] ?? "");
+      }
+    }
+  }
+  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text2]) => ({ line, text: text2 }));
+}
+
 // packages/core/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path7, pattern) {
+function matchesGlob(path8, pattern) {
   let regex = cache.get(pattern);
   if (!regex) {
     regex = globToRegExp(pattern);
     cache.set(pattern, regex);
   }
-  return regex.test(path7);
+  return regex.test(path8);
 }
-function matchesAnyGlob(path7, globs) {
+function matchesAnyGlob(path8, globs) {
   if (globs.length === 0) {
     return true;
   }
-  return globs.some((glob) => matchesGlob(path7, glob));
+  return globs.some((glob) => matchesGlob(path8, glob));
 }
 function globToRegExp(pattern) {
   const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
@@ -11078,38 +11179,6 @@ function globToRegExp(pattern) {
 }
 
 // packages/core/src/ctx.ts
-function fileCtx(event, relativePath, content, written) {
-  const path7 = relativePath.replaceAll("\\", "/");
-  const name = path7.slice(path7.lastIndexOf("/") + 1);
-  const dot = name.lastIndexOf(".");
-  const lines = content.split("\n");
-  const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
-  return {
-    event,
-    file: {
-      path: path7,
-      name,
-      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
-      content,
-      lines,
-      written: event === "read" ? [] : written ?? allLines
-    },
-    text: content,
-    isUserPrompt: false,
-    isCommand: false,
-    isConversation: false
-  };
-}
-function textCtx(event, text2) {
-  return {
-    event,
-    file: null,
-    text: text2,
-    isUserPrompt: event === "prompt",
-    isCommand: event === "command",
-    isConversation: true
-  };
-}
 function applies(manifest, ctx) {
   if (!manifest.events.includes(ctx.event)) {
     return false;
@@ -11119,9 +11188,6 @@ function applies(manifest, ctx) {
   }
   return matchesAnyGlob(ctx.file.path, manifest.globs);
 }
-
-// packages/sdk/src/index.ts
-var EVENTS = ["write", "read", "prompt", "command"];
 
 // packages/core/src/manifest.ts
 var ManifestError = class extends Error {
@@ -11252,7 +11318,9 @@ async function readExports(bundle, limits = DEFAULT_LIMITS) {
   return JSON.parse(json2);
 }
 async function evaluate(script, ctx, limits) {
-  const QuickJS = await loadSandbox();
+  return evaluateIn(await loadSandbox(), script, ctx, limits);
+}
+function evaluateIn(QuickJS, script, ctx, limits, hostFunctions = {}) {
   const runtime = QuickJS.newRuntime();
   runtime.setMemoryLimit(limits.memoryBytes);
   runtime.setMaxStackSize(512 * 1024);
@@ -11265,6 +11333,11 @@ async function evaluate(script, ctx, limits) {
       const input2 = vm.newString(JSON.stringify(ctx));
       vm.setProp(vm.global, "__ctx", input2);
       input2.dispose();
+    }
+    for (const [name, implementation] of Object.entries(hostFunctions)) {
+      const handle = vm.newFunction(name, (argument) => vm.newString(implementation(vm.getString(argument))));
+      vm.setProp(vm.global, name, handle);
+      handle.dispose();
     }
     const result = vm.evalCode(script, "detector.js");
     if (result.error) {
@@ -11283,8 +11356,11 @@ async function evaluate(script, ctx, limits) {
   return { json: json2, error: error62 };
 }
 async function runDetector(bundle, ctx, limits = DEFAULT_LIMITS) {
+  return runDetectorIn(await loadSandbox(), bundle, ctx, limits);
+}
+function runDetectorIn(QuickJS, bundle, ctx, limits) {
   const started = performance.now();
-  const { json: json2, error: error62 } = await evaluate(`${bundle}
+  const { json: json2, error: error62 } = evaluateIn(QuickJS, `${bundle}
 ;${RUN}`, ctx, limits);
   const ms = performance.now() - started;
   if (json2 === null) {
@@ -11292,6 +11368,34 @@ async function runDetector(bundle, ctx, limits = DEFAULT_LIMITS) {
   }
   const { findings, dropped } = validateFindings(json2, ctx);
   return { findings, error: null, dropped, ms };
+}
+var TEST_LIMITS = {
+  ms: 5e3,
+  memoryBytes: 64 * 1024 * 1024
+};
+async function runTestBundle(bundle, host, limits = TEST_LIMITS) {
+  const QuickJS = await loadSandbox();
+  const run = (detector, ctx) => runDetectorIn(QuickJS, detector, ctx, DEFAULT_LIMITS);
+  const { json: json2, error: error62 } = evaluateIn(QuickJS, `${bundle}
+;${TESTS_GLOBAL}.run()`, null, limits, {
+    __begin: (test) => {
+      host.begin(JSON.parse(test));
+      return "";
+    },
+    __detect: (event) => {
+      let parsed;
+      try {
+        parsed = JSON.parse(event);
+      } catch {
+        return JSON.stringify({ error: "detect() was not given an event" });
+      }
+      return JSON.stringify(host.detect(parsed, run));
+    }
+  });
+  if (json2 === null) {
+    return { results: [], error: (error62 ?? "the tests returned nothing").replace("the detector ran longer", "the tests ran longer").replace("the detector used more", "the tests used more") };
+  }
+  return { results: JSON.parse(json2), error: null };
 }
 function describeError(dumped, limits) {
   const message = typeof dumped === "object" && dumped !== null && "message" in dumped ? String(dumped.message) : String(dumped);
@@ -11345,6 +11449,11 @@ function validateFindings(json2, ctx) {
       const line = candidate.line;
       if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lineCount) {
         dropped.push(`a finding on line ${String(line)}, which the file does not have`);
+        continue;
+      }
+      const firstLine = evidence.split("\n")[0] ?? "";
+      if (!(ctx.file?.lines[line - 1] ?? "").includes(firstLine)) {
+        dropped.push(`a finding on line ${line} whose evidence is not on that line: ${JSON.stringify(firstLine.slice(0, 60))}`);
         continue;
       }
       finding.line = line;
@@ -11413,11 +11522,10 @@ function scanAdvice(advice) {
 }
 
 // packages/core/src/principle.ts
-var MIN_FIRING_CASES = 1;
-var MIN_QUIET_CASES = 1;
 var MAX_FILES = 60;
 var MAX_TOTAL_BYTES = 512 * 1024;
-var EXPECT_FILE = "cases/expect.json";
+var MAX_DETECT_CALLS = 300;
+var MAX_SHOWN_TEXT = 4e3;
 function assertFileMapSize(files, knownTotal) {
   const count2 = Object.keys(files).length;
   if (count2 > MAX_FILES) {
@@ -11451,151 +11559,114 @@ async function hashPrinciple(manifest, advice, bundle) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 async function checkPrinciple(files) {
-  const report = { ok: false, problems: [], warnings: [], cases: [], slowestMs: 0 };
+  const report = { ok: false, problems: [], warnings: [], tests: [], slowestMs: 0 };
   let built;
+  let tests;
   try {
     assertFileMapSize(files);
     built = await buildPrinciple(files);
-  } catch (error62) {
-    if (error62 instanceof ManifestError || error62 instanceof BundleError) {
-      report.problems.push(error62.message);
+    tests = await buildTestBundle(files);
+  } catch (error63) {
+    if (error63 instanceof ManifestError || error63 instanceof BundleError) {
+      report.problems.push(error63.message);
       return { built: null, report };
     }
-    throw error62;
+    throw error63;
   }
   report.warnings.push(...scanAdvice(built.advice));
-  let specs;
-  try {
-    specs = readCases(files);
-  } catch (error62) {
-    report.problems.push(error62.message);
+  if (tests === null) {
+    const hint = Object.keys(files).some((name) => name.startsWith("cases/")) ? " The cases/ folder is no longer read: write each case as a test, for example expect(detect(write(path, content))).toEqual([...])." : "";
+    report.problems.push(`needs at least one test file named *.test.ts.${hint}`);
     return { built, report };
   }
-  for (const spec of specs) {
-    const result = await runCase(built, spec);
-    report.cases.push(result);
-    report.slowestMs = Math.max(report.slowestMs, result.ms);
+  const { results, calls, error: error62 } = await runTests(built, tests);
+  if (error62) {
+    report.problems.push(`The tests could not run: ${error62}`);
+    return { built, report };
   }
-  const firing = specs.filter((spec) => spec.kind === "fires").length;
-  const quiet = specs.filter((spec) => spec.kind === "quiet").length;
-  if (firing < MIN_FIRING_CASES) {
-    report.problems.push(`needs at least ${MIN_FIRING_CASES} case named cases/fires-*, found ${firing}`);
+  report.tests = results;
+  report.slowestMs = Math.max(0, ...calls.map((call2) => call2.ms));
+  if (results.length === 0) {
+    report.problems.push("the test files declare no test");
   }
-  if (quiet < MIN_QUIET_CASES) {
-    report.problems.push(
-      `needs at least ${MIN_QUIET_CASES} case named cases/quiet-*, found ${quiet}. A detector nobody has seen stay quiet is the one that fires on every file.`
-    );
-  }
-  if (firing > 0 && !report.cases.some((result) => result.kind === "fires" && result.passed)) {
-    report.problems.push("no cases/fires-* case passes, so nothing shows that the detector ever fires");
-  }
-  const failed = report.cases.filter((result) => !result.passed);
+  const failed = results.filter((result) => !result.passed);
   if (failed.length > 0) {
-    report.problems.push(`${failed.length} of ${report.cases.length} cases failed`);
+    report.problems.push(`${failed.length} of ${results.length} tests failed`);
+  }
+  const proven = results.filter((result) => result.passed).flatMap((result) => result.calls);
+  if (!proven.some((call2) => call2.findings.length > 0)) {
+    report.problems.push("no passing test makes the detector fire, so nothing shows that it ever does");
+  }
+  if (!proven.some((call2) => call2.ran && call2.findings.length === 0)) {
+    report.problems.push(
+      "no passing test runs the detector on something it stays quiet on. A detector nobody has seen stay quiet is the one that fires on every file."
+    );
   }
   report.ok = report.problems.length === 0;
   return { built, report };
 }
-function readCases(files) {
-  let expectations = {};
-  const expectSource = files[EXPECT_FILE];
-  if (expectSource !== void 0) {
-    try {
-      expectations = JSON.parse(expectSource);
-    } catch {
-      throw new ManifestError(`${EXPECT_FILE} is not valid JSON`);
-    }
-  }
-  const specs = [];
-  for (const [file2, content] of Object.entries(files).sort(([a], [b]) => a.localeCompare(b))) {
-    if (!file2.startsWith("cases/") || file2 === EXPECT_FILE) {
-      continue;
-    }
-    const name = file2.slice("cases/".length);
-    const kind = name.startsWith("fires-") ? "fires" : name.startsWith("quiet-") ? "quiet" : null;
-    if (!kind) {
-      throw new ManifestError(`cases/${name} must be named fires-* or quiet-*`);
-    }
-    const expectation = expectations[name] ?? {};
-    const inferred = inferEvent(name);
-    specs.push({
-      name,
-      kind,
-      event: expectation.event ?? inferred.event,
-      path: expectation.path ?? inferred.path,
-      content,
-      lines: expectation.lines ?? null
-    });
-  }
-  for (const name of Object.keys(expectations)) {
-    if (!(`cases/${name}` in files)) {
-      throw new ManifestError(`${EXPECT_FILE} names "${name}", which is not a file under cases/`);
-    }
-  }
-  return specs;
-}
-function inferEvent(name) {
-  if (/\.prompt\.(txt|md)$/.test(name)) {
-    return { event: "prompt", path: name };
-  }
-  if (/\.command\.(txt|sh)$/.test(name)) {
-    return { event: "command", path: name };
-  }
-  const read = /^(.*)\.read(\.[^.]+)$/.exec(name);
-  if (read) {
-    return { event: "read", path: `${read[1]}${read[2]}` };
-  }
-  return { event: "write", path: name };
-}
-function caseCtx(spec) {
-  if (spec.event === "prompt" || spec.event === "command") {
-    return textCtx(spec.event, spec.content.trimEnd());
-  }
-  return fileCtx(spec.event, spec.path, spec.content);
-}
-async function runCase(built, spec) {
-  const ctx = caseCtx(spec);
-  const base = { name: spec.name, kind: spec.kind, event: spec.event };
-  if (!applies(built.manifest, ctx)) {
-    const reason = built.manifest.events.includes(spec.event) ? `the globs do not match ${spec.path}` : `detector.ts does not list the ${spec.event} event in its events`;
-    if (spec.kind === "quiet") {
-      return { ...base, passed: true, message: `Quiet: ${reason}, so the detector does not run.`, findings: [], ms: 0 };
-    }
-    return { ...base, passed: false, message: `Expected a finding, but ${reason}, so the detector never runs.`, findings: [], ms: 0 };
-  }
-  const run = await runDetector(built.bundle, ctx, DEFAULT_LIMITS);
-  const result = { ...base, findings: run.findings, ms: run.ms };
-  if (run.error) {
-    return { ...result, passed: false, message: `The detector failed: ${run.error}` };
-  }
-  if (run.dropped.length > 0) {
-    return { ...result, passed: false, message: `The host dropped ${run.dropped.join("; ")}.` };
-  }
-  if (spec.kind === "quiet") {
-    if (run.findings.length === 0) {
-      return { ...result, passed: true, message: "Quiet, as expected." };
-    }
-    return { ...result, passed: false, message: `Expected nothing, got ${describeFindings(run.findings)}.` };
-  }
-  if (run.findings.length === 0) {
-    return { ...result, passed: false, message: "Expected a finding, got nothing." };
-  }
-  if (spec.lines) {
-    const reported = run.findings.map((finding) => finding.line).filter((line) => line !== void 0);
-    const wanted = [...spec.lines].sort((a, b) => a - b);
-    const got = [...reported].sort((a, b) => a - b);
-    if (JSON.stringify(wanted) !== JSON.stringify(got)) {
-      return {
-        ...result,
-        passed: false,
-        message: `Expected findings on lines ${wanted.join(", ")}, got ${got.length > 0 ? got.join(", ") : "none with a line"}.`
+async function runTests(built, tests) {
+  const calls = [];
+  const byTest = /* @__PURE__ */ new Map();
+  let current = [];
+  const key = (test) => `${test.file}
+${test.name}`;
+  const { results, error: error62 } = await runTestBundle(tests, {
+    begin: (test) => {
+      current = [];
+      byTest.set(key(test), current);
+    },
+    detect: (event, run) => {
+      if (calls.length >= MAX_DETECT_CALLS) {
+        return { error: `a principle's tests may call detect() at most ${MAX_DETECT_CALLS} times` };
+      }
+      const ctx = eventCtx(event);
+      if (!ctx) {
+        return { error: "detect() needs an event from write(), edit(), read(), prompt() or command()" };
+      }
+      const call2 = {
+        event: ctx.event,
+        path: ctx.file?.path ?? null,
+        text: ctx.text.length > MAX_SHOWN_TEXT ? `${ctx.text.slice(0, MAX_SHOWN_TEXT)}
+\u2026` : ctx.text,
+        written: ctx.file ? ctx.file.written.map((written) => written.line) : null,
+        ran: applies(built.manifest, ctx),
+        findings: [],
+        ms: 0
       };
+      calls.push(call2);
+      current.push(call2);
+      if (!call2.ran) {
+        return { findings: [] };
+      }
+      const result = run(built.bundle, ctx);
+      call2.ms = result.ms;
+      if (result.error) {
+        return { error: `The detector failed: ${result.error}` };
+      }
+      if (result.dropped.length > 0) {
+        return { error: `The host dropped ${result.dropped.join("; ")}.` };
+      }
+      call2.findings = result.findings;
+      return { findings: result.findings };
     }
-  }
-  return { ...result, passed: true, message: `Fired: ${describeFindings(run.findings)}.` };
+  });
+  return { results: results.map((result) => ({ ...result, calls: byTest.get(key(result)) ?? [] })), calls, error: error62 };
 }
-function describeFindings(findings) {
-  return findings.slice(0, 3).map((finding) => `${finding.line ? `line ${finding.line} ` : ""}${JSON.stringify(finding.evidence.slice(0, 60))}`).join(", ").concat(findings.length > 3 ? ` and ${findings.length - 3} more` : "");
+function eventCtx(raw) {
+  if (typeof raw !== "object" || raw === null) {
+    return null;
+  }
+  const event = raw;
+  if (event.event === "prompt" || event.event === "command") {
+    return typeof event.text === "string" ? textCtx(event.event, event.text) : null;
+  }
+  if (event.event !== "write" && event.event !== "read" || typeof event.file?.path !== "string" || typeof event.file.content !== "string") {
+    return null;
+  }
+  const lines = event.file.content.split("\n");
+  const written = (Array.isArray(event.file.written) ? event.file.written : []).map((entry) => entry?.line).filter((line) => typeof line === "number" && Number.isInteger(line) && line >= 1 && line <= lines.length).map((line) => ({ line, text: lines[line - 1] ?? "" }));
+  return fileCtx(event.event, event.file.path, event.file.content, written);
 }
 
 // packages/core/src/scaffold.ts
@@ -11628,7 +11699,7 @@ if (items.length === 0) {
 ## When it is fine
 
 Name the cases where the principle does not apply.
-The detector should stay quiet on exactly those, and a quiet case should prove it.
+The detector should stay quiet on exactly those, and a test should prove it.
 `,
     "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
 
@@ -11653,22 +11724,35 @@ export function* detect(ctx: Ctx): Generator<Finding> {
   }
 }
 `,
-    "cases/fires-on-fixme.ts": `export function total(items: number[]): number {
-  // FIXME: handle the empty list
-  return items.reduce((sum, item) => sum + item);
-}
-`,
-    "cases/quiet-on-plain-comment.ts": `export function total(items: number[]): number {
-  // An empty list sums to zero.
-  return items.reduce((sum, item) => sum + item, 0);
-}
-`,
-    "cases/quiet-on-other-language.py": `# FIXME: this is a Python file, which the globs do not select
-total = sum(items)
-`,
-    "cases/expect.json": `{
-  "fires-on-fixme.ts": { "lines": [2] }
-}
+    "detector.test.ts": `import { detect, edit, expect, source, test, write } from "@wellactually/sdk/test";
+
+// A test builds the event a detector receives and checks what it reports.
+// write() is a file the agent wrote in full, edit() one it changed, and there
+// are read(), prompt() and command() as well.
+
+const code = source\`
+  export function total(items: number[]): number {
+    // FIXME: handle the empty list
+    return items.reduce((sum, item) => sum + item);
+  }
+\`;
+
+test("fires on a FIXME the agent writes", () => {
+  expect(detect(write("src/total.ts", code))).toEqual([{ line: 2, evidence: "// FIXME: handle the empty list" }]);
+});
+
+test("stays quiet on a FIXME that was already there when the agent edits another line", () => {
+  expect(detect(edit("src/total.ts", code, { written: "  return items.reduce((sum, item) => sum + item);" }))).toEqual([]);
+});
+
+test("stays quiet on an ordinary comment", () => {
+  expect(detect(write("src/total.ts", "// An empty list sums to zero.\\nexport const total = 0;"))).toEqual([]);
+});
+
+test("stays quiet in other languages", () => {
+  // The globs in detector.ts do not select this file, so the detector never runs.
+  expect(detect(write("total.py", "# FIXME: this is Python"))).toEqual([]);
+});
 `
   };
 }
@@ -11894,10 +11978,92 @@ function writeFileMap(dir, files) {
   }
 }
 
+// packages/core/src/payload.ts
+import path4 from "node:path";
+var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "MultiEdit"]);
+var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "exec_command"]);
+function eventsOf(payload, readFile) {
+  const event = payload.hook_event_name ?? "";
+  const tool = payload.tool_name ?? "";
+  const input2 = payload.tool_input ?? {};
+  const cwd = payload.cwd ?? process.cwd();
+  const relative = (absolute2) => path4.relative(cwd, absolute2).split(path4.sep).join("/");
+  if (event === "UserPromptSubmit") {
+    return payload.prompt ? [textCtx("prompt", payload.prompt)] : [];
+  }
+  if (event === "PreToolUse" && SHELL_TOOLS.has(tool)) {
+    const command = input2.command ?? input2.cmd;
+    return command ? [textCtx("command", command)] : [];
+  }
+  if (event !== "PostToolUse") {
+    return [];
+  }
+  if (tool === "apply_patch") {
+    return patchedFiles(input2.command ?? input2.patch ?? "").flatMap(({ file: file2, added, isNew }) => {
+      const absolute2 = path4.resolve(cwd, file2);
+      const content2 = readFile(absolute2) ?? (isNew ? added.join("\n") : null);
+      return content2 === null || added.length === 0 ? [] : [fileCtx("write", relative(absolute2), content2, locateWritten(content2, added))];
+    });
+  }
+  if (!input2.file_path) {
+    return [];
+  }
+  const absolute = path4.resolve(cwd, input2.file_path);
+  const content = readFile(absolute);
+  if (content === null) {
+    return [];
+  }
+  if (tool === "Read") {
+    return [fileCtx("read", relative(absolute), content)];
+  }
+  if (tool === "Write") {
+    return [fileCtx("write", relative(absolute), content)];
+  }
+  if (!EDIT_TOOLS.has(tool)) {
+    return [];
+  }
+  const fragments = tool === "Edit" ? [input2.new_string ?? ""] : (input2.edits ?? []).map((edit) => edit.new_string ?? "");
+  return [fileCtx("write", relative(absolute), content, locateWritten(content, fragments))];
+}
+function patchedFiles(patch) {
+  const files = [];
+  let current = null;
+  let run = [];
+  const endRun = () => {
+    if (current && run.length > 0) {
+      current.added.push(run.join("\n"));
+    }
+    run = [];
+  };
+  for (const line of patch.split("\n")) {
+    const header = /^\*\*\* (Add|Update|Delete) File: (.+)$/.exec(line);
+    if (header) {
+      endRun();
+      current = header[1] === "Delete" ? null : { file: (header[2] ?? "").trim(), added: [], isNew: header[1] === "Add" };
+      if (current) {
+        files.push(current);
+      }
+      continue;
+    }
+    const moved = /^\*\*\* Move to: (.+)$/.exec(line);
+    if (moved && current) {
+      current.file = (moved[1] ?? "").trim();
+      continue;
+    }
+    if (current && line.startsWith("+")) {
+      run.push(line.slice(1));
+      continue;
+    }
+    endRun();
+  }
+  endRun();
+  return files;
+}
+
 // packages/core/src/probe.ts
 import { execFileSync } from "node:child_process";
 import fs4 from "node:fs";
-import path4 from "node:path";
+import path5 from "node:path";
 var MAX_FIRE_RATE = 0.5;
 var MIN_FILES_FOR_VERDICT = 10;
 var MAX_FILE_BYTES = 512 * 1024;
@@ -11921,7 +12087,7 @@ async function probeRepo(built, dir, maxFiles = 5e3) {
     return report;
   }
   for (const relative of listFiles(dir).slice(0, maxFiles)) {
-    const content = readText(path4.join(dir, relative));
+    const content = readText(path5.join(dir, relative));
     if (content === null) {
       continue;
     }
@@ -11983,13 +12149,13 @@ function listFiles(dir) {
       if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "build" || entry.name === "dist") {
         continue;
       }
-      const full = path4.join(current, entry.name);
+      const full = path5.join(current, entry.name);
       if (entry.isDirectory()) {
         walk(full);
         continue;
       }
       if (entry.isFile()) {
-        files.push(path4.relative(dir, full).split(path4.sep).join("/"));
+        files.push(path5.relative(dir, full).split(path5.sep).join("/"));
       }
     }
   };
@@ -12035,7 +12201,7 @@ setEngines({
 
 // packages/cli/src/commands.ts
 import fs5 from "node:fs";
-import path5 from "node:path";
+import path6 from "node:path";
 
 // packages/cli/src/registry.ts
 var RegistryError = class extends Error {
@@ -12219,10 +12385,10 @@ async function ratePrinciple(id, rating) {
 
 // packages/cli/src/commands.ts
 function idOf(dir) {
-  return path5.basename(path5.resolve(dir));
+  return path6.basename(path6.resolve(dir));
 }
 async function checkDir(dir) {
-  const { built, report } = await checkPrinciple(readPrincipleDir(path5.resolve(dir)));
+  const { built, report } = await checkPrinciple(readPrincipleDir(path6.resolve(dir)));
   const id = idOf(dir);
   if (isPrincipleId(id)) {
     return { id, built, report };
@@ -12235,7 +12401,7 @@ async function testPrinciple(dir) {
   return { id, title: built?.manifest.title ?? null, report };
 }
 async function tryPrinciple(dir, input2) {
-  const built = await buildPrinciple(readPrincipleDir(path5.resolve(dir)));
+  const built = await buildPrinciple(readPrincipleDir(path6.resolve(dir)));
   const ctx = tryCtx(input2);
   if (!applies(built.manifest, ctx)) {
     return { applies: false, run: null, injected: "" };
@@ -12254,21 +12420,21 @@ function tryCtx(input2) {
   if (input2.file === void 0) {
     throw new Error("pass a file, --prompt or --command");
   }
-  const absolute = path5.resolve(input2.file);
-  const relative = path5.relative(process.cwd(), absolute);
-  const shown = relative.startsWith("..") ? path5.basename(absolute) : relative;
+  const absolute = path6.resolve(input2.file);
+  const relative = path6.relative(process.cwd(), absolute);
+  const shown = relative.startsWith("..") ? path6.basename(absolute) : relative;
   return fileCtx(input2.read ? "read" : "write", shown, fs5.readFileSync(absolute, "utf8"));
 }
 async function probePrinciple(dir, repo) {
-  const built = await buildPrinciple(readPrincipleDir(path5.resolve(dir)));
-  return probeRepo(built, path5.resolve(repo));
+  const built = await buildPrinciple(readPrincipleDir(path6.resolve(dir)));
+  return probeRepo(built, path6.resolve(repo));
 }
 async function publishPrinciple(dir, note = "") {
   const id = idOf(dir);
   if (!isPrincipleId(id)) {
     throw new Error(`The folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}. Rename the folder, then publish again.`);
   }
-  return publishDraft(id, readPrincipleDir(path5.resolve(dir)), note);
+  return publishDraft(id, readPrincipleDir(path6.resolve(dir)), note);
 }
 async function principleHistory(id) {
   return fetchHistory(id);
@@ -12295,13 +12461,13 @@ function renderHistory(result) {
 }
 async function pullPrinciple(id, dir, force) {
   const source = await pullSource(id);
-  const target = path5.resolve(dir ?? source.id.split("/")[1] ?? "principle");
+  const target = path6.resolve(dir ?? source.id.split("/")[1] ?? "principle");
   if (fs5.existsSync(target) && fs5.readdirSync(target).length > 0) {
     if (!force) {
       throw new Error(`${target} already has files. Pass --force to replace them with the registry's version.`);
     }
     for (const name of Object.keys(readPrincipleDir(target))) {
-      fs5.rmSync(path5.join(target, name));
+      fs5.rmSync(path6.join(target, name));
     }
   }
   writeFileMap(target, source.files);
@@ -12343,8 +12509,19 @@ function renderReport(result) {
   if (result.id) {
     lines.push(`${result.id}  ${result.title ?? ""}`.trimEnd());
   }
-  for (const item of result.report.cases) {
-    lines.push(`  ${item.passed ? "\u2713" : "\u2717"} ${item.name}  ${item.message} (${item.ms.toFixed(1)} ms)`);
+  let file2 = "";
+  for (const item of result.report.tests) {
+    if (item.file !== file2) {
+      file2 = item.file;
+      lines.push(`  ${file2}`);
+    }
+    lines.push(`    ${item.passed ? "\u2713" : "\u2717"} ${item.name}`);
+    if (!item.passed) {
+      lines.push(...item.message.split("\n").map((line) => `        ${line}`));
+    }
+  }
+  if (result.report.tests.length > 0) {
+    lines.push(`  Slowest detector run ${result.report.slowestMs.toFixed(1)} ms.`);
   }
   for (const warning of result.report.warnings) {
     lines.push(`  ! ${warning}`);
@@ -12393,9 +12570,7 @@ function renderTry(result) {
 // packages/cli/src/hook.ts
 import { spawn } from "node:child_process";
 import fs6 from "node:fs";
-import path6 from "node:path";
-var WRITE_TOOLS = /* @__PURE__ */ new Set(["Write", "Edit", "MultiEdit"]);
-var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "exec_command"]);
+import path7 from "node:path";
 var MAX_FILE_BYTES2 = 512 * 1024;
 async function runHook(stdin) {
   const payload = JSON.parse(stdin);
@@ -12404,8 +12579,8 @@ async function runHook(stdin) {
     startBackgroundSync();
     return "";
   }
-  const ctx = contextOf(payload);
-  if (!ctx) {
+  const events = eventsOf(payload, readText2);
+  if (events.length === 0) {
     return "";
   }
   const lockfile = readLockfile();
@@ -12414,22 +12589,33 @@ async function runHook(stdin) {
   }
   const sessionId = payload.session_id ?? "unknown";
   const shown = readShown(sessionId);
-  const run = await runBoard(ctx, lockfile);
-  if (readConfig().stats) {
-    recordDetections(run.firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
-  }
   const parts = [];
-  const text2 = frame(ctx, run.firings, shown);
-  if (text2) {
-    parts.push(text2);
+  const failures = /* @__PURE__ */ new Map();
+  for (const ctx of events) {
+    const run = await runBoard(ctx, lockfile);
+    if (readConfig().stats) {
+      recordDetections(run.firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
+    }
+    const text2 = frame(ctx, run.firings, shown);
+    if (text2) {
+      parts.push(text2);
+    }
+    for (const firing of run.firings) {
+      if (firing.findings.some((finding) => finding.depth !== "pointer")) {
+        shown.add(firing.principle.hash);
+      }
+    }
+    for (const failure3 of run.failures) {
+      failures.set(failure3.id, failure3.error);
+    }
   }
-  const newFailures = run.failures.filter((failure3) => !shown.has(`failure:${failure3.id}`));
+  const newFailures = [...failures].filter(([id]) => !shown.has(`failure:${id}`));
   if (newFailures.length > 0) {
     parts.push(
       [
         "<wellactually-notice>",
         "These principles on the user's board could not run. Tell the user once; it does not affect your task.",
-        ...newFailures.map((failure3) => `- ${failure3.id}: ${failure3.error}`),
+        ...newFailures.map(([id, error62]) => `- ${id}: ${error62}`),
         "</wellactually-notice>"
       ].join("\n")
     );
@@ -12437,80 +12623,13 @@ async function runHook(stdin) {
   if (parts.length === 0) {
     return "";
   }
-  for (const firing of run.firings) {
-    if (firing.findings.some((finding) => finding.depth !== "pointer")) {
-      shown.add(firing.principle.hash);
-    }
-  }
-  for (const failure3 of newFailures) {
-    shown.add(`failure:${failure3.id}`);
+  for (const [id] of newFailures) {
+    shown.add(`failure:${id}`);
   }
   writeShown(sessionId, shown);
   return JSON.stringify({
     hookSpecificOutput: { hookEventName: event, additionalContext: parts.join("\n\n") }
   });
-}
-function contextOf(payload) {
-  const event = payload.hook_event_name ?? "";
-  const tool = payload.tool_name ?? "";
-  const input2 = payload.tool_input ?? {};
-  if (event === "UserPromptSubmit") {
-    return payload.prompt ? textCtx("prompt", payload.prompt) : null;
-  }
-  if (event === "PreToolUse" && SHELL_TOOLS.has(tool)) {
-    const command = input2.command ?? input2.cmd;
-    return command ? textCtx("command", command) : null;
-  }
-  if (event !== "PostToolUse" || !input2.file_path) {
-    return null;
-  }
-  const cwd = payload.cwd ?? process.cwd();
-  const absolute = path6.resolve(cwd, input2.file_path);
-  const content = readText2(absolute);
-  if (content === null) {
-    return null;
-  }
-  const relative = path6.relative(cwd, absolute).split(path6.sep).join("/");
-  if (tool === "Read") {
-    return fileCtx("read", relative, content);
-  }
-  if (!WRITE_TOOLS.has(tool)) {
-    return null;
-  }
-  if (tool === "Write") {
-    return fileCtx("write", relative, content);
-  }
-  const fragments = tool === "Edit" ? [input2.new_string ?? ""] : (input2.edits ?? []).map((edit) => edit.new_string ?? "");
-  return fileCtx("write", relative, content, locate(content, fragments));
-}
-function locate(content, fragments) {
-  const lines = content.split("\n");
-  const written = /* @__PURE__ */ new Map();
-  for (const fragment of fragments) {
-    if (fragment.trim() === "") {
-      continue;
-    }
-    const at = content.indexOf(fragment);
-    if (at !== -1) {
-      const first = content.slice(0, at).split("\n").length;
-      const count2 = fragment.split("\n").length;
-      for (let line = first; line < first + count2 && line <= lines.length; line++) {
-        written.set(line, lines[line - 1] ?? "");
-      }
-      continue;
-    }
-    for (const wanted of fragment.split("\n")) {
-      const trimmed = wanted.trim();
-      if (trimmed === "") {
-        continue;
-      }
-      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);
-      if (index !== -1) {
-        written.set(index + 1, lines[index] ?? "");
-      }
-    }
-  }
-  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text2]) => ({ line, text: text2 }));
 }
 function readText2(file2) {
   let stat;
@@ -12530,7 +12649,7 @@ function startBackgroundSync() {
     return;
   }
   const main2 = process.argv[1];
-  const log = fs6.openSync(path6.join(ensureHome(), "sync.log"), "a");
+  const log = fs6.openSync(path7.join(ensureHome(), "sync.log"), "a");
   const child = spawn(process.execPath, [main2, "sync"], { detached: true, stdio: ["ignore", log, log] });
   child.unref();
 }
@@ -12542,7 +12661,7 @@ function ensureHome() {
 function logHookFailure(error62) {
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${error62 instanceof Error ? error62.stack ?? error62.message : String(error62)}
 `;
-  fs6.appendFileSync(path6.join(ensureHome(), "hook.log"), line);
+  fs6.appendFileSync(path7.join(ensureHome(), "hook.log"), line);
 }
 
 // node_modules/zod/v3/helpers/util.js
@@ -12919,8 +13038,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path7, errorMaps, issueData } = params;
-  const fullPath = [...path7, ...issueData.path || []];
+  const { data, path: path8, errorMaps, issueData } = params;
+  const fullPath = [...path8, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -13035,11 +13154,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path7, key) {
+  constructor(parent, value, path8, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path7;
+    this._path = path8;
     this._key = key;
   }
   get path() {
@@ -16993,10 +17112,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path7) {
-  if (!path7)
+function getElementAtPath(obj, path8) {
+  if (!path8)
     return obj;
-  return path7.reduce((acc, key) => acc?.[key], obj);
+  return path8.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -17336,11 +17455,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path7, issues) {
+function prefixIssues(path8, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path7);
+    iss.path.unshift(path8);
     return iss;
   });
 }
@@ -17790,16 +17909,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path7 = []) => {
+  const processError = (error63, path8 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else {
-        const fullpath = [...path7, ...issue2.path];
+        const fullpath = [...path8, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -17838,17 +17957,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path7 = []) => {
+  const processError = (error63, path8 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
       } else {
-        const fullpath = [...path7, ...issue2.path];
+        const fullpath = [...path8, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -17887,8 +18006,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path7 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path7) {
+  const path8 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path8) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -33403,11 +33522,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path7) {
-  if (path7.length === 0) {
+function getDotPath(path8) {
+  if (path8.length === 0) {
     return "object root";
   }
-  return path7.reduce((acc, seg, index) => {
+  return path8.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -35634,13 +35753,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path7 = ref.slice(1).split("/").filter(Boolean);
-  if (path7.length === 0) {
+  const path8 = ref.slice(1).split("/").filter(Boolean);
+  if (path8.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path7[0] === defsKey) {
-    const key = path7[1] === void 0 ? void 0 : decodeJSONPointerSegment(path7[1]);
+  if (path8[0] === defsKey) {
+    const key = path8[1] === void 0 ? void 0 : decodeJSONPointerSegment(path8[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -41834,15 +41953,18 @@ The name of the directory is the principle's id.
   It also says when it runs: \`export const events = ["write"]\` (write, read, prompt, command) and \`export const globs = ["**/*.ts"]\`.
   It runs in an isolate without filesystem, network or process. It may import @wellactually/sdk and its own relative files.
   Evidence must be text that occurs verbatim in the input, or the host drops the finding.
-- cases/: one file per case. \`fires-*\` must produce a finding, \`quiet-*\` must produce none.
-  \`.prompt.txt\` is a user message, \`.command.txt\` a shell command, \`.read.<ext>\` a file the agent only read; anything else is a file the agent wrote.
-  cases/expect.json may pin the lines a firing case reports and the path the detector sees.
+- *.test.ts: the tests. Any number of files, each complete on its own, with the source it tests written inline.
+  A test builds the event a detector receives and checks what the detector reports:
+  \`expect(detect(write("lib/a.dart", content))).toEqual([{ line: 2, evidence: "late String name;" }])\`.
+  Events come from \`write(path, content)\`, \`edit(path, contentAfterTheEdit, { written })\`, \`read(path, content)\`, \`prompt(text)\` and \`command(text)\`.
+  \`edit\` is how to show that code which was already there is left alone: only \`written\` counts as written.
+  Import all of it, with \`test\`, \`describe\`, \`expect\` and \`source\`, from @wellactually/sdk/test.
 
-A principle needs at least one fires-* case that passes and one quiet-* case.
-The registry runs the cases again on upload, and its result is the one that counts.
+The tests must pass, make the detector fire at least once, and run it at least once on something it stays quiet on.
+The registry runs the tests again on upload, and its result is the one that counts.
 
-Loop: scaffold, edit, run_cases until green, probe against a real repository, add quiet cases for false positives, publish_draft.
-To change an existing principle: pull it, edit, run_cases, publish_draft. That creates the draft of its next version.
+Loop: scaffold, edit, run_tests until green, probe against a real repository, add a quiet test for every false positive, publish_draft.
+To change an existing principle: pull it, edit, run_tests, publish_draft. That creates the draft of its next version.
 A draft is private. Releasing it is a click by the human on the website, where the same files can also be edited.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its advisor how it went with rate_principle, once per principle and task.
@@ -41851,11 +41973,11 @@ function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
 async function serveMcp() {
-  const server = new McpServer({ name: "wellactually", version: "0.2.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.3.0" }, { instructions: AUTHORING_GUIDE });
   server.registerTool(
     "scaffold",
     {
-      description: "Create a new principle directory that already passes run_cases. Returns the path. Edit principle.md, detector.ts and cases/ from there.",
+      description: "Create a new principle directory that already passes run_tests. Returns the path. Edit principle.md, detector.ts and detector.test.ts from there.",
       inputSchema: {
         slug: external_exports.string().describe("The principle's id, which becomes the directory name: 3 to 64 characters of a-z, 0-9 and dashes, e.g. avoid-late"),
         parent: external_exports.string().describe("Absolute path of the directory to create it in")
@@ -41866,9 +41988,9 @@ async function serveMcp() {
 ${AUTHORING_GUIDE}`)
   );
   server.registerTool(
-    "run_cases",
+    "run_tests",
     {
-      description: "Build a principle and run every case in the real isolate with the real limits. Reports each case, the publish gates and warnings about the advice text.",
+      description: "Build a principle and run its tests in the real isolate with the real limits. Reports each test, the publish gates and warnings about the advice text.",
       inputSchema: { dir: external_exports.string().describe("Absolute path of the principle directory") }
     },
     async ({ dir }) => text(renderReport(await testPrinciple(dir)))
@@ -41901,7 +42023,7 @@ ${AUTHORING_GUIDE}`)
   server.registerTool(
     "publish_draft",
     {
-      description: "Upload a principle to the registry as a private draft. The registry rebuilds it and reruns every case. Returns the URL where the human reviews and releases it. Needs `wellactually login` to have been run once.",
+      description: "Upload a principle to the registry as a private draft. The registry rebuilds it and reruns the tests. Returns the URL where the human reviews and releases it. Needs `wellactually login` to have been run once.",
       inputSchema: {
         dir: external_exports.string().describe("Absolute path of the principle directory"),
         note: external_exports.string().optional().describe("One line on what changed and why, like a commit subject. Shown in the principle's history.")
@@ -41924,7 +42046,7 @@ ${report}`);
   server.registerTool(
     "pull",
     {
-      description: "Download an existing principle's files from the registry into a directory, to update it. Returns the user's own draft when one is waiting, including edits made in the browser, otherwise the newest release. Then edit, run_cases and publish_draft.",
+      description: "Download an existing principle's files from the registry into a directory, to update it. Returns the user's own draft when one is waiting, including edits made in the browser, otherwise the newest release. Then edit, run_tests and publish_draft.",
       inputSchema: {
         id: external_exports.string().describe("advisor/principle, or just the principle id for one of the user's own. Append @3 for a specific version."),
         dir: external_exports.string().describe("Absolute path of the directory to write the files to"),
@@ -41973,8 +42095,8 @@ ${report}`);
 var HELP = `wellactually: author principles and run your board
 
 Authoring
-  wellactually init <slug>              Create a principle directory that already passes its cases
-  wellactually test [dir]               Build the principle and run every case in the isolate
+  wellactually init <slug>              Create a principle directory that already passes its tests
+  wellactually test [dir]               Build the principle and run its tests in the isolate
   wellactually try [dir] <file>         Show one file to the detector, as if the agent had written it
         --read                   ... as if the agent had only read it
         --prompt <text>          ... or a user message

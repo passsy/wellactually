@@ -1,4 +1,0 @@
-{
-  "fires-on-late-field.dart": { "lines": [3], "path": "lib/session.dart" },
-  "quiet-on-generated.dart": { "path": "lib/session.g.dart" }
-}

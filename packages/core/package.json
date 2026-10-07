@@ -2,7 +2,7 @@
   "name": "@wellactually/core",
   "version": "0.1.0",
   "type": "module",
-  "description": "Builds, checks and runs principles: the isolate, the case runner, the probe and the local board",
+  "description": "Builds, checks and runs principles: the isolate, the test runner, the probe and the local board",
   "exports": {
     ".": "./src/index.ts",
     "./node": "./src/node.ts"

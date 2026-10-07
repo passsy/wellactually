@@ -2,7 +2,7 @@ import type { FileMap } from "./bundle.ts";
 import { isPrincipleId, PRINCIPLE_ID_RULE } from "./manifest.ts";
 
 /**
- * The files of a new principle that already passes its check.
+ * The files of a new principle that already passes its tests.
  *
  * The stub is a complete, working principle about a made up problem, so the
  * author starts from green and changes one thing at a time. The CLI writes
@@ -41,7 +41,7 @@ if (items.length === 0) {
 ## When it is fine
 
 Name the cases where the principle does not apply.
-The detector should stay quiet on exactly those, and a quiet case should prove it.
+The detector should stay quiet on exactly those, and a test should prove it.
 `,
     "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
 
@@ -66,22 +66,35 @@ export function* detect(ctx: Ctx): Generator<Finding> {
   }
 }
 `,
-    "cases/fires-on-fixme.ts": `export function total(items: number[]): number {
-  // FIXME: handle the empty list
-  return items.reduce((sum, item) => sum + item);
-}
-`,
-    "cases/quiet-on-plain-comment.ts": `export function total(items: number[]): number {
-  // An empty list sums to zero.
-  return items.reduce((sum, item) => sum + item, 0);
-}
-`,
-    "cases/quiet-on-other-language.py": `# FIXME: this is a Python file, which the globs do not select
-total = sum(items)
-`,
-    "cases/expect.json": `{
-  "fires-on-fixme.ts": { "lines": [2] }
-}
+    "detector.test.ts": `import { detect, edit, expect, source, test, write } from "@wellactually/sdk/test";
+
+// A test builds the event a detector receives and checks what it reports.
+// write() is a file the agent wrote in full, edit() one it changed, and there
+// are read(), prompt() and command() as well.
+
+const code = source\`
+  export function total(items: number[]): number {
+    // FIXME: handle the empty list
+    return items.reduce((sum, item) => sum + item);
+  }
+\`;
+
+test("fires on a FIXME the agent writes", () => {
+  expect(detect(write("src/total.ts", code))).toEqual([{ line: 2, evidence: "// FIXME: handle the empty list" }]);
+});
+
+test("stays quiet on a FIXME that was already there when the agent edits another line", () => {
+  expect(detect(edit("src/total.ts", code, { written: "  return items.reduce((sum, item) => sum + item);" }))).toEqual([]);
+});
+
+test("stays quiet on an ordinary comment", () => {
+  expect(detect(write("src/total.ts", "// An empty list sums to zero.\\nexport const total = 0;"))).toEqual([]);
+});
+
+test("stays quiet in other languages", () => {
+  // The globs in detector.ts do not select this file, so the detector never runs.
+  expect(detect(write("total.py", "# FIXME: this is Python"))).toEqual([]);
+});
 `,
   };
 }

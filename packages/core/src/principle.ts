@@ -1,8 +1,8 @@
 import type { Ctx, EventName, Finding } from "@wellactually/sdk";
-import { buildBundle, BundleError, byteLength, detectorEntry, type FileMap } from "./bundle.ts";
+import { buildBundle, buildTestBundle, BundleError, byteLength, detectorEntry, type FileMap } from "./bundle.ts";
 import { applies, fileCtx, textCtx } from "./ctx.ts";
 import { languagesOf, ManifestError, parsePrinciple, readSettings, type Manifest } from "./manifest.ts";
-import { DEFAULT_LIMITS, readExports, runDetector } from "./sandbox.ts";
+import { readExports, runTestBundle } from "./sandbox.ts";
 import { scanAdvice } from "./scan.ts";
 
 /** A principle that compiled: everything a host needs to run it. */
@@ -15,29 +15,29 @@ export interface BuiltPrinciple {
   hash: string;
 }
 
-export type CaseKind = "fires" | "quiet";
-
-export interface CaseSpec {
-  /** The file name under `cases/`. */
-  name: string;
-  kind: CaseKind;
+/** One `detect(event)` call a test made, as the host saw it. */
+export interface DetectCall {
   event: EventName;
-  /** The project-relative path the detector sees, for file events. */
-  path: string;
-  content: string;
-  /** Lines a `fires` case must report, when the author pinned them. */
-  lines: number[] | null;
-}
-
-export interface CaseResult {
-  name: string;
-  kind: CaseKind;
-  event: EventName;
-  passed: boolean;
-  /** One sentence saying what happened, written for the author. */
-  message: string;
+  /** The path the detector was shown, for file events. */
+  path: string | null;
+  /** The file content, the prompt or the command, cut off when long. */
+  text: string;
+  /** The lines that counted as written. Null when the event has no file. */
+  written: number[] | null;
+  /** False when the detector's events or globs did not select the event, so it never ran. */
+  ran: boolean;
   findings: Finding[];
   ms: number;
+}
+
+export interface TestResult {
+  /** The test file. */
+  file: string;
+  name: string;
+  passed: boolean;
+  /** Why it failed. Empty when it passed. */
+  message: string;
+  calls: DetectCall[];
 }
 
 export interface CheckReport {
@@ -47,8 +47,8 @@ export interface CheckReport {
   problems: string[];
   /** What a human should look at. Warnings never block. */
   warnings: string[];
-  cases: CaseResult[];
-  /** The slowest case, as a share of the time limit a detector gets. */
+  tests: TestResult[];
+  /** The slowest detector run, as a share of the time limit a detector gets. */
   slowestMs: number;
 }
 
@@ -58,11 +58,10 @@ export interface Checked {
   report: CheckReport;
 }
 
-const MIN_FIRING_CASES = 1;
-const MIN_QUIET_CASES = 1;
 const MAX_FILES = 60;
 const MAX_TOTAL_BYTES = 512 * 1024;
-const EXPECT_FILE = "cases/expect.json";
+const MAX_DETECT_CALLS = 300;
+const MAX_SHOWN_TEXT = 4000;
 
 /** Refuses a principle that is too large to be one principle. The registry applies it to uploads. */
 export function assertFileMapSize(files: FileMap, knownTotal?: number): void {
@@ -103,19 +102,21 @@ export async function hashPrinciple(manifest: Manifest, advice: string, bundle: 
 }
 
 /**
- * Builds a principle, runs its cases in the isolate and applies the publish gates.
+ * Builds a principle, runs its tests in the isolate and applies the publish gates.
  *
  * The CLI calls this for `wellactually test`. The registry calls it again on every
  * upload, because a report that came from the author's machine is a claim
  * and one that came from here is a result.
  */
 export async function checkPrinciple(files: FileMap): Promise<Checked> {
-  const report: CheckReport = { ok: false, problems: [], warnings: [], cases: [], slowestMs: 0 };
+  const report: CheckReport = { ok: false, problems: [], warnings: [], tests: [], slowestMs: 0 };
 
   let built: BuiltPrinciple;
+  let tests: string | null;
   try {
     assertFileMapSize(files);
     built = await buildPrinciple(files);
+    tests = await buildTestBundle(files);
   } catch (error) {
     if (error instanceof ManifestError || error instanceof BundleError) {
       report.problems.push(error.message);
@@ -126,176 +127,125 @@ export async function checkPrinciple(files: FileMap): Promise<Checked> {
 
   report.warnings.push(...scanAdvice(built.advice));
 
-  let specs: CaseSpec[];
-  try {
-    specs = readCases(files);
-  } catch (error) {
-    report.problems.push((error as Error).message);
+  if (tests === null) {
+    const hint = Object.keys(files).some((name) => name.startsWith("cases/"))
+      ? " The cases/ folder is no longer read: write each case as a test, for example expect(detect(write(path, content))).toEqual([...])."
+      : "";
+    report.problems.push(`needs at least one test file named *.test.ts.${hint}`);
     return { built, report };
   }
 
-  for (const spec of specs) {
-    const result = await runCase(built, spec);
-    report.cases.push(result);
-    report.slowestMs = Math.max(report.slowestMs, result.ms);
+  const { results, calls, error } = await runTests(built, tests);
+  if (error) {
+    report.problems.push(`The tests could not run: ${error}`);
+    return { built, report };
   }
+  report.tests = results;
+  report.slowestMs = Math.max(0, ...calls.map((call) => call.ms));
 
-  const firing = specs.filter((spec) => spec.kind === "fires").length;
-  const quiet = specs.filter((spec) => spec.kind === "quiet").length;
-  if (firing < MIN_FIRING_CASES) {
-    report.problems.push(`needs at least ${MIN_FIRING_CASES} case named cases/fires-*, found ${firing}`);
+  if (results.length === 0) {
+    report.problems.push("the test files declare no test");
   }
-  if (quiet < MIN_QUIET_CASES) {
-    report.problems.push(
-      `needs at least ${MIN_QUIET_CASES} case named cases/quiet-*, found ${quiet}. A detector nobody has seen stay quiet is the one that fires on every file.`,
-    );
-  }
-  if (firing > 0 && !report.cases.some((result) => result.kind === "fires" && result.passed)) {
-    report.problems.push("no cases/fires-* case passes, so nothing shows that the detector ever fires");
-  }
-  const failed = report.cases.filter((result) => !result.passed);
+  const failed = results.filter((result) => !result.passed);
   if (failed.length > 0) {
-    report.problems.push(`${failed.length} of ${report.cases.length} cases failed`);
+    report.problems.push(`${failed.length} of ${results.length} tests failed`);
+  }
+  // Counted over tests that pass: a firing nobody asserted on shows nothing.
+  const proven = results.filter((result) => result.passed).flatMap((result) => result.calls);
+  if (!proven.some((call) => call.findings.length > 0)) {
+    report.problems.push("no passing test makes the detector fire, so nothing shows that it ever does");
+  }
+  if (!proven.some((call) => call.ran && call.findings.length === 0)) {
+    report.problems.push(
+      "no passing test runs the detector on something it stays quiet on. A detector nobody has seen stay quiet is the one that fires on every file.",
+    );
   }
 
   report.ok = report.problems.length === 0;
   return { built, report };
 }
 
-interface Expectation {
-  lines?: number[];
-  path?: string;
-  event?: EventName;
+/**
+ * Runs the test bundle and answers its `detect` calls with the real detector.
+ *
+ * Every call is answered the way the hook would: the detector's events and
+ * globs first, then a fresh isolate under the normal limits, then the checks
+ * every finding has to pass.
+ */
+async function runTests(built: BuiltPrinciple, tests: string): Promise<{ results: TestResult[]; calls: DetectCall[]; error: string | null }> {
+  const calls: DetectCall[] = [];
+  const byTest = new Map<string, DetectCall[]>();
+  let current: DetectCall[] = [];
+  const key = (test: { file: string; name: string }): string => `${test.file}\n${test.name}`;
+
+  const { results, error } = await runTestBundle(tests, {
+    begin: (test) => {
+      current = [];
+      byTest.set(key(test), current);
+    },
+    detect: (event, run) => {
+      if (calls.length >= MAX_DETECT_CALLS) {
+        return { error: `a principle's tests may call detect() at most ${MAX_DETECT_CALLS} times` };
+      }
+      const ctx = eventCtx(event);
+      if (!ctx) {
+        return { error: "detect() needs an event from write(), edit(), read(), prompt() or command()" };
+      }
+      const call: DetectCall = {
+        event: ctx.event,
+        path: ctx.file?.path ?? null,
+        text: ctx.text.length > MAX_SHOWN_TEXT ? `${ctx.text.slice(0, MAX_SHOWN_TEXT)}\n…` : ctx.text,
+        written: ctx.file ? ctx.file.written.map((written) => written.line) : null,
+        ran: applies(built.manifest, ctx),
+        findings: [],
+        ms: 0,
+      };
+      calls.push(call);
+      current.push(call);
+      if (!call.ran) {
+        return { findings: [] };
+      }
+      const result = run(built.bundle, ctx);
+      call.ms = result.ms;
+      if (result.error) {
+        return { error: `The detector failed: ${result.error}` };
+      }
+      if (result.dropped.length > 0) {
+        return { error: `The host dropped ${result.dropped.join("; ")}.` };
+      }
+      call.findings = result.findings;
+      return { findings: result.findings };
+    },
+  });
+
+  return { results: results.map((result) => ({ ...result, calls: byTest.get(key(result)) ?? [] })), calls, error };
 }
 
 /**
- * Reads the cases out of a principle's files.
+ * Rebuilds the event a test passed to `detect`.
  *
- * A case is one file under `cases/`. Its name says what to expect: `fires-*`
- * must produce a finding, `quiet-*` must produce none. Its suffix says what
- * kind of event it is: `.prompt.txt` is something the user typed,
- * `.command.txt` is a shell command, `.read.<ext>` is a file the agent only
- * read, and everything else is a file the agent wrote in full.
- *
- * `cases/expect.json` is optional. It maps a case file to the lines a firing
- * case must report, and to the path the detector should see when the globs
- * care about directories.
+ * It arrives as JSON from code the host does not trust. Only what defines an
+ * event is taken from it (kind, path, content, which lines were written) and
+ * everything else is derived again, so a detector under test sees an event
+ * with the same guarantees as one from a session.
  */
-export function readCases(files: FileMap): CaseSpec[] {
-  let expectations: Record<string, Expectation> = {};
-  const expectSource = files[EXPECT_FILE];
-  if (expectSource !== undefined) {
-    try {
-      expectations = JSON.parse(expectSource) as Record<string, Expectation>;
-    } catch {
-      throw new ManifestError(`${EXPECT_FILE} is not valid JSON`);
-    }
+function eventCtx(raw: unknown): Ctx | null {
+  if (typeof raw !== "object" || raw === null) {
+    return null;
   }
-
-  const specs: CaseSpec[] = [];
-  for (const [file, content] of Object.entries(files).sort(([a], [b]) => a.localeCompare(b))) {
-    if (!file.startsWith("cases/") || file === EXPECT_FILE) {
-      continue;
-    }
-    const name = file.slice("cases/".length);
-    const kind: CaseKind | null = name.startsWith("fires-") ? "fires" : name.startsWith("quiet-") ? "quiet" : null;
-    if (!kind) {
-      throw new ManifestError(`cases/${name} must be named fires-* or quiet-*`);
-    }
-    const expectation = expectations[name] ?? {};
-    const inferred = inferEvent(name);
-    specs.push({
-      name,
-      kind,
-      event: expectation.event ?? inferred.event,
-      path: expectation.path ?? inferred.path,
-      content,
-      lines: expectation.lines ?? null,
-    });
+  const event = raw as { event?: unknown; text?: unknown; file?: { path?: unknown; content?: unknown; written?: unknown } | null };
+  if (event.event === "prompt" || event.event === "command") {
+    return typeof event.text === "string" ? textCtx(event.event, event.text) : null;
   }
-  for (const name of Object.keys(expectations)) {
-    if (!(`cases/${name}` in files)) {
-      throw new ManifestError(`${EXPECT_FILE} names "${name}", which is not a file under cases/`);
-    }
+  if ((event.event !== "write" && event.event !== "read") || typeof event.file?.path !== "string" || typeof event.file.content !== "string") {
+    return null;
   }
-  return specs;
-}
-
-function inferEvent(name: string): { event: EventName; path: string } {
-  if (/\.prompt\.(txt|md)$/.test(name)) {
-    return { event: "prompt", path: name };
-  }
-  if (/\.command\.(txt|sh)$/.test(name)) {
-    return { event: "command", path: name };
-  }
-  const read = /^(.*)\.read(\.[^.]+)$/.exec(name);
-  if (read) {
-    return { event: "read", path: `${read[1]}${read[2]}` };
-  }
-  return { event: "write", path: name };
-}
-
-export function caseCtx(spec: CaseSpec): Ctx {
-  if (spec.event === "prompt" || spec.event === "command") {
-    return textCtx(spec.event, spec.content.trimEnd());
-  }
-  return fileCtx(spec.event, spec.path, spec.content);
-}
-
-async function runCase(built: BuiltPrinciple, spec: CaseSpec): Promise<CaseResult> {
-  const ctx = caseCtx(spec);
-  const base = { name: spec.name, kind: spec.kind, event: spec.event };
-
-  if (!applies(built.manifest, ctx)) {
-    const reason = built.manifest.events.includes(spec.event)
-      ? `the globs do not match ${spec.path}`
-      : `detector.ts does not list the ${spec.event} event in its events`;
-    if (spec.kind === "quiet") {
-      return { ...base, passed: true, message: `Quiet: ${reason}, so the detector does not run.`, findings: [], ms: 0 };
-    }
-    return { ...base, passed: false, message: `Expected a finding, but ${reason}, so the detector never runs.`, findings: [], ms: 0 };
-  }
-
-  const run = await runDetector(built.bundle, ctx, DEFAULT_LIMITS);
-  const result = { ...base, findings: run.findings, ms: run.ms };
-  if (run.error) {
-    return { ...result, passed: false, message: `The detector failed: ${run.error}` };
-  }
-  if (run.dropped.length > 0) {
-    return { ...result, passed: false, message: `The host dropped ${run.dropped.join("; ")}.` };
-  }
-
-  if (spec.kind === "quiet") {
-    if (run.findings.length === 0) {
-      return { ...result, passed: true, message: "Quiet, as expected." };
-    }
-    return { ...result, passed: false, message: `Expected nothing, got ${describeFindings(run.findings)}.` };
-  }
-
-  if (run.findings.length === 0) {
-    return { ...result, passed: false, message: "Expected a finding, got nothing." };
-  }
-  if (spec.lines) {
-    const reported = run.findings.map((finding) => finding.line).filter((line) => line !== undefined);
-    const wanted = [...spec.lines].sort((a, b) => a - b);
-    const got = [...reported].sort((a, b) => a - b);
-    if (JSON.stringify(wanted) !== JSON.stringify(got)) {
-      return {
-        ...result,
-        passed: false,
-        message: `Expected findings on lines ${wanted.join(", ")}, got ${got.length > 0 ? got.join(", ") : "none with a line"}.`,
-      };
-    }
-  }
-  return { ...result, passed: true, message: `Fired: ${describeFindings(run.findings)}.` };
-}
-
-function describeFindings(findings: Finding[]): string {
-  return findings
-    .slice(0, 3)
-    .map((finding) => `${finding.line ? `line ${finding.line} ` : ""}${JSON.stringify(finding.evidence.slice(0, 60))}`)
-    .join(", ")
-    .concat(findings.length > 3 ? ` and ${findings.length - 3} more` : "");
+  const lines = event.file.content.split("\n");
+  const written = (Array.isArray(event.file.written) ? event.file.written : [])
+    .map((entry: unknown) => (entry as { line?: unknown } | null)?.line)
+    .filter((line): line is number => typeof line === "number" && Number.isInteger(line) && line >= 1 && line <= lines.length)
+    .map((line) => ({ line, text: lines[line - 1] ?? "" }));
+  return fileCtx(event.event, event.file.path, event.file.content, written);
 }
 
 /** Whether a principle directory has the two files that make it one. */

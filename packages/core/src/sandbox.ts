@@ -1,6 +1,6 @@
-import { shouldInterruptAfterDeadline } from "quickjs-emscripten-core";
+import { shouldInterruptAfterDeadline, type QuickJSWASMModule } from "quickjs-emscripten-core";
 import type { Ctx, Finding } from "@wellactually/sdk";
-import { BUNDLE_GLOBAL } from "./bundle.ts";
+import { BUNDLE_GLOBAL, TESTS_GLOBAL } from "./bundle.ts";
 import { loadSandbox } from "./engines.ts";
 
 export interface Limits {
@@ -60,9 +60,22 @@ export async function readExports(bundle: string, limits: Limits = DEFAULT_LIMIT
   return JSON.parse(json) as { events?: unknown; globs?: unknown };
 }
 
+/** A function the script inside an isolate may call. It takes one string and returns one. */
+type HostFunctions = Record<string, (argument: string) => string>;
+
 /** Evaluates a script in a fresh isolate and returns the string it ends with. */
 async function evaluate(script: string, ctx: Ctx | null, limits: Limits): Promise<{ json: string | null; error: string | null }> {
-  const QuickJS = await loadSandbox();
+  return evaluateIn(await loadSandbox(), script, ctx, limits);
+}
+
+/** The same, once the WebAssembly module is loaded. From then on an isolate starts and ends without waiting. */
+function evaluateIn(
+  QuickJS: QuickJSWASMModule,
+  script: string,
+  ctx: Ctx | null,
+  limits: Limits,
+  hostFunctions: HostFunctions = {},
+): { json: string | null; error: string | null } {
   const runtime = QuickJS.newRuntime();
   runtime.setMemoryLimit(limits.memoryBytes);
   runtime.setMaxStackSize(512 * 1024);
@@ -76,6 +89,11 @@ async function evaluate(script: string, ctx: Ctx | null, limits: Limits): Promis
       const input = vm.newString(JSON.stringify(ctx));
       vm.setProp(vm.global, "__ctx", input);
       input.dispose();
+    }
+    for (const [name, implementation] of Object.entries(hostFunctions)) {
+      const handle = vm.newFunction(name, (argument) => vm.newString(implementation(vm.getString(argument))));
+      vm.setProp(vm.global, name, handle);
+      handle.dispose();
     }
     const result = vm.evalCode(script, "detector.js");
     if (result.error) {
@@ -103,14 +121,73 @@ async function evaluate(script: string, ctx: Ctx | null, limits: Limits): Promis
  * a hung hook.
  */
 export async function runDetector(bundle: string, ctx: Ctx, limits: Limits = DEFAULT_LIMITS): Promise<DetectorRun> {
+  return runDetectorIn(await loadSandbox(), bundle, ctx, limits);
+}
+
+function runDetectorIn(QuickJS: QuickJSWASMModule, bundle: string, ctx: Ctx, limits: Limits): DetectorRun {
   const started = performance.now();
-  const { json, error } = await evaluate(`${bundle}\n;${RUN}`, ctx, limits);
+  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${RUN}`, ctx, limits);
   const ms = performance.now() - started;
   if (json === null) {
     return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };
   }
   const { findings, dropped } = validateFindings(json, ctx);
   return { findings, error: null, dropped, ms };
+}
+
+/** The limits a principle's whole test run gets. Each detector run inside it still gets `DEFAULT_LIMITS`. */
+export const TEST_LIMITS: Limits = {
+  ms: 5000,
+  memoryBytes: 64 * 1024 * 1024,
+};
+
+/** What the test runner asks of whoever runs it. */
+export interface TestHost {
+  /** A test is about to start. Detector runs that follow belong to it. */
+  begin: (test: { file: string; name: string }) => void;
+  /** A test called `detect(event)`. `run` runs a bundled detector in a fresh isolate, right now. */
+  detect: (event: unknown, run: (bundle: string, ctx: Ctx) => DetectorRun) => { findings: Finding[] } | { error: string };
+}
+
+export interface RawTestResult {
+  file: string;
+  name: string;
+  passed: boolean;
+  /** Why it failed. Empty when it passed. */
+  message: string;
+}
+
+/**
+ * Runs a principle's bundled tests inside an isolate.
+ *
+ * The tests are the author's code, so they get what a detector gets: no
+ * filesystem, no network, no process. The one thing they can reach is
+ * `detect`, which is answered by `host`, outside the isolate. That is how the
+ * registry learns what the tests actually exercised, instead of taking a
+ * test's word for it.
+ */
+export async function runTestBundle(bundle: string, host: TestHost, limits: Limits = TEST_LIMITS): Promise<{ results: RawTestResult[]; error: string | null }> {
+  const QuickJS = await loadSandbox();
+  const run = (detector: string, ctx: Ctx): DetectorRun => runDetectorIn(QuickJS, detector, ctx, DEFAULT_LIMITS);
+  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${TESTS_GLOBAL}.run()`, null, limits, {
+    __begin: (test) => {
+      host.begin(JSON.parse(test) as { file: string; name: string });
+      return "";
+    },
+    __detect: (event) => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(event);
+      } catch {
+        return JSON.stringify({ error: "detect() was not given an event" });
+      }
+      return JSON.stringify(host.detect(parsed, run));
+    },
+  });
+  if (json === null) {
+    return { results: [], error: (error ?? "the tests returned nothing").replace("the detector ran longer", "the tests ran longer").replace("the detector used more", "the tests used more") };
+  }
+  return { results: JSON.parse(json) as RawTestResult[], error: null };
 }
 
 function describeError(dumped: unknown, limits: Limits): string {
@@ -179,6 +256,12 @@ export function validateFindings(json: string, ctx: Ctx): { findings: Finding[];
       const line = candidate.line;
       if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lineCount) {
         dropped.push(`a finding on line ${String(line)}, which the file does not have`);
+        continue;
+      }
+      // The line is where the agent is sent to look, so the evidence has to be there.
+      const firstLine = evidence.split("\n")[0] ?? "";
+      if (!(ctx.file?.lines[line - 1] ?? "").includes(firstLine)) {
+        dropped.push(`a finding on line ${line} whose evidence is not on that line: ${JSON.stringify(firstLine.slice(0, 60))}`);
         continue;
       }
       finding.line = line;

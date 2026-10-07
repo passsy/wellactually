@@ -1,1 +1,0 @@
-echo "feat: this is not a commit" && git status

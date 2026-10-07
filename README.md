@@ -71,12 +71,11 @@ A principle is a directory, and its name is the principle's id:
 avoid-late/
   principle.md      the advice: a heading, one sentence of summary, then the rest
   detector.ts       export function* detect(ctx), plus the events and globs it runs on
-  cases/
-    fires-on-new-field.dart
-    quiet-on-comment.dart
+  detector.test.ts  the tests: what the detector reports for an event
 ```
 
-It needs at least one `fires-*` case and one `quiet-*` case.
+A test reads `expect(detect(write("lib/user.dart", code))).toEqual([{ line: 2, evidence: "late String name;" }])`.
+The tests must pass, make the detector fire at least once, and show it staying quiet at least once.
 `principles/` holds three examples.
 
 ```bash

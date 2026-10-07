@@ -2,8 +2,9 @@
   "name": "@wellactually/sdk",
   "version": "0.1.0",
   "type": "module",
-  "description": "Types and helpers a principle's detector may import. Bundled into the detector at publish time.",
+  "description": "Types and helpers a principle's detector may import, and the test framework its tests use.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./test": "./src/test.ts"
   }
 }

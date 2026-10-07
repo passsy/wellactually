@@ -23,8 +23,8 @@ import { finishDeviceLogin, logout, RegistryError, startDeviceLogin, sync, whoam
 const HELP = `wellactually: author principles and run your board
 
 Authoring
-  wellactually init <slug>              Create a principle directory that already passes its cases
-  wellactually test [dir]               Build the principle and run every case in the isolate
+  wellactually init <slug>              Create a principle directory that already passes its tests
+  wellactually test [dir]               Build the principle and run its tests in the isolate
   wellactually try [dir] <file>         Show one file to the detector, as if the agent had written it
         --read                   ... as if the agent had only read it
         --prompt <text>          ... or a user message
