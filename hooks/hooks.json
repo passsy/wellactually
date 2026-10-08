@@ -1,5 +1,5 @@
 {
-  "description": "Shows your agent the advice of a principle on your board when its detector fires.",
+  "description": "Shows your agent the advice of a principle on your advisory board when its detector fires.",
   "hooks": {
     "SessionStart": [
       {

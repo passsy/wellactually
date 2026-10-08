@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { scaffold } from "@wellactually/core/node";
+import { scaffold, switchPrinciple } from "@wellactually/core/node";
 import { z } from "zod";
 import { ratePrinciple, RegistryError } from "./registry.ts";
 import {
@@ -12,6 +12,7 @@ import {
   renderProbe,
   renderPull,
   renderReport,
+  renderSwitch,
   renderTry,
   testPrinciple,
   tryPrinciple,
@@ -50,7 +51,7 @@ function text(value: string) {
 
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
-  const server = new McpServer({ name: "wellactually", version: "0.3.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.4.0" }, { instructions: AUTHORING_GUIDE });
 
   server.registerTool(
     "scaffold",
@@ -169,6 +170,40 @@ export async function serveMcp(): Promise<void> {
         throw error;
       }
     },
+  );
+
+  const switchInput = {
+    id: z.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
+    scope: z
+      .enum(["project", "global"])
+      .describe("project: only in the project being worked on, recorded in .wellactually.json at its root. global: everywhere on this machine."),
+    dir: z.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started."),
+  };
+  const switchTool = (on: boolean) => async ({ id, scope, dir }: { id: string; scope: "project" | "global"; dir?: string }) => {
+    try {
+      return text(renderSwitch(switchPrinciple(id, on, scope, dir ?? process.cwd()), on));
+    } catch (error) {
+      return text((error as Error).message);
+    }
+  };
+
+  server.registerTool(
+    "disable_principle",
+    {
+      description:
+        "Switch a principle off, for this project or everywhere on this machine. Use it when the user asks for it, for instance because a principle does not fit a codebase. Do not use it on your own to get rid of advice you were just shown: say that the advice does not fit, rate it not_applicable, and let the user decide. Takes effect with the next edit.",
+      inputSchema: switchInput,
+    },
+    switchTool(false),
+  );
+
+  server.registerTool(
+    "enable_principle",
+    {
+      description: "Switch a principle on again that was switched off with disable_principle, in the same scope it was switched off in.",
+      inputSchema: switchInput,
+    },
+    switchTool(true),
   );
 
   const transport = new StdioServerTransport();

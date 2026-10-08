@@ -20,6 +20,7 @@ import {
   type CheckReport,
   type DetectorRun,
   type ProbeReport,
+  type SwitchResult,
 } from "@wellactually/core/node";
 import type { Ctx } from "@wellactually/sdk";
 import { fetchHistory, publishDraft, pullSource, type DraftResult, type History } from "./registry.ts";
@@ -182,9 +183,9 @@ function asLocal(built: BuiltPrinciple, id: string) {
 }
 
 /**
- * Puts a principle from a directory on this machine's board, without a registry.
+ * Puts a principle from a directory on this machine's advisory board, without a registry.
  *
- * It has to pass the same check a published one does. The board pins the
+ * It has to pass the same check a published one does. The advisory board pins the
  * hash, so editing the directory changes nothing until it is added again.
  */
 export async function addLocal(dir: string): Promise<TestResult> {
@@ -201,7 +202,7 @@ export async function addLocal(dir: string): Promise<TestResult> {
   return { id: principle.id, title: built.manifest.title, report };
 }
 
-/** Takes a local principle off the board. Registry entries are removed on the website. */
+/** Takes a local principle off the advisory board. Registry entries are removed on the website. */
 export function removeLocal(id: string): boolean {
   const lockfile = readLockfile();
   const wanted = id.startsWith("local/") ? id : `local/${id}`;
@@ -244,6 +245,19 @@ export function renderReport(result: TestResult): string {
     }
   }
   return lines.join("\n");
+}
+
+/** What to tell whoever switched a principle off or on. */
+export function renderSwitch(result: SwitchResult, on: boolean): string {
+  const where = result.scope === "global" ? "everywhere on this machine" : "in this project";
+  if (!on) {
+    return `${result.id} is off ${where}. Recorded in ${result.file}.`;
+  }
+  if (result.stillOff.length > 0) {
+    const other = result.stillOff.includes("global") ? "everywhere on this machine" : "in this project";
+    return `${result.id} is no longer switched off ${where}, but it is still off ${other}. Switch it on there too to make it run.`;
+  }
+  return `${result.id} runs again ${where}.`;
 }
 
 export function renderProbe(report: ProbeReport): string {

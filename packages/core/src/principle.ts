@@ -11,7 +11,7 @@ export interface BuiltPrinciple {
   advice: string;
   /** The detector as one script for the isolate. */
   bundle: string;
-  /** Identifies this exact manifest, advice and bundle. A board pins it. */
+  /** Identifies this exact manifest, advice and bundle. An advisory board pins it. */
   hash: string;
 }
 

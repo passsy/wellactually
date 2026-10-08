@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
-import { readConfig, readCached, readLockfile, scaffold, writeConfig } from "@wellactually/core/node";
+import { readConfig, readCached, readLockfile, scaffold, switchedOff, switchPrinciple, writeConfig } from "@wellactually/core/node";
 import {
   addLocal,
   principleHistory,
@@ -12,6 +12,7 @@ import {
   renderProbe,
   renderPull,
   renderReport,
+  renderSwitch,
   renderTry,
   testPrinciple,
   tryPrinciple,
@@ -20,7 +21,7 @@ import { logHookFailure, runHook } from "./hook.ts";
 import { serveMcp } from "./mcp.ts";
 import { finishDeviceLogin, logout, RegistryError, startDeviceLogin, sync, whoami } from "./registry.ts";
 
-const HELP = `wellactually: author principles and run your board
+const HELP = `wellactually: author principles and run your advisory board
 
 Authoring
   wellactually init <slug>              Create a principle directory that already passes its tests
@@ -36,14 +37,16 @@ Authoring
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's versions, what each changed and why
 
-Your board
+Your advisory board
   wellactually login [--registry <url>] Sign in through the browser
   wellactually logout
   wellactually whoami
-  wellactually sync                     Download the board you set up on the website
+  wellactually sync                     Download the advisory board you set up on the website
   wellactually list                     Show what the hook runs
-  wellactually add <dir>                Put a local principle on this machine's board
+  wellactually add <dir>                Put a local principle on this machine's advisory board
   wellactually remove <slug>            Take a local principle off again
+  wellactually disable <id> [--global]  Switch a principle off in this project, or everywhere with --global
+  wellactually enable <id> [--global]   Switch it on again
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
 
 Integration
@@ -66,6 +69,7 @@ async function main(): Promise<number> {
       prompt: { type: "string" },
       command: { type: "string" },
       registry: { type: "string" },
+      global: { type: "boolean", default: false },
     },
   });
   const print = (data: unknown, rendered: string): void => {
@@ -143,7 +147,7 @@ async function main(): Promise<number> {
       const start = await startDeviceLogin();
       console.log(`Open ${start.verification_url}\nand confirm the code ${start.user_code}`);
       const handle = await finishDeviceLogin(start);
-      console.log(`Signed in as ${handle}. Run \`wellactually sync\` to download your board.`);
+      console.log(`Signed in as ${handle}. Run \`wellactually sync\` to download your advisory board.`);
       return 0;
     }
     case "logout":
@@ -158,7 +162,7 @@ async function main(): Promise<number> {
       const enabled = result.entries.filter((entry) => entry.enabled).length;
       print(
         result,
-        `${result.entries.length} principles on your board, ${enabled} enabled. Downloaded ${result.downloaded.length}, removed ${result.removed.length}.${result.reported > 0 ? ` Reported ${result.reported} detections.` : ""}`,
+        `${result.entries.length} principles on your advisory board, ${enabled} enabled. Downloaded ${result.downloaded.length}, removed ${result.removed.length}.${result.reported > 0 ? ` Reported ${result.reported} detections.` : ""}`,
       );
       return 0;
     }
@@ -180,18 +184,37 @@ async function main(): Promise<number> {
     case "list": {
       const lockfile = readLockfile();
       if (lockfile.entries.length === 0) {
-        console.log("Your board is empty. Add advisors on the website and run `wellactually sync`, or `wellactually add <dir>`.");
+        console.log("Your advisory board is empty. Add advisors on the website and run `wellactually sync`, or `wellactually add <dir>`.");
         return 0;
       }
+      const off = switchedOff(process.cwd());
       for (const entry of lockfile.entries) {
         const title = readCached(entry.hash)?.manifest.title ?? "(not downloaded, run `wellactually sync`)";
-        console.log(`${entry.enabled ? "on " : "off"}  ${entry.id}@${entry.version}  ${title}`);
+        const where = [...(entry.enabled ? [] : ["website"]), ...(off.get(entry.id) ?? [])];
+        console.log(`${where.length === 0 ? "on " : "off"}  ${entry.id}@${entry.version}  ${title}${where.length > 0 ? `  (off: ${where.join(", ")})` : ""}`);
       }
       return 0;
     }
+    case "disable":
+    case "enable": {
+      const id = positionals[0];
+      if (!id) {
+        console.error(`usage: wellactually ${command} <advisor/principle> [--global]`);
+        return 2;
+      }
+      const on = command === "enable";
+      try {
+        const result = switchPrinciple(id, on, values.global ? "global" : "project", process.cwd());
+        print(result, renderSwitch(result, on));
+        return 0;
+      } catch (error) {
+        console.error((error as Error).message);
+        return 1;
+      }
+    }
     case "add": {
       const result = await addLocal(positionals[0] ?? ".");
-      print(result, result.report.ok ? `${renderReport(result)}\nAdded ${result.id} to this machine's board.` : renderReport(result));
+      print(result, result.report.ok ? `${renderReport(result)}\nAdded ${result.id} to this machine's advisory board.` : renderReport(result));
       return result.report.ok ? 0 : 1;
     }
     case "remove": {
@@ -201,7 +224,7 @@ async function main(): Promise<number> {
         return 2;
       }
       if (!removeLocal(id)) {
-        console.error(`No local principle "${id}" on the board. Registry principles are removed on the website.`);
+        console.error(`No local principle "${id}" on the advisory board. Registry principles are removed on the website.`);
         return 1;
       }
       console.log(`Removed ${id}.`);

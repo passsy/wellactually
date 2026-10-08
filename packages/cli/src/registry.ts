@@ -142,7 +142,7 @@ export interface SyncResult {
 }
 
 /**
- * Brings the local board in line with the one on the registry.
+ * Brings the local advisory board in line with the one on the registry.
  *
  * Bundles are immutable and keyed by hash, so only the ones this machine has
  * never seen are downloaded. Each download is rehashed before it is stored:
@@ -265,10 +265,10 @@ export async function fetchHistory(id: string): Promise<History> {
 export type Rating = "up" | "down" | "not_applicable";
 
 /**
- * Sends an agent's verdict on a principle on this machine's board.
+ * Sends an agent's verdict on a principle on this machine's advisory board.
  *
  * The verdict is about the version the agent was shown, so the id is resolved
- * through the local board, not through the registry's newest release.
+ * through the local advisory board, not through the registry's newest release.
  * Returns what to tell the agent.
  */
 export async function ratePrinciple(id: string, rating: Rating): Promise<string> {
@@ -280,7 +280,7 @@ export async function ratePrinciple(id: string, rating: Rating): Promise<string>
   }
   const entry = readLockfile().entries.find((candidate) => candidate.id === id);
   if (!entry) {
-    return `${id} is not on this board. Use the id from the <principle id="..."> tag you were shown.`;
+    return `${id} is not on this advisory board. Use the id from the <principle id="..."> tag you were shown.`;
   }
   requireToken();
   const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, rating } });

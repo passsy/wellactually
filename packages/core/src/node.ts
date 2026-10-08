@@ -3,7 +3,7 @@
  *
  * Importing this sets the engines, esbuild's native binary and QuickJS as
  * WebAssembly, and adds what needs a disk: reading a principle
- * directory, the local board and the repository probe.
+ * directory, the local advisory board and the repository probe.
  */
 import variant from "@jitl/quickjs-singlefile-mjs-release-sync";
 import { newQuickJSWASMModuleFromVariant, type QuickJSWASMModule } from "quickjs-emscripten-core";
@@ -34,4 +34,5 @@ export * from "./board.ts";
 export * from "./detections.ts";
 export * from "./fs.ts";
 export * from "./payload.ts";
+export * from "./switches.ts";
 export * from "./probe.ts";

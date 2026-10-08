@@ -16,10 +16,10 @@ export interface Config {
   stats: boolean;
 }
 
-/** Where the board lives unless `login --registry` or WELLACTUALLY_REGISTRY says otherwise. */
+/** Where the advisory board lives unless `login --registry` or WELLACTUALLY_REGISTRY says otherwise. */
 export const DEFAULT_REGISTRY = "https://wellactually.dev";
 
-/** Where the board lives on this machine. `WELLACTUALLY_HOME` moves it, which the tests use. */
+/** Where the advisory board lives on this machine. `WELLACTUALLY_HOME` moves it, which the tests use. */
 export function boardHome(): string {
   return process.env.WELLACTUALLY_HOME ?? path.join(os.homedir(), ".wellactually");
 }
@@ -95,21 +95,22 @@ export interface BoardRun {
   ms: number;
 }
 
-/** The whole board gets this long per hook call. What does not fit is reported as a failure. */
+/** The whole advisory board gets this long per hook call. What does not fit is reported as a failure. */
 export const BOARD_BUDGET_MS = 1500;
 
 /**
- * Runs every enabled principle of the board that applies to this context.
+ * Runs every enabled principle of the advisory board that applies to this context.
  *
  * Each detector gets its own isolate and its own limits, so one advisor's
  * detector cannot read, slow down or break another's.
  */
-export async function runBoard(ctx: Ctx, lockfile: Lockfile = readLockfile()): Promise<BoardRun> {
+export async function runBoard(ctx: Ctx, lockfile: Lockfile = readLockfile(), off: ReadonlySet<string> = new Set()): Promise<BoardRun> {
   const started = performance.now();
   const run: BoardRun = { firings: [], failures: [], ms: 0 };
 
   for (const entry of lockfile.entries) {
-    if (!entry.enabled) {
+    // Off on the website, or switched off on this machine for this project or everywhere.
+    if (!entry.enabled || off.has(entry.id)) {
       continue;
     }
     const principle = readCached(entry.hash);
@@ -121,7 +122,7 @@ export async function runBoard(ctx: Ctx, lockfile: Lockfile = readLockfile()): P
       continue;
     }
     if (performance.now() - started > BOARD_BUDGET_MS) {
-      run.failures.push({ id: entry.id, error: `skipped, the board used its ${BOARD_BUDGET_MS} ms budget before reaching it` });
+      run.failures.push({ id: entry.id, error: `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it` });
       continue;
     }
     const result = await runDetector(principle.bundle, ctx, DEFAULT_LIMITS);
@@ -161,7 +162,7 @@ export function frame(ctx: Ctx, firings: Firing[], alreadyShown: ReadonlySet<str
   const lines: string[] = [
     "<wellactually>",
     `${ctx.event}${where}: ${OPENERS[ctx.event]}`,
-    "Each principle below is advice from an advisor the user put on their board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
+    "Each principle below is advice from an advisor the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
     "",
   ];
   for (const { principle, findings } of firings) {

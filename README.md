@@ -4,7 +4,7 @@ Engineering principles that run inside your coding agent.
 
 A principle is advice plus a detector.
 The detector looks at what your agent just did, and when it finds something, the agent reads the advice.
-Anyone can publish principles on [wellactually.dev](https://wellactually.dev), and you choose whose principles sit on your board.
+Anyone can publish principles on [wellactually.dev](https://wellactually.dev), and you choose whose principles sit on your advisory board.
 
 > wellactually.dev is not live yet.
 > Until it is, this repository is here to be read, not installed.
@@ -19,7 +19,7 @@ Claude Code:
 /wellactually:login
 ```
 
-The last line connects this machine to your board and downloads it.
+The last line connects this machine to your advisory board and downloads it.
 
 Codex:
 
@@ -31,12 +31,12 @@ The plugin needs Node 20 or newer and nothing else.
 
 ## What it does on your machine
 
-- When your agent writes or reads a file, gets a prompt or is about to run a shell command, a hook shows that one input to the detectors on your board.
+- When your agent writes or reads a file, gets a prompt or is about to run a shell command, a hook shows that one input to the detectors on your advisory board.
 - A detector that finds something puts its advisor's advice in front of the agent, once per session in full and as a pointer after that.
 - The hook never uses the network.
   It reads the principles `sync` downloaded earlier.
 - `sync` runs when a session starts.
-  It downloads what is new on your board and reports counts, see "What leaves your machine".
+  It downloads what is new on your advisory board and reports counts, see "What leaves your machine".
 
 ## Detectors are other people's code
 
@@ -49,11 +49,11 @@ So they are contained.
   One that exceeds either is stopped and reported, and your agent carries on.
 - Whatever a detector reports must occur word for word in its input, or the finding is dropped.
   A detector cannot compose text for your agent at runtime.
-- Every principle on your board is pinned to a content hash, and each download is hashed again before it is stored.
+- Every principle on your advisory board is pinned to a content hash, and each download is hashed again before it is stored.
 - Nothing updates silently.
-  A new version is an offer on your board that shows what changed in the advice.
+  A new version is an offer on your advisory board that shows what changed in the advice.
 
-The code that does this is in `packages/core`: `sandbox.ts` is the isolate, `board.ts` runs a board.
+The code that does this is in `packages/core`: `sandbox.ts` is the isolate, `board.ts` runs an advisory board.
 
 ## What leaves your machine
 
@@ -101,14 +101,14 @@ A detector may import `@wellactually/sdk`, which is in `packages/sdk`, and its o
 
 ## What is in here
 
-| Path                | What it is                                                              |
-| ------------------- | ----------------------------------------------------------------------- |
-| `hooks`, `commands` | The plugin: when the hook runs, and the `login` and `sync` commands.    |
-| `dist`              | The command as one file, built from `packages/cli`. The plugin runs it. |
-| `packages/core`     | Builds, checks and runs principles: the isolate and the local board.    |
-| `packages/sdk`      | The types and helpers a detector may import.                            |
-| `packages/cli`      | The `wellactually` command and its MCP server.                          |
-| `principles`        | Example principles.                                                     |
+| Path                | What it is                                                                    |
+| ------------------- | ----------------------------------------------------------------------------- |
+| `hooks`, `commands` | The plugin: when the hook runs, and the `login` and `sync` commands.          |
+| `dist`              | The command as one file, built from `packages/cli`. The plugin runs it.       |
+| `packages/core`     | Builds, checks and runs principles: the isolate and the local advisory board. |
+| `packages/sdk`      | The types and helpers a detector may import.                                  |
+| `packages/cli`      | The `wellactually` command and its MCP server.                                |
+| `principles`        | Example principles.                                                           |
 
 The registry behind wellactually.dev is not in this repository.
 

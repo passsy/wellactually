@@ -164,7 +164,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs7 = require2("node:fs");
+    var fs8 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -6936,8 +6936,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path8) {
-      let input2 = path8;
+    function removeDotSegments(path9) {
+      let input2 = path9;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -7346,8 +7346,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path8 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
+        const path9 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path9 && path9 !== "/" ? path9 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -10860,12 +10860,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs7, exportName) {
+    function addFormats(ajv, list, fs8, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs7[f]);
+        ajv.addFormat(f, fs8[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10941,9 +10941,9 @@ function testFiles(files) {
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
 }
-function normalize(path8) {
+function normalize(path9) {
   const out = [];
-  for (const part of path8.split("/")) {
+  for (const part of path9.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -10955,9 +10955,9 @@ function normalize(path8) {
   }
   return out.join("/");
 }
-function dirname(path8) {
-  const slash = path8.lastIndexOf("/");
-  return slash === -1 ? "" : path8.slice(0, slash);
+function dirname(path9) {
+  const slash = path9.lastIndexOf("/");
+  return slash === -1 ? "" : path9.slice(0, slash);
 }
 async function buildBundle(files) {
   const entry = detectorEntry(files);
@@ -11060,15 +11060,15 @@ function formatMessage(message) {
 // packages/sdk/src/index.ts
 var EVENTS = ["write", "read", "prompt", "command"];
 function fileCtx(event, relativePath, content, written) {
-  const path8 = relativePath.replaceAll("\\", "/");
-  const name = path8.slice(path8.lastIndexOf("/") + 1);
+  const path9 = relativePath.replaceAll("\\", "/");
+  const name = path9.slice(path9.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
   const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
   return {
     event,
     file: {
-      path: path8,
+      path: path9,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
       content,
@@ -11123,19 +11123,19 @@ function locateWritten(content, fragments) {
 
 // packages/core/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path8, pattern) {
+function matchesGlob(path9, pattern) {
   let regex = cache.get(pattern);
   if (!regex) {
     regex = globToRegExp(pattern);
     cache.set(pattern, regex);
   }
-  return regex.test(path8);
+  return regex.test(path9);
 }
-function matchesAnyGlob(path8, globs) {
+function matchesAnyGlob(path9, globs) {
   if (globs.length === 0) {
     return true;
   }
-  return globs.some((glob) => matchesGlob(path8, glob));
+  return globs.some((glob) => matchesGlob(path9, glob));
 }
 function globToRegExp(pattern) {
   const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
@@ -11815,11 +11815,11 @@ function writeCached(principle) {
   writeJson(bundlePath(principle.hash), principle);
 }
 var BOARD_BUDGET_MS = 1500;
-async function runBoard(ctx, lockfile = readLockfile()) {
+async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ new Set()) {
   const started = performance.now();
   const run = { firings: [], failures: [], ms: 0 };
   for (const entry of lockfile.entries) {
-    if (!entry.enabled) {
+    if (!entry.enabled || off.has(entry.id)) {
       continue;
     }
     const principle = readCached(entry.hash);
@@ -11831,7 +11831,7 @@ async function runBoard(ctx, lockfile = readLockfile()) {
       continue;
     }
     if (performance.now() - started > BOARD_BUDGET_MS) {
-      run.failures.push({ id: entry.id, error: `skipped, the board used its ${BOARD_BUDGET_MS} ms budget before reaching it` });
+      run.failures.push({ id: entry.id, error: `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it` });
       continue;
     }
     const result = await runDetector(principle.bundle, ctx, DEFAULT_LIMITS);
@@ -11860,7 +11860,7 @@ function frame(ctx, firings, alreadyShown = /* @__PURE__ */ new Set()) {
   const lines = [
     "<wellactually>",
     `${ctx.event}${where}: ${OPENERS[ctx.event]}`,
-    "Each principle below is advice from an advisor the user put on their board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
+    "Each principle below is advice from an advisor the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
     ""
   ];
   for (const { principle, findings } of firings) {
@@ -12060,10 +12060,88 @@ function patchedFiles(patch) {
   return files;
 }
 
-// packages/core/src/probe.ts
-import { execFileSync } from "node:child_process";
+// packages/core/src/switches.ts
 import fs4 from "node:fs";
 import path5 from "node:path";
+var PROJECT_FILE = ".wellactually.json";
+function read(file2) {
+  try {
+    const stored = JSON.parse(fs4.readFileSync(file2, "utf8"));
+    return Array.isArray(stored.disabled) ? stored.disabled.filter((id) => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+function write(file2, disabled) {
+  let stored = {};
+  try {
+    stored = JSON.parse(fs4.readFileSync(file2, "utf8"));
+  } catch {
+  }
+  const { disabled: _previous, ...rest } = stored;
+  if (disabled.length === 0 && Object.keys(rest).length === 0) {
+    fs4.rmSync(file2, { force: true });
+    return;
+  }
+  fs4.mkdirSync(path5.dirname(file2), { recursive: true });
+  fs4.writeFileSync(file2, `${JSON.stringify({ ...rest, disabled: [...disabled].sort() }, null, 2)}
+`);
+}
+function projectRoot(cwd) {
+  const start = path5.resolve(cwd);
+  for (const marker of [PROJECT_FILE, ".git"]) {
+    for (let dir = start; ; dir = path5.dirname(dir)) {
+      if (fs4.existsSync(path5.join(dir, marker))) {
+        return dir;
+      }
+      if (dir === path5.dirname(dir)) {
+        break;
+      }
+    }
+  }
+  return start;
+}
+function fileOf(scope, cwd) {
+  return scope === "global" ? path5.join(boardHome(), "disabled.json") : path5.join(projectRoot(cwd), PROJECT_FILE);
+}
+function switchedOff(cwd) {
+  const off = /* @__PURE__ */ new Map();
+  for (const scope of ["project", "global"]) {
+    for (const id of read(fileOf(scope, cwd))) {
+      off.set(id, [...off.get(id) ?? [], scope]);
+    }
+  }
+  return off;
+}
+function knownId(wanted) {
+  const ids = readLockfile().entries.map((entry) => entry.id);
+  if (ids.includes(wanted)) {
+    return wanted;
+  }
+  const bySlug = ids.filter((id) => id.split("/")[1] === wanted);
+  return bySlug.length === 1 ? bySlug[0] : null;
+}
+function switchPrinciple(wanted, on, scope, cwd) {
+  const id = knownId(wanted);
+  if (!id) {
+    const known = readLockfile().entries.map((entry) => entry.id);
+    throw new Error(`"${wanted}" is not on this machine's advisory board. ${known.length > 0 ? `It holds: ${known.join(", ")}.` : "It is empty; run `wellactually sync`."}`);
+  }
+  const file2 = fileOf(scope, cwd);
+  const disabled = new Set(read(file2));
+  if (on) {
+    disabled.delete(id);
+  } else {
+    disabled.add(id);
+  }
+  write(file2, [...disabled]);
+  return { id, scope, file: file2, stillOff: switchedOff(cwd).get(id) ?? [] };
+}
+
+// packages/core/src/probe.ts
+import { execFileSync } from "node:child_process";
+import fs5 from "node:fs";
+import path6 from "node:path";
 var MAX_FIRE_RATE = 0.5;
 var MIN_FILES_FOR_VERDICT = 10;
 var MAX_FILE_BYTES = 512 * 1024;
@@ -12087,7 +12165,7 @@ async function probeRepo(built, dir, maxFiles = 5e3) {
     return report;
   }
   for (const relative of listFiles(dir).slice(0, maxFiles)) {
-    const content = readText(path5.join(dir, relative));
+    const content = readText(path6.join(dir, relative));
     if (content === null) {
       continue;
     }
@@ -12145,17 +12223,17 @@ function listFiles(dir) {
   }
   const files = [];
   const walk = (current) => {
-    for (const entry of fs4.readdirSync(current, { withFileTypes: true })) {
+    for (const entry of fs5.readdirSync(current, { withFileTypes: true })) {
       if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "build" || entry.name === "dist") {
         continue;
       }
-      const full = path5.join(current, entry.name);
+      const full = path6.join(current, entry.name);
       if (entry.isDirectory()) {
         walk(full);
         continue;
       }
       if (entry.isFile()) {
-        files.push(path5.relative(dir, full).split(path5.sep).join("/"));
+        files.push(path6.relative(dir, full).split(path6.sep).join("/"));
       }
     }
   };
@@ -12165,14 +12243,14 @@ function listFiles(dir) {
 function readText(file2) {
   let stat;
   try {
-    stat = fs4.statSync(file2);
+    stat = fs5.statSync(file2);
   } catch {
     return null;
   }
   if (!stat.isFile() || stat.size > MAX_FILE_BYTES) {
     return null;
   }
-  const content = fs4.readFileSync(file2, "utf8");
+  const content = fs5.readFileSync(file2, "utf8");
   if (content.includes("\0")) {
     return null;
   }
@@ -12200,8 +12278,8 @@ setEngines({
 });
 
 // packages/cli/src/commands.ts
-import fs5 from "node:fs";
-import path6 from "node:path";
+import fs6 from "node:fs";
+import path7 from "node:path";
 
 // packages/cli/src/registry.ts
 var RegistryError = class extends Error {
@@ -12373,7 +12451,7 @@ async function ratePrinciple(id, rating) {
   }
   const entry = readLockfile().entries.find((candidate) => candidate.id === id);
   if (!entry) {
-    return `${id} is not on this board. Use the id from the <principle id="..."> tag you were shown.`;
+    return `${id} is not on this advisory board. Use the id from the <principle id="..."> tag you were shown.`;
   }
   requireToken();
   const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, rating } });
@@ -12385,10 +12463,10 @@ async function ratePrinciple(id, rating) {
 
 // packages/cli/src/commands.ts
 function idOf(dir) {
-  return path6.basename(path6.resolve(dir));
+  return path7.basename(path7.resolve(dir));
 }
 async function checkDir(dir) {
-  const { built, report } = await checkPrinciple(readPrincipleDir(path6.resolve(dir)));
+  const { built, report } = await checkPrinciple(readPrincipleDir(path7.resolve(dir)));
   const id = idOf(dir);
   if (isPrincipleId(id)) {
     return { id, built, report };
@@ -12401,7 +12479,7 @@ async function testPrinciple(dir) {
   return { id, title: built?.manifest.title ?? null, report };
 }
 async function tryPrinciple(dir, input2) {
-  const built = await buildPrinciple(readPrincipleDir(path6.resolve(dir)));
+  const built = await buildPrinciple(readPrincipleDir(path7.resolve(dir)));
   const ctx = tryCtx(input2);
   if (!applies(built.manifest, ctx)) {
     return { applies: false, run: null, injected: "" };
@@ -12420,21 +12498,21 @@ function tryCtx(input2) {
   if (input2.file === void 0) {
     throw new Error("pass a file, --prompt or --command");
   }
-  const absolute = path6.resolve(input2.file);
-  const relative = path6.relative(process.cwd(), absolute);
-  const shown = relative.startsWith("..") ? path6.basename(absolute) : relative;
-  return fileCtx(input2.read ? "read" : "write", shown, fs5.readFileSync(absolute, "utf8"));
+  const absolute = path7.resolve(input2.file);
+  const relative = path7.relative(process.cwd(), absolute);
+  const shown = relative.startsWith("..") ? path7.basename(absolute) : relative;
+  return fileCtx(input2.read ? "read" : "write", shown, fs6.readFileSync(absolute, "utf8"));
 }
 async function probePrinciple(dir, repo) {
-  const built = await buildPrinciple(readPrincipleDir(path6.resolve(dir)));
-  return probeRepo(built, path6.resolve(repo));
+  const built = await buildPrinciple(readPrincipleDir(path7.resolve(dir)));
+  return probeRepo(built, path7.resolve(repo));
 }
 async function publishPrinciple(dir, note = "") {
   const id = idOf(dir);
   if (!isPrincipleId(id)) {
     throw new Error(`The folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}. Rename the folder, then publish again.`);
   }
-  return publishDraft(id, readPrincipleDir(path6.resolve(dir)), note);
+  return publishDraft(id, readPrincipleDir(path7.resolve(dir)), note);
 }
 async function principleHistory(id) {
   return fetchHistory(id);
@@ -12461,13 +12539,13 @@ function renderHistory(result) {
 }
 async function pullPrinciple(id, dir, force) {
   const source = await pullSource(id);
-  const target = path6.resolve(dir ?? source.id.split("/")[1] ?? "principle");
-  if (fs5.existsSync(target) && fs5.readdirSync(target).length > 0) {
+  const target = path7.resolve(dir ?? source.id.split("/")[1] ?? "principle");
+  if (fs6.existsSync(target) && fs6.readdirSync(target).length > 0) {
     if (!force) {
       throw new Error(`${target} already has files. Pass --force to replace them with the registry's version.`);
     }
     for (const name of Object.keys(readPrincipleDir(target))) {
-      fs5.rmSync(path6.join(target, name));
+      fs6.rmSync(path7.join(target, name));
     }
   }
   writeFileMap(target, source.files);
@@ -12536,6 +12614,17 @@ function renderReport(result) {
   }
   return lines.join("\n");
 }
+function renderSwitch(result, on) {
+  const where = result.scope === "global" ? "everywhere on this machine" : "in this project";
+  if (!on) {
+    return `${result.id} is off ${where}. Recorded in ${result.file}.`;
+  }
+  if (result.stillOff.length > 0) {
+    const other = result.stillOff.includes("global") ? "everywhere on this machine" : "in this project";
+    return `${result.id} is no longer switched off ${where}, but it is still off ${other}. Switch it on there too to make it run.`;
+  }
+  return `${result.id} runs again ${where}.`;
+}
 function renderProbe(report) {
   const lines = [
     `Scanned ${report.scanned} files, ${report.matched} matched the globs, ${report.fired} fired (${report.findings} findings). Slowest run ${report.slowestMs.toFixed(1)} ms.`,
@@ -12569,8 +12658,8 @@ function renderTry(result) {
 
 // packages/cli/src/hook.ts
 import { spawn } from "node:child_process";
-import fs6 from "node:fs";
-import path7 from "node:path";
+import fs7 from "node:fs";
+import path8 from "node:path";
 var MAX_FILE_BYTES2 = 512 * 1024;
 async function runHook(stdin) {
   const payload = JSON.parse(stdin);
@@ -12591,8 +12680,9 @@ async function runHook(stdin) {
   const shown = readShown(sessionId);
   const parts = [];
   const failures = /* @__PURE__ */ new Map();
+  const off = new Set(switchedOff(payload.cwd ?? process.cwd()).keys());
   for (const ctx of events) {
-    const run = await runBoard(ctx, lockfile);
+    const run = await runBoard(ctx, lockfile, off);
     if (readConfig().stats) {
       recordDetections(run.firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
     }
@@ -12614,7 +12704,7 @@ async function runHook(stdin) {
     parts.push(
       [
         "<wellactually-notice>",
-        "These principles on the user's board could not run. Tell the user once; it does not affect your task.",
+        "These principles on the user's advisory board could not run. Tell the user once; it does not affect your task.",
         ...newFailures.map(([id, error62]) => `- ${id}: ${error62}`),
         "</wellactually-notice>"
       ].join("\n")
@@ -12634,14 +12724,14 @@ async function runHook(stdin) {
 function readText2(file2) {
   let stat;
   try {
-    stat = fs6.statSync(file2);
+    stat = fs7.statSync(file2);
   } catch {
     return null;
   }
   if (!stat.isFile() || stat.size > MAX_FILE_BYTES2) {
     return null;
   }
-  const content = fs6.readFileSync(file2, "utf8");
+  const content = fs7.readFileSync(file2, "utf8");
   return content.includes("\0") ? null : content;
 }
 function startBackgroundSync() {
@@ -12649,19 +12739,19 @@ function startBackgroundSync() {
     return;
   }
   const main2 = process.argv[1];
-  const log = fs6.openSync(path7.join(ensureHome(), "sync.log"), "a");
+  const log = fs7.openSync(path8.join(ensureHome(), "sync.log"), "a");
   const child = spawn(process.execPath, [main2, "sync"], { detached: true, stdio: ["ignore", log, log] });
   child.unref();
 }
 function ensureHome() {
   const home = boardHome();
-  fs6.mkdirSync(home, { recursive: true });
+  fs7.mkdirSync(home, { recursive: true });
   return home;
 }
 function logHookFailure(error62) {
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${error62 instanceof Error ? error62.stack ?? error62.message : String(error62)}
 `;
-  fs6.appendFileSync(path7.join(ensureHome(), "hook.log"), line);
+  fs7.appendFileSync(path8.join(ensureHome(), "hook.log"), line);
 }
 
 // node_modules/zod/v3/helpers/util.js
@@ -13038,8 +13128,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path8, errorMaps, issueData } = params;
-  const fullPath = [...path8, ...issueData.path || []];
+  const { data, path: path9, errorMaps, issueData } = params;
+  const fullPath = [...path9, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -13154,11 +13244,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path8, key) {
+  constructor(parent, value, path9, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path8;
+    this._path = path9;
     this._key = key;
   }
   get path() {
@@ -17112,10 +17202,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path8) {
-  if (!path8)
+function getElementAtPath(obj, path9) {
+  if (!path9)
     return obj;
-  return path8.reduce((acc, key) => acc?.[key], obj);
+  return path9.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -17455,11 +17545,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path8, issues) {
+function prefixIssues(path9, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path8);
+    iss.path.unshift(path9);
     return iss;
   });
 }
@@ -17909,16 +17999,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path8 = []) => {
+  const processError = (error63, path9 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path9, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else {
-        const fullpath = [...path8, ...issue2.path];
+        const fullpath = [...path9, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -17957,17 +18047,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path8 = []) => {
+  const processError = (error63, path9 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path8, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path9, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path8, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path9, ...issue2.path]);
       } else {
-        const fullpath = [...path8, ...issue2.path];
+        const fullpath = [...path9, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -18006,8 +18096,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path8 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path8) {
+  const path9 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path9) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -33522,11 +33612,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path8) {
-  if (path8.length === 0) {
+function getDotPath(path9) {
+  if (path9.length === 0) {
     return "object root";
   }
-  return path8.reduce((acc, seg, index) => {
+  return path9.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -35753,13 +35843,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path8 = ref.slice(1).split("/").filter(Boolean);
-  if (path8.length === 0) {
+  const path9 = ref.slice(1).split("/").filter(Boolean);
+  if (path9.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path8[0] === defsKey) {
-    const key = path8[1] === void 0 ? void 0 : decodeJSONPointerSegment(path8[1]);
+  if (path9[0] === defsKey) {
+    const key = path9[1] === void 0 ? void 0 : decodeJSONPointerSegment(path9[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -41973,7 +42063,7 @@ function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
 async function serveMcp() {
-  const server = new McpServer({ name: "wellactually", version: "0.3.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.4.0" }, { instructions: AUTHORING_GUIDE });
   server.registerTool(
     "scaffold",
     {
@@ -42083,6 +42173,34 @@ ${report}`);
       }
     }
   );
+  const switchInput = {
+    id: external_exports.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
+    scope: external_exports.enum(["project", "global"]).describe("project: only in the project being worked on, recorded in .wellactually.json at its root. global: everywhere on this machine."),
+    dir: external_exports.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started.")
+  };
+  const switchTool = (on) => async ({ id, scope, dir }) => {
+    try {
+      return text(renderSwitch(switchPrinciple(id, on, scope, dir ?? process.cwd()), on));
+    } catch (error62) {
+      return text(error62.message);
+    }
+  };
+  server.registerTool(
+    "disable_principle",
+    {
+      description: "Switch a principle off, for this project or everywhere on this machine. Use it when the user asks for it, for instance because a principle does not fit a codebase. Do not use it on your own to get rid of advice you were just shown: say that the advice does not fit, rate it not_applicable, and let the user decide. Takes effect with the next edit.",
+      inputSchema: switchInput
+    },
+    switchTool(false)
+  );
+  server.registerTool(
+    "enable_principle",
+    {
+      description: "Switch a principle on again that was switched off with disable_principle, in the same scope it was switched off in.",
+      inputSchema: switchInput
+    },
+    switchTool(true)
+  );
   const transport = new StdioServerTransport();
   await server.connect(transport);
   await new Promise((resolve) => {
@@ -42092,7 +42210,7 @@ ${report}`);
 }
 
 // packages/cli/src/main.ts
-var HELP = `wellactually: author principles and run your board
+var HELP = `wellactually: author principles and run your advisory board
 
 Authoring
   wellactually init <slug>              Create a principle directory that already passes its tests
@@ -42108,14 +42226,16 @@ Authoring
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's versions, what each changed and why
 
-Your board
+Your advisory board
   wellactually login [--registry <url>] Sign in through the browser
   wellactually logout
   wellactually whoami
-  wellactually sync                     Download the board you set up on the website
+  wellactually sync                     Download the advisory board you set up on the website
   wellactually list                     Show what the hook runs
-  wellactually add <dir>                Put a local principle on this machine's board
+  wellactually add <dir>                Put a local principle on this machine's advisory board
   wellactually remove <slug>            Take a local principle off again
+  wellactually disable <id> [--global]  Switch a principle off in this project, or everywhere with --global
+  wellactually enable <id> [--global]   Switch it on again
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
 
 Integration
@@ -42136,7 +42256,8 @@ async function main() {
       message: { type: "string", short: "m" },
       prompt: { type: "string" },
       command: { type: "string" },
-      registry: { type: "string" }
+      registry: { type: "string" },
+      global: { type: "boolean", default: false }
     }
   });
   const print = (data, rendered) => {
@@ -42217,7 +42338,7 @@ Draft version ${result.version} uploaded. Review and release it at ${result.url}
       console.log(`Open ${start.verification_url}
 and confirm the code ${start.user_code}`);
       const handle = await finishDeviceLogin(start);
-      console.log(`Signed in as ${handle}. Run \`wellactually sync\` to download your board.`);
+      console.log(`Signed in as ${handle}. Run \`wellactually sync\` to download your advisory board.`);
       return 0;
     }
     case "logout":
@@ -42232,7 +42353,7 @@ and confirm the code ${start.user_code}`);
       const enabled = result.entries.filter((entry) => entry.enabled).length;
       print(
         result,
-        `${result.entries.length} principles on your board, ${enabled} enabled. Downloaded ${result.downloaded.length}, removed ${result.removed.length}.${result.reported > 0 ? ` Reported ${result.reported} detections.` : ""}`
+        `${result.entries.length} principles on your advisory board, ${enabled} enabled. Downloaded ${result.downloaded.length}, removed ${result.removed.length}.${result.reported > 0 ? ` Reported ${result.reported} detections.` : ""}`
       );
       return 0;
     }
@@ -42252,19 +42373,38 @@ and confirm the code ${start.user_code}`);
     case "list": {
       const lockfile = readLockfile();
       if (lockfile.entries.length === 0) {
-        console.log("Your board is empty. Add advisors on the website and run `wellactually sync`, or `wellactually add <dir>`.");
+        console.log("Your advisory board is empty. Add advisors on the website and run `wellactually sync`, or `wellactually add <dir>`.");
         return 0;
       }
+      const off = switchedOff(process.cwd());
       for (const entry of lockfile.entries) {
         const title = readCached(entry.hash)?.manifest.title ?? "(not downloaded, run `wellactually sync`)";
-        console.log(`${entry.enabled ? "on " : "off"}  ${entry.id}@${entry.version}  ${title}`);
+        const where = [...entry.enabled ? [] : ["website"], ...off.get(entry.id) ?? []];
+        console.log(`${where.length === 0 ? "on " : "off"}  ${entry.id}@${entry.version}  ${title}${where.length > 0 ? `  (off: ${where.join(", ")})` : ""}`);
       }
       return 0;
+    }
+    case "disable":
+    case "enable": {
+      const id = positionals[0];
+      if (!id) {
+        console.error(`usage: wellactually ${command} <advisor/principle> [--global]`);
+        return 2;
+      }
+      const on = command === "enable";
+      try {
+        const result = switchPrinciple(id, on, values.global ? "global" : "project", process.cwd());
+        print(result, renderSwitch(result, on));
+        return 0;
+      } catch (error62) {
+        console.error(error62.message);
+        return 1;
+      }
     }
     case "add": {
       const result = await addLocal(positionals[0] ?? ".");
       print(result, result.report.ok ? `${renderReport(result)}
-Added ${result.id} to this machine's board.` : renderReport(result));
+Added ${result.id} to this machine's advisory board.` : renderReport(result));
       return result.report.ok ? 0 : 1;
     }
     case "remove": {
@@ -42274,7 +42414,7 @@ Added ${result.id} to this machine's board.` : renderReport(result));
         return 2;
       }
       if (!removeLocal(id)) {
-        console.error(`No local principle "${id}" on the board. Registry principles are removed on the website.`);
+        console.error(`No local principle "${id}" on the advisory board. Registry principles are removed on the website.`);
         return 1;
       }
       console.log(`Removed ${id}.`);

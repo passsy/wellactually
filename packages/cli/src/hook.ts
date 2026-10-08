@@ -11,13 +11,14 @@ import {
   readShown,
   recordDetections,
   runBoard,
+  switchedOff,
   writeShown,
 } from "@wellactually/core/node";
 
 const MAX_FILE_BYTES = 512 * 1024;
 
 /**
- * Handles one hook call: turns the payload into a context, runs the board
+ * Handles one hook call: turns the payload into a context, runs the advisory board
  * and prints what the agent should read.
  *
  * It never touches the network. Syncing is a separate process started at
@@ -45,10 +46,11 @@ export async function runHook(stdin: string): Promise<string> {
   const shown = readShown(sessionId);
   const parts: string[] = [];
   const failures = new Map<string, string>();
+  const off = new Set(switchedOff(payload.cwd ?? process.cwd()).keys());
 
   // Most payloads are one event. A Codex patch is one per file it changes.
   for (const ctx of events) {
-    const run = await runBoard(ctx, lockfile);
+    const run = await runBoard(ctx, lockfile, off);
 
     // Counted per event a principle fired in, whether or not its advice is shown again.
     // Principles added from a local directory belong to no registry and are not counted.
@@ -76,7 +78,7 @@ export async function runHook(stdin: string): Promise<string> {
     parts.push(
       [
         "<wellactually-notice>",
-        "These principles on the user's board could not run. Tell the user once; it does not affect your task.",
+        "These principles on the user's advisory board could not run. Tell the user once; it does not affect your task.",
         ...newFailures.map(([id, error]) => `- ${id}: ${error}`),
         "</wellactually-notice>",
       ].join("\n"),
