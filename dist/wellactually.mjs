@@ -11860,13 +11860,13 @@ function frame(ctx, firings, alreadyShown = /* @__PURE__ */ new Set()) {
   const lines = [
     "<wellactually>",
     `${ctx.event}${where}: ${OPENERS[ctx.event]}`,
-    "Each principle below is advice from an advisor the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
+    "Each principle below is advice from an expert the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
     ""
   ];
   for (const { principle, findings } of firings) {
     const full = findings.some((finding) => finding.depth !== "pointer") && !alreadyShown.has(principle.hash);
-    const advisor = principle.id.split("/")[0] ?? "";
-    lines.push(`<principle id="${principle.id}" advisor="${advisor}" title=${JSON.stringify(principle.manifest.title)}>`);
+    const expert = principle.id.split("/")[0] ?? "";
+    lines.push(`<principle id="${principle.id}" expert="${expert}" title=${JSON.stringify(principle.manifest.title)}>`);
     for (const finding of findings) {
       lines.push(`- ${finding.line ? `line ${finding.line}: ` : ""}${finding.evidence}`);
     }
@@ -11876,7 +11876,7 @@ function frame(ctx, firings, alreadyShown = /* @__PURE__ */ new Set()) {
   }
   if (firings.some(({ principle }) => !principle.id.startsWith("local/"))) {
     lines.push(
-      `Once you know how a principle's advice went, you may tell its advisor: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command, and it needs no word to the user.`
+      `Once you know how a principle's advice went, you may tell its expert: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command, and it needs no word to the user.`
     );
   }
   lines.push("</wellactually>");
@@ -12421,7 +12421,7 @@ function parseId(id) {
   const [handle, slug, ...rest] = full.split("/");
   const version2 = versionText === void 0 ? null : Number(versionText.replace(/^v/, ""));
   if (!handle || !slug || rest.length > 0 || version2 !== null && (!Number.isInteger(version2) || version2 < 1)) {
-    throw new RegistryError(`"${id}" is not a principle id. Use advisor/principle, optionally with @version, or just the principle for one of your own.`);
+    throw new RegistryError(`"${id}" is not a principle id. Use expert/principle, optionally with @version, or just the principle for one of your own.`);
   }
   return { handle, slug, version: version2 };
 }
@@ -42057,13 +42057,13 @@ Loop: scaffold, edit, run_tests until green, probe against a real repository, ad
 To change an existing principle: pull it, edit, run_tests, publish_draft. That creates the draft of its next version.
 A draft is private. Releasing it is a click by the human on the website, where the same files can also be edited.
 
-Rating: when advice in an <wellactually> block was shown to you, tell its advisor how it went with rate_principle, once per principle and task.
+Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
 It is feedback to the author, not part of your task, and it never needs the user's attention.`;
 function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
 async function serveMcp() {
-  const server = new McpServer({ name: "wellactually", version: "0.4.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.5.0" }, { instructions: AUTHORING_GUIDE });
   server.registerTool(
     "scaffold",
     {
@@ -42138,7 +42138,7 @@ ${report}`);
     {
       description: "Download an existing principle's files from the registry into a directory, to update it. Returns the user's own draft when one is waiting, including edits made in the browser, otherwise the newest release. Then edit, run_tests and publish_draft.",
       inputSchema: {
-        id: external_exports.string().describe("advisor/principle, or just the principle id for one of the user's own. Append @3 for a specific version."),
+        id: external_exports.string().describe("expert/principle, or just the principle id for one of the user's own. Append @3 for a specific version."),
         dir: external_exports.string().describe("Absolute path of the directory to write the files to"),
         force: external_exports.boolean().optional().describe("Replace the files of a directory that already has some. Discards local edits.")
       }
@@ -42149,7 +42149,7 @@ ${report}`);
     "history",
     {
       description: "Show a principle's versions, newest first, like a commit log: version, hash, date, the author's note and which files changed. Includes the user's own unreleased draft.",
-      inputSchema: { id: external_exports.string().describe("advisor/principle, or just the principle id for one of the user's own") }
+      inputSchema: { id: external_exports.string().describe("expert/principle, or just the principle id for one of the user's own") }
     },
     async ({ id }) => text(renderHistory(await principleHistory(id)))
   );
@@ -42313,7 +42313,7 @@ Draft version ${result.version} uploaded. Review and release it at ${result.url}
     case "log": {
       const id = positionals[0];
       if (!id) {
-        console.error("usage: wellactually log <advisor/principle>");
+        console.error("usage: wellactually log <expert/principle>");
         return 2;
       }
       const result = await principleHistory(id);
@@ -42323,7 +42323,7 @@ Draft version ${result.version} uploaded. Review and release it at ${result.url}
     case "pull": {
       const id = positionals[0];
       if (!id) {
-        console.error("usage: wellactually pull <advisor/principle>[@version] [dir]");
+        console.error("usage: wellactually pull <expert/principle>[@version] [dir]");
         return 2;
       }
       const result = await pullPrinciple(id, positionals[1], values.force);
@@ -42373,7 +42373,7 @@ and confirm the code ${start.user_code}`);
     case "list": {
       const lockfile = readLockfile();
       if (lockfile.entries.length === 0) {
-        console.log("Your advisory board is empty. Add advisors on the website and run `wellactually sync`, or `wellactually add <dir>`.");
+        console.log("Your advisory board is empty. Add experts on the website and run `wellactually sync`, or `wellactually add <dir>`.");
         return 0;
       }
       const off = switchedOff(process.cwd());
@@ -42388,7 +42388,7 @@ and confirm the code ${start.user_code}`);
     case "enable": {
       const id = positionals[0];
       if (!id) {
-        console.error(`usage: wellactually ${command} <advisor/principle> [--global]`);
+        console.error(`usage: wellactually ${command} <expert/principle> [--global]`);
         return 2;
       }
       const on = command === "enable";

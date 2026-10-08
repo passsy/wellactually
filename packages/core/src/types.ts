@@ -1,8 +1,8 @@
 import type { Manifest } from "./manifest.ts";
 
-/** One principle on an advisory board, pinned to the exact version the user accepted. */
+/** One principle that runs for a user, at the version the last sync downloaded. */
 export interface BoardEntry {
-  /** `advisor/slug`, or `local/slug` for a principle added from a directory. */
+  /** `expert/slug`, or `local/slug` for a principle added from a directory. */
   id: string;
   version: number;
   hash: string;

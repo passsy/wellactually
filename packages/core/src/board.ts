@@ -101,7 +101,7 @@ export const BOARD_BUDGET_MS = 1500;
 /**
  * Runs every enabled principle of the advisory board that applies to this context.
  *
- * Each detector gets its own isolate and its own limits, so one advisor's
+ * Each detector gets its own isolate and its own limits, so one expert's
  * detector cannot read, slow down or break another's.
  */
 export async function runBoard(ctx: Ctx, lockfile: Lockfile = readLockfile(), off: ReadonlySet<string> = new Set()): Promise<BoardRun> {
@@ -150,7 +150,7 @@ const OPENERS: Record<Ctx["event"], string> = {
  * Turns firings into the text an agent reads.
  *
  * The frame says who is speaking and how much weight it carries: this is
- * advice from a named advisor the user chose, not an instruction and not
+ * advice from a named expert the user chose, not an instruction and not
  * part of the task. `alreadyShown` holds the hashes whose full advice this
  * session has seen, so a principle explains itself once and points after that.
  */
@@ -162,13 +162,13 @@ export function frame(ctx: Ctx, firings: Firing[], alreadyShown: ReadonlySet<str
   const lines: string[] = [
     "<wellactually>",
     `${ctx.event}${where}: ${OPENERS[ctx.event]}`,
-    "Each principle below is advice from an advisor the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
+    "Each principle below is advice from an expert the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
     "",
   ];
   for (const { principle, findings } of firings) {
     const full = findings.some((finding) => finding.depth !== "pointer") && !alreadyShown.has(principle.hash);
-    const advisor = principle.id.split("/")[0] ?? "";
-    lines.push(`<principle id="${principle.id}" advisor="${advisor}" title=${JSON.stringify(principle.manifest.title)}>`);
+    const expert = principle.id.split("/")[0] ?? "";
+    lines.push(`<principle id="${principle.id}" expert="${expert}" title=${JSON.stringify(principle.manifest.title)}>`);
     for (const finding of findings) {
       lines.push(`- ${finding.line ? `line ${finding.line}: ` : ""}${finding.evidence}`);
     }
@@ -180,7 +180,7 @@ export function frame(ctx: Ctx, firings: Firing[], alreadyShown: ReadonlySet<str
     // The tool's full name depends on the host, which prefixes it with the plugin
     // and the server. Naming the suffix lets an agent find it when tools are loaded on demand.
     lines.push(
-      'Once you know how a principle\'s advice went, you may tell its advisor: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command, and it needs no word to the user.',
+      'Once you know how a principle\'s advice went, you may tell its expert: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command, and it needs no word to the user.',
     );
   }
   lines.push("</wellactually>");

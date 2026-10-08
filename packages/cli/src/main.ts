@@ -123,7 +123,7 @@ async function main(): Promise<number> {
     case "log": {
       const id = positionals[0];
       if (!id) {
-        console.error("usage: wellactually log <advisor/principle>");
+        console.error("usage: wellactually log <expert/principle>");
         return 2;
       }
       const result = await principleHistory(id);
@@ -133,7 +133,7 @@ async function main(): Promise<number> {
     case "pull": {
       const id = positionals[0];
       if (!id) {
-        console.error("usage: wellactually pull <advisor/principle>[@version] [dir]");
+        console.error("usage: wellactually pull <expert/principle>[@version] [dir]");
         return 2;
       }
       const result = await pullPrinciple(id, positionals[1], values.force);
@@ -184,7 +184,7 @@ async function main(): Promise<number> {
     case "list": {
       const lockfile = readLockfile();
       if (lockfile.entries.length === 0) {
-        console.log("Your advisory board is empty. Add advisors on the website and run `wellactually sync`, or `wellactually add <dir>`.");
+        console.log("Your advisory board is empty. Add experts on the website and run `wellactually sync`, or `wellactually add <dir>`.");
         return 0;
       }
       const off = switchedOff(process.cwd());
@@ -199,7 +199,7 @@ async function main(): Promise<number> {
     case "enable": {
       const id = positionals[0];
       if (!id) {
-        console.error(`usage: wellactually ${command} <advisor/principle> [--global]`);
+        console.error(`usage: wellactually ${command} <expert/principle> [--global]`);
         return 2;
       }
       const on = command === "enable";

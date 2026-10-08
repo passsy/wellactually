@@ -42,7 +42,7 @@ Loop: scaffold, edit, run_tests until green, probe against a real repository, ad
 To change an existing principle: pull it, edit, run_tests, publish_draft. That creates the draft of its next version.
 A draft is private. Releasing it is a click by the human on the website, where the same files can also be edited.
 
-Rating: when advice in an <wellactually> block was shown to you, tell its advisor how it went with rate_principle, once per principle and task.
+Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
 It is feedback to the author, not part of your task, and it never needs the user's attention.`;
 
 function text(value: string) {
@@ -51,7 +51,7 @@ function text(value: string) {
 
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
-  const server = new McpServer({ name: "wellactually", version: "0.4.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.5.0" }, { instructions: AUTHORING_GUIDE });
 
   server.registerTool(
     "scaffold",
@@ -131,7 +131,7 @@ export async function serveMcp(): Promise<void> {
       description:
         "Download an existing principle's files from the registry into a directory, to update it. Returns the user's own draft when one is waiting, including edits made in the browser, otherwise the newest release. Then edit, run_tests and publish_draft.",
       inputSchema: {
-        id: z.string().describe("advisor/principle, or just the principle id for one of the user's own. Append @3 for a specific version."),
+        id: z.string().describe("expert/principle, or just the principle id for one of the user's own. Append @3 for a specific version."),
         dir: z.string().describe("Absolute path of the directory to write the files to"),
         force: z.boolean().optional().describe("Replace the files of a directory that already has some. Discards local edits."),
       },
@@ -144,7 +144,7 @@ export async function serveMcp(): Promise<void> {
     {
       description:
         "Show a principle's versions, newest first, like a commit log: version, hash, date, the author's note and which files changed. Includes the user's own unreleased draft.",
-      inputSchema: { id: z.string().describe("advisor/principle, or just the principle id for one of the user's own") },
+      inputSchema: { id: z.string().describe("expert/principle, or just the principle id for one of the user's own") },
     },
     async ({ id }) => text(renderHistory(await principleHistory(id))),
   );

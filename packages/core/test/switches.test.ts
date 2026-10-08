@@ -51,7 +51,7 @@ describe("switching a principle off on this machine", () => {
     expect(switchedOff(project).size).toBe(0);
   });
 
-  test("the name alone is enough when only one advisor has it", () => {
+  test("the name alone is enough when only one expert has it", () => {
     expect(switchPrinciple("grid", false, "project", project).id).toBe("ana/grid");
   });
 

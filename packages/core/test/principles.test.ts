@@ -6,10 +6,10 @@ import { buildPrinciple, checkPrinciple, languagesOf, matchesGlob, parsePrincipl
 const root = path.resolve(import.meta.dirname, "../../../principles");
 
 describe("the example principles", () => {
-  for (const advisor of fs.readdirSync(root)) {
-    for (const slug of fs.readdirSync(path.join(root, advisor))) {
-      test(`${advisor}/${slug} passes its cases and the publish gates`, async () => {
-        const { report } = await checkPrinciple(readPrincipleDir(path.join(root, advisor, slug)));
+  for (const expert of fs.readdirSync(root)) {
+    for (const slug of fs.readdirSync(path.join(root, expert))) {
+      test(`${expert}/${slug} passes its cases and the publish gates`, async () => {
+        const { report } = await checkPrinciple(readPrincipleDir(path.join(root, expert, slug)));
         expect(report.tests.filter((result) => !result.passed)).toEqual([]);
         expect(report.problems).toEqual([]);
         expect(report.ok).toBe(true);

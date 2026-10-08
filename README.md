@@ -32,7 +32,7 @@ The plugin needs Node 20 or newer and nothing else.
 ## What it does on your machine
 
 - When your agent writes or reads a file, gets a prompt or is about to run a shell command, a hook shows that one input to the detectors on your advisory board.
-- A detector that finds something puts its advisor's advice in front of the agent, once per session in full and as a pointer after that.
+- A detector that finds something puts its expert's advice in front of the agent, once per session in full and as a pointer after that.
 - The hook never uses the network.
   It reads the principles `sync` downloaded earlier.
 - `sync` runs when a session starts.
@@ -49,9 +49,10 @@ So they are contained.
   One that exceeds either is stopped and reported, and your agent carries on.
 - Whatever a detector reports must occur word for word in its input, or the finding is dropped.
   A detector cannot compose text for your agent at runtime.
-- Every principle on your advisory board is pinned to a content hash, and each download is hashed again before it is stored.
-- Nothing updates silently.
-  A new version is an offer on your advisory board that shows what changed in the advice.
+- Each download is checked against its content hash before it is stored.
+- Updates are automatic.
+  What an expert on your advisory board releases runs from your next sync, so add the experts you trust.
+  You can switch off any single principle, or remove the expert.
 
 The code that does this is in `packages/core`: `sandbox.ts` is the isolate, `board.ts` runs an advisory board.
 

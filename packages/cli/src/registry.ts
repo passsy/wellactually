@@ -214,14 +214,14 @@ export interface PulledSource {
   files: FileMap;
 }
 
-/** Splits `advisor/principle@3` into its parts. A bare principle id means one of the user's own. */
+/** Splits `expert/principle@3` into its parts. A bare principle id means one of the user's own. */
 function parseId(id: string): { handle: string; slug: string; version: number | null } {
   const [name = "", versionText] = id.split("@");
   const full = name.includes("/") ? name : `${readConfig().handle ?? ""}/${name}`;
   const [handle, slug, ...rest] = full.split("/");
   const version = versionText === undefined ? null : Number(versionText.replace(/^v/, ""));
   if (!handle || !slug || rest.length > 0 || (version !== null && (!Number.isInteger(version) || version < 1))) {
-    throw new RegistryError(`"${id}" is not a principle id. Use advisor/principle, optionally with @version, or just the principle for one of your own.`);
+    throw new RegistryError(`"${id}" is not a principle id. Use expert/principle, optionally with @version, or just the principle for one of your own.`);
   }
   return { handle, slug, version };
 }
