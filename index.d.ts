@@ -18,16 +18,17 @@
  * - 2: `file.path` is absolute. Added `file.relativePath`, `file.isNew` and
  *   `project`, and reading files through `node:fs` and `node:path`.
  *
- * A detector says which one it was written against with `export const api = 2;`.
- * It is then handed the event of that version for as long as it exists, also
- * when it is uploaded again after the API has moved on. The helpers in this
- * file work on the event of every version. Without the export it is built
- * against the newest version at the time of the upload.
+ * A detector says which one it was written against by where it imports from:
+ * `@wellactually/sdk/v2`. Each version has its own file next to this one, with
+ * the event of that version as `Ctx`. A principle is then handed the event of
+ * that version for as long as it is run, also when it is uploaded again after
+ * the API has moved on. The helpers in this file work on the event of every
+ * version. This file itself is what the host imports, not a detector.
  */
 export declare const API_VERSION = 2;
 /**
- * The event of API 1. A detector that declares `api = 1` is handed this:
- * `detect(ctx: CtxV1)`.
+ * The event of API 1. A detector that imports `@wellactually/sdk/v1` is handed
+ * this, and gets it there as `Ctx`.
  */
 export interface CtxV1 {
     event: EventName;
