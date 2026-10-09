@@ -113,7 +113,10 @@ export async function runBoard(ctx: Ctx, lockfile: Lockfile = readLockfile(), of
     if (!entry.enabled || off.has(entry.id)) {
       continue;
     }
-    const principle = readCached(entry.hash);
+    const cached = readCached(entry.hash);
+    // The cache is keyed by hash, and a fork starts with the hash of what it copied.
+    // Who the advice comes from is what the advisory board says, not who was cached first.
+    const principle = cached && { ...cached, id: entry.id, version: entry.version };
     if (!principle) {
       run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; run `wellactually sync`" });
       continue;

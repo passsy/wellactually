@@ -11822,7 +11822,8 @@ async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ ne
     if (!entry.enabled || off.has(entry.id)) {
       continue;
     }
-    const principle = readCached(entry.hash);
+    const cached2 = readCached(entry.hash);
+    const principle = cached2 && { ...cached2, id: entry.id, version: entry.version };
     if (!principle) {
       run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; run `wellactually sync`" });
       continue;
@@ -42063,7 +42064,7 @@ function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
 async function serveMcp() {
-  const server = new McpServer({ name: "wellactually", version: "0.5.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.5.1" }, { instructions: AUTHORING_GUIDE });
   server.registerTool(
     "scaffold",
     {
