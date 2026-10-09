@@ -25,7 +25,13 @@ const GRACE_MS = 400;
 const START_MS = 5000;
 
 type FromWorker = { ready: true } | { id: number; result: DetectorRun };
-type ToWorker = { ctx: Ctx } | { id: number; bundle: string };
+type ToWorker = { ctx: Ctx } | { id: number; bundle: string; api: number };
+
+/** A detector to run: its bundle and the detector API version it was built against. */
+export interface Task {
+  bundle: string;
+  api: number;
+}
 
 function failed(error: string): DetectorRun {
   return { findings: [], error, dropped: [], ms: 0 };
@@ -48,7 +54,7 @@ export async function serveDetectors(): Promise<void> {
       ctx = message.ctx;
       return;
     }
-    const result = ctx === null ? failed("the worker was given no event") : run(message.bundle, ctx, disk);
+    const result = ctx === null ? failed("the worker was given no event") : run(message.bundle, ctx, disk, message.api);
     port.postMessage({ id: message.id, result } satisfies FromWorker);
   });
   port.postMessage({ ready: true } satisfies FromWorker);
@@ -93,12 +99,12 @@ export class DetectorPool {
   }
 
   /**
-   * Runs every bundle against `ctx` and resolves to one result per bundle, in order.
+   * Runs every detector against `ctx` and resolves to one result per detector, in order.
    * A detector that is not started before `deadline` (from `performance.now()`) gets `skipped` as its error.
    */
-  async run(ctx: Ctx, bundles: string[], deadline: number, skipped: string): Promise<DetectorRun[]> {
-    const results: (DetectorRun | undefined)[] = new Array<DetectorRun | undefined>(bundles.length).fill(undefined);
-    while (this.members.length < Math.min(this.size, bundles.length)) {
+  async run(ctx: Ctx, tasks: Task[], deadline: number, skipped: string): Promise<DetectorRun[]> {
+    const results: (DetectorRun | undefined)[] = new Array<DetectorRun | undefined>(tasks.length).fill(undefined);
+    while (this.members.length < Math.min(this.size, tasks.length)) {
       this.start();
     }
     let next = 0;
@@ -109,7 +115,7 @@ export class DetectorPool {
         return;
       }
       member.worker.postMessage({ ctx } satisfies ToWorker);
-      while (next < bundles.length) {
+      while (next < tasks.length) {
         const id = next++;
         if (performance.now() > deadline) {
           results[id] = failed(skipped);
@@ -133,7 +139,7 @@ export class DetectorPool {
           member.worker.on("message", onMessage);
           member.worker.once("error", onGone);
           member.worker.once("exit", onGone);
-          member.worker.postMessage({ id, bundle: bundles[id] as string } satisfies ToWorker);
+          member.worker.postMessage({ id, ...(tasks[id] as Task) } satisfies ToWorker);
         });
         if (answer === null) {
           // It hangs or it died. Either way this thread is not trusted with another detector.

@@ -1,0 +1,36 @@
+{
+  "file": {
+    "event": "string",
+    "file": {
+      "content": "string",
+      "ext": "string",
+      "lines": [
+        "string"
+      ],
+      "name": "string",
+      "path": "string",
+      "written": [
+        {
+          "line": "number",
+          "text": "string"
+        }
+      ]
+    },
+    "isCommand": "boolean",
+    "isConversation": "boolean",
+    "isUserPrompt": "boolean",
+    "text": "string"
+  },
+  "text": {
+    "event": "string",
+    "file": "null",
+    "isCommand": "boolean",
+    "isConversation": "boolean",
+    "isUserPrompt": "boolean",
+    "text": "string"
+  },
+  "globals": [
+    "__ctx"
+  ],
+  "functions": []
+}

@@ -126,7 +126,10 @@ export function fsHost(cwd: string, project: ProjectFiles | null): (request: str
     }
     if (op === "list") {
       const entries = project.list(path);
-      return entries ? { entries } : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      if (entries) {
+        return { entries };
+      }
+      return project.stat(path) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };

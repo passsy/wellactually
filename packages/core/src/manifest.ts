@@ -18,6 +18,12 @@ export interface Manifest {
   events: EventName[];
   /** Which files run the detector on `write` and `read`. Empty means every file. */
   globs: string[];
+  /**
+   * The detector API version the bundle was built against. A host hands the
+   * detector the event of that version. Absent on principles built before
+   * versions were recorded, which are version 1: read it with `apiOf`.
+   */
+  api?: number;
 }
 
 export interface ParsedPrinciple {

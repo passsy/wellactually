@@ -272,7 +272,7 @@ describe("what detector.ts exports", () => {
 
   test("events and globs decide when the detector runs", async () => {
     const built = await build(`export const events = ["write", "read"]; export const globs = ["**/*.{ts,tsx}", "lib/**"]; export function detect() { return []; }`);
-    expect(built.manifest).toEqual({ title: "T", summary: "A summary.", languages: ["typescript"], events: ["write", "read"], globs: ["**/*.{ts,tsx}", "lib/**"] });
+    expect(built.manifest).toEqual({ title: "T", summary: "A summary.", languages: ["typescript"], events: ["write", "read"], globs: ["**/*.{ts,tsx}", "lib/**"], api: 2 });
   });
 
   test("a detector that exports neither runs on every written file", async () => {

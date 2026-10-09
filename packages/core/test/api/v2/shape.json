@@ -1,0 +1,43 @@
+{
+  "file": {
+    "event": "string",
+    "file": {
+      "content": "string",
+      "ext": "string",
+      "isNew": "boolean",
+      "lines": [
+        "string"
+      ],
+      "name": "string",
+      "path": "string",
+      "relativePath": "string",
+      "written": [
+        {
+          "line": "number",
+          "text": "string"
+        }
+      ]
+    },
+    "isCommand": "boolean",
+    "isConversation": "boolean",
+    "isUserPrompt": "boolean",
+    "project": "string",
+    "text": "string"
+  },
+  "text": {
+    "event": "string",
+    "file": "null",
+    "isCommand": "boolean",
+    "isConversation": "boolean",
+    "isUserPrompt": "boolean",
+    "project": "string",
+    "text": "string"
+  },
+  "globals": [
+    "__ctx",
+    "__cwd"
+  ],
+  "functions": [
+    "__fs"
+  ]
+}

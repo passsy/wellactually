@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  apiOf,
   applies,
   buildPrinciple,
   diskFiles,
@@ -85,7 +86,7 @@ export async function tryPrinciple(dir: string, input: TryInput): Promise<TryRes
   if (!applies(built.manifest, ctx)) {
     return { applies: false, run: null, injected: "" };
   }
-  const run = await runDetector(built.bundle, ctx, undefined, diskFiles());
+  const run = await runDetector(built.bundle, ctx, undefined, diskFiles(), apiOf(built.manifest));
   const injected = frame(ctx, run.findings.length > 0 ? [{ principle: asLocal(built, idOf(dir)), findings: run.findings }] : []);
   return { applies: true, run, injected };
 }

@@ -1,8 +1,9 @@
 import { shouldInterruptAfterDeadline, type QuickJSWASMModule } from "quickjs-emscripten-core";
-import type { Ctx, Finding } from "@wellactually/sdk";
+import { API_VERSION, type Ctx, type Finding } from "@wellactually/sdk";
+import { environmentFor, unsupported, type Environment } from "./api.ts";
 import { BUNDLE_GLOBAL, TESTS_GLOBAL } from "./bundle.ts";
 import { loadSandbox } from "./engines.ts";
-import { fsHost, type ProjectFiles } from "./project.ts";
+import type { ProjectFiles } from "./project.ts";
 
 export interface Limits {
   /** Wall clock budget for one detector run. */
@@ -54,29 +55,21 @@ const SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUN
  * run gets. The result is unvalidated: whatever the module exported.
  */
 export async function readExports(bundle: string, limits: Limits = DEFAULT_LIMITS): Promise<{ events?: unknown; globs?: unknown }> {
-  const { json, error } = await evaluate(`${bundle}\n;${SETTINGS}`, null, limits);
+  const { json, error } = evaluateIn(await loadSandbox(), `${bundle}\n;${SETTINGS}`, NOTHING, limits);
   if (json === null) {
     throw new Error(`detector.ts could not be loaded: ${error ?? "it returned nothing"}`);
   }
   return JSON.parse(json) as { events?: unknown; globs?: unknown };
 }
 
-/** A function the script inside an isolate may call. It takes one string and returns one. */
-type HostFunctions = Record<string, (argument: string) => string>;
+/** An isolate with nothing in it but the script. */
+const NOTHING: Environment = { strings: {}, functions: {} };
 
-/** Evaluates a script in a fresh isolate and returns the string it ends with. */
-async function evaluate(script: string, ctx: Ctx | null, limits: Limits): Promise<{ json: string | null; error: string | null }> {
-  return evaluateIn(await loadSandbox(), script, ctx, limits);
-}
-
-/** The same, once the WebAssembly module is loaded. From then on an isolate starts and ends without waiting. */
-function evaluateIn(
-  QuickJS: QuickJSWASMModule,
-  script: string,
-  ctx: Ctx | null,
-  limits: Limits,
-  hostFunctions: HostFunctions = {},
-): { json: string | null; error: string | null } {
+/**
+ * Evaluates a script in a fresh isolate and returns the string it ends with.
+ * The WebAssembly module is loaded already, so an isolate starts and ends without waiting.
+ */
+function evaluateIn(QuickJS: QuickJSWASMModule, script: string, environment: Environment, limits: Limits): { json: string | null; error: string | null } {
   const runtime = QuickJS.newRuntime();
   runtime.setMemoryLimit(limits.memoryBytes);
   runtime.setMaxStackSize(512 * 1024);
@@ -86,16 +79,12 @@ function evaluateIn(
   let json: string | null = null;
   let error: string | null = null;
   try {
-    if (ctx) {
-      const input = vm.newString(JSON.stringify(ctx));
-      vm.setProp(vm.global, "__ctx", input);
-      input.dispose();
-      // What a relative path is relative to, for the isolate's `node:path`.
-      const cwd = vm.newString(ctx.project ?? "/");
-      vm.setProp(vm.global, "__cwd", cwd);
-      cwd.dispose();
+    for (const [name, value] of Object.entries(environment.strings)) {
+      const handle = vm.newString(value);
+      vm.setProp(vm.global, name, handle);
+      handle.dispose();
     }
-    for (const [name, implementation] of Object.entries(hostFunctions)) {
+    for (const [name, implementation] of Object.entries(environment.functions)) {
       const handle = vm.newFunction(name, (argument) => vm.newString(implementation(vm.getString(argument))));
       vm.setProp(vm.global, name, handle);
       handle.dispose();
@@ -125,20 +114,34 @@ function evaluateIn(
  * a file from `project`, and only to read it. Without one it sees the event
  * and no files. A detector that runs out of time or memory ends with an
  * error, never with a hung hook.
+ *
+ * `api` is the detector API version the bundle was built against, from its
+ * manifest. The detector gets the event and the host functions of that
+ * version, whatever today's are.
  */
-export async function runDetector(bundle: string, ctx: Ctx, limits: Limits = DEFAULT_LIMITS, project: ProjectFiles | null = null): Promise<DetectorRun> {
-  return runDetectorIn(await loadSandbox(), bundle, ctx, limits, project);
+export async function runDetector(
+  bundle: string,
+  ctx: Ctx,
+  limits: Limits = DEFAULT_LIMITS,
+  project: ProjectFiles | null = null,
+  api: number = API_VERSION,
+): Promise<DetectorRun> {
+  return runDetectorIn(await loadSandbox(), bundle, ctx, limits, project, api);
 }
 
 /** `runDetector` without the wait, for callers that have to answer at once: a test's `detect()`. */
-export async function detectorRunner(): Promise<(bundle: string, ctx: Ctx, project: ProjectFiles | null) => DetectorRun> {
+export async function detectorRunner(): Promise<(bundle: string, ctx: Ctx, project: ProjectFiles | null, api?: number) => DetectorRun> {
   const QuickJS = await loadSandbox();
-  return (bundle, ctx, project) => runDetectorIn(QuickJS, bundle, ctx, DEFAULT_LIMITS, project);
+  return (bundle, ctx, project, api = API_VERSION) => runDetectorIn(QuickJS, bundle, ctx, DEFAULT_LIMITS, project, api);
 }
 
-function runDetectorIn(QuickJS: QuickJSWASMModule, bundle: string, ctx: Ctx, limits: Limits, project: ProjectFiles | null): DetectorRun {
+function runDetectorIn(QuickJS: QuickJSWASMModule, bundle: string, ctx: Ctx, limits: Limits, project: ProjectFiles | null, api: number): DetectorRun {
+  const refused = unsupported(api);
+  if (refused !== null) {
+    return { findings: [], error: refused, dropped: [], ms: 0 };
+  }
   const started = performance.now();
-  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${RUN}`, ctx, limits, { __fs: fsHost(ctx.project ?? "/", project) });
+  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${RUN}`, environmentFor(api, ctx, project), limits);
   const ms = performance.now() - started;
   if (json === null) {
     return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };
@@ -158,7 +161,7 @@ export interface TestHost {
   /** A test is about to start. Detector runs that follow belong to it. */
   begin: (test: { file: string; name: string }) => void;
   /** A test called `detect(event, options)`. `run` runs a bundled detector in a fresh isolate, right now. */
-  detect: (call: unknown, run: (bundle: string, ctx: Ctx, project: ProjectFiles | null) => DetectorRun) => { findings: Finding[] } | { error: string };
+  detect: (call: unknown, run: (bundle: string, ctx: Ctx, project: ProjectFiles | null, api: number) => DetectorRun) => { findings: Finding[] } | { error: string };
 }
 
 export interface RawTestResult {
@@ -180,8 +183,8 @@ export interface RawTestResult {
  */
 export async function runTestBundle(bundle: string, host: TestHost, limits: Limits = TEST_LIMITS): Promise<{ results: RawTestResult[]; error: string | null }> {
   const QuickJS = await loadSandbox();
-  const run = (detector: string, ctx: Ctx, project: ProjectFiles | null): DetectorRun => runDetectorIn(QuickJS, detector, ctx, DEFAULT_LIMITS, project);
-  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${TESTS_GLOBAL}.run()`, null, limits, {
+  const run = (detector: string, ctx: Ctx, project: ProjectFiles | null, api: number): DetectorRun => runDetectorIn(QuickJS, detector, ctx, DEFAULT_LIMITS, project, api);
+  const functions: Environment["functions"] = {
     __begin: (test) => {
       host.begin(JSON.parse(test) as { file: string; name: string });
       return "";
@@ -195,7 +198,8 @@ export async function runTestBundle(bundle: string, host: TestHost, limits: Limi
       }
       return JSON.stringify(host.detect(parsed, run));
     },
-  });
+  };
+  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${TESTS_GLOBAL}.run()`, { strings: {}, functions }, limits);
   if (json === null) {
     return { results: [], error: (error ?? "the tests returned nothing").replace("the detector ran longer", "the tests ran longer").replace("the detector used more", "the tests used more") };
   }

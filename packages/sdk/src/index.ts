@@ -7,6 +7,21 @@
  */
 
 /**
+ * The version of the detector API this SDK is: the event a detector is handed
+ * and what it may ask the host for.
+ *
+ * A principle records the version it was built against, and a host runs each
+ * detector against the version it was built for. So the API changes by adding
+ * a version here, with the host's step back to the one before. Changing what
+ * an existing version means would break principles that are already released.
+ *
+ * - 1: the event with `file.path` relative. A detector could reach nothing outside it.
+ * - 2: `file.path` is absolute. Added `file.relativePath`, `file.isNew` and
+ *   `project`, and reading files through `node:fs` and `node:path`.
+ */
+export const API_VERSION = 2;
+
+/**
  * What happened in the session.
  *
  * - `write`: the agent wrote or edited a file. `ctx.file.written` holds the lines it wrote.

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
+import { API_VERSION } from "@wellactually/sdk";
 import { buildBundle, DetectorPool, runBoard, textCtx, writeCached } from "../src/node.ts";
 
 describe("running the advisory board", () => {
@@ -23,7 +24,7 @@ describe("running the advisory board on worker threads", () => {
 
   test("gives what one thread gives, in the order of the advisory board, and stops what never ends", async () => {
     process.env.WELLACTUALLY_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-pool-"));
-    const manifest = { title: "T", summary: "", languages: [], events: ["prompt" as const], globs: [] };
+    const manifest = { title: "T", summary: "", languages: [], events: ["prompt" as const], globs: [], api: API_VERSION };
     const fires = await buildBundle({ "detector.ts": "export function detect(ctx) { return [{ evidence: ctx.text }]; }" });
     const quiet = await buildBundle({ "detector.ts": "export function detect() { return []; }" });
     const endless = await buildBundle({ "detector.ts": "export function detect() { for (;;) {} }" });
@@ -57,7 +58,7 @@ describe("running the advisory board on worker threads", () => {
     fs.writeFileSync(idle, "process.exit(0);\n");
     const pool = new DetectorPool(idle, 2);
     try {
-      const results = await pool.run(textCtx("prompt", "x"), ["a", "b"], performance.now() + 1000, "skipped");
+      const results = await pool.run(textCtx("prompt", "x"), [{ bundle: "a", api: 2 }, { bundle: "b", api: 2 }], performance.now() + 1000, "skipped");
       expect(results.map((result) => result.error)).toEqual(["no worker thread was left to run it", "no worker thread was left to run it"]);
     } finally {
       await pool.close();

@@ -1,4 +1,5 @@
-import { TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
+import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
+import { apiOf } from "./api.ts";
 import { buildBundle, buildTestBundle, BundleError, byteLength, detectorEntry, type FileMap } from "./bundle.ts";
 import { applies, fileCtx, textCtx } from "./ctx.ts";
 import { languagesOf, ManifestError, parsePrinciple, readSettings, type Manifest } from "./manifest.ts";
@@ -93,7 +94,8 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
     throw new BundleError((error as Error).message);
   }
   const { events, globs } = readSettings(exported);
-  const manifest: Manifest = { title, summary, languages: languagesOf(globs), events, globs };
+  // The bundle was just built with this SDK, so this is the API it speaks for as long as it exists.
+  const manifest: Manifest = { title, summary, languages: languagesOf(globs), events, globs, api: API_VERSION };
   return { manifest, advice, bundle, hash: await hashPrinciple(manifest, advice, bundle) };
 }
 
@@ -212,7 +214,7 @@ export function answerDetect(
   built: BuiltPrinciple,
   files: FileMap,
   call: unknown,
-  run: (bundle: string, ctx: Ctx, project: ProjectFiles | null) => DetectorRun,
+  run: (bundle: string, ctx: Ctx, project: ProjectFiles | null, api: number) => DetectorRun,
   record: (call: DetectCall) => void = () => {},
 ): { findings: Finding[] } | { error: string } {
   const { event, options } = (typeof call === "object" && call !== null ? call : {}) as { event?: unknown; options?: { project?: unknown } };
@@ -247,7 +249,7 @@ export function answerDetect(
   if (!recorded.ran) {
     return { findings: [] };
   }
-  const result = run(built.bundle, ctx, mapProject(TEST_ROOT, projectFiles));
+  const result = run(built.bundle, ctx, mapProject(TEST_ROOT, projectFiles), apiOf(built.manifest));
   recorded.ms = result.ms;
   if (result.error) {
     return { error: `The detector failed: ${result.error}` };

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Ctx, Finding } from "@wellactually/sdk";
+import { apiOf } from "./api.ts";
 import { applies } from "./ctx.ts";
 import { diskFiles } from "./fs.ts";
 import type { BoardEntry, CachedPrinciple, Lockfile } from "./types.ts";
@@ -149,14 +150,15 @@ export async function runBoard(
 
   let results: DetectorRun[];
   if (pool !== null && applying.length >= parallelFrom) {
-    results = await pool.run(ctx, applying.map((principle) => principle.bundle), started + BOARD_BUDGET_MS, skipped);
+    const tasks = applying.map((principle) => ({ bundle: principle.bundle, api: apiOf(principle.manifest) }));
+    results = await pool.run(ctx, tasks, started + BOARD_BUDGET_MS, skipped);
   } else {
     results = [];
     for (const principle of applying) {
       results.push(
         performance.now() - started > BOARD_BUDGET_MS
           ? { findings: [], error: skipped, dropped: [], ms: 0 }
-          : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk),
+          : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk, apiOf(principle.manifest)),
       );
     }
   }

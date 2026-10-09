@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { apiOf } from "./api.ts";
 import { applies, fileCtx } from "./ctx.ts";
 import { diskFiles, toPosix } from "./fs.ts";
 import type { BuiltPrinciple } from "./principle.ts";
@@ -78,7 +79,7 @@ export async function probeRepo(built: BuiltPrinciple, dir: string, maxFiles = 5
       continue;
     }
     report.matched++;
-    const run = await runDetector(built.bundle, ctx, undefined, project);
+    const run = await runDetector(built.bundle, ctx, undefined, project, apiOf(built.manifest));
     report.slowestMs = Math.max(report.slowestMs, run.ms);
     if (run.error) {
       report.errors.push({ path: relative, error: run.error });

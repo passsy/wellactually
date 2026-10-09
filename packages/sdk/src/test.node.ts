@@ -37,9 +37,9 @@ const runOnce = await detectorRunner();
  * detector has done anything. So a run that was stopped for time is tried
  * once more. A detector that really is too slow is stopped both times.
  */
-const run: typeof runOnce = (bundle, ctx, project) => {
-  const first = runOnce(bundle, ctx, project);
-  return first.error?.includes("ran longer than") ? runOnce(bundle, ctx, project) : first;
+const run: typeof runOnce = (bundle, ctx, project, api) => {
+  const first = runOnce(bundle, ctx, project, api);
+  return first.error?.includes("ran longer than") ? runOnce(bundle, ctx, project, api) : first;
 };
 const builder = createRequire(import.meta.url).resolve("@wellactually/core/build-principle");
 const self = fileURLToPath(import.meta.url);

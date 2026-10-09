@@ -1,0 +1,17 @@
+{
+  "manifest": {
+    "title": "Golden",
+    "summary": "A frozen detector that later hosts have to keep running.",
+    "languages": [
+      "dart"
+    ],
+    "events": [
+      "write",
+      "prompt"
+    ],
+    "globs": [
+      "lib/**/*.dart"
+    ]
+  },
+  "bundle": "var __principle = (() => {\n  var __defProp = Object.defineProperty;\n  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;\n  var __getOwnPropNames = Object.getOwnPropertyNames;\n  var __hasOwnProp = Object.prototype.hasOwnProperty;\n  var __export = (target, all) => {\n    for (var name in all)\n      __defProp(target, name, { get: all[name], enumerable: true });\n  };\n  var __copyProps = (to, from, except, desc) => {\n    if (from && typeof from === \"object\" || typeof from === \"function\") {\n      for (let key of __getOwnPropNames(from))\n        if (!__hasOwnProp.call(to, key) && key !== except)\n          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });\n    }\n    return to;\n  };\n  var __toCommonJS = (mod) => __copyProps(__defProp({}, \"__esModule\", { value: true }), mod);\n\n  // principle:detector.ts\n  var detector_exports = {};\n  __export(detector_exports, {\n    detect: () => detect,\n    events: () => events,\n    globs: () => globs\n  });\n\n  // sdk:index.ts\n  var WORD_CHAR = /[A-Za-z0-9_$]/;\n  function findWord(text, word, from = 0) {\n    let at = text.indexOf(word, from);\n    while (at !== -1) {\n      const before = at === 0 ? \"\" : text[at - 1] ?? \"\";\n      const after = text[at + word.length] ?? \"\";\n      if (!WORD_CHAR.test(before) && !WORD_CHAR.test(after)) {\n        return at;\n      }\n      at = text.indexOf(word, at + 1);\n    }\n    return -1;\n  }\n  function* mentioned(ctx, names) {\n    if (!ctx.isConversation) {\n      return;\n    }\n    const haystack = ctx.text.toLowerCase();\n    for (const name of names) {\n      const at = findWord(haystack, name.toLowerCase());\n      if (at === -1) {\n        continue;\n      }\n      yield { evidence: ctx.text.slice(at, at + name.length), depth: \"pointer\" };\n      return;\n    }\n  }\n  function writtenLines(ctx) {\n    return ctx.file?.written ?? [];\n  }\n\n  // principle:detector.ts\n  var events = [\"write\", \"prompt\"];\n  var globs = [\"lib/**/*.dart\"];\n  function* detect(ctx) {\n    yield* mentioned(ctx, [\"late keyword\"]);\n    const file = ctx.file;\n    if (!file) {\n      return;\n    }\n    const said = (word) => ({ line: 1, evidence: word });\n    const everything = ctx;\n    const fileKeys = Object.keys(file).sort().join(\",\");\n    const keys = Object.keys(everything).sort().join(\",\");\n    if (file.path === \"lib/session.dart\" && file.name === \"session.dart\" && file.ext === \".dart\") {\n      yield said(\"relative\");\n    }\n    if (fileKeys === \"content,ext,lines,name,path,written\" && keys === \"event,file,isCommand,isConversation,isUserPrompt,text\") {\n      yield said(\"shape\");\n    }\n    if (typeof globalThis.__fs === \"undefined\" && typeof globalThis.__cwd === \"undefined\") {\n      yield said(\"alone\");\n    }\n    for (const written of writtenLines(ctx)) {\n      if (findWord(written.text, \"late\") !== -1) {\n        yield { line: written.line, evidence: written.text.trim() };\n      }\n    }\n  }\n  return __toCommonJS(detector_exports);\n})();\n"
+}

@@ -195,8 +195,14 @@ describe("reading the project from a detector", () => {
     expect(run.findings).toEqual(yes);
   });
 
-  test("a missing file throws ENOENT, as in Node", async () => {
-    const run = await say(`try { fs.readFileSync("/project/missing"); } catch (error) { return error.code === "ENOENT" ? [{ evidence: "yes" }] : []; } return [];`);
+  test("a missing file or directory throws ENOENT, as in Node", async () => {
+    const run = await say(`
+      const codes = [];
+      for (const ask of [() => fs.readFileSync("/project/missing"), () => fs.readdirSync("/project/missing"), () => fs.readdirSync("/project/pubspec.yaml")]) {
+        try { ask(); } catch (error) { codes.push(error.code); }
+      }
+      return codes.join() === "ENOENT,ENOENT,ENOTDIR" ? [{ evidence: "yes" }] : [];
+    `);
     expect(run.findings).toEqual(yes);
   });
 

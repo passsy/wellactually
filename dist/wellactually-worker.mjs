@@ -3732,9 +3732,8 @@ function loadSandbox() {
   return quickjs;
 }
 
-// packages/core/src/bundle.ts
-var BUNDLE_GLOBAL = "__principle";
-var MAX_BUNDLE_BYTES = 256 * 1024;
+// packages/sdk/src/index.ts
+var API_VERSION = 2;
 
 // packages/core/src/project.ts
 var MAX_FS_CALLS = 500;
@@ -3779,7 +3778,10 @@ function fsHost(cwd, project) {
     }
     if (op === "list") {
       const entries = project.list(path2);
-      return entries ? { entries } : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      if (entries) {
+        return { entries };
+      }
+      return project.stat(path2) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
@@ -3796,6 +3798,65 @@ function fsHost(cwd, project) {
   };
   return (request) => JSON.stringify(answer(request));
 }
+
+// packages/core/src/api.ts
+var MIN_API_VERSION = 1;
+function unsupported(api) {
+  if (!Number.isInteger(api) || api < 1) {
+    return `it names a detector API version this host does not know: ${String(api)}`;
+  }
+  if (api > API_VERSION) {
+    return `it was built for detector API ${api} and this version of Well Actually runs up to ${API_VERSION}. Update the plugin.`;
+  }
+  if (api < MIN_API_VERSION) {
+    return `it was built for detector API ${api}, which is no longer run. Its expert has to release it again.`;
+  }
+  return null;
+}
+function toV1(ctx) {
+  return {
+    event: ctx.event,
+    file: ctx.file && {
+      path: ctx.file.relativePath,
+      name: ctx.file.name,
+      ext: ctx.file.ext,
+      content: ctx.file.content,
+      lines: ctx.file.lines,
+      written: ctx.file.written
+    },
+    text: ctx.text,
+    isUserPrompt: ctx.isUserPrompt,
+    isCommand: ctx.isCommand,
+    isConversation: ctx.isConversation
+  };
+}
+var DOWNGRADE = {
+  2: toV1
+};
+function ctxFor(api, ctx) {
+  let event = ctx;
+  for (let version = API_VERSION; version > api; version--) {
+    const step = DOWNGRADE[version];
+    if (!step) {
+      throw new Error(`there is no step from detector API ${version} to ${version - 1}`);
+    }
+    event = step(event);
+  }
+  return event;
+}
+function environmentFor(api, ctx, project) {
+  const strings = { __ctx: JSON.stringify(ctxFor(api, ctx)) };
+  const functions = {};
+  if (api >= 2) {
+    strings.__cwd = ctx.project ?? "/";
+    functions.__fs = fsHost(ctx.project ?? "/", project);
+  }
+  return { strings, functions };
+}
+
+// packages/core/src/bundle.ts
+var BUNDLE_GLOBAL = "__principle";
+var MAX_BUNDLE_BYTES = 256 * 1024;
 
 // packages/core/src/sandbox.ts
 var DEFAULT_LIMITS = {
@@ -3820,7 +3881,7 @@ var RUN = `
 })()
 `;
 var SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs })`;
-function evaluateIn(QuickJS, script, ctx, limits, hostFunctions = {}) {
+function evaluateIn(QuickJS, script, environment, limits) {
   const runtime = QuickJS.newRuntime();
   runtime.setMemoryLimit(limits.memoryBytes);
   runtime.setMaxStackSize(512 * 1024);
@@ -3829,15 +3890,12 @@ function evaluateIn(QuickJS, script, ctx, limits, hostFunctions = {}) {
   let json = null;
   let error = null;
   try {
-    if (ctx) {
-      const input = vm.newString(JSON.stringify(ctx));
-      vm.setProp(vm.global, "__ctx", input);
-      input.dispose();
-      const cwd = vm.newString(ctx.project ?? "/");
-      vm.setProp(vm.global, "__cwd", cwd);
-      cwd.dispose();
+    for (const [name, value] of Object.entries(environment.strings)) {
+      const handle = vm.newString(value);
+      vm.setProp(vm.global, name, handle);
+      handle.dispose();
     }
-    for (const [name, implementation] of Object.entries(hostFunctions)) {
+    for (const [name, implementation] of Object.entries(environment.functions)) {
       const handle = vm.newFunction(name, (argument) => vm.newString(implementation(vm.getString(argument))));
       vm.setProp(vm.global, name, handle);
       handle.dispose();
@@ -3860,12 +3918,16 @@ function evaluateIn(QuickJS, script, ctx, limits, hostFunctions = {}) {
 }
 async function detectorRunner() {
   const QuickJS = await loadSandbox();
-  return (bundle, ctx, project) => runDetectorIn(QuickJS, bundle, ctx, DEFAULT_LIMITS, project);
+  return (bundle, ctx, project, api = API_VERSION) => runDetectorIn(QuickJS, bundle, ctx, DEFAULT_LIMITS, project, api);
 }
-function runDetectorIn(QuickJS, bundle, ctx, limits, project) {
+function runDetectorIn(QuickJS, bundle, ctx, limits, project, api) {
+  const refused = unsupported(api);
+  if (refused !== null) {
+    return { findings: [], error: refused, dropped: [], ms: 0 };
+  }
   const started = performance.now();
   const { json, error } = evaluateIn(QuickJS, `${bundle}
-;${RUN}`, ctx, limits, { __fs: fsHost(ctx.project ?? "/", project) });
+;${RUN}`, environmentFor(api, ctx, project), limits);
   const ms = performance.now() - started;
   if (json === null) {
     return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };
@@ -4025,7 +4087,7 @@ async function serveDetectors() {
       ctx = message.ctx;
       return;
     }
-    const result = ctx === null ? failed("the worker was given no event") : run(message.bundle, ctx, disk);
+    const result = ctx === null ? failed("the worker was given no event") : run(message.bundle, ctx, disk, message.api);
     port.postMessage({ id: message.id, result });
   });
   port.postMessage({ ready: true });
