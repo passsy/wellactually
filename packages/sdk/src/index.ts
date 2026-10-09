@@ -18,8 +18,35 @@
  * - 1: the event with `file.path` relative. A detector could reach nothing outside it.
  * - 2: `file.path` is absolute. Added `file.relativePath`, `file.isNew` and
  *   `project`, and reading files through `node:fs` and `node:path`.
+ *
+ * A detector says which one it was written against with `export const api = 2;`.
+ * It is then handed the event of that version for as long as it exists, also
+ * when it is uploaded again after the API has moved on. The helpers in this
+ * file work on the event of every version. Without the export it is built
+ * against the newest version at the time of the upload.
  */
 export const API_VERSION = 2;
+
+/**
+ * The event of API 1. A detector that declares `api = 1` is handed this:
+ * `detect(ctx: CtxV1)`.
+ */
+export interface CtxV1 {
+  event: EventName;
+  file: {
+    /** Relative, with forward slashes. */
+    path: string;
+    name: string;
+    ext: string;
+    content: string;
+    lines: string[];
+    written: WrittenLine[];
+  } | null;
+  text: string;
+  isUserPrompt: boolean;
+  isCommand: boolean;
+  isConversation: boolean;
+}
 
 /**
  * What happened in the session.
@@ -137,7 +164,7 @@ export function findWord(text: string, word: string, from = 0): number {
  * This is a name check for a named technology, not a keyword cloud.
  * Pass the few phrases that can only mean your topic.
  */
-export function* mentioned(ctx: Ctx, names: readonly string[]): Generator<Finding> {
+export function* mentioned(ctx: Pick<Ctx, "isConversation" | "text">, names: readonly string[]): Generator<Finding> {
   if (!ctx.isConversation) {
     return;
   }
@@ -153,7 +180,7 @@ export function* mentioned(ctx: Ctx, names: readonly string[]): Generator<Findin
 }
 
 /** The lines the agent wrote in this event. Empty when no file is involved. */
-export function writtenLines(ctx: Ctx): WrittenLine[] {
+export function writtenLines(ctx: { file: { written: WrittenLine[] } | null }): WrittenLine[] {
   return ctx.file?.written ?? [];
 }
 

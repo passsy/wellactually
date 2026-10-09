@@ -1,6 +1,6 @@
 import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
-import { apiOf } from "./api.ts";
-import { buildBundle, buildTestBundle, BundleError, byteLength, detectorEntry, type FileMap } from "./bundle.ts";
+import { apiOf, BUILT_IN_SINCE, declaredApi } from "./api.ts";
+import { buildDetector, buildTestBundle, BundleError, byteLength, detectorEntry, type FileMap } from "./bundle.ts";
 import { applies, fileCtx, textCtx } from "./ctx.ts";
 import { languagesOf, ManifestError, parsePrinciple, readSettings, type Manifest } from "./manifest.ts";
 import { mapProject, type ProjectFiles } from "./project.ts";
@@ -86,16 +86,29 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
     throw new ManifestError("principle.md is missing");
   }
   const { title, summary, advice } = parsePrinciple(source);
-  const bundle = await buildBundle(files);
-  let exported: { events?: unknown; globs?: unknown };
+  const { bundle, builtIns } = await buildDetector(files);
+  let exported: { events?: unknown; globs?: unknown; api?: unknown };
   try {
     exported = await readExports(bundle);
   } catch (error) {
     throw new BundleError((error as Error).message);
   }
   const { events, globs } = readSettings(exported);
-  // The bundle was just built with this SDK, so this is the API it speaks for as long as it exists.
-  const manifest: Manifest = { title, summary, languages: languagesOf(globs), events, globs, api: API_VERSION };
+  // The version the detector says it was written against, and the newest when it says nothing.
+  // From now on every host hands it the event of that version.
+  let api: number;
+  try {
+    api = declaredApi(exported.api);
+  } catch (error) {
+    throw new ManifestError((error as Error).message);
+  }
+  for (const name of builtIns) {
+    const since = BUILT_IN_SINCE[name] ?? 1;
+    if (api < since) {
+      throw new ManifestError(`detector.ts imports ${name}, which exists from detector API ${since} on, and declares api = ${api}. Raise it: export const api = ${API_VERSION};`);
+    }
+  }
+  const manifest: Manifest = { title, summary, languages: languagesOf(globs), events, globs, api };
   return { manifest, advice, bundle, hash: await hashPrinciple(manifest, advice, bundle) };
 }
 

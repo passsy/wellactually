@@ -1,5 +1,6 @@
 import { blankCommentsAndStrings, findWord, mentioned, writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
 
+export const api = 2;
 export const events: EventName[] = ["write", "prompt"];
 export const globs = ["**/*.dart"];
 

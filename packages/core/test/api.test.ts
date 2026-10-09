@@ -7,6 +7,7 @@ import {
   apiOf,
   applies,
   buildPrinciple,
+  checkPrinciple,
   ctxFor,
   DetectorPool,
   environmentFor,
@@ -15,6 +16,7 @@ import {
   MIN_API_VERSION,
   runBoard,
   runDetector,
+  scaffoldFiles,
   shapeOf,
   textCtx,
   unsupported,
@@ -117,12 +119,71 @@ describe("a detector from a version this host does not run", () => {
 });
 
 describe("a build", () => {
-  test("records the API version of the SDK it was built with", async () => {
-    const built = await buildPrinciple({
-      "principle.md": "# T\n\nOne sentence.\n\nA paragraph of advice that is long enough to count as advice for an agent to read.",
-      "detector.ts": "export function detect() { return []; }",
-    });
+  const advice = "# T\n\nOne sentence.\n\nA paragraph of advice that is long enough to count as advice for an agent to read.";
+  const build = (detector: string) => buildPrinciple({ "principle.md": advice, "detector.ts": detector });
+
+  test("records the newest API version when the detector declares none", async () => {
+    expect((await build("export function detect() { return []; }")).manifest.api).toBe(API_VERSION);
+  });
+
+  test("records the version the detector declares", async () => {
+    expect((await build("export const api = 1; export function detect() { return []; }")).manifest.api).toBe(1);
+  });
+
+  test("a new principle declares the version it starts from", async () => {
+    const built = await buildPrinciple(scaffoldFiles("my-principle"));
+    expect(scaffoldFiles("my-principle")["detector.ts"]).toContain(`export const api = ${API_VERSION};`);
     expect(built.manifest.api).toBe(API_VERSION);
+  });
+
+  test("refuses a version this host does not build for", async () => {
+    await expect(build(`export const api = ${API_VERSION + 1}; export function detect() { return []; }`)).rejects.toThrow(/Use a whole number from 1 to/);
+    await expect(build(`export const api = "1"; export function detect() { return []; }`)).rejects.toThrow(/is not a number/);
+  });
+
+  test("refuses what the declared version did not have", async () => {
+    await expect(build(`import fs from "node:fs"; export const api = 1; export function detect() { return fs.existsSync("/") ? [] : []; }`)).rejects.toThrow(
+      "detector.ts imports node:fs, which exists from detector API 2 on, and declares api = 1.",
+    );
+    // node:path is string logic and needs nothing from the host.
+    const built = await build(`import path from "node:path"; export const api = 1; export function detect() { return path.join("a", "b") ? [] : []; }`);
+    expect(built.manifest.api).toBe(1);
+  });
+});
+
+describe("a detector that stays on an old version", () => {
+  test("is built with today's SDK and behaves like the bundle that was built back then", async () => {
+    // The source of the frozen API 1 bundle, uploaded again today with its version declared.
+    const source = `${fs.readFileSync(path.join(dir, "v1/detector.ts"), "utf8")}\nexport const api = 1;\n`;
+    const today = await buildPrinciple({ "principle.md": "# T\n\nOne sentence.\n\nA paragraph of advice that is long enough to count as advice for an agent to read.", "detector.ts": source });
+    const then = frozen(1);
+    expect(today.manifest.api).toBe(1);
+    expect(today.bundle).not.toBe(then.bundle);
+
+    for (const ctx of [written, textCtx("prompt", "why is the late keyword bad"), fileCtx("read", "lib/session.dart", session)]) {
+      if (!applies(today.manifest, ctx)) {
+        continue;
+      }
+      const now = await runDetector(today.bundle, ctx, undefined, project, apiOf(today.manifest));
+      const before = await runDetector(then.bundle, ctx, undefined, project, apiOf(then.manifest));
+      expect(now.error).toBeNull();
+      expect(now.findings).toEqual(before.findings);
+    }
+    expect(said((await runDetector(today.bundle, written, undefined, project, 1)).findings)).toEqual(["relative", "shape", "alone", "late User user;"]);
+  });
+
+  test("gets the old event in its own tests too", async () => {
+    const { report } = await checkPrinciple({
+      "principle.md": "# T\n\nOne sentence.\n\nA paragraph of advice that is long enough to count as advice for an agent to read.",
+      "detector.ts": `import type { CtxV1 } from "@wellactually/sdk";
+        export const api = 1;
+        export function detect(ctx: CtxV1) { return ctx.file?.path === "lib/a.dart" && !("project" in ctx) ? [{ evidence: ctx.text }] : []; }`,
+      "detector.test.ts": `import { expect, test } from "vitest";
+        import { detect, write } from "@wellactually/sdk/test";
+        test("fires", () => { expect(detect(write("lib/a.dart", "x"))).toHaveLength(1); });
+        test("quiet", () => { expect(detect(write("lib/b.dart", "x"))).toEqual([]); });`,
+    });
+    expect(report.problems).toEqual([]);
   });
 });
 

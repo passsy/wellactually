@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
 
+export const api = 2;
 export const events: EventName[] = ["write"];
 export const globs = ["**/*.dart"];
 

@@ -26,6 +26,7 @@ The name of the directory is the principle's id.
   Its \`# heading\` is the title. The paragraph right below it is the summary shown in lists: one sentence, at most 200 characters.
 - detector.ts: \`export function* detect(ctx)\` yielding findings \`{ line?, evidence, depth? }\`.
   It also says when it runs: \`export const events = ["write"]\` (write, read, prompt, command) and \`export const globs = ["**/*.ts"]\`.
+  \`export const api = 2\` is the detector API version it was written against. Leave the line as scaffold wrote it; what follows describes version 2.
   It runs in an isolate without network or process. It may import @wellactually/sdk, node:fs, node:path and its own relative files, and nothing else: no dependencies.
   ctx.file.path is absolute, ctx.file.relativePath is the path from the project root and what globs match, ctx.file.isNew says the write created the file.
   It can read other files with node:fs (readFileSync, existsSync, statSync, readdirSync; text only, read-only, sync only). Walk up from ctx.file.path to find a pubspec.yaml or package.json. ctx.project is the git root or null, do not rely on it.
@@ -57,7 +58,7 @@ function text(value: string) {
 
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
-  const server = new McpServer({ name: "wellactually", version: "0.7.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.7.1" }, { instructions: AUTHORING_GUIDE });
 
   server.registerTool(
     "scaffold",

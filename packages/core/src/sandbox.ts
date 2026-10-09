@@ -46,20 +46,20 @@ const RUN = `
 })()
 `;
 
-const SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs })`;
+const SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs, api: ${BUNDLE_GLOBAL}.api })`;
 
 /**
- * Reads what a bundled detector exports as `events` and `globs`.
+ * Reads what a bundled detector exports as `events`, `globs` and `api`.
  *
  * The bundle is evaluated once, at build time, under the limits a detector
  * run gets. The result is unvalidated: whatever the module exported.
  */
-export async function readExports(bundle: string, limits: Limits = DEFAULT_LIMITS): Promise<{ events?: unknown; globs?: unknown }> {
+export async function readExports(bundle: string, limits: Limits = DEFAULT_LIMITS): Promise<{ events?: unknown; globs?: unknown; api?: unknown }> {
   const { json, error } = evaluateIn(await loadSandbox(), `${bundle}\n;${SETTINGS}`, NOTHING, limits);
   if (json === null) {
     throw new Error(`detector.ts could not be loaded: ${error ?? "it returned nothing"}`);
   }
-  return JSON.parse(json) as { events?: unknown; globs?: unknown };
+  return JSON.parse(json) as { events?: unknown; globs?: unknown; api?: unknown };
 }
 
 /** An isolate with nothing in it but the script. */

@@ -75,11 +75,18 @@ function dirname(path: string): string {
  * at build time, because nothing else exists inside the isolate.
  */
 export async function buildBundle(files: FileMap): Promise<string> {
+  return (await buildDetector(files)).bundle;
+}
+
+/** The same, with what the detector imported from Node: "node:fs", "node:path". Which of them exist depends on the detector API version. */
+export async function buildDetector(files: FileMap): Promise<{ bundle: string; builtIns: string[] }> {
   const entry = detectorEntry(files);
   if (!entry) {
     throw new BundleError(`no detector found; expected one of ${DETECTOR_ENTRIES.join(", ")}`);
   }
-  return build(files, entry, BUNDLE_GLOBAL, false);
+  const builtIns = new Set<string>();
+  const bundle = await build(files, entry, BUNDLE_GLOBAL, false, builtIns);
+  return { bundle, builtIns: [...builtIns].sort() };
 }
 
 /**
@@ -99,7 +106,7 @@ export async function buildTestBundle(files: FileMap): Promise<string | null> {
   return build({ ...files, [TEST_ENTRY]: entry }, TEST_ENTRY, TESTS_GLOBAL, true);
 }
 
-async function build(files: FileMap, entry: string, globalName: string, isTest: boolean): Promise<string> {
+async function build(files: FileMap, entry: string, globalName: string, isTest: boolean, builtIns: Set<string> = new Set()): Promise<string> {
   const tests = new Set(isTest ? testFiles(files) : []);
   const virtual: Plugin = {
     name: "principle-files",
@@ -124,6 +131,7 @@ async function build(files: FileMap, entry: string, globalName: string, isTest: 
           return { errors: [{ text: `A test cannot read files itself. Put them in a folder of the principle and pass it to detect(event, { project: "fixtures/name" }).` }] };
         }
         if (builtIn) {
+          builtIns.add(builtIn === "fs.ts" ? "node:fs" : "node:path");
           return { path: builtIn, namespace: "sdk" };
         }
         if (args.path === VITEST) {

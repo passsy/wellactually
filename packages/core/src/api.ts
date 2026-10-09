@@ -1,4 +1,4 @@
-import { API_VERSION, type Ctx } from "@wellactually/sdk";
+import { API_VERSION, type Ctx, type CtxV1 } from "@wellactually/sdk";
 import { fsHost, type ProjectFiles } from "./project.ts";
 
 /**
@@ -14,7 +14,8 @@ import { fsHost, type ProjectFiles } from "./project.ts";
  * The API changes by adding a version, never by editing one:
  *
  * 1. Raise `API_VERSION` in the SDK and describe the change there.
- * 2. Freeze the event of the version that was current as a type here.
+ * 2. Freeze the event of the version that was current as a type in the SDK,
+ *    so a detector that stays on it can still be typed.
  * 3. Add the step that turns the new event into that one to `DOWNGRADE`.
  * 4. Say in `environmentFor` which globals and host functions each version has.
  * 5. Add `test/api/v<n>`: the new event's shape, and a bundle built once by
@@ -41,27 +42,6 @@ export function unsupported(api: number): string | null {
     return `it was built for detector API ${api}, which is no longer run. Its expert has to release it again.`;
   }
   return null;
-}
-
-/**
- * The event of API 1, as it was until Well Actually 0.5.
- * A path was relative and there was nothing else to know about where it is.
- */
-export interface CtxV1 {
-  event: Ctx["event"];
-  file: {
-    /** Relative, with forward slashes. */
-    path: string;
-    name: string;
-    ext: string;
-    content: string;
-    lines: string[];
-    written: { line: number; text: string }[];
-  } | null;
-  text: string;
-  isUserPrompt: boolean;
-  isCommand: boolean;
-  isConversation: boolean;
 }
 
 /** API 2 made `file.path` absolute and added `relativePath`, `isNew` and `project`. */
@@ -143,3 +123,21 @@ export function shapeOf(value: unknown): unknown {
   }
   return value === null ? "null" : typeof value;
 }
+
+/**
+ * The version a detector declares with `export const api = n;`, or the newest when it declares none.
+ * Throws with a message for the author when it is not a version this host builds for.
+ */
+export function declaredApi(exported: unknown): number {
+  if (exported === undefined) {
+    return API_VERSION;
+  }
+  const refused = typeof exported === "number" ? unsupported(exported) : `it is not a number: ${JSON.stringify(exported)}`;
+  if (refused !== null) {
+    throw new Error(`detector.ts exports api, the detector API version it was written against, but ${refused.replace(/^it /, "this one ")} Use a whole number from ${MIN_API_VERSION} to ${API_VERSION}, for example: export const api = ${API_VERSION};`);
+  }
+  return exported as number;
+}
+
+/** What a detector can import that only exists from some version on, with that version. */
+export const BUILT_IN_SINCE: Record<string, number> = { "node:fs": 2 };

@@ -3880,7 +3880,7 @@ var RUN = `
   return JSON.stringify(out);
 })()
 `;
-var SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs })`;
+var SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs, api: ${BUNDLE_GLOBAL}.api })`;
 function evaluateIn(QuickJS, script, environment, limits) {
   const runtime = QuickJS.newRuntime();
   runtime.setMemoryLimit(limits.memoryBytes);
