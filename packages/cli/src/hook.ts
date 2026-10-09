@@ -1,8 +1,12 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import type { Ctx } from "@wellactually/sdk";
 import {
   type HookPayload,
+  type Lockfile,
+  DetectorPool,
+  PARALLEL_FROM,
   boardHome,
   eventsOf,
   frame,
@@ -42,17 +46,31 @@ export async function runHook(stdin: string): Promise<string> {
     return "";
   }
 
+  // Worker threads are only started when an event concerns enough detectors to need them.
+  // WELLACTUALLY_WORKERS=0 keeps everything on one thread, a number sets how many there may be.
+  const setting = process.env.WELLACTUALLY_WORKERS;
+  const pool = setting === "0" ? null : new DetectorPool(workerFile(), Number(setting) > 0 ? Number(setting) : undefined);
+  try {
+    return await runEvents(payload, events, lockfile, pool);
+  } finally {
+    await pool?.close();
+  }
+}
+
+async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile, pool: DetectorPool | null): Promise<string> {
+  const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
   const shown = readShown(sessionId);
   const parts: string[] = [];
   const failures = new Map<string, string>();
   const cwd = payload.cwd ?? process.cwd();
+  const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
 
   // Most payloads are one event. A Codex patch is one per file it changes.
   for (const ctx of events) {
     // What is switched off belongs to the project the file is in, which need not be the one the session started in.
     const off = new Set(switchedOff(ctx.file ? path.dirname(ctx.file.path) : cwd).keys());
-    const run = await runBoard(ctx, lockfile, off);
+    const run = await runBoard(ctx, lockfile, off, pool, parallelFrom);
 
     // Counted per event a principle fired in, whether or not its advice is shown again.
     // Principles added from a local directory belong to no registry and are not counted.
@@ -97,6 +115,17 @@ export async function runHook(stdin: string): Promise<string> {
   return JSON.stringify({
     hookSpecificOutput: { hookEventName: event, additionalContext: parts.join("\n\n") },
   });
+}
+
+/**
+ * The script a worker thread runs: the small one built for it, next to the
+ * command. Without it the command itself, which serves detectors when it is
+ * started as a thread, only slower to load.
+ */
+function workerFile(): string {
+  const main = process.argv[1] as string;
+  const beside = [path.join(path.dirname(main), "wellactually-worker.mjs"), path.join(path.dirname(main), "worker.ts")];
+  return beside.find((file) => fs.existsSync(file)) ?? main;
 }
 
 function readText(file: string): string | null {

@@ -10875,6 +10875,7 @@ var require_dist = __commonJS({
 
 // packages/cli/src/main.ts
 import { parseArgs } from "node:util";
+import { isMainThread } from "node:worker_threads";
 
 // node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
 var variant = { type: "sync", importFFI: () => Promise.resolve().then(() => (init_ffi(), ffi_exports)).then((mod) => mod.QuickJSFFI), importModuleLoader: () => Promise.resolve().then(() => (init_emscripten_module_Q67P5WYC(), emscripten_module_Q67P5WYC_exports)).then((mod) => mod.default) };
@@ -11427,7 +11428,7 @@ function fsHost(cwd, project) {
 
 // packages/core/src/sandbox.ts
 var DEFAULT_LIMITS = {
-  ms: 50,
+  ms: 100,
   memoryBytes: 32 * 1024 * 1024
 };
 var MAX_FINDINGS = 20;
@@ -11499,6 +11500,10 @@ function evaluateIn(QuickJS, script, ctx, limits, hostFunctions = {}) {
 }
 async function runDetector(bundle, ctx, limits = DEFAULT_LIMITS, project = null) {
   return runDetectorIn(await loadSandbox(), bundle, ctx, limits, project);
+}
+async function detectorRunner() {
+  const QuickJS = await loadSandbox();
+  return (bundle, ctx, project) => runDetectorIn(QuickJS, bundle, ctx, DEFAULT_LIMITS, project);
 }
 function runDetectorIn(QuickJS, bundle, ctx, limits, project) {
   const started = performance.now();
@@ -11731,9 +11736,9 @@ async function checkPrinciple(files) {
   if (results.length === 0) {
     report.problems.push("the test files declare no test");
   }
-  const failed = results.filter((result) => !result.passed);
-  if (failed.length > 0) {
-    report.problems.push(`${failed.length} of ${results.length} tests failed`);
+  const failed2 = results.filter((result) => !result.passed);
+  if (failed2.length > 0) {
+    report.problems.push(`${failed2.length} of ${results.length} tests failed`);
   }
   const proven = results.filter((result) => result.passed).flatMap((result) => result.calls);
   if (!proven.some((call2) => call2.findings.length > 0)) {
@@ -12120,10 +12125,13 @@ function writeCached(principle) {
   writeJson(bundlePath(principle.hash), principle);
 }
 var BOARD_BUDGET_MS = 1500;
-async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ new Set()) {
+var PARALLEL_FROM = 14;
+async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ new Set(), pool = null, parallelFrom = PARALLEL_FROM) {
   const disk = diskFiles();
   const started = performance.now();
   const run = { firings: [], failures: [], ms: 0 };
+  const applying = [];
+  const skipped = `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it`;
   for (const entry of lockfile.entries) {
     if (!entry.enabled || off.has(entry.id)) {
       continue;
@@ -12134,22 +12142,29 @@ async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ ne
       run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; run `wellactually sync`" });
       continue;
     }
-    if (!applies(principle.manifest, ctx)) {
-      continue;
-    }
-    if (performance.now() - started > BOARD_BUDGET_MS) {
-      run.failures.push({ id: entry.id, error: `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it` });
-      continue;
-    }
-    const result = await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk);
-    if (result.error) {
-      run.failures.push({ id: entry.id, error: result.error });
-      continue;
-    }
-    if (result.findings.length > 0) {
-      run.firings.push({ principle, findings: result.findings });
+    if (applies(principle.manifest, ctx)) {
+      applying.push(principle);
     }
   }
+  let results;
+  if (pool !== null && applying.length >= parallelFrom) {
+    results = await pool.run(ctx, applying.map((principle) => principle.bundle), started + BOARD_BUDGET_MS, skipped);
+  } else {
+    results = [];
+    for (const principle of applying) {
+      results.push(
+        performance.now() - started > BOARD_BUDGET_MS ? { findings: [], error: skipped, dropped: [], ms: 0 } : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk)
+      );
+    }
+  }
+  applying.forEach((principle, index) => {
+    const result = results[index];
+    if (result.error) {
+      run.failures.push({ id: principle.id, error: result.error });
+    } else if (result.findings.length > 0) {
+      run.firings.push({ principle, findings: result.findings });
+    }
+  });
   run.ms = performance.now() - started;
   return run;
 }
@@ -12338,6 +12353,123 @@ function patchedFiles(patch) {
   endRun();
   return files;
 }
+
+// packages/core/src/pool.ts
+import os3 from "node:os";
+import { parentPort, Worker } from "node:worker_threads";
+var MAX_WORKERS = 8;
+var GRACE_MS = 400;
+var START_MS = 5e3;
+function failed(error62) {
+  return { findings: [], error: error62, dropped: [], ms: 0 };
+}
+async function serveDetectors() {
+  const port = parentPort;
+  if (!port) {
+    throw new Error("serveDetectors() runs in a worker thread");
+  }
+  const run = await detectorRunner();
+  const disk = diskFiles();
+  let ctx = null;
+  port.on("message", (message) => {
+    if ("ctx" in message) {
+      ctx = message.ctx;
+      return;
+    }
+    const result = ctx === null ? failed("the worker was given no event") : run(message.bundle, ctx, disk);
+    port.postMessage({ id: message.id, result });
+  });
+  port.postMessage({ ready: true });
+}
+var DetectorPool = class {
+  members = [];
+  file;
+  size;
+  /** `file` is the script the workers run. It must call `serveDetectors()` when it is not the main thread. */
+  constructor(file2, size = MAX_WORKERS) {
+    this.file = file2;
+    this.size = Math.max(1, Math.min(size, MAX_WORKERS, os3.availableParallelism()));
+  }
+  start() {
+    const worker = new Worker(this.file, { stdout: false, stderr: false });
+    const ready = new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(false), START_MS);
+      const settle2 = (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      };
+      worker.once("message", () => settle2(true));
+      worker.once("error", () => settle2(false));
+      worker.once("exit", () => settle2(false));
+    });
+    const member = { worker, ready };
+    this.members.push(member);
+    return member;
+  }
+  drop(member) {
+    this.members = this.members.filter((other) => other !== member);
+    void member.worker.terminate();
+  }
+  /**
+   * Runs every bundle against `ctx` and resolves to one result per bundle, in order.
+   * A detector that is not started before `deadline` (from `performance.now()`) gets `skipped` as its error.
+   */
+  async run(ctx, bundles, deadline, skipped) {
+    const results = new Array(bundles.length).fill(void 0);
+    while (this.members.length < Math.min(this.size, bundles.length)) {
+      this.start();
+    }
+    let next = 0;
+    const work = async (member) => {
+      if (!await member.ready) {
+        this.drop(member);
+        return;
+      }
+      member.worker.postMessage({ ctx });
+      while (next < bundles.length) {
+        const id = next++;
+        if (performance.now() > deadline) {
+          results[id] = failed(skipped);
+          continue;
+        }
+        const answer = await new Promise((resolve) => {
+          const timer = setTimeout(() => resolve(null), DEFAULT_LIMITS.ms + GRACE_MS);
+          const settle2 = (value) => {
+            clearTimeout(timer);
+            member.worker.off("message", onMessage);
+            member.worker.off("error", onGone);
+            member.worker.off("exit", onGone);
+            resolve(value);
+          };
+          const onMessage = (message) => {
+            if ("id" in message && message.id === id) {
+              settle2(message.result);
+            }
+          };
+          const onGone = () => settle2(null);
+          member.worker.on("message", onMessage);
+          member.worker.once("error", onGone);
+          member.worker.once("exit", onGone);
+          member.worker.postMessage({ id, bundle: bundles[id] });
+        });
+        if (answer === null) {
+          results[id] = failed(`the detector did not finish within ${DEFAULT_LIMITS.ms + GRACE_MS} ms and was stopped`);
+          this.drop(member);
+          return;
+        }
+        results[id] = answer;
+      }
+    };
+    await Promise.all(this.members.map(work));
+    return results.map((result) => result ?? failed("no worker thread was left to run it"));
+  }
+  /** Stops the workers. The process cannot end while they live. */
+  async close() {
+    const members2 = this.members;
+    this.members = [];
+    await Promise.all(members2.map((member) => member.worker.terminate()));
+  }
+};
 
 // packages/core/src/switches.ts
 import fs4 from "node:fs";
@@ -12948,14 +13080,25 @@ async function runHook(stdin) {
   if (lockfile.entries.length === 0) {
     return "";
   }
+  const setting = process.env.WELLACTUALLY_WORKERS;
+  const pool = setting === "0" ? null : new DetectorPool(workerFile(), Number(setting) > 0 ? Number(setting) : void 0);
+  try {
+    return await runEvents(payload, events, lockfile, pool);
+  } finally {
+    await pool?.close();
+  }
+}
+async function runEvents(payload, events, lockfile, pool) {
+  const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
   const shown = readShown(sessionId);
   const parts = [];
   const failures = /* @__PURE__ */ new Map();
   const cwd = payload.cwd ?? process.cwd();
+  const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
   for (const ctx of events) {
     const off = new Set(switchedOff(ctx.file ? path8.dirname(ctx.file.path) : cwd).keys());
-    const run = await runBoard(ctx, lockfile, off);
+    const run = await runBoard(ctx, lockfile, off, pool, parallelFrom);
     if (readConfig().stats) {
       recordDetections(run.firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
     }
@@ -12993,6 +13136,11 @@ async function runHook(stdin) {
   return JSON.stringify({
     hookSpecificOutput: { hookEventName: event, additionalContext: parts.join("\n\n") }
   });
+}
+function workerFile() {
+  const main2 = process.argv[1];
+  const beside = [path8.join(path8.dirname(main2), "wellactually-worker.mjs"), path8.join(path8.dirname(main2), "worker.ts")];
+  return beside.find((file2) => fs7.existsSync(file2)) ?? main2;
 }
 function readText2(file2) {
   let stat;
@@ -42342,7 +42490,7 @@ function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
 async function serveMcp() {
-  const server = new McpServer({ name: "wellactually", version: "0.6.0" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.6.1" }, { instructions: AUTHORING_GUIDE });
   server.registerTool(
     "scaffold",
     {
@@ -42734,16 +42882,20 @@ async function readStdin() {
   }
   return Buffer.concat(chunks).toString("utf8");
 }
-main().then(
-  (code) => {
-    process.exitCode = code;
-  },
-  (error62) => {
-    if (error62 instanceof RegistryError) {
-      console.error(error62.message);
-    } else {
-      console.error(error62 instanceof Error ? error62.message : String(error62));
+if (isMainThread) {
+  main().then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (error62) => {
+      if (error62 instanceof RegistryError) {
+        console.error(error62.message);
+      } else {
+        console.error(error62 instanceof Error ? error62.message : String(error62));
+      }
+      process.exitCode = 1;
     }
-    process.exitCode = 1;
-  }
-);
+  );
+} else {
+  void serveDetectors();
+}

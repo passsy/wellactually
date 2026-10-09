@@ -12,7 +12,7 @@ export interface Limits {
 
 /** The limits every detector runs under: in the CLI, on the registry and in the hook. */
 export const DEFAULT_LIMITS: Limits = {
-  ms: 50,
+  ms: 100,
   memoryBytes: 32 * 1024 * 1024,
 };
 

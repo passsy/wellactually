@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
-import { readConfig, readCached, readLockfile, scaffold, switchedOff, switchPrinciple, writeConfig } from "@wellactually/core/node";
+import { isMainThread } from "node:worker_threads";
+import { readConfig, readCached, readLockfile, scaffold, serveDetectors, switchedOff, switchPrinciple, writeConfig } from "@wellactually/core/node";
 import {
   addLocal,
   principleHistory,
@@ -266,16 +267,21 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-main().then(
-  (code) => {
-    process.exitCode = code;
-  },
-  (error: unknown) => {
-    if (error instanceof RegistryError) {
-      console.error(error.message);
-    } else {
-      console.error(error instanceof Error ? error.message : String(error));
-    }
-    process.exitCode = 1;
-  },
-);
+// The hook starts this same file again as worker threads, to run detectors in parallel.
+if (isMainThread) {
+  main().then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (error: unknown) => {
+      if (error instanceof RegistryError) {
+        console.error(error.message);
+      } else {
+        console.error(error instanceof Error ? error.message : String(error));
+      }
+      process.exitCode = 1;
+    },
+  );
+} else {
+  void serveDetectors();
+}

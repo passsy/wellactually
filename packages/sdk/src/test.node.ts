@@ -32,7 +32,7 @@ export { command, edit, prompt, read, source, write, type DetectOptions } from "
 const runOnce = await detectorRunner();
 
 /**
- * A detector gets 50 ms of wall clock, here as in a session. A test suite runs
+ * A detector gets 100 ms of wall clock, here as in a session. A test suite runs
  * many files at once, and a busy machine can use up that time before the
  * detector has done anything. So a run that was stopped for time is tried
  * once more. A detector that really is too slow is stopped both times.

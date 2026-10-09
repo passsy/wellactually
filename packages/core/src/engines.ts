@@ -42,7 +42,7 @@ const WARM_UP = `(function () {
  * The isolate's WebAssembly module, loaded on first use.
  *
  * The engine compiles its functions the first time each is called. A detector
- * gets 50 ms of wall clock, and on a busy machine that first call alone could
+ * gets 100 ms of wall clock, and on a busy machine that first call alone could
  * use them up, in a hook as much as in a test. So one small script runs here,
  * before any clock starts.
  */

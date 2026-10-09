@@ -1,4 +1,5 @@
-// Builds the command as one JavaScript file, the one the installed plugin runs.
+// Builds the command as one JavaScript file, the one the installed plugin runs,
+// and next to it the small script its worker threads run.
 //
 // A plugin is copied to the user's machine without `npm install`, so it
 // cannot have dependencies. Everything is bundled, including the isolate,
@@ -12,9 +13,7 @@ import { build } from "esbuild";
 const root = path.resolve(import.meta.dirname, "..");
 const outfile = path.resolve(process.argv[2] ?? path.join(root, "dist/wellactually.mjs"));
 
-await build({
-  entryPoints: [path.join(root, "packages/cli/src/main.ts")],
-  outfile,
+const shared = {
   bundle: true,
   platform: "node",
   format: "esm",
@@ -24,5 +23,10 @@ await build({
   banner: { js: 'import { createRequire as __createRequire } from "node:module";\nconst require = __createRequire(import.meta.url);' },
   legalComments: "none",
   logLevel: "warning",
-});
-console.log(`built ${path.relative(process.cwd(), outfile)}`);
+};
+
+await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/main.ts")], outfile });
+// A worker loads its script from scratch, so it gets only the isolate. The hook looks for it beside the command.
+const worker = path.join(path.dirname(outfile), "wellactually-worker.mjs");
+await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/worker.ts")], outfile: worker });
+console.log(`built ${path.relative(process.cwd(), outfile)} and ${path.basename(worker)}`);

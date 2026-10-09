@@ -5,7 +5,8 @@ import type { Ctx, Finding } from "@wellactually/sdk";
 import { applies } from "./ctx.ts";
 import { diskFiles } from "./fs.ts";
 import type { BoardEntry, CachedPrinciple, Lockfile } from "./types.ts";
-import { DEFAULT_LIMITS, runDetector } from "./sandbox.ts";
+import type { DetectorPool } from "./pool.ts";
+import { DEFAULT_LIMITS, runDetector, type DetectorRun } from "./sandbox.ts";
 
 export type { BoardEntry, CachedPrinciple, Lockfile } from "./types.ts";
 
@@ -100,15 +101,33 @@ export interface BoardRun {
 export const BOARD_BUDGET_MS = 1500;
 
 /**
+ * From this many detectors on, an event is worth starting worker threads for.
+ * Below it, starting them takes longer than running the detectors: measured
+ * on the bundled command, threads cost about 35 ms to start and a typical
+ * detector takes 4 ms, so the two meet between 12 and 15.
+ */
+export const PARALLEL_FROM = 14;
+
+/**
  * Runs every enabled principle of the advisory board that applies to this context.
  *
  * Each detector gets its own isolate and its own limits, so one expert's
- * detector cannot read, slow down or break another's.
+ * detector cannot read, slow down or break another's. With a `pool` and
+ * enough detectors they run on several threads, otherwise one after another.
+ * The result is the same either way, in the order of the advisory board.
  */
-export async function runBoard(ctx: Ctx, lockfile: Lockfile = readLockfile(), off: ReadonlySet<string> = new Set()): Promise<BoardRun> {
+export async function runBoard(
+  ctx: Ctx,
+  lockfile: Lockfile = readLockfile(),
+  off: ReadonlySet<string> = new Set(),
+  pool: DetectorPool | null = null,
+  parallelFrom: number = PARALLEL_FROM,
+): Promise<BoardRun> {
   const disk = diskFiles();
   const started = performance.now();
   const run: BoardRun = { firings: [], failures: [], ms: 0 };
+  const applying: CachedPrinciple[] = [];
+  const skipped = `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it`;
 
   for (const entry of lockfile.entries) {
     // Off on the website, or switched off on this machine for this project or everywhere.
@@ -123,22 +142,33 @@ export async function runBoard(ctx: Ctx, lockfile: Lockfile = readLockfile(), of
       run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; run `wellactually sync`" });
       continue;
     }
-    if (!applies(principle.manifest, ctx)) {
-      continue;
-    }
-    if (performance.now() - started > BOARD_BUDGET_MS) {
-      run.failures.push({ id: entry.id, error: `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it` });
-      continue;
-    }
-    const result = await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk);
-    if (result.error) {
-      run.failures.push({ id: entry.id, error: result.error });
-      continue;
-    }
-    if (result.findings.length > 0) {
-      run.firings.push({ principle, findings: result.findings });
+    if (applies(principle.manifest, ctx)) {
+      applying.push(principle);
     }
   }
+
+  let results: DetectorRun[];
+  if (pool !== null && applying.length >= parallelFrom) {
+    results = await pool.run(ctx, applying.map((principle) => principle.bundle), started + BOARD_BUDGET_MS, skipped);
+  } else {
+    results = [];
+    for (const principle of applying) {
+      results.push(
+        performance.now() - started > BOARD_BUDGET_MS
+          ? { findings: [], error: skipped, dropped: [], ms: 0 }
+          : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk),
+      );
+    }
+  }
+
+  applying.forEach((principle, index) => {
+    const result = results[index] as DetectorRun;
+    if (result.error) {
+      run.failures.push({ id: principle.id, error: result.error });
+    } else if (result.findings.length > 0) {
+      run.firings.push({ principle, findings: result.findings });
+    }
+  });
 
   run.ms = performance.now() - started;
   return run;
