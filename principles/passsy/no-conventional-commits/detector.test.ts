@@ -1,4 +1,5 @@
-import { command, detect, expect, test } from "@wellactually/sdk/test";
+import { expect, test } from "vitest";
+import { command, detect } from "@wellactually/sdk/test";
 
 test.each([
   `git add lib/auth.dart && git commit -m "feat(auth): add passkey login"`,

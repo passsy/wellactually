@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { applies, fileCtx } from "./ctx.ts";
+import { diskFiles, toPosix } from "./fs.ts";
 import type { BuiltPrinciple } from "./principle.ts";
 import { runDetector } from "./sandbox.ts";
 
@@ -64,18 +65,20 @@ export async function probeRepo(built: BuiltPrinciple, dir: string, maxFiles = 5
     return report;
   }
 
+  const root = toPosix(path.resolve(dir));
+  const project = diskFiles();
   for (const relative of listFiles(dir).slice(0, maxFiles)) {
     const content = readText(path.join(dir, relative));
     if (content === null) {
       continue;
     }
     report.scanned++;
-    const ctx = fileCtx(event, relative, content);
+    const ctx = fileCtx(event, relative, content, undefined, { root });
     if (!applies(built.manifest, ctx)) {
       continue;
     }
     report.matched++;
-    const run = await runDetector(built.bundle, ctx);
+    const run = await runDetector(built.bundle, ctx, undefined, project);
     report.slowestMs = Math.max(report.slowestMs, run.ms);
     if (run.error) {
       report.errors.push({ path: relative, error: run.error });

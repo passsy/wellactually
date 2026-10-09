@@ -12,6 +12,7 @@ export * from "./engines.ts";
 export * from "./glob.ts";
 export * from "./manifest.ts";
 export * from "./principle.ts";
+export * from "./project.ts";
 export * from "./sandbox.ts";
 export * from "./scaffold.ts";
 export * from "./scan.ts";

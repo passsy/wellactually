@@ -26,14 +26,20 @@ The name of the directory is the principle's id.
   Its \`# heading\` is the title. The paragraph right below it is the summary shown in lists: one sentence, at most 200 characters.
 - detector.ts: \`export function* detect(ctx)\` yielding findings \`{ line?, evidence, depth? }\`.
   It also says when it runs: \`export const events = ["write"]\` (write, read, prompt, command) and \`export const globs = ["**/*.ts"]\`.
-  It runs in an isolate without filesystem, network or process. It may import @wellactually/sdk and its own relative files.
-  Evidence must be text that occurs verbatim in the input, or the host drops the finding.
+  It runs in an isolate without network or process. It may import @wellactually/sdk, node:fs, node:path and its own relative files, and nothing else: no dependencies.
+  ctx.file.path is absolute, ctx.file.relativePath is the path from the project root and what globs match, ctx.file.isNew says the write created the file.
+  It can read other files with node:fs (readFileSync, existsSync, statSync, readdirSync; text only, read-only, sync only). Walk up from ctx.file.path to find a pubspec.yaml or package.json. ctx.project is the git root or null, do not rely on it.
+  Evidence must be text that occurs verbatim in the event's input, or the host drops the finding. Text read from another file cannot be evidence.
 - *.test.ts: the tests. Any number of files, each complete on its own, with the source it tests written inline.
   A test builds the event a detector receives and checks what the detector reports:
   \`expect(detect(write("lib/a.dart", content))).toEqual([{ line: 2, evidence: "late String name;" }])\`.
   Events come from \`write(path, content)\`, \`edit(path, contentAfterTheEdit, { written })\`, \`read(path, content)\`, \`prompt(text)\` and \`command(text)\`.
   \`edit\` is how to show that code which was already there is left alone: only \`written\` counts as written.
-  Import all of it, with \`test\`, \`describe\`, \`expect\` and \`source\`, from @wellactually/sdk/test.
+  Import \`test\`, \`describe\` and \`expect\` from vitest, and the events, \`detect\` and \`source\` from @wellactually/sdk/test.
+  For a detector that reads other files, put a small project into the principle, e.g. fixtures/flutter_app/pubspec.yaml, and pass it: \`detect(write("lib/a.dart", content), { project: "fixtures/flutter_app" })\`.
+  The project sits at a made-up root, so never assert on absolute paths. \`write(path, content, { isNew: true })\` is a write that created the file.
+  The tests are ordinary vitest files. Where the repository has vitest and @wellactually/sdk installed, npm test runs them. run_tests always works and also checks the publish gates.
+  The registry runs them with a small copy of vitest: toEqual, toStrictEqual, toBe, toHaveLength, toContain, toContainEqual, toMatchObject, toBeTruthy, toBeFalsy, toBeNull, toBeUndefined, toBeDefined, toThrow, .not, test.each. Use only those. Tests are not async.
 
 The tests must pass, make the detector fire at least once, and run it at least once on something it stays quiet on.
 The registry runs the tests again on upload, and its result is the one that counts.
@@ -51,7 +57,7 @@ function text(value: string) {
 
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
-  const server = new McpServer({ name: "wellactually", version: "0.5.1" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.6.0" }, { instructions: AUTHORING_GUIDE });
 
   server.registerTool(
     "scaffold",

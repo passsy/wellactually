@@ -46,10 +46,12 @@ export async function runHook(stdin: string): Promise<string> {
   const shown = readShown(sessionId);
   const parts: string[] = [];
   const failures = new Map<string, string>();
-  const off = new Set(switchedOff(payload.cwd ?? process.cwd()).keys());
+  const cwd = payload.cwd ?? process.cwd();
 
   // Most payloads are one event. A Codex patch is one per file it changes.
   for (const ctx of events) {
+    // What is switched off belongs to the project the file is in, which need not be the one the session started in.
+    const off = new Set(switchedOff(ctx.file ? path.dirname(ctx.file.path) : cwd).keys());
     const run = await runBoard(ctx, lockfile, off);
 
     // Counted per event a principle fired in, whether or not its advice is shown again.

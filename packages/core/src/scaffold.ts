@@ -52,8 +52,9 @@ export const events: EventName[] = ["write"];
 export const globs = ["**/*.ts"];
 
 /**
- * Runs inside an isolate: no filesystem, no network, no process.
+ * Runs inside an isolate: no network, no process, nothing to write to.
  * It gets a context and yields findings. Evidence must be text from the input.
+ * It can read the files of the project with node:fs, from ctx.file.path.
  *
  * Replace this stub. It flags a FIXME comment the agent writes.
  */
@@ -66,8 +67,10 @@ export function* detect(ctx: Ctx): Generator<Finding> {
   }
 }
 `,
-    "detector.test.ts": `import { detect, edit, expect, source, test, write } from "@wellactually/sdk/test";
+    "detector.test.ts": `import { expect, test } from "vitest";
+import { detect, edit, source, write } from "@wellactually/sdk/test";
 
+// Run with vitest, for example through npm test. The registry runs the same file again.
 // A test builds the event a detector receives and checks what it reports.
 // write() is a file the agent wrote in full, edit() one it changed, and there
 // are read(), prompt() and command() as well.

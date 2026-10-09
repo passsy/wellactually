@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { boardHome, readLockfile } from "./board.ts";
+import { findProjectRoot } from "./fs.ts";
 
 /**
  * Principles switched off on this machine.
@@ -52,18 +53,7 @@ function write(file: string, disabled: string[]): void {
  * a `.wellactually.json`, else the nearest one with a `.git`, else `cwd` itself.
  */
 export function projectRoot(cwd: string): string {
-  const start = path.resolve(cwd);
-  for (const marker of [PROJECT_FILE, ".git"]) {
-    for (let dir = start; ; dir = path.dirname(dir)) {
-      if (fs.existsSync(path.join(dir, marker))) {
-        return dir;
-      }
-      if (dir === path.dirname(dir)) {
-        break;
-      }
-    }
-  }
-  return start;
+  return findProjectRoot(cwd) ?? path.resolve(cwd);
 }
 
 function fileOf(scope: Scope, cwd: string): string {

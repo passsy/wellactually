@@ -11,7 +11,8 @@ const dir = path.join(root, "packages/sdk/src");
 const sources = Object.fromEntries(
   fs
     .readdirSync(dir)
-    .filter((name) => name.endsWith(".ts"))
+    // `*.node.ts` runs on an author's machine, outside the isolate, and is not part of what gets bundled.
+    .filter((name) => name.endsWith(".ts") && !name.endsWith(".node.ts"))
     .sort()
     .map((name) => [name, fs.readFileSync(path.join(dir, name), "utf8")]),
 );

@@ -2,9 +2,12 @@
   "name": "@wellactually/sdk",
   "version": "0.1.0",
   "type": "module",
-  "description": "Types and helpers a principle's detector may import, and the test framework its tests use.",
+  "description": "Types and helpers a principle's detector may import, and what its tests import to run under vitest.",
   "exports": {
     ".": "./src/index.ts",
-    "./test": "./src/test.ts"
+    "./test": "./src/test.node.ts"
+  },
+  "dependencies": {
+    "@wellactually/core": "0.1.0"
   }
 }

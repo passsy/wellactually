@@ -120,9 +120,112 @@ describe("the tests of a principle", () => {
     expect(report.tests.map((result) => result.name)).toEqual(["prompts > quiet on a", "prompts > quiet on b"]);
   });
 
+  test("a test may be written against vitest, which is how an author runs it", async () => {
+    const standard = `import { describe, expect, it, test } from "vitest";
+      import { detect, write } from "@wellactually/sdk/test";
+      describe("todo", () => { it("fires", () => { expect(detect(write("a.ts", "// TODO"))).toHaveLength(1); }); });
+      test("quiet", () => { expect(detect(write("a.ts", "const a = 1;"))).toStrictEqual([]); });`;
+    const { report } = await check({ "detector.test.ts": standard });
+    expect(report.problems).toEqual([]);
+    expect(report.tests.map((result) => [result.name, result.passed])).toEqual([
+      ["todo > fires", true],
+      ["quiet", true],
+    ]);
+  });
+
+  test("a matcher the registry does not have says so, instead of failing as a missing function", async () => {
+    const snapshot = `import { expect, test } from "vitest";
+      import { detect, write } from "@wellactually/sdk/test";
+      test("snapshot", () => { expect(detect(write("a.ts", "// TODO"))).toMatchInlineSnapshot(); });`;
+    const { report } = await check({ "detector.test.ts": [snapshot, fires, quiet].join("\n") });
+    expect(report.tests.find((result) => result.name === "snapshot")?.message).toMatch(/toMatchInlineSnapshot is not available when the registry runs the tests/);
+  });
+
+  test("a part of vitest the isolate has no copy of fails the build by name", async () => {
+    const { report } = await check({ "detector.test.ts": `import { beforeEach, expect, test } from "vitest";\nbeforeEach(() => {});` });
+    expect(report.problems.join("\n")).toMatch(/beforeEach/);
+  });
+
+  describe("a project for the detector to read", () => {
+    const reader = `
+      import fs from "node:fs";
+      import path from "node:path";
+      import { writtenLines } from "@wellactually/sdk";
+      export const globs = ["**/*.dart"];
+      /** Flags print() in a package whose pubspec depends on logging. */
+      export function* detect(ctx) {
+        const pubspec = path.join(ctx.project, "pubspec.yaml");
+        if (!fs.existsSync(pubspec) || !fs.readFileSync(pubspec, "utf8").includes("logging:")) return;
+        for (const written of writtenLines(ctx)) {
+          if (written.text.includes("print(")) yield { line: written.line, evidence: written.text.trim() };
+        }
+      }`;
+    const imports = `import { expect, test } from "vitest";\nimport { detect, prompt, write } from "@wellactually/sdk/test";`;
+    const withLogging = { "fixtures/with_logging/pubspec.yaml": "name: app\ndependencies:\n  logging: ^1.0.0\n", "fixtures/plain/pubspec.yaml": "name: app\n" };
+    const tests = `${imports}
+      test("fires where logging is a dependency", () => {
+        expect(detect(write("lib/a.dart", "print('x');"), { project: "fixtures/with_logging" })).toEqual([{ line: 1, evidence: "print('x');" }]);
+      });
+      test("quiet where it is not", () => { expect(detect(write("lib/a.dart", "print('x');"), { project: "fixtures/plain" })).toEqual([]); });
+      test("quiet without a project", () => { expect(detect(write("lib/a.dart", "print('x');"))).toEqual([]); });`;
+
+    test("comes from a folder of the principle", async () => {
+      const { report } = await check({ "detector.test.ts": tests, ...withLogging }, reader);
+      expect(report.problems).toEqual([]);
+      expect(report.tests.map((result) => result.passed)).toEqual([true, true, true]);
+      expect(report.tests[0]?.calls[0]).toMatchObject({ path: "lib/a.dart", project: "fixtures/with_logging", ran: true });
+    });
+
+    test("holds the file of the event as well", async () => {
+      const sees = `import fs from "node:fs";
+        export const events = ["write", "prompt"];
+        export function detect(ctx) { return ctx.file && fs.readFileSync(ctx.file.path, "utf8") === ctx.text ? [{ evidence: ctx.text }] : []; }`;
+      const own = `${imports}
+        test("fires", () => { expect(detect(write("lib/a.dart", "hello"))).toHaveLength(1); });
+        test("quiet", () => { expect(detect(prompt("hello"))).toEqual([]); });`;
+      const { report } = await check({ "detector.test.ts": own }, sees);
+      expect(report.problems).toEqual([]);
+    });
+
+    test("a folder the principle does not have is an error in the test", async () => {
+      const missing = `${imports}\ntest("typo", () => { detect(write("lib/a.dart", "x"), { project: "fixtures/nope" }); });`;
+      const { report } = await check({ "detector.test.ts": missing, ...withLogging }, reader);
+      expect(report.tests[0]?.message).toBe('detect(): the principle has no folder "fixtures/nope" to use as the project');
+    });
+
+    test("a test file inside a fixture belongs to the fixture", async () => {
+      const { report } = await check({ "detector.test.ts": tests, ...withLogging, "fixtures/plain/test/widget.test.ts": "this is not a test of the principle" }, reader);
+      expect(report.problems).toEqual([]);
+      expect(report.tests).toHaveLength(3);
+    });
+
+    test("an event cannot name a path outside the project", async () => {
+      const escape = `${imports}\ntest("escape", () => { detect(write("../../etc/passwd", "x")); });`;
+      const { report } = await check({ "detector.test.ts": escape }, reader);
+      expect(report.tests[0]?.message).toMatch(/needs an event/);
+    });
+  });
+
+  test("the example that reads the project passes in the isolate like it does under vitest", async () => {
+    const { report } = await checkPrinciple(readPrincipleDir(path.resolve(import.meta.dirname, "../../sdk/test/example/no-import-cycle")));
+    expect(report.tests.filter((result) => !result.passed)).toEqual([]);
+    expect(report.problems).toEqual([]);
+    expect(report.tests).toHaveLength(6);
+  });
+
+  test("a file the agent created is new", async () => {
+    const fresh = `export function detect(ctx) { return ctx.file.isNew ? [{ evidence: ctx.text }] : []; }`;
+    const own = `import { expect, test } from "vitest";
+      import { detect, write } from "@wellactually/sdk/test";
+      test("fires", () => { expect(detect(write("a.ts", "x", { isNew: true }))).toHaveLength(1); });
+      test("quiet", () => { expect(detect(write("a.ts", "x"))).toEqual([]); });`;
+    const { report } = await check({ "detector.test.ts": own }, fresh);
+    expect(report.problems).toEqual([]);
+  });
+
   test("a test file cannot reach outside the isolate", async () => {
     const { report } = await check({ "detector.test.ts": `import fs from "node:fs"; ${header}\ntest("reads", () => { fs.readFileSync("/etc/passwd"); });` });
-    expect(report.problems.join("\n")).toMatch(/"node:fs" cannot be imported/);
+    expect(report.problems.join("\n")).toMatch(/A test cannot read files itself/);
   });
 
   test("a detector cannot import the test framework", async () => {

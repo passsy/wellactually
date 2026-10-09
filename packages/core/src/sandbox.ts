@@ -2,6 +2,7 @@ import { shouldInterruptAfterDeadline, type QuickJSWASMModule } from "quickjs-em
 import type { Ctx, Finding } from "@wellactually/sdk";
 import { BUNDLE_GLOBAL, TESTS_GLOBAL } from "./bundle.ts";
 import { loadSandbox } from "./engines.ts";
+import { fsHost, type ProjectFiles } from "./project.ts";
 
 export interface Limits {
   /** Wall clock budget for one detector run. */
@@ -89,6 +90,10 @@ function evaluateIn(
       const input = vm.newString(JSON.stringify(ctx));
       vm.setProp(vm.global, "__ctx", input);
       input.dispose();
+      // What a relative path is relative to, for the isolate's `node:path`.
+      const cwd = vm.newString(ctx.project ?? "/");
+      vm.setProp(vm.global, "__cwd", cwd);
+      cwd.dispose();
     }
     for (const [name, implementation] of Object.entries(hostFunctions)) {
       const handle = vm.newFunction(name, (argument) => vm.newString(implementation(vm.getString(argument))));
@@ -116,17 +121,24 @@ function evaluateIn(
  * Runs one bundled detector against one context inside a fresh isolate.
  *
  * The isolate gets the context as a JSON string and hands back a JSON string.
- * It has no filesystem, no network, no process and no way to call the host.
- * A detector that runs out of time or memory ends with an error, never with
- * a hung hook.
+ * It has no network and no process. The one thing it can ask the host for is
+ * a file from `project`, and only to read it. Without one it sees the event
+ * and no files. A detector that runs out of time or memory ends with an
+ * error, never with a hung hook.
  */
-export async function runDetector(bundle: string, ctx: Ctx, limits: Limits = DEFAULT_LIMITS): Promise<DetectorRun> {
-  return runDetectorIn(await loadSandbox(), bundle, ctx, limits);
+export async function runDetector(bundle: string, ctx: Ctx, limits: Limits = DEFAULT_LIMITS, project: ProjectFiles | null = null): Promise<DetectorRun> {
+  return runDetectorIn(await loadSandbox(), bundle, ctx, limits, project);
 }
 
-function runDetectorIn(QuickJS: QuickJSWASMModule, bundle: string, ctx: Ctx, limits: Limits): DetectorRun {
+/** `runDetector` without the wait, for callers that have to answer at once: a test's `detect()`. */
+export async function detectorRunner(): Promise<(bundle: string, ctx: Ctx, project: ProjectFiles | null) => DetectorRun> {
+  const QuickJS = await loadSandbox();
+  return (bundle, ctx, project) => runDetectorIn(QuickJS, bundle, ctx, DEFAULT_LIMITS, project);
+}
+
+function runDetectorIn(QuickJS: QuickJSWASMModule, bundle: string, ctx: Ctx, limits: Limits, project: ProjectFiles | null): DetectorRun {
   const started = performance.now();
-  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${RUN}`, ctx, limits);
+  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${RUN}`, ctx, limits, { __fs: fsHost(ctx.project ?? "/", project) });
   const ms = performance.now() - started;
   if (json === null) {
     return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };
@@ -145,8 +157,8 @@ export const TEST_LIMITS: Limits = {
 export interface TestHost {
   /** A test is about to start. Detector runs that follow belong to it. */
   begin: (test: { file: string; name: string }) => void;
-  /** A test called `detect(event)`. `run` runs a bundled detector in a fresh isolate, right now. */
-  detect: (event: unknown, run: (bundle: string, ctx: Ctx) => DetectorRun) => { findings: Finding[] } | { error: string };
+  /** A test called `detect(event, options)`. `run` runs a bundled detector in a fresh isolate, right now. */
+  detect: (call: unknown, run: (bundle: string, ctx: Ctx, project: ProjectFiles | null) => DetectorRun) => { findings: Finding[] } | { error: string };
 }
 
 export interface RawTestResult {
@@ -160,24 +172,24 @@ export interface RawTestResult {
 /**
  * Runs a principle's bundled tests inside an isolate.
  *
- * The tests are the author's code, so they get what a detector gets: no
- * filesystem, no network, no process. The one thing they can reach is
+ * The tests are the author's code, so they get less than a detector gets: no
+ * files, no network, no process. The one thing they can reach is
  * `detect`, which is answered by `host`, outside the isolate. That is how the
  * registry learns what the tests actually exercised, instead of taking a
  * test's word for it.
  */
 export async function runTestBundle(bundle: string, host: TestHost, limits: Limits = TEST_LIMITS): Promise<{ results: RawTestResult[]; error: string | null }> {
   const QuickJS = await loadSandbox();
-  const run = (detector: string, ctx: Ctx): DetectorRun => runDetectorIn(QuickJS, detector, ctx, DEFAULT_LIMITS);
+  const run = (detector: string, ctx: Ctx, project: ProjectFiles | null): DetectorRun => runDetectorIn(QuickJS, detector, ctx, DEFAULT_LIMITS, project);
   const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${TESTS_GLOBAL}.run()`, null, limits, {
     __begin: (test) => {
       host.begin(JSON.parse(test) as { file: string; name: string });
       return "";
     },
-    __detect: (event) => {
+    __detect: (call) => {
       let parsed: unknown;
       try {
-        parsed = JSON.parse(event);
+        parsed = JSON.parse(call);
       } catch {
         return JSON.stringify({ error: "detect() was not given an event" });
       }

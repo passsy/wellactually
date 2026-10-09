@@ -1,8 +1,9 @@
-import type { Ctx, EventName, Finding } from "@wellactually/sdk";
+import { TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
 import { buildBundle, buildTestBundle, BundleError, byteLength, detectorEntry, type FileMap } from "./bundle.ts";
 import { applies, fileCtx, textCtx } from "./ctx.ts";
 import { languagesOf, ManifestError, parsePrinciple, readSettings, type Manifest } from "./manifest.ts";
-import { readExports, runTestBundle } from "./sandbox.ts";
+import { mapProject, type ProjectFiles } from "./project.ts";
+import { readExports, runTestBundle, type DetectorRun } from "./sandbox.ts";
 import { scanAdvice } from "./scan.ts";
 
 /** A principle that compiled: everything a host needs to run it. */
@@ -18,8 +19,10 @@ export interface BuiltPrinciple {
 /** One `detect(event)` call a test made, as the host saw it. */
 export interface DetectCall {
   event: EventName;
-  /** The path the detector was shown, for file events. */
+  /** The path of the file from the project root, for file events. */
   path: string | null;
+  /** The folder of the principle that was the project, when the test named one. */
+  project: string | null;
   /** The file content, the prompt or the command, cut off when long. */
   text: string;
   /** The lines that counted as written. Null when the event has no file. */
@@ -135,7 +138,7 @@ export async function checkPrinciple(files: FileMap): Promise<Checked> {
     return { built, report };
   }
 
-  const { results, calls, error } = await runTests(built, tests);
+  const { results, calls, error } = await runTests(built, files, tests);
   if (error) {
     report.problems.push(`The tests could not run: ${error}`);
     return { built, report };
@@ -167,12 +170,8 @@ export async function checkPrinciple(files: FileMap): Promise<Checked> {
 
 /**
  * Runs the test bundle and answers its `detect` calls with the real detector.
- *
- * Every call is answered the way the hook would: the detector's events and
- * globs first, then a fresh isolate under the normal limits, then the checks
- * every finding has to pass.
  */
-async function runTests(built: BuiltPrinciple, tests: string): Promise<{ results: TestResult[]; calls: DetectCall[]; error: string | null }> {
+async function runTests(built: BuiltPrinciple, files: FileMap, tests: string): Promise<{ results: TestResult[]; calls: DetectCall[]; error: string | null }> {
   const calls: DetectCall[] = [];
   const byTest = new Map<string, DetectCall[]>();
   let current: DetectCall[] = [];
@@ -183,38 +182,14 @@ async function runTests(built: BuiltPrinciple, tests: string): Promise<{ results
       current = [];
       byTest.set(key(test), current);
     },
-    detect: (event, run) => {
+    detect: (call, run) => {
       if (calls.length >= MAX_DETECT_CALLS) {
         return { error: `a principle's tests may call detect() at most ${MAX_DETECT_CALLS} times` };
       }
-      const ctx = eventCtx(event);
-      if (!ctx) {
-        return { error: "detect() needs an event from write(), edit(), read(), prompt() or command()" };
-      }
-      const call: DetectCall = {
-        event: ctx.event,
-        path: ctx.file?.path ?? null,
-        text: ctx.text.length > MAX_SHOWN_TEXT ? `${ctx.text.slice(0, MAX_SHOWN_TEXT)}\n…` : ctx.text,
-        written: ctx.file ? ctx.file.written.map((written) => written.line) : null,
-        ran: applies(built.manifest, ctx),
-        findings: [],
-        ms: 0,
-      };
-      calls.push(call);
-      current.push(call);
-      if (!call.ran) {
-        return { findings: [] };
-      }
-      const result = run(built.bundle, ctx);
-      call.ms = result.ms;
-      if (result.error) {
-        return { error: `The detector failed: ${result.error}` };
-      }
-      if (result.dropped.length > 0) {
-        return { error: `The host dropped ${result.dropped.join("; ")}.` };
-      }
-      call.findings = result.findings;
-      return { findings: result.findings };
+      return answerDetect(built, files, call, run, (recorded) => {
+        calls.push(recorded);
+        current.push(recorded);
+      });
     },
   });
 
@@ -222,22 +197,105 @@ async function runTests(built: BuiltPrinciple, tests: string): Promise<{ results
 }
 
 /**
+ * Answers one `detect(event, options)` call of a test with the real detector.
+ *
+ * Every call is answered the way the hook would: the detector's events and
+ * globs first, then a fresh isolate under the normal limits, then the checks
+ * every finding has to pass. This one function answers vitest on an author's
+ * machine, `wellactually test`, the browser editor and the registry, which is
+ * why a test means the same in all four.
+ *
+ * The project the event happens in is made of the principle's own files: the
+ * folder the test named, plus the file of the event. It sits at `TEST_ROOT`.
+ */
+export function answerDetect(
+  built: BuiltPrinciple,
+  files: FileMap,
+  call: unknown,
+  run: (bundle: string, ctx: Ctx, project: ProjectFiles | null) => DetectorRun,
+  record: (call: DetectCall) => void = () => {},
+): { findings: Finding[] } | { error: string } {
+  const { event, options } = (typeof call === "object" && call !== null ? call : {}) as { event?: unknown; options?: { project?: unknown } };
+  const ctx = eventCtx(event);
+  if (!ctx) {
+    return { error: "detect() needs an event from write(), edit(), read(), prompt() or command()" };
+  }
+  const fixture = options?.project;
+  if (fixture !== undefined && typeof fixture !== "string") {
+    return { error: "detect(): `project` is the name of a folder of the principle, for example \"fixtures/flutter_app\"" };
+  }
+  const projectFiles = fixture === undefined ? {} : filesBelow(files, fixture);
+  if (projectFiles === null) {
+    return { error: `detect(): the principle has no folder "${fixture}" to use as the project` };
+  }
+  if (ctx.file) {
+    // After a write or a read the file is on the disk, so it is in the project too.
+    projectFiles[ctx.file.relativePath] = ctx.file.content;
+  }
+
+  const recorded: DetectCall = {
+    event: ctx.event,
+    path: ctx.file?.relativePath ?? null,
+    project: fixture ?? null,
+    text: ctx.text.length > MAX_SHOWN_TEXT ? `${ctx.text.slice(0, MAX_SHOWN_TEXT)}\n…` : ctx.text,
+    written: ctx.file ? ctx.file.written.map((written) => written.line) : null,
+    ran: applies(built.manifest, ctx),
+    findings: [],
+    ms: 0,
+  };
+  record(recorded);
+  if (!recorded.ran) {
+    return { findings: [] };
+  }
+  const result = run(built.bundle, ctx, mapProject(TEST_ROOT, projectFiles));
+  recorded.ms = result.ms;
+  if (result.error) {
+    return { error: `The detector failed: ${result.error}` };
+  }
+  if (result.dropped.length > 0) {
+    return { error: `The host dropped ${result.dropped.join("; ")}.` };
+  }
+  recorded.findings = result.findings;
+  return { findings: result.findings };
+}
+
+/** The files of one folder of a principle, with paths from that folder. Null when the folder holds nothing. */
+function filesBelow(files: FileMap, folder: string): FileMap | null {
+  const prefix = `${folder.replaceAll("\\", "/").replace(/^\.?\/+|\/+$/g, "")}/`;
+  if (prefix === "/" || prefix.split("/").includes("..")) {
+    return null;
+  }
+  const below: FileMap = {};
+  for (const [name, content] of Object.entries(files)) {
+    if (name.startsWith(prefix)) {
+      below[name.slice(prefix.length)] = content;
+    }
+  }
+  return Object.keys(below).length === 0 ? null : below;
+}
+
+/**
  * Rebuilds the event a test passed to `detect`.
  *
  * It arrives as JSON from code the host does not trust. Only what defines an
- * event is taken from it (kind, path, content, which lines were written) and
- * everything else is derived again, so a detector under test sees an event
- * with the same guarantees as one from a session.
+ * event is taken from it (kind, path, content, which lines were written,
+ * whether the file is new) and everything else is derived again, so a
+ * detector under test sees an event with the same guarantees as one from a
+ * session. The project root is always `TEST_ROOT`, whatever the event claims.
  */
 function eventCtx(raw: unknown): Ctx | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
   }
-  const event = raw as { event?: unknown; text?: unknown; file?: { path?: unknown; content?: unknown; written?: unknown } | null };
+  const event = raw as { event?: unknown; text?: unknown; file?: { relativePath?: unknown; content?: unknown; written?: unknown; isNew?: unknown } | null };
   if (event.event === "prompt" || event.event === "command") {
     return typeof event.text === "string" ? textCtx(event.event, event.text) : null;
   }
-  if ((event.event !== "write" && event.event !== "read") || typeof event.file?.path !== "string" || typeof event.file.content !== "string") {
+  const relativePath = event.file?.relativePath;
+  if ((event.event !== "write" && event.event !== "read") || typeof relativePath !== "string" || typeof event.file?.content !== "string") {
+    return null;
+  }
+  if (relativePath === "" || relativePath.split("/").includes("..")) {
     return null;
   }
   const lines = event.file.content.split("\n");
@@ -245,7 +303,7 @@ function eventCtx(raw: unknown): Ctx | null {
     .map((entry: unknown) => (entry as { line?: unknown } | null)?.line)
     .filter((line): line is number => typeof line === "number" && Number.isInteger(line) && line >= 1 && line <= lines.length)
     .map((line) => ({ line, text: lines[line - 1] ?? "" }));
-  return fileCtx(event.event, event.file.path, event.file.content, written);
+  return fileCtx(event.event, relativePath, event.file.content, written, { isNew: event.file.isNew === true });
 }
 
 /** Whether a principle directory has the two files that make it one. */

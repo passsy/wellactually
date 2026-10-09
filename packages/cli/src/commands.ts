@@ -3,6 +3,9 @@ import path from "node:path";
 import {
   applies,
   buildPrinciple,
+  diskFiles,
+  projectRootOf,
+  toPosix,
   checkPrinciple,
   isPrincipleId,
   PRINCIPLE_ID_RULE,
@@ -82,25 +85,28 @@ export async function tryPrinciple(dir: string, input: TryInput): Promise<TryRes
   if (!applies(built.manifest, ctx)) {
     return { applies: false, run: null, injected: "" };
   }
-  const run = await runDetector(built.bundle, ctx);
+  const run = await runDetector(built.bundle, ctx, undefined, diskFiles());
   const injected = frame(ctx, run.findings.length > 0 ? [{ principle: asLocal(built, idOf(dir)), findings: run.findings }] : []);
   return { applies: true, run, injected };
 }
 
 function tryCtx(input: TryInput): Ctx {
+  const here = projectRootOf(process.cwd());
   if (input.prompt !== undefined) {
-    return textCtx("prompt", input.prompt);
+    return textCtx("prompt", input.prompt, here === null ? null : toPosix(here));
   }
   if (input.command !== undefined) {
-    return textCtx("command", input.command);
+    return textCtx("command", input.command, here === null ? null : toPosix(here));
   }
   if (input.file === undefined) {
     throw new Error("pass a file, --prompt or --command");
   }
+  // Like the hook: the project root is the repository the file is in, when it is in one.
   const absolute = path.resolve(input.file);
-  const relative = path.relative(process.cwd(), absolute);
-  const shown = relative.startsWith("..") ? path.basename(absolute) : relative;
-  return fileCtx(input.read ? "read" : "write", shown, fs.readFileSync(absolute, "utf8"));
+  const root = projectRootOf(path.dirname(absolute));
+  const relative = path.relative(root ?? process.cwd(), absolute);
+  const shown = relative.startsWith("..") ? path.basename(absolute) : toPosix(relative);
+  return fileCtx(input.read ? "read" : "write", shown, fs.readFileSync(absolute, "utf8"), undefined, { root: root === null ? null : toPosix(root), absolute: toPosix(absolute) });
 }
 
 export async function probePrinciple(dir: string, repo: string): Promise<ProbeReport> {

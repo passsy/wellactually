@@ -44,7 +44,9 @@ So they are contained.
 
 - A detector runs in a QuickJS WebAssembly isolate.
   It gets its input as JSON and returns findings as JSON.
-  There is no filesystem, no network and no process inside.
+  There is no network and no process inside.
+- It can read text files on your machine and cannot change any.
+  Without a network there is nowhere to send them, and the next point keeps them out of your agent's context.
 - It has 50 ms and 32 MB.
   One that exceeds either is stopped and reported, and your agent carries on.
 - Whatever a detector reports must occur word for word in its input, or the finding is dropped.

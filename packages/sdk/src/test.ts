@@ -1,5 +1,5 @@
 /**
- * The test framework for a principle.
+ * The test framework for a principle, as it runs inside the isolate.
  *
  * A test builds the event a detector receives and asks what the detector
  * says about it:
@@ -8,67 +8,21 @@
  *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1, evidence: "late String name;" }]);
  *     });
  *
- * Tests run inside the isolate: in `wellactually test`, in the browser editor
- * and on the registry, always the same way. `detect` does not call the
- * detector directly. It asks the host, which runs the real detector the way
- * the hook does and keeps a record, so the registry knows what was shown to
- * fire and what was shown to stay quiet.
+ * On an author's machine the same file runs under vitest, where `test` and
+ * `expect` are vitest's and `detect` comes from `test.node.ts`. Here, in
+ * `wellactually test`, the browser editor and the registry, `vitest` resolves
+ * to this file's small copy of that API. Either way `detect` does not call
+ * the detector directly. It asks the host, which runs the real detector the
+ * way the hook does and keeps a record, so the registry knows what was shown
+ * to fire and what was shown to stay quiet.
  */
-import { fileCtx, locateWritten, textCtx, type Ctx, type Finding } from "./index.ts";
+import type { Ctx, Finding } from "./index.ts";
+import type { DetectOptions } from "./events.ts";
 
-/** The agent wrote this file in full. Every line counts as written. */
-export function write(path: string, content: string): Ctx {
-  return fileCtx("write", path, content);
-}
-
-/**
- * The agent edited a file. `content` is the file after the edit and
- * `change.written` is the text the agent put in, as one piece or several.
- */
-export function edit(path: string, content: string, change: { written: string | readonly string[] }): Ctx {
-  const fragments = typeof change.written === "string" ? [change.written] : change.written;
-  const written = locateWritten(content, fragments);
-  if (written.length === 0) {
-    throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);
-  }
-  return fileCtx("write", path, content, written);
-}
-
-/** The agent read this file. It wrote none of it. */
-export function read(path: string, content: string): Ctx {
-  return fileCtx("read", path, content);
-}
-
-/** The user typed this. */
-export function prompt(text: string): Ctx {
-  return textCtx("prompt", text);
-}
-
-/** The agent is about to run this shell command. */
-export function command(text: string): Ctx {
-  return textCtx("command", text);
-}
-
-/**
- * A multi-line string without the indentation of the test around it.
- *
- * `${` and a backtick inside it need a backslash, as in any template string.
- */
-export function source(strings: TemplateStringsArray, ...values: unknown[]): string {
-  const text = strings.raw.reduce((out, part, index) => out + part.replace(/\\([`$\\])/g, "$1") + (index < values.length ? String(values[index]) : ""), "");
-  const lines = text.split("\n");
-  if (lines[0]?.trim() === "") {
-    lines.shift();
-  }
-  if (lines.at(-1)?.trim() === "") {
-    lines.pop();
-  }
-  const indent = Math.min(...lines.filter((line) => line.trim() !== "").map((line) => /^[ \t]*/.exec(line)?.[0].length ?? 0));
-  return lines.map((line) => line.slice(Number.isFinite(indent) ? indent : 0)).join("\n");
-}
+export { command, edit, prompt, read, source, write, type DetectOptions } from "./events.ts";
 
 interface Host {
-  __detect?: (event: string) => string;
+  __detect?: (call: string) => string;
   __begin?: (test: string) => void;
 }
 
@@ -81,11 +35,11 @@ const host = globalThis as Host;
  * exactly as in a session. It throws when the detector fails or reports a
  * finding the host would drop, so a test cannot pass on a broken detector.
  */
-export function detect(event: Ctx): Finding[] {
+export function detect(event: Ctx, options: DetectOptions = {}): Finding[] {
   if (!host.__detect) {
-    throw new Error("detect() only works inside the principle test runner: `wellactually test`, the editor's Run tests, or the registry.");
+    throw new Error("detect() only works inside a principle's test run.");
   }
-  const answer = JSON.parse(host.__detect(JSON.stringify(event))) as { findings?: Finding[]; error?: string };
+  const answer = JSON.parse(host.__detect(JSON.stringify({ event, options }))) as { findings?: Finding[]; error?: string };
   if (answer.error !== undefined) {
     throw new Error(answer.error);
   }
@@ -168,32 +122,74 @@ function matches(actual: unknown, expected: unknown): boolean {
 export interface Expectation {
   /** Deeply equal. */
   toEqual(expected: unknown): void;
+  /** Deeply equal. Here it is the same as `toEqual`. */
+  toStrictEqual(expected: unknown): void;
   /** The same value. */
   toBe(expected: unknown): void;
   toHaveLength(length: number): void;
+  /** An array holding `item` itself, or a string holding the text. */
+  toContain(item: unknown): void;
   /** An array holding an item deeply equal to `item`. */
   toContainEqual(item: unknown): void;
   /** Has everything `expected` has, and may have more. */
   toMatchObject(expected: unknown): void;
+  toBeTruthy(): void;
+  toBeFalsy(): void;
+  toBeNull(): void;
+  toBeUndefined(): void;
+  toBeDefined(): void;
+  /** A function that throws. With `message`, the error has to contain it. */
+  toThrow(message?: string): void;
   not: Expectation;
 }
 
 function expectation(actual: unknown, negated: boolean): Expectation {
-  const check = (passed: boolean, what: string, expected: unknown): void => {
+  const check = (passed: boolean, what: string, expected?: unknown): void => {
     if (passed === negated) {
-      throw new Error(`Expected ${negated ? "not " : ""}${what}\n${show(expected)}\nReceived\n${show(actual)}`);
+      throw new Error(`Expected ${negated ? "not " : ""}${what}${expected === undefined ? "" : `\n${show(expected)}`}\nReceived\n${show(actual)}`);
     }
   };
-  return {
+  const thrown = (): string | null => {
+    try {
+      (actual as () => unknown)();
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
+  };
+  const matchers: Expectation = {
     toEqual: (expected) => check(equal(actual, expected), "to equal", expected),
+    toStrictEqual: (expected) => check(equal(actual, expected), "to equal", expected),
     toBe: (expected) => check(Object.is(actual, expected), "to be", expected),
     toHaveLength: (length) => check((actual as { length?: unknown } | null)?.length === length, "length", length),
+    toContain: (item) => check(typeof actual === "string" ? actual.includes(String(item)) : Array.isArray(actual) && actual.includes(item), "to contain", item),
     toContainEqual: (item) => check(Array.isArray(actual) && actual.some((candidate) => equal(candidate, item)), "to contain", item),
     toMatchObject: (expected) => check(matches(actual, expected), "to match", expected),
+    toBeTruthy: () => check(Boolean(actual), "a truthy value"),
+    toBeFalsy: () => check(!actual, "a falsy value"),
+    toBeNull: () => check(actual === null, "null"),
+    toBeUndefined: () => check(actual === undefined, "undefined"),
+    toBeDefined: () => check(actual !== undefined, "a defined value"),
+    toThrow: (message) => {
+      const error = thrown();
+      check(error !== null && (message === undefined || error.includes(message)), message === undefined ? "to throw" : "to throw an error containing", message);
+    },
     get not() {
       return expectation(actual, !negated);
     },
   };
+  // A test also runs under vitest, which knows many more matchers. One that is
+  // missing here must say so, or it fails on the registry as "not a function".
+  return new Proxy(matchers, {
+    get(target, name, receiver) {
+      if (typeof name === "string" && !(name in target)) {
+        throw new Error(
+          `expect().${name} is not available when the registry runs the tests. Use one of: ${Object.keys(target).filter((key) => key !== "not").join(", ")}.`,
+        );
+      }
+      return Reflect.get(target, name, receiver);
+    },
+  });
 }
 
 export function expect(actual: unknown): Expectation {

@@ -13,6 +13,12 @@ export const BUNDLE_GLOBAL = "__principle";
 const MAX_BUNDLE_BYTES = 256 * 1024;
 const SDK = "@wellactually/sdk";
 const SDK_TEST = "@wellactually/sdk/test";
+/** What a detector imports to read the project, and the SDK file that answers inside the isolate. */
+const BUILT_INS: Record<string, string> = { "node:fs": "fs.ts", fs: "fs.ts", "node:path": "path.ts", path: "path.ts" };
+/** The test runner an author uses. Inside the isolate it is the SDK's small copy of it. */
+const VITEST = "vitest";
+/** Folders that hold a project for a test to run in. A `*.test.ts` in there belongs to that project, not to the principle. */
+const FIXTURES = /(^|\/)fixtures\//;
 const DETECTOR_ENTRIES = ["detector.ts", "detector.js", "detector.mjs"];
 /** The entry of the test bundle. It is made up by the build and is not one of the principle's files. */
 const TEST_ENTRY = "__tests__.ts";
@@ -25,10 +31,10 @@ export function detectorEntry(files: FileMap): string | null {
   return DETECTOR_ENTRIES.find((name) => name in files) ?? null;
 }
 
-/** The test files of a principle: every `*.test.ts` or `*.test.js`, wherever it lies. */
+/** The test files of a principle: every `*.test.ts` or `*.test.js`, wherever it lies outside `fixtures/`. */
 export function testFiles(files: FileMap): string[] {
   return Object.keys(files)
-    .filter((name) => /\.test\.(ts|js|mjs)$/.test(name))
+    .filter((name) => /\.test\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name))
     .sort();
 }
 
@@ -64,7 +70,8 @@ function dirname(path: string): string {
  * The build never touches a disk: the principle's files come from the map and
  * the SDK from strings compiled into this package. That is what lets the
  * same build run in the CLI, on the registry and in a browser. A detector may
- * import its own relative files and the SDK. Everything else is refused here,
+ * import its own relative files, the SDK, and `node:fs` and `node:path`, which
+ * resolve to the SDK's read-only versions. Everything else is refused here,
  * at build time, because nothing else exists inside the isolate.
  */
 export async function buildBundle(files: FileMap): Promise<string> {
@@ -79,8 +86,9 @@ export async function buildBundle(files: FileMap): Promise<string> {
  * Compiles a principle's test files into one script for the isolate.
  *
  * The script loads every test file, which registers its tests, and exposes
- * `run()`. A test file may import the test framework, the SDK and its own
- * relative files. Null when the principle has no test files.
+ * `run()`. A test file may import `vitest`, which resolves to the SDK's copy
+ * of its API, the SDK and its own relative files. Null when the principle has
+ * no test files.
  */
 export async function buildTestBundle(files: FileMap): Promise<string | null> {
   const tests = testFiles(files);
@@ -111,6 +119,19 @@ async function build(files: FileMap, entry: string, globalName: string, isTest: 
           }
           return { path: "test.ts", namespace: "sdk" };
         }
+        const builtIn = BUILT_INS[args.path];
+        if (builtIn === "fs.ts" && isTest && args.namespace === "principle" && tests.has(args.importer)) {
+          return { errors: [{ text: `A test cannot read files itself. Put them in a folder of the principle and pass it to detect(event, { project: "fixtures/name" }).` }] };
+        }
+        if (builtIn) {
+          return { path: builtIn, namespace: "sdk" };
+        }
+        if (args.path === VITEST) {
+          if (!isTest) {
+            return { errors: [{ text: `${VITEST} is for test files. A detector cannot import it.` }] };
+          }
+          return { path: "vitest.ts", namespace: "sdk" };
+        }
         if (args.namespace === "sdk" && args.path.startsWith("./")) {
           return { path: args.path.slice(2), namespace: "sdk" };
         }
@@ -125,7 +146,7 @@ async function build(files: FileMap, entry: string, globalName: string, isTest: 
         return {
           errors: [
             {
-              text: `"${args.path}" cannot be imported. A ${isTest ? "test" : "detector"} may import its own relative files and ${SDK}${isTest ? ` and ${SDK_TEST}` : ""}, nothing else.`,
+              text: `"${args.path}" cannot be imported. A ${isTest ? "test" : "detector"} may import its own relative files, ${SDK}, node:fs and node:path${isTest ? `, ${SDK_TEST} and ${VITEST}` : ""}, nothing else.`,
             },
           ],
         };

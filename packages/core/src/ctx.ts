@@ -20,5 +20,5 @@ export function applies(manifest: Manifest, ctx: Ctx): boolean {
   if (!ctx.file) {
     return true;
   }
-  return matchesAnyGlob(ctx.file.path, manifest.globs);
+  return matchesAnyGlob(ctx.file.relativePath, manifest.globs);
 }

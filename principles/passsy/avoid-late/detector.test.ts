@@ -1,4 +1,5 @@
-import { detect, edit, expect, prompt, read, source, test, write } from "@wellactually/sdk/test";
+import { expect, test } from "vitest";
+import { detect, edit, prompt, read, source, write } from "@wellactually/sdk/test";
 
 const session = source`
   class Session {

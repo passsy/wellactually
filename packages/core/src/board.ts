@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import type { Ctx, Finding } from "@wellactually/sdk";
 import { applies } from "./ctx.ts";
+import { diskFiles } from "./fs.ts";
 import type { BoardEntry, CachedPrinciple, Lockfile } from "./types.ts";
 import { DEFAULT_LIMITS, runDetector } from "./sandbox.ts";
 
@@ -105,6 +106,7 @@ export const BOARD_BUDGET_MS = 1500;
  * detector cannot read, slow down or break another's.
  */
 export async function runBoard(ctx: Ctx, lockfile: Lockfile = readLockfile(), off: ReadonlySet<string> = new Set()): Promise<BoardRun> {
+  const disk = diskFiles();
   const started = performance.now();
   const run: BoardRun = { firings: [], failures: [], ms: 0 };
 
@@ -128,7 +130,7 @@ export async function runBoard(ctx: Ctx, lockfile: Lockfile = readLockfile(), of
       run.failures.push({ id: entry.id, error: `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it` });
       continue;
     }
-    const result = await runDetector(principle.bundle, ctx, DEFAULT_LIMITS);
+    const result = await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk);
     if (result.error) {
       run.failures.push({ id: entry.id, error: result.error });
       continue;
@@ -161,7 +163,7 @@ export function frame(ctx: Ctx, firings: Firing[], alreadyShown: ReadonlySet<str
   if (firings.length === 0) {
     return "";
   }
-  const where = ctx.file ? ` ${ctx.file.path}` : "";
+  const where = ctx.file ? ` ${ctx.file.relativePath}` : "";
   const lines: string[] = [
     "<wellactually>",
     `${ctx.event}${where}: ${OPENERS[ctx.event]}`,

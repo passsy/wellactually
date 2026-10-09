@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { eventsOf, type HookPayload } from "../src/node.ts";
 
@@ -10,7 +13,7 @@ const disk = (files: Record<string, string>) => (absolute: string) => files[abso
 const summary = (payload: HookPayload, files: Record<string, string> = {}) =>
   eventsOf({ cwd, session_id: "s", ...payload }, disk(files)).map((ctx) => ({
     event: ctx.event,
-    path: ctx.file?.path ?? null,
+    path: ctx.file?.relativePath ?? null,
     text: ctx.text,
     written: ctx.file?.written.map((line) => line.line) ?? null,
   }));
@@ -91,6 +94,57 @@ describe("Codex payloads", () => {
   test("a new file that is not on disk is taken from the patch", () => {
     expect(summary(patch("*** Add File: lib/b.dart\n+final b = 1;\n+final c = 2;"))).toEqual([
       { event: "write", path: "lib/b.dart", text: "final b = 1;\nfinal c = 2;", written: [1, 2] },
+    ]);
+  });
+});
+
+describe("where an event happened", () => {
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-where-")));
+  const session = path.join(base, "app-a");
+  const other = path.join(base, "app-b");
+  for (const repo of [session, other]) {
+    fs.mkdirSync(path.join(repo, ".git"), { recursive: true });
+    fs.mkdirSync(path.join(repo, "packages/core/lib"), { recursive: true });
+  }
+  const read = () => "class A {}";
+  const write = (file: string, extra: Partial<HookPayload> = {}) =>
+    eventsOf({ cwd: session, hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: file }, ...extra }, read)[0];
+
+  test("a file has an absolute path, and its project is the repository it is in", () => {
+    const ctx = write("packages/core/lib/a.dart");
+    expect(ctx?.file).toMatchObject({ path: `${session}/packages/core/lib/a.dart`, relativePath: "packages/core/lib/a.dart", name: "a.dart" });
+    expect(ctx?.project).toBe(session);
+  });
+
+  test("a file in another repository belongs to that one, not to where the session started", () => {
+    const ctx = write(path.join(other, "packages/core/lib/b.dart"));
+    expect(ctx?.file).toMatchObject({ path: `${other}/packages/core/lib/b.dart`, relativePath: "packages/core/lib/b.dart" });
+    expect(ctx?.project).toBe(other);
+  });
+
+  test("a file in no repository has no project", () => {
+    const ctx = write(path.join(base, "notes.dart"));
+    expect(ctx?.file).toMatchObject({ path: `${base}/notes.dart`, relativePath: "notes.dart" });
+    expect(ctx?.project).toBeNull();
+  });
+
+  test("a prompt and a command happen in the session's repository", () => {
+    expect(eventsOf({ cwd: path.join(session, "packages"), hook_event_name: "UserPromptSubmit", prompt: "hi" }, read)[0]?.project).toBe(session);
+    expect(eventsOf({ cwd: base, hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "ls" } }, read)[0]?.project).toBeNull();
+  });
+
+  test("a write that created the file says so", () => {
+    expect(write("lib/new.dart", { tool_response: { type: "create" } })?.file?.isNew).toBe(true);
+    expect(write("lib/new.dart", { tool_response: { originalFile: null } })?.file?.isNew).toBe(true);
+    expect(write("lib/old.dart", { tool_response: { type: "update", originalFile: "x" } })?.file?.isNew).toBe(false);
+    expect(write("lib/unknown.dart")?.file?.isNew).toBe(false);
+    const patched = eventsOf(
+      { cwd: session, hook_event_name: "PostToolUse", tool_name: "apply_patch", tool_input: { command: "*** Add File: lib/b.dart\n+final b = 1;\n*** Update File: lib/c.dart\n@@\n+class A {}" } },
+      read,
+    );
+    expect(patched.map((ctx) => [ctx.file?.relativePath, ctx.file?.isNew])).toEqual([
+      ["lib/b.dart", true],
+      ["lib/c.dart", false],
     ]);
   });
 });

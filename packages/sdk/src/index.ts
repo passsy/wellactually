@@ -1,9 +1,9 @@
 /**
- * Everything a detector may import.
+ * Everything a detector may import, next to `node:fs` and `node:path`.
  *
- * A detector runs inside an isolate with no filesystem, no network and no
- * process. This module is bundled into it at publish time, so it must stay
- * free of Node imports and of any state.
+ * A detector runs inside an isolate with no network and no process. It can
+ * read files and cannot change any. This module is bundled into it at publish
+ * time, so it must stay free of Node imports and of any state.
  */
 
 /**
@@ -27,8 +27,13 @@ export interface WrittenLine {
 }
 
 export interface FileContext {
-  /** Path relative to the project root, with forward slashes. */
+  /** Absolute path, with forward slashes. Navigate from here with `node:path` and read neighbours with `node:fs`. */
   path: string;
+  /**
+   * Path from the project root, e.g. "lib/src/config_loader.dart". This is what `globs` are matched against.
+   * Without a project root it is the path from where the session runs, or just the file's name.
+   */
+  relativePath: string;
   /** Basename, e.g. "config_loader.dart". */
   name: string;
   /** Extension including the dot, lower case. Empty when there is none. */
@@ -38,6 +43,8 @@ export interface FileContext {
   lines: string[];
   /** The lines the agent wrote. Empty on `read`. */
   written: WrittenLine[];
+  /** The agent created this file with this write. It did not exist before. */
+  isNew: boolean;
 }
 
 /** Everything a detector can look at. It is plain data, parsed from JSON. */
@@ -53,6 +60,13 @@ export interface Ctx {
   isCommand: boolean;
   /** The event carries text rather than a file. */
   isConversation: boolean;
+  /**
+   * The root of the project the event happened in, as an absolute path: the
+   * nearest folder upwards with a `.git`. Null when there is none, which is
+   * normal, so do not rely on it. To find a `pubspec.yaml` or a
+   * `package.json`, walk up from `file.path` instead.
+   */
+  project: string | null;
 }
 
 /**
@@ -212,14 +226,28 @@ export function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIK
   return out.join("");
 }
 
+/** The project root of every event a test builds. It is made up, and the same in every runner. */
+export const TEST_ROOT = "/project";
+
+/** Where an event happened. A test leaves it out and gets `TEST_ROOT`. */
+export interface Where {
+  /** The repository root, or null when the file is in none. */
+  root?: string | null;
+  /** The file's absolute path, when it is not simply `root/relativePath`. */
+  absolute?: string;
+  isNew?: boolean;
+}
+
 /**
  * The event for a file the agent wrote or read.
  *
  * On `write`, `written` defaults to every line: a new file is written whole.
  * On `read` nothing was written, whatever is passed.
  */
-export function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: WrittenLine[]): Ctx {
-  const path = relativePath.replaceAll("\\", "/");
+export function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: WrittenLine[], where: Where = {}): Ctx {
+  const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
+  const root = where.root === undefined ? TEST_ROOT : where.root;
+  const path = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
   const name = path.slice(path.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
@@ -228,21 +256,24 @@ export function fileCtx(event: "write" | "read", relativePath: string, content: 
     event,
     file: {
       path,
+      relativePath: relative,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
       content,
       lines,
       written: event === "read" ? [] : (written ?? allLines),
+      isNew: event === "write" && where.isNew === true,
     },
     text: content,
     isUserPrompt: false,
     isCommand: false,
     isConversation: false,
+    project: root,
   };
 }
 
 /** The event for text: what the user typed, or a command about to run. */
-export function textCtx(event: "prompt" | "command", text: string): Ctx {
+export function textCtx(event: "prompt" | "command", text: string, root: string | null = TEST_ROOT): Ctx {
   return {
     event,
     file: null,
@@ -250,6 +281,7 @@ export function textCtx(event: "prompt" | "command", text: string): Ctx {
     isUserPrompt: event === "prompt",
     isCommand: event === "command",
     isConversation: true,
+    project: root,
   };
 }
 
