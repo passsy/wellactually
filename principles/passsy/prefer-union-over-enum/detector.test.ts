@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { detect, edit, source, write } from "@wellactually/sdk/test";
+import { detect, edit, source, write } from "@wellactually/sdk/v2/test";
 
 const status = source`
   export enum Status {

@@ -3853,10 +3853,14 @@ function environmentFor(api, ctx, project) {
   }
   return { strings, functions };
 }
+var SDK = "@wellactually/sdk";
+var current = `"${SDK}/v${API_VERSION}"`;
 
 // packages/core/src/bundle.ts
 var BUNDLE_GLOBAL = "__principle";
 var MAX_BUNDLE_BYTES = 256 * 1024;
+var SDK2 = "@wellactually/sdk";
+var SDK_NOW = `${SDK2}/v${API_VERSION}`;
 
 // packages/core/src/sandbox.ts
 var DEFAULT_LIMITS = {

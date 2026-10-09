@@ -5,7 +5,10 @@
   "description": "Types and helpers a principle's detector may import, and what its tests import to run under vitest.",
   "exports": {
     ".": "./src/index.ts",
-    "./test": "./src/test.node.ts"
+    "./v1": "./src/v1.ts",
+    "./v1/test": "./src/test.node.ts",
+    "./v2": "./src/v2.ts",
+    "./v2/test": "./src/test.node.ts"
   },
   "dependencies": {
     "@wellactually/core": "0.1.0"

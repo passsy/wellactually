@@ -10933,6 +10933,54 @@ function loadSandbox() {
 // packages/sdk/src/index.ts
 var API_VERSION = 2;
 var EVENTS = ["write", "read", "prompt", "command"];
+var C_LIKE = {
+  lineComment: "//",
+  blockComment: ["/*", "*/"],
+  quotes: ['"', "'", "`"]
+};
+function blankCommentsAndStrings(text2, syntax = C_LIKE) {
+  const out = [];
+  const quotes = syntax.quotes ?? [];
+  let i = 0;
+  while (i < text2.length) {
+    const char = text2[i] ?? "";
+    if (syntax.lineComment && text2.startsWith(syntax.lineComment, i)) {
+      while (i < text2.length && text2[i] !== "\n") {
+        out.push(" ");
+        i++;
+      }
+      continue;
+    }
+    if (syntax.blockComment && text2.startsWith(syntax.blockComment[0], i)) {
+      const close = text2.indexOf(syntax.blockComment[1], i + syntax.blockComment[0].length);
+      const end = close === -1 ? text2.length : close + syntax.blockComment[1].length;
+      for (; i < end; i++) {
+        out.push(text2[i] === "\n" ? "\n" : " ");
+      }
+      continue;
+    }
+    if (quotes.includes(char)) {
+      out.push(char);
+      i++;
+      while (i < text2.length && text2[i] !== char) {
+        if (text2[i] === "\\" && i + 1 < text2.length) {
+          out.push(" ");
+          i++;
+        }
+        out.push(text2[i] === "\n" ? "\n" : " ");
+        i++;
+      }
+      if (i < text2.length) {
+        out.push(char);
+        i++;
+      }
+      continue;
+    }
+    out.push(char);
+    i++;
+  }
+  return out.join("");
+}
 var TEST_ROOT = "/project";
 function fileCtx(event, relativePath, content, written, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
@@ -11161,15 +11209,47 @@ function environmentFor(api, ctx, project) {
   }
   return { strings, functions };
 }
-function declaredApi(exported) {
-  if (exported === void 0) {
-    return API_VERSION;
+var SDK = "@wellactually/sdk";
+var current = `"${SDK}/v${API_VERSION}"`;
+function sdkImports(source) {
+  const code = blankCommentsAndStrings(source);
+  const found = /* @__PURE__ */ new Set();
+  for (const match of code.matchAll(/\b(?:from|import)\s*\(?\s*(["'])/g)) {
+    const open2 = match.index + match[0].length;
+    const close = source.indexOf(match[1] ?? '"', open2);
+    const specifier = close === -1 ? "" : source.slice(open2, close);
+    if (specifier === SDK || specifier.startsWith(`${SDK}/`)) {
+      found.add(specifier);
+    }
   }
-  const refused = typeof exported === "number" ? unsupported(exported) : `it is not a number: ${JSON.stringify(exported)}`;
-  if (refused !== null) {
-    throw new Error(`detector.ts exports api, the detector API version it was written against, but ${refused.replace(/^it /, "this one ")} Use a whole number from ${MIN_API_VERSION} to ${API_VERSION}, for example: export const api = ${API_VERSION};`);
+  return [...found];
+}
+function importedApi(sources) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const name of Object.keys(sources).sort()) {
+    for (const specifier of sdkImports(sources[name] ?? "")) {
+      const where = `${name} imports "${specifier}"`;
+      const version2 = /^@wellactually\/sdk\/v(\d+)(?:\/test)?$/.exec(specifier)?.[1];
+      if (version2 === void 0) {
+        const wanted = specifier.endsWith("/test") ? `"${SDK}/v${API_VERSION}/test"` : current;
+        throw new Error(`${where}. The detector API version is part of the path: import from ${wanted}.`);
+      }
+      const api = Number(version2);
+      if (api < MIN_API_VERSION || api > API_VERSION) {
+        throw new Error(`${where}. This version of Well Actually builds for the detector API versions ${MIN_API_VERSION} to ${API_VERSION}.`);
+      }
+      if (!seen.has(api)) {
+        seen.set(api, where);
+      }
+    }
   }
-  return exported;
+  if (seen.size === 0) {
+    throw new Error(`no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import type { Ctx, Finding } from ${current};`);
+  }
+  if (seen.size > 1) {
+    throw new Error(`the principle is written against ${seen.size} versions of the detector API: ${[...seen.values()].join(", ")}. Import from one version everywhere.`);
+  }
+  return [...seen.keys()][0];
 }
 var BUILT_IN_SINCE = { "node:fs": 2 };
 
@@ -11177,9 +11257,11 @@ var BUILT_IN_SINCE = { "node:fs": 2 };
 var SDK_SOURCES = {
   "events.ts": '/**\n * The events a test shows to a detector.\n *\n * They are the same in every runner: vitest on the author\'s machine,\n * `wellactually test`, the browser editor and the registry. A path is relative\n * to a made-up project root, and the detector sees it below that root.\n */\nimport { fileCtx, locateWritten, textCtx, type Ctx } from "./index.ts";\n\n/** What `detect` takes besides the event. */\nexport interface DetectOptions {\n  /**\n   * A folder of the principle, e.g. "fixtures/flutter_app", that is the\n   * project the event happens in. The detector reads its files with `node:fs`.\n   * Without it the only file there is, anywhere, is the file of the event.\n   */\n  project?: string;\n}\n\n/**\n * The agent wrote this file in full. Every line counts as written.\n * Pass `{ isNew: true }` when the write created the file.\n */\nexport function write(path: string, content: string, options: { isNew?: boolean } = {}): Ctx {\n  return fileCtx("write", path, content, undefined, { isNew: options.isNew === true });\n}\n\n/**\n * The agent edited a file. `content` is the file after the edit and\n * `change.written` is the text the agent put in, as one piece or several.\n */\nexport function edit(path: string, content: string, change: { written: string | readonly string[] }): Ctx {\n  const fragments = typeof change.written === "string" ? [change.written] : change.written;\n  const written = locateWritten(content, fragments);\n  if (written.length === 0) {\n    throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);\n  }\n  return fileCtx("write", path, content, written);\n}\n\n/** The agent read this file. It wrote none of it. */\nexport function read(path: string, content: string): Ctx {\n  return fileCtx("read", path, content);\n}\n\n/** The user typed this. */\nexport function prompt(text: string): Ctx {\n  return textCtx("prompt", text);\n}\n\n/** The agent is about to run this shell command. */\nexport function command(text: string): Ctx {\n  return textCtx("command", text);\n}\n\n/**\n * A multi-line string without the indentation of the test around it.\n *\n * `${` and a backtick inside it need a backslash, as in any template string.\n */\nexport function source(strings: TemplateStringsArray, ...values: unknown[]): string {\n  const text = strings.raw.reduce((out, part, index) => out + part.replace(/\\\\([`$\\\\])/g, "$1") + (index < values.length ? String(values[index]) : ""), "");\n  const lines = text.split("\\n");\n  if (lines[0]?.trim() === "") {\n    lines.shift();\n  }\n  if (lines.at(-1)?.trim() === "") {\n    lines.pop();\n  }\n  const indent = Math.min(...lines.filter((line) => line.trim() !== "").map((line) => /^[ \\t]*/.exec(line)?.[0].length ?? 0));\n  return lines.map((line) => line.slice(Number.isFinite(indent) ? indent : 0)).join("\\n");\n}\n',
   "fs.ts": '/**\n * What `node:fs` resolves to inside the isolate: the reading half of it.\n *\n * A detector has no file system of its own. Each call here is a question to\n * the host, which reads the file for it. A file that is not text, is very\n * large or cannot be read looks like a file that does not exist.\n *\n * Only the synchronous calls exist, because a detector is synchronous.\n * Nothing can be written.\n */\n\ninterface Host {\n  __fs?: (request: string) => string;\n}\n\ninterface Entry {\n  name: string;\n  kind: "file" | "dir";\n}\n\ntype Answer =\n  | { text: string }\n  | { stat: { kind: "file" | "dir"; size: number } }\n  | { entries: Entry[] }\n  | { error: { code: string; message: string } };\n\nfunction ask(op: "read" | "stat" | "list", path: string): Answer {\n  const host = (globalThis as Host).__fs;\n  if (!host) {\n    return { error: { code: "ENOENT", message: `ENOENT: no such file or directory, ${op} \'${path}\'` } };\n  }\n  return JSON.parse(host(JSON.stringify({ op, path: String(path) }))) as Answer;\n}\n\nfunction fail(error: { code: string; message: string }): never {\n  throw Object.assign(new Error(error.message), { code: error.code });\n}\n\n/** The file as text. The encoding is always UTF-8, whatever is passed. */\nexport function readFileSync(path: string, _options?: unknown): string {\n  const answer = ask("read", path);\n  if ("error" in answer) {\n    fail(answer.error);\n  }\n  return (answer as { text: string }).text;\n}\n\nexport function existsSync(path: string): boolean {\n  return !("error" in ask("stat", path));\n}\n\nexport interface Stats {\n  size: number;\n  isFile(): boolean;\n  isDirectory(): boolean;\n  isSymbolicLink(): boolean;\n}\n\nexport function statSync(path: string, options?: { throwIfNoEntry?: boolean }): Stats | undefined {\n  const answer = ask("stat", path);\n  if ("error" in answer) {\n    if (options?.throwIfNoEntry === false) {\n      return undefined;\n    }\n    fail(answer.error);\n  }\n  const { kind, size } = (answer as { stat: { kind: "file" | "dir"; size: number } }).stat;\n  return { size, isFile: () => kind === "file", isDirectory: () => kind === "dir", isSymbolicLink: () => false };\n}\n\n/** Symlinks are resolved by the host, so this is `statSync`. */\nexport const lstatSync = statSync;\n\nexport interface Dirent {\n  name: string;\n  isFile(): boolean;\n  isDirectory(): boolean;\n  isSymbolicLink(): boolean;\n}\n\nexport function readdirSync(path: string, options: { withFileTypes: true }): Dirent[];\nexport function readdirSync(path: string, options?: { withFileTypes?: false } | string): string[];\nexport function readdirSync(path: string, options?: { withFileTypes?: boolean } | string): string[] | Dirent[] {\n  const answer = ask("list", path);\n  if ("error" in answer) {\n    fail(answer.error);\n  }\n  const entries = (answer as { entries: Entry[] }).entries;\n  if (typeof options === "object" && options.withFileTypes) {\n    return entries.map((entry) => ({ name: entry.name, isFile: () => entry.kind === "file", isDirectory: () => entry.kind === "dir", isSymbolicLink: () => false }));\n  }\n  return entries.map((entry) => entry.name);\n}\n\nfunction readOnly(name: string): () => never {\n  return () => {\n    throw Object.assign(new Error(`EROFS: read-only file system, ${name}. A detector can read the project and cannot change it.`), { code: "EROFS" });\n  };\n}\n\nexport const writeFileSync = readOnly("writeFileSync");\nexport const appendFileSync = readOnly("appendFileSync");\nexport const mkdirSync = readOnly("mkdirSync");\nexport const rmSync = readOnly("rmSync");\nexport const unlinkSync = readOnly("unlinkSync");\nexport const renameSync = readOnly("renameSync");\nexport const copyFileSync = readOnly("copyFileSync");\n\nexport default { readFileSync, existsSync, statSync, lstatSync, readdirSync, writeFileSync, appendFileSync, mkdirSync, rmSync, unlinkSync, renameSync, copyFileSync };\n',
-  "index.ts": '/**\n * Everything a detector may import, next to `node:fs` and `node:path`.\n *\n * A detector runs inside an isolate with no network and no process. It can\n * read files and cannot change any. This module is bundled into it at publish\n * time, so it must stay free of Node imports and of any state.\n */\n\n/**\n * The version of the detector API this SDK is: the event a detector is handed\n * and what it may ask the host for.\n *\n * A principle records the version it was built against, and a host runs each\n * detector against the version it was built for. So the API changes by adding\n * a version here, with the host\'s step back to the one before. Changing what\n * an existing version means would break principles that are already released.\n *\n * - 1: the event with `file.path` relative. A detector could reach nothing outside it.\n * - 2: `file.path` is absolute. Added `file.relativePath`, `file.isNew` and\n *   `project`, and reading files through `node:fs` and `node:path`.\n *\n * A detector says which one it was written against with `export const api = 2;`.\n * It is then handed the event of that version for as long as it exists, also\n * when it is uploaded again after the API has moved on. The helpers in this\n * file work on the event of every version. Without the export it is built\n * against the newest version at the time of the upload.\n */\nexport const API_VERSION = 2;\n\n/**\n * The event of API 1. A detector that declares `api = 1` is handed this:\n * `detect(ctx: CtxV1)`.\n */\nexport interface CtxV1 {\n  event: EventName;\n  file: {\n    /** Relative, with forward slashes. */\n    path: string;\n    name: string;\n    ext: string;\n    content: string;\n    lines: string[];\n    written: WrittenLine[];\n  } | null;\n  text: string;\n  isUserPrompt: boolean;\n  isCommand: boolean;\n  isConversation: boolean;\n}\n\n/**\n * What happened in the session.\n *\n * - `write`: the agent wrote or edited a file. `ctx.file.written` holds the lines it wrote.\n * - `read`: the agent read a file. It did not write this code.\n * - `prompt`: the user typed a message.\n * - `command`: the agent is about to run a shell command.\n */\nexport type EventName = "write" | "read" | "prompt" | "command";\n\nexport const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command"];\n\n/** A line the agent wrote in this event. */\nexport interface WrittenLine {\n  /** 1-based line in the file. */\n  line: number;\n  /** The line as written, untrimmed. */\n  text: string;\n}\n\nexport interface FileContext {\n  /** Absolute path, with forward slashes. Navigate from here with `node:path` and read neighbours with `node:fs`. */\n  path: string;\n  /**\n   * Path from the project root, e.g. "lib/src/config_loader.dart". This is what `globs` are matched against.\n   * Without a project root it is the path from where the session runs, or just the file\'s name.\n   */\n  relativePath: string;\n  /** Basename, e.g. "config_loader.dart". */\n  name: string;\n  /** Extension including the dot, lower case. Empty when there is none. */\n  ext: string;\n  content: string;\n  /** `content` split into lines. */\n  lines: string[];\n  /** The lines the agent wrote. Empty on `read`. */\n  written: WrittenLine[];\n  /** The agent created this file with this write. It did not exist before. */\n  isNew: boolean;\n}\n\n/** Everything a detector can look at. It is plain data, parsed from JSON. */\nexport interface Ctx {\n  event: EventName;\n  /** Null when the event carries text instead of a file. */\n  file: FileContext | null;\n  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`. */\n  text: string;\n  /** The user typed this. A request for work that has not happened yet. */\n  isUserPrompt: boolean;\n  /** A shell command the agent is about to run. */\n  isCommand: boolean;\n  /** The event carries text rather than a file. */\n  isConversation: boolean;\n  /**\n   * The root of the project the event happened in, as an absolute path: the\n   * nearest folder upwards with a `.git`. Null when there is none, which is\n   * normal, so do not rely on it. To find a `pubspec.yaml` or a\n   * `package.json`, walk up from `file.path` instead.\n   */\n  project: string | null;\n}\n\n/**\n * How much of the advice a finding deserves.\n *\n * A word match established a topic and asks for a `pointer`: title and summary.\n * Code that breaks the principle asks for `full`: the whole advice text.\n */\nexport type Depth = "pointer" | "full";\n\nexport interface Finding {\n  /** 1-based. Omit when the finding is not about a line. */\n  line?: number;\n  /**\n   * The text that triggered the finding.\n   * It must occur verbatim in `ctx.text`; the host drops findings whose evidence does not.\n   */\n  evidence: string;\n  /** Omitted means `full`. */\n  depth?: Depth;\n}\n\n/** What `detect` returns: a generator or any other iterable of findings. */\nexport type Findings = Iterable<Finding>;\n\n/** The shape of a detector module. */\nexport interface Detector {\n  detect: (ctx: Ctx) => Findings | null | undefined;\n}\n\nconst WORD_CHAR = /[A-Za-z0-9_$]/;\n\n/**\n * Index of `word` in `text` where it stands alone, or -1.\n * `findWord("isolate", "late")` is -1; `findWord("late final x", "late")` is 0.\n */\nexport function findWord(text: string, word: string, from = 0): number {\n  let at = text.indexOf(word, from);\n  while (at !== -1) {\n    const before = at === 0 ? "" : (text[at - 1] ?? "");\n    const after = text[at + word.length] ?? "";\n    if (!WORD_CHAR.test(before) && !WORD_CHAR.test(after)) {\n      return at;\n    }\n    at = text.indexOf(word, at + 1);\n  }\n  return -1;\n}\n\n/**\n * Pointer findings for each of `names` that occurs in a conversation event.\n *\n * This is a name check for a named technology, not a keyword cloud.\n * Pass the few phrases that can only mean your topic.\n */\nexport function* mentioned(ctx: Pick<Ctx, "isConversation" | "text">, names: readonly string[]): Generator<Finding> {\n  if (!ctx.isConversation) {\n    return;\n  }\n  const haystack = ctx.text.toLowerCase();\n  for (const name of names) {\n    const at = findWord(haystack, name.toLowerCase());\n    if (at === -1) {\n      continue;\n    }\n    yield { evidence: ctx.text.slice(at, at + name.length), depth: "pointer" };\n    return;\n  }\n}\n\n/** The lines the agent wrote in this event. Empty when no file is involved. */\nexport function writtenLines(ctx: { file: { written: WrittenLine[] } | null }): WrittenLine[] {\n  return ctx.file?.written ?? [];\n}\n\n/** 1-based line of a character offset in `text`. */\nexport function lineAt(text: string, offset: number): number {\n  let line = 1;\n  for (let i = 0; i < offset && i < text.length; i++) {\n    if (text[i] === "\\n") {\n      line++;\n    }\n  }\n  return line;\n}\n\nexport interface CodeSyntax {\n  /** Starts a comment that runs to the end of the line. */\n  lineComment?: string;\n  /** Opens and closes a block comment. */\n  blockComment?: readonly [string, string];\n  /** Characters that open and close a string literal. */\n  quotes?: readonly string[];\n}\n\n/** Comments and strings as written in C, Dart, Java, JavaScript, Kotlin, Swift and friends. */\nexport const C_LIKE: CodeSyntax = {\n  lineComment: "//",\n  blockComment: ["/*", "*/"],\n  quotes: [\'"\', "\'", "`"],\n};\n\n/** Comments and strings as written in Python, Ruby, shell and YAML. */\nexport const HASH_LIKE: CodeSyntax = {\n  lineComment: "#",\n  quotes: [\'"\', "\'"],\n};\n\n/**\n * `text` with comments and string contents replaced by spaces.\n *\n * Positions and line breaks are preserved, so an offset or line found in the\n * result points at the same place in the original. Use it to keep a keyword\n * inside a comment or a string from counting as code.\n */\nexport function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIKE): string {\n  const out: string[] = [];\n  const quotes = syntax.quotes ?? [];\n  let i = 0;\n  while (i < text.length) {\n    const char = text[i] ?? "";\n    if (syntax.lineComment && text.startsWith(syntax.lineComment, i)) {\n      while (i < text.length && text[i] !== "\\n") {\n        out.push(" ");\n        i++;\n      }\n      continue;\n    }\n    if (syntax.blockComment && text.startsWith(syntax.blockComment[0], i)) {\n      const close = text.indexOf(syntax.blockComment[1], i + syntax.blockComment[0].length);\n      const end = close === -1 ? text.length : close + syntax.blockComment[1].length;\n      for (; i < end; i++) {\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n      }\n      continue;\n    }\n    if (quotes.includes(char)) {\n      out.push(char);\n      i++;\n      while (i < text.length && text[i] !== char) {\n        if (text[i] === "\\\\" && i + 1 < text.length) {\n          out.push(" ");\n          i++;\n        }\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n        i++;\n      }\n      if (i < text.length) {\n        out.push(char);\n        i++;\n      }\n      continue;\n    }\n    out.push(char);\n    i++;\n  }\n  return out.join("");\n}\n\n/** The project root of every event a test builds. It is made up, and the same in every runner. */\nexport const TEST_ROOT = "/project";\n\n/** Where an event happened. A test leaves it out and gets `TEST_ROOT`. */\nexport interface Where {\n  /** The repository root, or null when the file is in none. */\n  root?: string | null;\n  /** The file\'s absolute path, when it is not simply `root/relativePath`. */\n  absolute?: string;\n  isNew?: boolean;\n}\n\n/**\n * The event for a file the agent wrote or read.\n *\n * On `write`, `written` defaults to every line: a new file is written whole.\n * On `read` nothing was written, whatever is passed.\n */\nexport function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: WrittenLine[], where: Where = {}): Ctx {\n  const relative = relativePath.replaceAll("\\\\", "/").replace(/^\\.?\\/+/, "");\n  const root = where.root === undefined ? TEST_ROOT : where.root;\n  const path = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\\\", "/");\n  const name = path.slice(path.lastIndexOf("/") + 1);\n  const dot = name.lastIndexOf(".");\n  const lines = content.split("\\n");\n  const allLines = lines.map((text, index) => ({ line: index + 1, text }));\n  return {\n    event,\n    file: {\n      path,\n      relativePath: relative,\n      name,\n      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",\n      content,\n      lines,\n      written: event === "read" ? [] : (written ?? allLines),\n      isNew: event === "write" && where.isNew === true,\n    },\n    text: content,\n    isUserPrompt: false,\n    isCommand: false,\n    isConversation: false,\n    project: root,\n  };\n}\n\n/** The event for text: what the user typed, or a command about to run. */\nexport function textCtx(event: "prompt" | "command", text: string, root: string | null = TEST_ROOT): Ctx {\n  return {\n    event,\n    file: null,\n    text,\n    isUserPrompt: event === "prompt",\n    isCommand: event === "command",\n    isConversation: true,\n    project: root,\n  };\n}\n\n/**\n * The lines of `content` the agent just wrote, given the text it inserted.\n *\n * The file after the edit is the truth. A fragment is found there as a whole\n * first; when it is not, for instance because a formatter ran, its lines are\n * matched one by one.\n */\nexport function locateWritten(content: string, fragments: readonly string[]): WrittenLine[] {\n  const lines = content.split("\\n");\n  const written = new Map<number, string>();\n  for (const fragment of fragments) {\n    if (fragment.trim() === "") {\n      continue;\n    }\n    const at = content.indexOf(fragment);\n    if (at !== -1) {\n      const first = content.slice(0, at).split("\\n").length;\n      const count = fragment.split("\\n").length;\n      for (let line = first; line < first + count && line <= lines.length; line++) {\n        written.set(line, lines[line - 1] ?? "");\n      }\n      continue;\n    }\n    for (const wanted of fragment.split("\\n")) {\n      const trimmed = wanted.trim();\n      if (trimmed === "") {\n        continue;\n      }\n      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);\n      if (index !== -1) {\n        written.set(index + 1, lines[index] ?? "");\n      }\n    }\n  }\n  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text]) => ({ line, text }));\n}\n',
+  "index.ts": '/**\n * Everything a detector may import, next to `node:fs` and `node:path`.\n *\n * A detector runs inside an isolate with no network and no process. It can\n * read files and cannot change any. This module is bundled into it at publish\n * time, so it must stay free of Node imports and of any state.\n */\n\n/**\n * The version of the detector API this SDK is: the event a detector is handed\n * and what it may ask the host for.\n *\n * A principle records the version it was built against, and a host runs each\n * detector against the version it was built for. So the API changes by adding\n * a version here, with the host\'s step back to the one before. Changing what\n * an existing version means would break principles that are already released.\n *\n * - 1: the event with `file.path` relative. A detector could reach nothing outside it.\n * - 2: `file.path` is absolute. Added `file.relativePath`, `file.isNew` and\n *   `project`, and reading files through `node:fs` and `node:path`.\n *\n * A detector says which one it was written against by where it imports from:\n * `@wellactually/sdk/v2`. Each version has its own file next to this one, with\n * the event of that version as `Ctx`. A principle is then handed the event of\n * that version for as long as it is run, also when it is uploaded again after\n * the API has moved on. The helpers in this file work on the event of every\n * version. This file itself is what the host imports, not a detector.\n */\nexport const API_VERSION = 2;\n\n/**\n * The event of API 1. A detector that imports `@wellactually/sdk/v1` is handed\n * this, and gets it there as `Ctx`.\n */\nexport interface CtxV1 {\n  event: EventName;\n  file: {\n    /** Relative, with forward slashes. */\n    path: string;\n    name: string;\n    ext: string;\n    content: string;\n    lines: string[];\n    written: WrittenLine[];\n  } | null;\n  text: string;\n  isUserPrompt: boolean;\n  isCommand: boolean;\n  isConversation: boolean;\n}\n\n/**\n * What happened in the session.\n *\n * - `write`: the agent wrote or edited a file. `ctx.file.written` holds the lines it wrote.\n * - `read`: the agent read a file. It did not write this code.\n * - `prompt`: the user typed a message.\n * - `command`: the agent is about to run a shell command.\n */\nexport type EventName = "write" | "read" | "prompt" | "command";\n\nexport const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command"];\n\n/** A line the agent wrote in this event. */\nexport interface WrittenLine {\n  /** 1-based line in the file. */\n  line: number;\n  /** The line as written, untrimmed. */\n  text: string;\n}\n\nexport interface FileContext {\n  /** Absolute path, with forward slashes. Navigate from here with `node:path` and read neighbours with `node:fs`. */\n  path: string;\n  /**\n   * Path from the project root, e.g. "lib/src/config_loader.dart". This is what `globs` are matched against.\n   * Without a project root it is the path from where the session runs, or just the file\'s name.\n   */\n  relativePath: string;\n  /** Basename, e.g. "config_loader.dart". */\n  name: string;\n  /** Extension including the dot, lower case. Empty when there is none. */\n  ext: string;\n  content: string;\n  /** `content` split into lines. */\n  lines: string[];\n  /** The lines the agent wrote. Empty on `read`. */\n  written: WrittenLine[];\n  /** The agent created this file with this write. It did not exist before. */\n  isNew: boolean;\n}\n\n/** Everything a detector can look at. It is plain data, parsed from JSON. */\nexport interface Ctx {\n  event: EventName;\n  /** Null when the event carries text instead of a file. */\n  file: FileContext | null;\n  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`. */\n  text: string;\n  /** The user typed this. A request for work that has not happened yet. */\n  isUserPrompt: boolean;\n  /** A shell command the agent is about to run. */\n  isCommand: boolean;\n  /** The event carries text rather than a file. */\n  isConversation: boolean;\n  /**\n   * The root of the project the event happened in, as an absolute path: the\n   * nearest folder upwards with a `.git`. Null when there is none, which is\n   * normal, so do not rely on it. To find a `pubspec.yaml` or a\n   * `package.json`, walk up from `file.path` instead.\n   */\n  project: string | null;\n}\n\n/**\n * How much of the advice a finding deserves.\n *\n * A word match established a topic and asks for a `pointer`: title and summary.\n * Code that breaks the principle asks for `full`: the whole advice text.\n */\nexport type Depth = "pointer" | "full";\n\nexport interface Finding {\n  /** 1-based. Omit when the finding is not about a line. */\n  line?: number;\n  /**\n   * The text that triggered the finding.\n   * It must occur verbatim in `ctx.text`; the host drops findings whose evidence does not.\n   */\n  evidence: string;\n  /** Omitted means `full`. */\n  depth?: Depth;\n}\n\n/** What `detect` returns: a generator or any other iterable of findings. */\nexport type Findings = Iterable<Finding>;\n\n/** The shape of a detector module. */\nexport interface Detector {\n  detect: (ctx: Ctx) => Findings | null | undefined;\n}\n\nconst WORD_CHAR = /[A-Za-z0-9_$]/;\n\n/**\n * Index of `word` in `text` where it stands alone, or -1.\n * `findWord("isolate", "late")` is -1; `findWord("late final x", "late")` is 0.\n */\nexport function findWord(text: string, word: string, from = 0): number {\n  let at = text.indexOf(word, from);\n  while (at !== -1) {\n    const before = at === 0 ? "" : (text[at - 1] ?? "");\n    const after = text[at + word.length] ?? "";\n    if (!WORD_CHAR.test(before) && !WORD_CHAR.test(after)) {\n      return at;\n    }\n    at = text.indexOf(word, at + 1);\n  }\n  return -1;\n}\n\n/**\n * Pointer findings for each of `names` that occurs in a conversation event.\n *\n * This is a name check for a named technology, not a keyword cloud.\n * Pass the few phrases that can only mean your topic.\n */\nexport function* mentioned(ctx: Pick<Ctx, "isConversation" | "text">, names: readonly string[]): Generator<Finding> {\n  if (!ctx.isConversation) {\n    return;\n  }\n  const haystack = ctx.text.toLowerCase();\n  for (const name of names) {\n    const at = findWord(haystack, name.toLowerCase());\n    if (at === -1) {\n      continue;\n    }\n    yield { evidence: ctx.text.slice(at, at + name.length), depth: "pointer" };\n    return;\n  }\n}\n\n/** The lines the agent wrote in this event. Empty when no file is involved. */\nexport function writtenLines(ctx: { file: { written: WrittenLine[] } | null }): WrittenLine[] {\n  return ctx.file?.written ?? [];\n}\n\n/** 1-based line of a character offset in `text`. */\nexport function lineAt(text: string, offset: number): number {\n  let line = 1;\n  for (let i = 0; i < offset && i < text.length; i++) {\n    if (text[i] === "\\n") {\n      line++;\n    }\n  }\n  return line;\n}\n\nexport interface CodeSyntax {\n  /** Starts a comment that runs to the end of the line. */\n  lineComment?: string;\n  /** Opens and closes a block comment. */\n  blockComment?: readonly [string, string];\n  /** Characters that open and close a string literal. */\n  quotes?: readonly string[];\n}\n\n/** Comments and strings as written in C, Dart, Java, JavaScript, Kotlin, Swift and friends. */\nexport const C_LIKE: CodeSyntax = {\n  lineComment: "//",\n  blockComment: ["/*", "*/"],\n  quotes: [\'"\', "\'", "`"],\n};\n\n/** Comments and strings as written in Python, Ruby, shell and YAML. */\nexport const HASH_LIKE: CodeSyntax = {\n  lineComment: "#",\n  quotes: [\'"\', "\'"],\n};\n\n/**\n * `text` with comments and string contents replaced by spaces.\n *\n * Positions and line breaks are preserved, so an offset or line found in the\n * result points at the same place in the original. Use it to keep a keyword\n * inside a comment or a string from counting as code.\n */\nexport function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIKE): string {\n  const out: string[] = [];\n  const quotes = syntax.quotes ?? [];\n  let i = 0;\n  while (i < text.length) {\n    const char = text[i] ?? "";\n    if (syntax.lineComment && text.startsWith(syntax.lineComment, i)) {\n      while (i < text.length && text[i] !== "\\n") {\n        out.push(" ");\n        i++;\n      }\n      continue;\n    }\n    if (syntax.blockComment && text.startsWith(syntax.blockComment[0], i)) {\n      const close = text.indexOf(syntax.blockComment[1], i + syntax.blockComment[0].length);\n      const end = close === -1 ? text.length : close + syntax.blockComment[1].length;\n      for (; i < end; i++) {\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n      }\n      continue;\n    }\n    if (quotes.includes(char)) {\n      out.push(char);\n      i++;\n      while (i < text.length && text[i] !== char) {\n        if (text[i] === "\\\\" && i + 1 < text.length) {\n          out.push(" ");\n          i++;\n        }\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n        i++;\n      }\n      if (i < text.length) {\n        out.push(char);\n        i++;\n      }\n      continue;\n    }\n    out.push(char);\n    i++;\n  }\n  return out.join("");\n}\n\n/** The project root of every event a test builds. It is made up, and the same in every runner. */\nexport const TEST_ROOT = "/project";\n\n/** Where an event happened. A test leaves it out and gets `TEST_ROOT`. */\nexport interface Where {\n  /** The repository root, or null when the file is in none. */\n  root?: string | null;\n  /** The file\'s absolute path, when it is not simply `root/relativePath`. */\n  absolute?: string;\n  isNew?: boolean;\n}\n\n/**\n * The event for a file the agent wrote or read.\n *\n * On `write`, `written` defaults to every line: a new file is written whole.\n * On `read` nothing was written, whatever is passed.\n */\nexport function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: WrittenLine[], where: Where = {}): Ctx {\n  const relative = relativePath.replaceAll("\\\\", "/").replace(/^\\.?\\/+/, "");\n  const root = where.root === undefined ? TEST_ROOT : where.root;\n  const path = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\\\", "/");\n  const name = path.slice(path.lastIndexOf("/") + 1);\n  const dot = name.lastIndexOf(".");\n  const lines = content.split("\\n");\n  const allLines = lines.map((text, index) => ({ line: index + 1, text }));\n  return {\n    event,\n    file: {\n      path,\n      relativePath: relative,\n      name,\n      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",\n      content,\n      lines,\n      written: event === "read" ? [] : (written ?? allLines),\n      isNew: event === "write" && where.isNew === true,\n    },\n    text: content,\n    isUserPrompt: false,\n    isCommand: false,\n    isConversation: false,\n    project: root,\n  };\n}\n\n/** The event for text: what the user typed, or a command about to run. */\nexport function textCtx(event: "prompt" | "command", text: string, root: string | null = TEST_ROOT): Ctx {\n  return {\n    event,\n    file: null,\n    text,\n    isUserPrompt: event === "prompt",\n    isCommand: event === "command",\n    isConversation: true,\n    project: root,\n  };\n}\n\n/**\n * The lines of `content` the agent just wrote, given the text it inserted.\n *\n * The file after the edit is the truth. A fragment is found there as a whole\n * first; when it is not, for instance because a formatter ran, its lines are\n * matched one by one.\n */\nexport function locateWritten(content: string, fragments: readonly string[]): WrittenLine[] {\n  const lines = content.split("\\n");\n  const written = new Map<number, string>();\n  for (const fragment of fragments) {\n    if (fragment.trim() === "") {\n      continue;\n    }\n    const at = content.indexOf(fragment);\n    if (at !== -1) {\n      const first = content.slice(0, at).split("\\n").length;\n      const count = fragment.split("\\n").length;\n      for (let line = first; line < first + count && line <= lines.length; line++) {\n        written.set(line, lines[line - 1] ?? "");\n      }\n      continue;\n    }\n    for (const wanted of fragment.split("\\n")) {\n      const trimmed = wanted.trim();\n      if (trimmed === "") {\n        continue;\n      }\n      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);\n      if (index !== -1) {\n        written.set(index + 1, lines[index] ?? "");\n      }\n    }\n  }\n  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text]) => ({ line, text }));\n}\n',
   "path.ts": '/**\n * What `node:path` resolves to inside the isolate: the POSIX half of it.\n *\n * Every path a detector sees has forward slashes, on every system, so this is\n * all it needs. It is string logic and never asks the host for anything.\n */\n\ninterface WithCwd {\n  __cwd?: string;\n}\n\nexport const sep = "/";\nexport const delimiter = ":";\n\n/** The project root, which is what a relative path is relative to. */\nfunction cwd(): string {\n  return (globalThis as WithCwd).__cwd ?? "/";\n}\n\nexport function isAbsolute(path: string): boolean {\n  return path.startsWith("/") || /^[A-Za-z]:\\//.test(path);\n}\n\nexport function normalize(path: string): string {\n  if (path === "") {\n    return ".";\n  }\n  const absolute = path.startsWith("/");\n  const out: string[] = [];\n  for (const part of path.split("/")) {\n    if (part === "" || part === ".") {\n      continue;\n    }\n    if (part === ".." && out.length > 0 && out.at(-1) !== "..") {\n      out.pop();\n      continue;\n    }\n    if (part === ".." && absolute) {\n      continue;\n    }\n    out.push(part);\n  }\n  const joined = out.join("/");\n  if (absolute) {\n    return `/${joined}`;\n  }\n  return joined === "" ? "." : joined;\n}\n\nexport function join(...parts: string[]): string {\n  return normalize(parts.filter((part) => part !== "").join("/"));\n}\n\nexport function resolve(...parts: string[]): string {\n  let resolved = "";\n  for (let index = parts.length - 1; index >= 0 && !isAbsolute(resolved); index--) {\n    const part = parts[index] ?? "";\n    if (part !== "") {\n      resolved = resolved === "" ? part : `${part}/${resolved}`;\n    }\n  }\n  if (!isAbsolute(resolved)) {\n    resolved = resolved === "" ? cwd() : `${cwd()}/${resolved}`;\n  }\n  const normalized = normalize(resolved);\n  return normalized.length > 1 && normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;\n}\n\nexport function dirname(path: string): string {\n  const trimmed = path.length > 1 ? path.replace(/\\/+$/, "") : path;\n  const slash = trimmed.lastIndexOf("/");\n  if (slash === -1) {\n    return ".";\n  }\n  return slash === 0 ? "/" : trimmed.slice(0, slash);\n}\n\nexport function basename(path: string, suffix = ""): string {\n  const trimmed = path.replace(/\\/+$/, "");\n  const name = trimmed.slice(trimmed.lastIndexOf("/") + 1);\n  return suffix !== "" && name.endsWith(suffix) && name !== suffix ? name.slice(0, -suffix.length) : name;\n}\n\nexport function extname(path: string): string {\n  const name = basename(path);\n  const dot = name.lastIndexOf(".");\n  return dot > 0 ? name.slice(dot) : "";\n}\n\nexport function relative(from: string, to: string): string {\n  const a = resolve(from).split("/").filter(Boolean);\n  const b = resolve(to).split("/").filter(Boolean);\n  let shared = 0;\n  while (shared < a.length && shared < b.length && a[shared] === b[shared]) {\n    shared++;\n  }\n  return [...a.slice(shared).map(() => ".."), ...b.slice(shared)].join("/");\n}\n\nexport interface ParsedPath {\n  root: string;\n  dir: string;\n  base: string;\n  ext: string;\n  name: string;\n}\n\nexport function parse(path: string): ParsedPath {\n  const base = basename(path);\n  const ext = extname(path);\n  const dir = dirname(path);\n  return { root: path.startsWith("/") ? "/" : "", dir: dir === "." && !path.includes("/") ? "" : dir, base, ext, name: ext === "" ? base : base.slice(0, -ext.length) };\n}\n\nconst path = { sep, delimiter, isAbsolute, normalize, join, resolve, dirname, basename, extname, relative, parse };\n\nexport const posix = path;\nexport default path;\n',
   "test.ts": '/**\n * The test framework for a principle, as it runs inside the isolate.\n *\n * A test builds the event a detector receives and asks what the detector\n * says about it:\n *\n *     test("fires on a late field", () => {\n *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1, evidence: "late String name;" }]);\n *     });\n *\n * On an author\'s machine the same file runs under vitest, where `test` and\n * `expect` are vitest\'s and `detect` comes from `test.node.ts`. Here, in\n * `wellactually test`, the browser editor and the registry, `vitest` resolves\n * to this file\'s small copy of that API. Either way `detect` does not call\n * the detector directly. It asks the host, which runs the real detector the\n * way the hook does and keeps a record, so the registry knows what was shown\n * to fire and what was shown to stay quiet.\n */\nimport type { Ctx, Finding } from "./index.ts";\nimport type { DetectOptions } from "./events.ts";\n\nexport { command, edit, prompt, read, source, write, type DetectOptions } from "./events.ts";\n\ninterface Host {\n  __detect?: (call: string) => string;\n  __begin?: (test: string) => void;\n}\n\nconst host = globalThis as Host;\n\n/**\n * What the detector reports for an event: the findings that passed the host\'s checks.\n *\n * It is empty when the detector\'s `events` or `globs` do not select the event,\n * exactly as in a session. It throws when the detector fails or reports a\n * finding the host would drop, so a test cannot pass on a broken detector.\n */\nexport function detect(event: Ctx, options: DetectOptions = {}): Finding[] {\n  if (!host.__detect) {\n    throw new Error("detect() only works inside a principle\'s test run.");\n  }\n  const answer = JSON.parse(host.__detect(JSON.stringify({ event, options }))) as { findings?: Finding[]; error?: string };\n  if (answer.error !== undefined) {\n    throw new Error(answer.error);\n  }\n  return answer.findings ?? [];\n}\n\ninterface Registered {\n  file: string;\n  name: string;\n  run: () => unknown;\n}\n\nconst MAX_TESTS = 100;\nconst registered: Registered[] = [];\nconst groups: string[] = [];\nlet currentFile = "";\n\n/** Groups tests under a name. */\nexport function describe(name: string, body: () => void): void {\n  groups.push(name);\n  try {\n    body();\n  } finally {\n    groups.pop();\n  }\n}\n\nfunction register(name: string, run: () => unknown): void {\n  registered.push({ file: currentFile, name: [...groups, name].join(" > "), run });\n}\n\nfunction each<Row>(rows: readonly Row[]) {\n  return (name: string, body: (row: Row) => unknown): void => {\n    for (const row of rows) {\n      const shown = typeof row === "string" ? row : JSON.stringify(row);\n      register(name.includes("%s") ? name.replace("%s", shown) : `${name} (${shown})`, () => body(row));\n    }\n  };\n}\n\n/** Declares one test. `test.each(rows)(name, body)` declares one per row; `%s` in the name is the row. */\nexport const test = Object.assign(register, { each });\nexport const it = test;\n\nfunction show(value: unknown): string {\n  return value === undefined ? "undefined" : JSON.stringify(value, null, 2);\n}\n\n/** Deep equality that ignores properties set to undefined, as a finding without a line has no `line`. */\nfunction equal(a: unknown, b: unknown): boolean {\n  if (a === b) {\n    return true;\n  }\n  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) {\n    return false;\n  }\n  const left = a as Record<string, unknown>;\n  const right = b as Record<string, unknown>;\n  const keys = new Set([...Object.keys(left), ...Object.keys(right)].filter((key) => left[key] !== undefined || right[key] !== undefined));\n  if (Array.isArray(a) && a.length !== (b as unknown[]).length) {\n    return false;\n  }\n  return [...keys].every((key) => equal(left[key], right[key]));\n}\n\n/** Whether `actual` has everything `expected` has. Arrays must match item by item. */\nfunction matches(actual: unknown, expected: unknown): boolean {\n  if (typeof expected !== "object" || expected === null) {\n    return equal(actual, expected);\n  }\n  if (typeof actual !== "object" || actual === null || Array.isArray(actual) !== Array.isArray(expected)) {\n    return false;\n  }\n  if (Array.isArray(expected)) {\n    return (actual as unknown[]).length === expected.length && expected.every((item, index) => matches((actual as unknown[])[index], item));\n  }\n  return Object.entries(expected).every(([key, value]) => matches((actual as Record<string, unknown>)[key], value));\n}\n\nexport interface Expectation {\n  /** Deeply equal. */\n  toEqual(expected: unknown): void;\n  /** Deeply equal. Here it is the same as `toEqual`. */\n  toStrictEqual(expected: unknown): void;\n  /** The same value. */\n  toBe(expected: unknown): void;\n  toHaveLength(length: number): void;\n  /** An array holding `item` itself, or a string holding the text. */\n  toContain(item: unknown): void;\n  /** An array holding an item deeply equal to `item`. */\n  toContainEqual(item: unknown): void;\n  /** Has everything `expected` has, and may have more. */\n  toMatchObject(expected: unknown): void;\n  toBeTruthy(): void;\n  toBeFalsy(): void;\n  toBeNull(): void;\n  toBeUndefined(): void;\n  toBeDefined(): void;\n  /** A function that throws. With `message`, the error has to contain it. */\n  toThrow(message?: string): void;\n  not: Expectation;\n}\n\nfunction expectation(actual: unknown, negated: boolean): Expectation {\n  const check = (passed: boolean, what: string, expected?: unknown): void => {\n    if (passed === negated) {\n      throw new Error(`Expected ${negated ? "not " : ""}${what}${expected === undefined ? "" : `\\n${show(expected)}`}\\nReceived\\n${show(actual)}`);\n    }\n  };\n  const thrown = (): string | null => {\n    try {\n      (actual as () => unknown)();\n      return null;\n    } catch (error) {\n      return error instanceof Error ? error.message : String(error);\n    }\n  };\n  const matchers: Expectation = {\n    toEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toStrictEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toBe: (expected) => check(Object.is(actual, expected), "to be", expected),\n    toHaveLength: (length) => check((actual as { length?: unknown } | null)?.length === length, "length", length),\n    toContain: (item) => check(typeof actual === "string" ? actual.includes(String(item)) : Array.isArray(actual) && actual.includes(item), "to contain", item),\n    toContainEqual: (item) => check(Array.isArray(actual) && actual.some((candidate) => equal(candidate, item)), "to contain", item),\n    toMatchObject: (expected) => check(matches(actual, expected), "to match", expected),\n    toBeTruthy: () => check(Boolean(actual), "a truthy value"),\n    toBeFalsy: () => check(!actual, "a falsy value"),\n    toBeNull: () => check(actual === null, "null"),\n    toBeUndefined: () => check(actual === undefined, "undefined"),\n    toBeDefined: () => check(actual !== undefined, "a defined value"),\n    toThrow: (message) => {\n      const error = thrown();\n      check(error !== null && (message === undefined || error.includes(message)), message === undefined ? "to throw" : "to throw an error containing", message);\n    },\n    get not() {\n      return expectation(actual, !negated);\n    },\n  };\n  // A test also runs under vitest, which knows many more matchers. One that is\n  // missing here must say so, or it fails on the registry as "not a function".\n  return new Proxy(matchers, {\n    get(target, name, receiver) {\n      if (typeof name === "string" && !(name in target)) {\n        throw new Error(\n          `expect().${name} is not available when the registry runs the tests. Use one of: ${Object.keys(target).filter((key) => key !== "not").join(", ")}.`,\n        );\n      }\n      return Reflect.get(target, name, receiver);\n    },\n  });\n}\n\nexport function expect(actual: unknown): Expectation {\n  return expectation(actual, false);\n}\n\n/** Called by the runner before a test file is loaded, so its tests carry its name. */\nexport function __file(name: string): void {\n  currentFile = name;\n}\n\n/** Called by the runner once every test file is loaded. Returns the results as JSON. */\nexport function __run(): string {\n  if (registered.length > MAX_TESTS) {\n    throw new Error(`a principle may hold at most ${MAX_TESTS} tests, this one has ${registered.length}`);\n  }\n  const results = registered.map((entry) => {\n    host.__begin?.(JSON.stringify({ file: entry.file, name: entry.name }));\n    try {\n      const returned = entry.run();\n      if (typeof (returned as { then?: unknown } | null)?.then === "function") {\n        throw new Error("A test must not be async. detect() answers immediately.");\n      }\n      return { file: entry.file, name: entry.name, passed: true, message: "" };\n    } catch (error) {\n      return { file: entry.file, name: entry.name, passed: false, message: error instanceof Error ? error.message : String(error) };\n    }\n  });\n  return JSON.stringify(results);\n}\n',
+  "v1.ts": '/**\n * Detector API 1: what a detector that stays on it imports.\n *\n *     import { writtenLines, type Ctx, type Finding } from "@wellactually/sdk/v1";\n *\n * In version 1 `file.path` is relative, there is no `project`, and a detector\n * can reach nothing outside its event. The types here are the event of that\n * version, so a detector that uses what came later does not compile.\n */\nimport type { CtxV1, Findings } from "./index.ts";\n\nexport type Ctx = CtxV1;\nexport type FileContext = NonNullable<CtxV1["file"]>;\n\n/** The shape of a detector module. */\nexport interface Detector {\n  detect: (ctx: Ctx) => Findings | null | undefined;\n}\n\nexport type { CodeSyntax, Depth, EventName, Finding, Findings, WrittenLine } from "./index.ts";\nexport { blankCommentsAndStrings, C_LIKE, EVENTS, findWord, HASH_LIKE, lineAt, mentioned, writtenLines } from "./index.ts";\n',
+  "v2.ts": '/**\n * Detector API 2: what a detector written against it imports.\n *\n *     import { writtenLines, type Ctx, type Finding } from "@wellactually/sdk/v2";\n *\n * The path is the declaration. A principle whose files import from here is\n * built against version 2 and is handed the event of version 2 for as long\n * as that version is run, also when it is uploaded again after the API has\n * moved on. Its tests import `@wellactually/sdk/v2/test`.\n *\n * In version 2 `file.path` is absolute, the event carries `file.relativePath`,\n * `file.isNew` and `project`, and a detector can read files through `node:fs`.\n */\nexport type { CodeSyntax, Ctx, Depth, Detector, EventName, FileContext, Finding, Findings, WrittenLine } from "./index.ts";\nexport { blankCommentsAndStrings, C_LIKE, EVENTS, findWord, HASH_LIKE, lineAt, mentioned, writtenLines } from "./index.ts";\n',
   "vitest.ts": "/**\n * What `vitest` resolves to when a principle's tests run inside the isolate.\n *\n * An author runs the tests with vitest itself. The registry cannot: it runs\n * code from strangers, and only inside the isolate. So it gives the tests the\n * part of vitest's API a detector test needs. An import of anything else\n * fails the build with the name that is missing.\n */\nexport { describe, expect, it, test } from \"./test.ts\";\n"
 };
 
@@ -11188,8 +11270,10 @@ var BundleError = class extends Error {
 };
 var BUNDLE_GLOBAL = "__principle";
 var MAX_BUNDLE_BYTES = 256 * 1024;
-var SDK = "@wellactually/sdk";
-var SDK_TEST = "@wellactually/sdk/test";
+var SDK2 = "@wellactually/sdk";
+var SDK_ENTRY = /^@wellactually\/sdk\/(v\d+)(\/test)?$/;
+var SDK_NOW = `${SDK2}/v${API_VERSION}`;
+var TEST_RUNTIME = "wellactually:test-runtime";
 var BUILT_INS = { "node:fs": "fs.ts", fs: "fs.ts", "node:path": "path.ts", path: "path.ts" };
 var VITEST = "vitest";
 var FIXTURES = /(^|\/)fixtures\//;
@@ -11198,6 +11282,9 @@ var TEST_ENTRY = "__tests__.ts";
 var TESTS_GLOBAL = "__tests";
 function detectorEntry(files) {
   return DETECTOR_ENTRIES.find((name) => name in files) ?? null;
+}
+function codeFiles(files) {
+  return Object.keys(files).filter((name) => /\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name)).sort();
 }
 function testFiles(files) {
   return Object.keys(files).filter((name) => /\.test\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name)).sort();
@@ -11237,7 +11324,7 @@ async function buildTestBundle(files) {
   if (tests.length === 0) {
     return null;
   }
-  const entry = [`import { __run } from "${SDK_TEST}";`, ...tests.map((name) => `import "./${name}";`), "export const run = __run;", ""].join("\n");
+  const entry = [`import { __run } from "${TEST_RUNTIME}";`, ...tests.map((name) => `import "./${name}";`), "export const run = __run;", ""].join("\n");
   return build({ ...files, [TEST_ENTRY]: entry }, TEST_ENTRY, TESTS_GLOBAL, true);
 }
 async function build(files, entry, globalName, isTest, builtIns = /* @__PURE__ */ new Set()) {
@@ -11249,14 +11336,25 @@ async function build(files, entry, globalName, isTest, builtIns = /* @__PURE__ *
         if (args.kind === "entry-point") {
           return { path: normalize(args.path), namespace: "principle" };
         }
-        if (args.path === SDK) {
-          return { path: "index.ts", namespace: "sdk" };
+        if (args.path === TEST_RUNTIME) {
+          return { path: "test.ts", namespace: "sdk" };
         }
-        if (args.path === SDK_TEST) {
+        const sdk = SDK_ENTRY.exec(args.path);
+        if (sdk) {
+          const file2 = `${sdk[1]}.ts`;
+          if (!(file2 in SDK_SOURCES)) {
+            return { errors: [{ text: `"${args.path}" does not exist. The newest detector API is "${SDK_NOW}".` }] };
+          }
+          if (!sdk[2]) {
+            return { path: file2, namespace: "sdk" };
+          }
           if (!isTest) {
-            return { errors: [{ text: `${SDK_TEST} is for test files. A detector cannot import it.` }] };
+            return { errors: [{ text: `${args.path} is for test files. A detector cannot import it.` }] };
           }
           return { path: "test.ts", namespace: "sdk" };
+        }
+        if (args.path === SDK2 || args.path.startsWith(`${SDK2}/`)) {
+          return { errors: [{ text: `"${args.path}" cannot be imported. The detector API version is part of the path: "${args.path.endsWith("/test") ? `${SDK_NOW}/test` : SDK_NOW}".` }] };
         }
         const builtIn = BUILT_INS[args.path];
         if (builtIn === "fs.ts" && isTest && args.namespace === "principle" && tests.has(args.importer)) {
@@ -11286,7 +11384,7 @@ async function build(files, entry, globalName, isTest, builtIns = /* @__PURE__ *
         return {
           errors: [
             {
-              text: `"${args.path}" cannot be imported. A ${isTest ? "test" : "detector"} may import its own relative files, ${SDK}, node:fs and node:path${isTest ? `, ${SDK_TEST} and ${VITEST}` : ""}, nothing else.`
+              text: `"${args.path}" cannot be imported. A ${isTest ? "test" : "detector"} may import its own relative files, ${SDK_NOW}, node:fs and node:path${isTest ? `, ${SDK_NOW}/test and ${VITEST}` : ""}, nothing else.`
             }
           ]
         };
@@ -11302,7 +11400,7 @@ async function build(files, entry, globalName, isTest, builtIns = /* @__PURE__ *
         }
         const loader = args.path.endsWith(".ts") ? "ts" : "js";
         if (tests.has(args.path)) {
-          return { contents: `import { __file as __wellactuallyFile } from "${SDK_TEST}";__wellactuallyFile(${JSON.stringify(args.path)});${contents}`, loader };
+          return { contents: `import { __file as __wellactuallyFile } from "${TEST_RUNTIME}";__wellactuallyFile(${JSON.stringify(args.path)});${contents}`, loader };
         }
         return { contents, loader };
       });
@@ -11775,14 +11873,17 @@ async function buildPrinciple(files) {
   const { events, globs } = readSettings(exported);
   let api;
   try {
-    api = declaredApi(exported.api);
+    api = importedApi(Object.fromEntries(codeFiles(files).map((name) => [name, files[name] ?? ""])));
   } catch (error62) {
     throw new ManifestError(error62.message);
+  }
+  if (exported.api !== void 0) {
+    throw new ManifestError(`detector.ts exports api. The version is part of the import path now, and this principle imports version ${api}. Remove the line.`);
   }
   for (const name of builtIns) {
     const since = BUILT_IN_SINCE[name] ?? 1;
     if (api < since) {
-      throw new ManifestError(`detector.ts imports ${name}, which exists from detector API ${since} on, and declares api = ${api}. Raise it: export const api = ${API_VERSION};`);
+      throw new ManifestError(`detector.ts imports ${name}, which exists from detector API ${since} on, and the principle is written against version ${api}. Import from "@wellactually/sdk/v${API_VERSION}" to use it.`);
     }
   }
   const manifest = { title, summary, languages: languagesOf(globs), events, globs, api };
@@ -11843,13 +11944,13 @@ async function checkPrinciple(files) {
 async function runTests(built, files, tests) {
   const calls = [];
   const byTest = /* @__PURE__ */ new Map();
-  let current = [];
+  let current2 = [];
   const key = (test) => `${test.file}
 ${test.name}`;
   const { results, error: error62 } = await runTestBundle(tests, {
     begin: (test) => {
-      current = [];
-      byTest.set(key(test), current);
+      current2 = [];
+      byTest.set(key(test), current2);
     },
     detect: (call2, run) => {
       if (calls.length >= MAX_DETECT_CALLS) {
@@ -11857,7 +11958,7 @@ ${test.name}`;
       }
       return answerDetect(built, files, call2, run, (recorded) => {
         calls.push(recorded);
-        current.push(recorded);
+        current2.push(recorded);
       });
     }
   });
@@ -11972,10 +12073,7 @@ if (items.length === 0) {
 Name the cases where the principle does not apply.
 The detector should stay quiet on exactly those, and a test should prove it.
 `,
-    "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
-
-/** The detector API this was written against. It keeps getting the event of that version, whatever comes later. */
-export const api = ${API_VERSION};
+    "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk/v${API_VERSION}";
 
 /** When the detector runs: write, read, prompt, command. */
 export const events: EventName[] = ["write"];
@@ -12000,7 +12098,7 @@ export function* detect(ctx: Ctx): Generator<Finding> {
 }
 `,
     "detector.test.ts": `import { expect, test } from "vitest";
-import { detect, edit, source, write } from "@wellactually/sdk/test";
+import { detect, edit, source, write } from "@wellactually/sdk/v${API_VERSION}/test";
 
 // Run with vitest, for example through npm test. The registry runs the same file again.
 // A test builds the event a detector receives and checks what it reports.
@@ -12046,12 +12144,12 @@ import path from "node:path";
 function readPrincipleDir(dir) {
   const files = {};
   let total = 0;
-  const walk = (current) => {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+  const walk = (current2) => {
+    for (const entry of fs.readdirSync(current2, { withFileTypes: true })) {
       if (entry.name.startsWith(".") || entry.name === "node_modules") {
         continue;
       }
-      const full = path.join(current, entry.name);
+      const full = path.join(current2, entry.name);
       if (entry.isDirectory()) {
         walk(full);
         continue;
@@ -12413,11 +12511,11 @@ function locate(absolute, cwd) {
 }
 function patchedFiles(patch) {
   const files = [];
-  let current = null;
+  let current2 = null;
   let run = [];
   const endRun = () => {
-    if (current && run.length > 0) {
-      current.added.push(run.join("\n"));
+    if (current2 && run.length > 0) {
+      current2.added.push(run.join("\n"));
     }
     run = [];
   };
@@ -12425,18 +12523,18 @@ function patchedFiles(patch) {
     const header = /^\*\*\* (Add|Update|Delete) File: (.+)$/.exec(line);
     if (header) {
       endRun();
-      current = header[1] === "Delete" ? null : { file: (header[2] ?? "").trim(), added: [], isNew: header[1] === "Add" };
-      if (current) {
-        files.push(current);
+      current2 = header[1] === "Delete" ? null : { file: (header[2] ?? "").trim(), added: [], isNew: header[1] === "Add" };
+      if (current2) {
+        files.push(current2);
       }
       continue;
     }
     const moved = /^\*\*\* Move to: (.+)$/.exec(line);
-    if (moved && current) {
-      current.file = (moved[1] ?? "").trim();
+    if (moved && current2) {
+      current2.file = (moved[1] ?? "").trim();
       continue;
     }
-    if (current && line.startsWith("+")) {
+    if (current2 && line.startsWith("+")) {
       run.push(line.slice(1));
       continue;
     }
@@ -12716,12 +12814,12 @@ function listFiles(dir) {
   } catch {
   }
   const files = [];
-  const walk = (current) => {
-    for (const entry of fs5.readdirSync(current, { withFileTypes: true })) {
+  const walk = (current2) => {
+    for (const entry of fs5.readdirSync(current2, { withFileTypes: true })) {
       if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "build" || entry.name === "dist") {
         continue;
       }
-      const full = path6.join(current, entry.name);
+      const full = path6.join(current2, entry.name);
       if (entry.isDirectory()) {
         walk(full);
         continue;
@@ -42554,8 +42652,8 @@ The name of the directory is the principle's id.
   Its \`# heading\` is the title. The paragraph right below it is the summary shown in lists: one sentence, at most 200 characters.
 - detector.ts: \`export function* detect(ctx)\` yielding findings \`{ line?, evidence, depth? }\`.
   It also says when it runs: \`export const events = ["write"]\` (write, read, prompt, command) and \`export const globs = ["**/*.ts"]\`.
-  \`export const api = 2\` is the detector API version it was written against. Leave the line as scaffold wrote it; what follows describes version 2.
-  It runs in an isolate without network or process. It may import @wellactually/sdk, node:fs, node:path and its own relative files, and nothing else: no dependencies.
+  It imports types and helpers from \`@wellactually/sdk/v2\`. The v2 in the path is the detector API version it is written against, and its tests import from the same version. Keep the path as scaffold wrote it; what follows describes version 2.
+  It runs in an isolate without network or process. It may import @wellactually/sdk/v2, node:fs, node:path and its own relative files, and nothing else: no dependencies.
   ctx.file.path is absolute, ctx.file.relativePath is the path from the project root and what globs match, ctx.file.isNew says the write created the file.
   It can read other files with node:fs (readFileSync, existsSync, statSync, readdirSync; text only, read-only, sync only). Walk up from ctx.file.path to find a pubspec.yaml or package.json. ctx.project is the git root or null, do not rely on it.
   Evidence must be text that occurs verbatim in the event's input, or the host drops the finding. Text read from another file cannot be evidence.
@@ -42564,7 +42662,7 @@ The name of the directory is the principle's id.
   \`expect(detect(write("lib/a.dart", content))).toEqual([{ line: 2, evidence: "late String name;" }])\`.
   Events come from \`write(path, content)\`, \`edit(path, contentAfterTheEdit, { written })\`, \`read(path, content)\`, \`prompt(text)\` and \`command(text)\`.
   \`edit\` is how to show that code which was already there is left alone: only \`written\` counts as written.
-  Import \`test\`, \`describe\` and \`expect\` from vitest, and the events, \`detect\` and \`source\` from @wellactually/sdk/test.
+  Import \`test\`, \`describe\` and \`expect\` from vitest, and the events, \`detect\` and \`source\` from @wellactually/sdk/v2/test.
   For a detector that reads other files, put a small project into the principle, e.g. fixtures/flutter_app/pubspec.yaml, and pass it: \`detect(write("lib/a.dart", content), { project: "fixtures/flutter_app" })\`.
   The project sits at a made-up root, so never assert on absolute paths. \`write(path, content, { isNew: true })\` is a write that created the file.
   The tests are ordinary vitest files. Where the repository has vitest and @wellactually/sdk installed, npm test runs them. run_tests always works and also checks the publish gates.
@@ -42584,7 +42682,7 @@ function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
 async function serveMcp() {
-  const server = new McpServer({ name: "wellactually", version: "0.7.2" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.8.0" }, { instructions: AUTHORING_GUIDE });
   server.registerTool(
     "scaffold",
     {

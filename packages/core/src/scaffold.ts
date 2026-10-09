@@ -44,10 +44,7 @@ if (items.length === 0) {
 Name the cases where the principle does not apply.
 The detector should stay quiet on exactly those, and a test should prove it.
 `,
-    "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
-
-/** The detector API this was written against. It keeps getting the event of that version, whatever comes later. */
-export const api = ${API_VERSION};
+    "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk/v${API_VERSION}";
 
 /** When the detector runs: write, read, prompt, command. */
 export const events: EventName[] = ["write"];
@@ -72,7 +69,7 @@ export function* detect(ctx: Ctx): Generator<Finding> {
 }
 `,
     "detector.test.ts": `import { expect, test } from "vitest";
-import { detect, edit, source, write } from "@wellactually/sdk/test";
+import { detect, edit, source, write } from "@wellactually/sdk/v${API_VERSION}/test";
 
 // Run with vitest, for example through npm test. The registry runs the same file again.
 // A test builds the event a detector receives and checks what it reports.

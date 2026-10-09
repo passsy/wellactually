@@ -17,6 +17,7 @@ import {
   runBoard,
   runDetector,
   scaffoldFiles,
+  sdkImports,
   shapeOf,
   textCtx,
   unsupported,
@@ -120,45 +121,78 @@ describe("a detector from a version this host does not run", () => {
 
 describe("a build", () => {
   const advice = "# T\n\nOne sentence.\n\nA paragraph of advice that is long enough to count as advice for an agent to read.";
-  const build = (detector: string) => buildPrinciple({ "principle.md": advice, "detector.ts": detector });
+  const build = (detector: string, more: Record<string, string> = {}) => buildPrinciple({ "principle.md": advice, "detector.ts": detector, ...more });
+  const quiet = "export function detect() { return []; }";
+  const from = (version: number | string) => `import type { Ctx } from "@wellactually/sdk/v${version}";`;
 
-  test("records the newest API version when the detector declares none", async () => {
-    expect((await build("export function detect() { return []; }")).manifest.api).toBe(API_VERSION);
+  test("records the version the detector imports the SDK from", async () => {
+    expect((await build(`${from(1)} ${quiet}`)).manifest.api).toBe(1);
+    expect((await build(`${from(2)} ${quiet}`)).manifest.api).toBe(2);
+    // An import of types only is gone from the bundle, so it is read from the source.
+    expect((await build(`${from(1)} ${quiet}`)).bundle).not.toContain("sdk");
   });
 
-  test("records the version the detector declares", async () => {
-    expect((await build("export const api = 1; export function detect() { return []; }")).manifest.api).toBe(1);
+  test("finds the import however it is written, and not in a comment or a string", async () => {
+    expect(sdkImports(`import {\n  type Ctx,\n} from '@wellactually/sdk/v1'`)).toEqual(["@wellactually/sdk/v1"]);
+    expect(sdkImports(`export { findWord } from "@wellactually/sdk/v2"; import "@wellactually/sdk/v2/test";`)).toEqual(["@wellactually/sdk/v2", "@wellactually/sdk/v2/test"]);
+    expect(sdkImports(`// import { Ctx } from "@wellactually/sdk/v1";\n/* from "@wellactually/sdk/v1" */\nconst text = 'import x from "@wellactually/sdk/v1"';`)).toEqual([]);
+    expect(sdkImports(`import fs from "node:fs"; import { a } from "./sdk.ts";`)).toEqual([]);
+    expect((await build(`// was: import type { Ctx } from "@wellactually/sdk/v1";\n${from(2)} ${quiet}`)).manifest.api).toBe(2);
   });
 
-  test("a new principle declares the version it starts from", async () => {
-    const built = await buildPrinciple(scaffoldFiles("my-principle"));
-    expect(scaffoldFiles("my-principle")["detector.ts"]).toContain(`export const api = ${API_VERSION};`);
-    expect(built.manifest.api).toBe(API_VERSION);
+  test("a new principle starts on the newest version", async () => {
+    const files = scaffoldFiles("my-principle");
+    expect(files["detector.ts"]).toContain(`from "@wellactually/sdk/v${API_VERSION}";`);
+    expect(files["detector.test.ts"]).toContain(`from "@wellactually/sdk/v${API_VERSION}/test";`);
+    expect((await buildPrinciple(files)).manifest.api).toBe(API_VERSION);
+  });
+
+  test("refuses a principle that names no version", async () => {
+    await expect(build(quiet)).rejects.toThrow(`no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import type { Ctx, Finding } from "@wellactually/sdk/v${API_VERSION}";`);
+    await expect(build(`import type { Ctx } from "@wellactually/sdk"; ${quiet}`)).rejects.toThrow(
+      `detector.ts imports "@wellactually/sdk". The detector API version is part of the path: import from "@wellactually/sdk/v${API_VERSION}".`,
+    );
+    await expect(build(`import { findWord } from "@wellactually/sdk"; export function detect() { return findWord("a", "a") ? [] : []; }`)).rejects.toThrow(/The detector API version is part of the path/);
+    await expect(build(`${from(2)} ${quiet}`, { "detector.test.ts": `import { detect } from "@wellactually/sdk/test";` })).rejects.toThrow(
+      `detector.test.ts imports "@wellactually/sdk/test". The detector API version is part of the path: import from "@wellactually/sdk/v${API_VERSION}/test".`,
+    );
   });
 
   test("refuses a version this host does not build for", async () => {
-    await expect(build(`export const api = ${API_VERSION + 1}; export function detect() { return []; }`)).rejects.toThrow(/Use a whole number from 1 to/);
-    await expect(build(`export const api = "1"; export function detect() { return []; }`)).rejects.toThrow(/is not a number/);
+    await expect(build(`${from(API_VERSION + 1)} ${quiet}`)).rejects.toThrow(`detector.ts imports "@wellactually/sdk/v${API_VERSION + 1}". This version of Well Actually builds for the detector API versions 1 to ${API_VERSION}.`);
+    await expect(build(`${from(0)} ${quiet}`)).rejects.toThrow(/builds for the detector API versions/);
+    await expect(build(`${from("next")} ${quiet}`)).rejects.toThrow(/The detector API version is part of the path/);
   });
 
-  test("refuses what the declared version did not have", async () => {
-    await expect(build(`import fs from "node:fs"; export const api = 1; export function detect() { return fs.existsSync("/") ? [] : []; }`)).rejects.toThrow(
-      "detector.ts imports node:fs, which exists from detector API 2 on, and declares api = 1.",
+  test("refuses a principle whose files disagree about the version", async () => {
+    await expect(build(`${from(1)} ${quiet}`, { "detector.test.ts": `import { detect } from "@wellactually/sdk/v2/test";` })).rejects.toThrow(
+      `the principle is written against 2 versions of the detector API: detector.test.ts imports "@wellactually/sdk/v2/test", detector.ts imports "@wellactually/sdk/v1". Import from one version everywhere.`,
+    );
+    // A project in fixtures/ is data for a test, whatever it imports.
+    expect((await build(`${from(1)} ${quiet}`, { "fixtures/app/detector.ts": from(2) })).manifest.api).toBe(1);
+  });
+
+  test("refuses the declaration that the import path replaced", async () => {
+    await expect(build(`${from(2)} export const api = 2; ${quiet}`)).rejects.toThrow("detector.ts exports api. The version is part of the import path now, and this principle imports version 2. Remove the line.");
+  });
+
+  test("refuses what the version did not have", async () => {
+    await expect(build(`import fs from "node:fs"; ${from(1)} export function detect() { return fs.existsSync("/") ? [] : []; }`)).rejects.toThrow(
+      `detector.ts imports node:fs, which exists from detector API 2 on, and the principle is written against version 1. Import from "@wellactually/sdk/v${API_VERSION}" to use it.`,
     );
     // node:path is string logic and needs nothing from the host.
-    const built = await build(`import path from "node:path"; export const api = 1; export function detect() { return path.join("a", "b") ? [] : []; }`);
+    const built = await build(`import path from "node:path"; ${from(1)} export function detect() { return path.join("a", "b") ? [] : []; }`);
     expect(built.manifest.api).toBe(1);
   });
 });
 
 describe("a detector that stays on an old version", () => {
   test("is built with today's SDK and behaves like the bundle that was built back then", async () => {
-    // The source of the frozen API 1 bundle, uploaded again today with its version declared.
-    const source = `${fs.readFileSync(path.join(dir, "v1/detector.ts"), "utf8")}\nexport const api = 1;\n`;
+    // The source of the frozen API 1 bundle, uploaded again today. Back then the SDK had one path, today that version has its own.
+    const source = fs.readFileSync(path.join(dir, "v1/detector.ts"), "utf8").replace('"@wellactually/sdk"', '"@wellactually/sdk/v1"');
     const today = await buildPrinciple({ "principle.md": "# T\n\nOne sentence.\n\nA paragraph of advice that is long enough to count as advice for an agent to read.", "detector.ts": source });
     const then = frozen(1);
     expect(today.manifest.api).toBe(1);
-    expect(today.bundle).not.toBe(then.bundle);
 
     for (const ctx of [written, textCtx("prompt", "why is the late keyword bad"), fileCtx("read", "lib/session.dart", session)]) {
       if (!applies(today.manifest, ctx)) {
@@ -175,11 +209,10 @@ describe("a detector that stays on an old version", () => {
   test("gets the old event in its own tests too", async () => {
     const { report } = await checkPrinciple({
       "principle.md": "# T\n\nOne sentence.\n\nA paragraph of advice that is long enough to count as advice for an agent to read.",
-      "detector.ts": `import type { CtxV1 } from "@wellactually/sdk";
-        export const api = 1;
-        export function detect(ctx: CtxV1) { return ctx.file?.path === "lib/a.dart" && !("project" in ctx) ? [{ evidence: ctx.text }] : []; }`,
+      "detector.ts": `import type { Ctx } from "@wellactually/sdk/v1";
+        export function detect(ctx: Ctx) { return ctx.file?.path === "lib/a.dart" && !("project" in ctx) ? [{ evidence: ctx.text }] : []; }`,
       "detector.test.ts": `import { expect, test } from "vitest";
-        import { detect, write } from "@wellactually/sdk/test";
+        import { detect, write } from "@wellactually/sdk/v1/test";
         test("fires", () => { expect(detect(write("lib/a.dart", "x"))).toHaveLength(1); });
         test("quiet", () => { expect(detect(write("lib/b.dart", "x"))).toEqual([]); });`,
     });

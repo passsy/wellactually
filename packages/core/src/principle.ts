@@ -1,6 +1,6 @@
 import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
-import { apiOf, BUILT_IN_SINCE, declaredApi } from "./api.ts";
-import { buildDetector, buildTestBundle, BundleError, byteLength, detectorEntry, type FileMap } from "./bundle.ts";
+import { apiOf, BUILT_IN_SINCE, importedApi } from "./api.ts";
+import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, type FileMap } from "./bundle.ts";
 import { applies, fileCtx, textCtx } from "./ctx.ts";
 import { languagesOf, ManifestError, parsePrinciple, readSettings, type Manifest } from "./manifest.ts";
 import { mapProject, type ProjectFiles } from "./project.ts";
@@ -94,18 +94,21 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
     throw new BundleError((error as Error).message);
   }
   const { events, globs } = readSettings(exported);
-  // The version the detector says it was written against, and the newest when it says nothing.
-  // From now on every host hands it the event of that version.
+  // The version the principle is written against is the one its files import the SDK from.
+  // From now on every host hands its detector the event of that version.
   let api: number;
   try {
-    api = declaredApi(exported.api);
+    api = importedApi(Object.fromEntries(codeFiles(files).map((name) => [name, files[name] ?? ""])));
   } catch (error) {
     throw new ManifestError((error as Error).message);
+  }
+  if (exported.api !== undefined) {
+    throw new ManifestError(`detector.ts exports api. The version is part of the import path now, and this principle imports version ${api}. Remove the line.`);
   }
   for (const name of builtIns) {
     const since = BUILT_IN_SINCE[name] ?? 1;
     if (api < since) {
-      throw new ManifestError(`detector.ts imports ${name}, which exists from detector API ${since} on, and declares api = ${api}. Raise it: export const api = ${API_VERSION};`);
+      throw new ManifestError(`detector.ts imports ${name}, which exists from detector API ${since} on, and the principle is written against version ${api}. Import from "@wellactually/sdk/v${API_VERSION}" to use it.`);
     }
   }
   const manifest: Manifest = { title, summary, languages: languagesOf(globs), events, globs, api };

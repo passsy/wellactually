@@ -1,6 +1,5 @@
-import { blankCommentsAndStrings, writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
+import { blankCommentsAndStrings, writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk/v2";
 
-export const api = 2;
 export const events: EventName[] = ["write"];
 export const globs = ["**/*.{ts,tsx,mts,cts}"];
 

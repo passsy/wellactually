@@ -130,7 +130,7 @@ describe("the bundler", () => {
   test("bundles the SDK and relative files", async () => {
     const bundle = await buildBundle({
       "detector.ts": `
-        import { findWord } from "@wellactually/sdk";
+        import { findWord } from "@wellactually/sdk/v2";
         import { WORD } from "./words.ts";
         export function detect(ctx) { return findWord(ctx.text, WORD) === -1 ? [] : [{ evidence: WORD }]; }
       `,

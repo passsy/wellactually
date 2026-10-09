@@ -100,7 +100,8 @@ Building a principle needs esbuild, which the plugin does not carry, so the auth
 npm install && npm link -w wellactually
 ```
 
-A detector may import `@wellactually/sdk`, which is in `packages/sdk`, and its own files.
+A detector may import `@wellactually/sdk/v2`, which is in `packages/sdk`, and its own files.
+The `v2` is the detector API version it is written against.
 
 ## What is in here
 

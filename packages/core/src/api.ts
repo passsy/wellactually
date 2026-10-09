@@ -1,4 +1,4 @@
-import { API_VERSION, type Ctx, type CtxV1 } from "@wellactually/sdk";
+import { API_VERSION, blankCommentsAndStrings, type Ctx, type CtxV1 } from "@wellactually/sdk";
 import { fsHost, type ProjectFiles } from "./project.ts";
 
 /**
@@ -15,7 +15,8 @@ import { fsHost, type ProjectFiles } from "./project.ts";
  *
  * 1. Raise `API_VERSION` in the SDK and describe the change there.
  * 2. Freeze the event of the version that was current as a type in the SDK,
- *    so a detector that stays on it can still be typed.
+ *    point that version's file (`v<n-1>.ts`) at it, and add `v<n>.ts` for the
+ *    new one. A detector says its version by importing from one of them.
  * 3. Add the step that turns the new event into that one to `DOWNGRADE`.
  * 4. Say in `environmentFor` which globals and host functions each version has.
  * 5. Add `test/api/v<n>`: the new event's shape, and a bundle built once by
@@ -124,19 +125,63 @@ export function shapeOf(value: unknown): unknown {
   return value === null ? "null" : typeof value;
 }
 
+const SDK = "@wellactually/sdk";
+const current = `"${SDK}/v${API_VERSION}"`;
+
 /**
- * The version a detector declares with `export const api = n;`, or the newest when it declares none.
- * Throws with a message for the author when it is not a version this host builds for.
+ * What a source file imports from the SDK, as written: `@wellactually/sdk/v2`, `@wellactually/sdk/v2/test`.
+ *
+ * It is read from the source, not from the build, because an import of types
+ * only is gone by the time esbuild has compiled the file, and types are all
+ * that many detectors import.
  */
-export function declaredApi(exported: unknown): number {
-  if (exported === undefined) {
-    return API_VERSION;
+export function sdkImports(source: string): string[] {
+  // Comments and string contents are blanked with positions kept, so an import that is commented out is not found.
+  const code = blankCommentsAndStrings(source);
+  const found = new Set<string>();
+  for (const match of code.matchAll(/\b(?:from|import)\s*\(?\s*(["'])/g)) {
+    const open = match.index + match[0].length;
+    const close = source.indexOf(match[1] ?? '"', open);
+    const specifier = close === -1 ? "" : source.slice(open, close);
+    if (specifier === SDK || specifier.startsWith(`${SDK}/`)) {
+      found.add(specifier);
+    }
   }
-  const refused = typeof exported === "number" ? unsupported(exported) : `it is not a number: ${JSON.stringify(exported)}`;
-  if (refused !== null) {
-    throw new Error(`detector.ts exports api, the detector API version it was written against, but ${refused.replace(/^it /, "this one ")} Use a whole number from ${MIN_API_VERSION} to ${API_VERSION}, for example: export const api = ${API_VERSION};`);
+  return [...found];
+}
+
+/**
+ * The detector API version a principle is written against: the one its files import the SDK from.
+ *
+ * `sources` are the principle's code files by name. Throws with a message for
+ * the author when they name no version, two, or one this host does not build for.
+ */
+export function importedApi(sources: Record<string, string>): number {
+  const seen = new Map<number, string>();
+  for (const name of Object.keys(sources).sort()) {
+    for (const specifier of sdkImports(sources[name] ?? "")) {
+      const where = `${name} imports "${specifier}"`;
+      const version = /^@wellactually\/sdk\/v(\d+)(?:\/test)?$/.exec(specifier)?.[1];
+      if (version === undefined) {
+        const wanted = specifier.endsWith("/test") ? `"${SDK}/v${API_VERSION}/test"` : current;
+        throw new Error(`${where}. The detector API version is part of the path: import from ${wanted}.`);
+      }
+      const api = Number(version);
+      if (api < MIN_API_VERSION || api > API_VERSION) {
+        throw new Error(`${where}. This version of Well Actually builds for the detector API versions ${MIN_API_VERSION} to ${API_VERSION}.`);
+      }
+      if (!seen.has(api)) {
+        seen.set(api, where);
+      }
+    }
   }
-  return exported as number;
+  if (seen.size === 0) {
+    throw new Error(`no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import type { Ctx, Finding } from ${current};`);
+  }
+  if (seen.size > 1) {
+    throw new Error(`the principle is written against ${seen.size} versions of the detector API: ${[...seen.values()].join(", ")}. Import from one version everywhere.`);
+  }
+  return [...seen.keys()][0] as number;
 }
 
 /** What a detector can import that only exists from some version on, with that version. */

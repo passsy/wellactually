@@ -1,4 +1,5 @@
 import type { BuildFailure, Message, Plugin } from "esbuild";
+import { API_VERSION } from "@wellactually/sdk";
 import { currentEngines } from "./engines.ts";
 import { SDK_SOURCES } from "./sdk-source.generated.ts";
 
@@ -12,7 +13,11 @@ export const BUNDLE_GLOBAL = "__principle";
 
 const MAX_BUNDLE_BYTES = 256 * 1024;
 const SDK = "@wellactually/sdk";
-const SDK_TEST = "@wellactually/sdk/test";
+/** What an author imports: `@wellactually/sdk/v2` in a detector, `@wellactually/sdk/v2/test` in a test. The version is part of the path. */
+const SDK_ENTRY = /^@wellactually\/sdk\/(v\d+)(\/test)?$/;
+const SDK_NOW = `${SDK}/v${API_VERSION}`;
+/** How the code this build adds reaches the test framework. Not something an author writes. */
+const TEST_RUNTIME = "wellactually:test-runtime";
 /** What a detector imports to read the project, and the SDK file that answers inside the isolate. */
 const BUILT_INS: Record<string, string> = { "node:fs": "fs.ts", fs: "fs.ts", "node:path": "path.ts", path: "path.ts" };
 /** The test runner an author uses. Inside the isolate it is the SDK's small copy of it. */
@@ -29,6 +34,13 @@ export const TESTS_GLOBAL = "__tests";
 /** The detector file of a principle, or null when it has none. */
 export function detectorEntry(files: FileMap): string | null {
   return DETECTOR_ENTRIES.find((name) => name in files) ?? null;
+}
+
+/** The code of a principle: its detector, its tests and what they import. Not the projects in `fixtures/`. */
+export function codeFiles(files: FileMap): string[] {
+  return Object.keys(files)
+    .filter((name) => /\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name))
+    .sort();
 }
 
 /** The test files of a principle: every `*.test.ts` or `*.test.js`, wherever it lies outside `fixtures/`. */
@@ -94,7 +106,7 @@ export async function buildDetector(files: FileMap): Promise<{ bundle: string; b
  *
  * The script loads every test file, which registers its tests, and exposes
  * `run()`. A test file may import `vitest`, which resolves to the SDK's copy
- * of its API, the SDK and its own relative files. Null when the principle has
+ * of its API, the SDK of its version and its own relative files. Null when the principle has
  * no test files.
  */
 export async function buildTestBundle(files: FileMap): Promise<string | null> {
@@ -102,7 +114,7 @@ export async function buildTestBundle(files: FileMap): Promise<string | null> {
   if (tests.length === 0) {
     return null;
   }
-  const entry = [`import { __run } from "${SDK_TEST}";`, ...tests.map((name) => `import "./${name}";`), "export const run = __run;", ""].join("\n");
+  const entry = [`import { __run } from "${TEST_RUNTIME}";`, ...tests.map((name) => `import "./${name}";`), "export const run = __run;", ""].join("\n");
   return build({ ...files, [TEST_ENTRY]: entry }, TEST_ENTRY, TESTS_GLOBAL, true);
 }
 
@@ -117,14 +129,25 @@ async function build(files: FileMap, entry: string, globalName: string, isTest: 
           // happens to exist in the working directory, so the path is normalized.
           return { path: normalize(args.path), namespace: "principle" };
         }
-        if (args.path === SDK) {
-          return { path: "index.ts", namespace: "sdk" };
+        if (args.path === TEST_RUNTIME) {
+          return { path: "test.ts", namespace: "sdk" };
         }
-        if (args.path === SDK_TEST) {
+        const sdk = SDK_ENTRY.exec(args.path);
+        if (sdk) {
+          const file = `${sdk[1]}.ts`;
+          if (!(file in SDK_SOURCES)) {
+            return { errors: [{ text: `"${args.path}" does not exist. The newest detector API is "${SDK_NOW}".` }] };
+          }
+          if (!sdk[2]) {
+            return { path: file, namespace: "sdk" };
+          }
           if (!isTest) {
-            return { errors: [{ text: `${SDK_TEST} is for test files. A detector cannot import it.` }] };
+            return { errors: [{ text: `${args.path} is for test files. A detector cannot import it.` }] };
           }
           return { path: "test.ts", namespace: "sdk" };
+        }
+        if (args.path === SDK || args.path.startsWith(`${SDK}/`)) {
+          return { errors: [{ text: `"${args.path}" cannot be imported. The detector API version is part of the path: "${args.path.endsWith("/test") ? `${SDK_NOW}/test` : SDK_NOW}".` }] };
         }
         const builtIn = BUILT_INS[args.path];
         if (builtIn === "fs.ts" && isTest && args.namespace === "principle" && tests.has(args.importer)) {
@@ -154,7 +177,7 @@ async function build(files: FileMap, entry: string, globalName: string, isTest: 
         return {
           errors: [
             {
-              text: `"${args.path}" cannot be imported. A ${isTest ? "test" : "detector"} may import its own relative files, ${SDK}, node:fs and node:path${isTest ? `, ${SDK_TEST} and ${VITEST}` : ""}, nothing else.`,
+              text: `"${args.path}" cannot be imported. A ${isTest ? "test" : "detector"} may import its own relative files, ${SDK_NOW}, node:fs and node:path${isTest ? `, ${SDK_NOW}/test and ${VITEST}` : ""}, nothing else.`,
             },
           ],
         };
@@ -172,7 +195,7 @@ async function build(files: FileMap, entry: string, globalName: string, isTest: 
         if (tests.has(args.path)) {
           // Tells the framework which file the following tests belong to. It shares the
           // first line with the file's own code, so line numbers in errors stay right.
-          return { contents: `import { __file as __wellactuallyFile } from "${SDK_TEST}";__wellactuallyFile(${JSON.stringify(args.path)});${contents}`, loader };
+          return { contents: `import { __file as __wellactuallyFile } from "${TEST_RUNTIME}";__wellactuallyFile(${JSON.stringify(args.path)});${contents}`, loader };
         }
         return { contents, loader };
       });
