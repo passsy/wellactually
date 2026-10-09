@@ -42568,6 +42568,7 @@ The name of the directory is the principle's id.
   For a detector that reads other files, put a small project into the principle, e.g. fixtures/flutter_app/pubspec.yaml, and pass it: \`detect(write("lib/a.dart", content), { project: "fixtures/flutter_app" })\`.
   The project sits at a made-up root, so never assert on absolute paths. \`write(path, content, { isNew: true })\` is a write that created the file.
   The tests are ordinary vitest files. Where the repository has vitest and @wellactually/sdk installed, npm test runs them. run_tests always works and also checks the publish gates.
+  To set a repository up for that: \`npm install --save-dev github:passsy/wellactually#sdk vitest\`, with "type": "module" and "test": "vitest run" in package.json. The SDK is not on npm.
   The registry runs them with a small copy of vitest: toEqual, toStrictEqual, toBe, toHaveLength, toContain, toContainEqual, toMatchObject, toBeTruthy, toBeFalsy, toBeNull, toBeUndefined, toBeDefined, toThrow, .not, test.each. Use only those. Tests are not async.
 
 The tests must pass, make the detector fire at least once, and run it at least once on something it stays quiet on.
@@ -42583,7 +42584,7 @@ function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
 async function serveMcp() {
-  const server = new McpServer({ name: "wellactually", version: "0.7.1" }, { instructions: AUTHORING_GUIDE });
+  const server = new McpServer({ name: "wellactually", version: "0.7.2" }, { instructions: AUTHORING_GUIDE });
   server.registerTool(
     "scaffold",
     {

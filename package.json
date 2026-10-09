@@ -1,6 +1,6 @@
 {
   "name": "wellactually-client",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": true,
   "type": "module",
   "description": "The Well Actually plugin, command and sandbox",

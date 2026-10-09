@@ -41,7 +41,9 @@ const run: typeof runOnce = (bundle, ctx, project, api) => {
   const first = runOnce(bundle, ctx, project, api);
   return first.error?.includes("ran longer than") ? runOnce(bundle, ctx, project, api) : first;
 };
-const builder = createRequire(import.meta.url).resolve("@wellactually/core/build-principle");
+// The script that builds a principle: beside this file in the package that is installed from GitHub, in the core in this repository.
+const beside = fileURLToPath(new URL("./build-principle.mjs", import.meta.url));
+const builder = fs.existsSync(beside) ? beside : createRequire(import.meta.url).resolve("@wellactually/core/build-principle");
 const self = fileURLToPath(import.meta.url);
 
 interface Prepared {
