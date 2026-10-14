@@ -31,10 +31,12 @@ export declare function edit(path: string, content: string, change: {
 }): Ctx;
 /** The agent read this file. It wrote none of it. */
 export declare function read(path: string, content: string): Ctx;
-/** The user typed this. */
+/** The user typed this, or the agent handed it to a subagent. */
 export declare function prompt(text: string): Ctx;
 /** The agent is about to run this shell command. */
 export declare function command(text: string): Ctx;
+/** `command` ran, and this is what it printed. */
+export declare function output(command: string, text: string): Ctx;
 /**
  * A multi-line string without the indentation of the test around it.
  *

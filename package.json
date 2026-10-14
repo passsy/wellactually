@@ -1,6 +1,6 @@
 {
   "name": "@wellactually/sdk",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "description": "What a Well Actually principle's detector imports, and what its tests import to run under vitest.",
   "license": "MIT",
@@ -12,19 +12,11 @@
     "node": ">=22.18.0"
   },
   "exports": {
-    "./v1": {
-      "types": "./v1.d.ts",
-      "default": "./v1.mjs"
+    "./v3": {
+      "types": "./v3.d.ts",
+      "default": "./v3.mjs"
     },
-    "./v1/test": {
-      "types": "./test.d.ts",
-      "default": "./test.mjs"
-    },
-    "./v2": {
-      "types": "./v2.d.ts",
-      "default": "./v2.mjs"
-    },
-    "./v2/test": {
+    "./v3/test": {
       "types": "./test.d.ts",
       "default": "./test.mjs"
     }
