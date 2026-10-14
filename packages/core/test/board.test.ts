@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { API_VERSION } from "@wellactually/sdk";
-import { buildBundle, DetectorPool, describeFinding, fileCtx, frame, runBoard, textCtx, writeCached } from "../src/node.ts";
+import { buildBundle, DetectorPool, describeFinding, fileCtx, frame, readConfig, runBoard, textCtx, writeCached, writeConfig } from "../src/node.ts";
 
 const sdk = `import { onPrompt } from "@wellactually/sdk/v3";`;
 const handlers = [{ event: "prompt" as const, globs: [] }];
@@ -97,5 +97,18 @@ describe("what the agent is shown", () => {
   test("shows only the advice for a finding that names no place", () => {
     const text = frame(textCtx("prompt", "anything"), [{ principle, findings: [{ depth: "pointer" }] }]);
     expect(text).toContain('title="Avoid late">\nMake it nullable.\n</principle>');
+  });
+});
+
+describe("the stored login", () => {
+  test("moves from the Railway address to wellactually.dev and keeps any other registry", () => {
+    process.env.WELLACTUALLY_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-config-"));
+    const login = { token: "t", handle: "ana", stats: true };
+    writeConfig({ ...login, registry: "https://web-production-a1cda.up.railway.app" });
+    expect(readConfig().registry).toBe("https://wellactually.dev");
+    expect(readConfig().token).toBe("t");
+
+    writeConfig({ ...login, registry: "http://localhost:3211" });
+    expect(readConfig().registry).toBe("http://localhost:3211");
   });
 });

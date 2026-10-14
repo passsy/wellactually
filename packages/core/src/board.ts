@@ -20,11 +20,11 @@ export interface Config {
   stats: boolean;
 }
 
-/**
- * Where the advisory board lives unless `login --registry` or WELLACTUALLY_REGISTRY says otherwise.
- * The Railway address until wellactually.dev points at the registry.
- */
-export const DEFAULT_REGISTRY = "https://web-production-a1cda.up.railway.app";
+/** Where the advisory board lives unless `login --registry` or WELLACTUALLY_REGISTRY says otherwise. */
+export const DEFAULT_REGISTRY = "https://wellactually.dev";
+
+/** Where the registry ran before wellactually.dev. A login stored with it moves to the new address. */
+const RAILWAY_REGISTRY = "https://web-production-a1cda.up.railway.app";
 
 /** Where the advisory board lives on this machine. `WELLACTUALLY_HOME` moves it, which the tests use. */
 export function boardHome(): string {
@@ -50,8 +50,9 @@ function writeJson(file: string, value: unknown): void {
 
 export function readConfig(): Config {
   const stored = readJson<Partial<Config>>(path.join(boardHome(), "config.json"));
+  const registry = stored?.registry === RAILWAY_REGISTRY ? DEFAULT_REGISTRY : stored?.registry;
   return {
-    registry: process.env.WELLACTUALLY_REGISTRY ?? stored?.registry ?? DEFAULT_REGISTRY,
+    registry: process.env.WELLACTUALLY_REGISTRY ?? registry ?? DEFAULT_REGISTRY,
     token: stored?.token ?? null,
     handle: stored?.handle ?? null,
     stats: stored?.stats ?? true,

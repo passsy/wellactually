@@ -4,7 +4,7 @@ Engineering principles that run inside your coding agent.
 
 A principle is advice plus a detector.
 The detector looks at what your agent just did, and when it finds something, the agent reads the advice.
-Anyone can publish principles on [the Well Actually registry](https://web-production-a1cda.up.railway.app), and you choose whose principles sit on your advisory board.
+Anyone can publish principles on [the Well Actually registry](https://wellactually.dev), and you choose whose principles sit on your advisory board.
 
 ## Install
 

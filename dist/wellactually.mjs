@@ -12848,7 +12848,8 @@ function diskFiles() {
 }
 
 // packages/core/src/board.ts
-var DEFAULT_REGISTRY = "https://web-production-a1cda.up.railway.app";
+var DEFAULT_REGISTRY = "https://wellactually.dev";
+var RAILWAY_REGISTRY = "https://web-production-a1cda.up.railway.app";
 function boardHome() {
   return process.env.WELLACTUALLY_HOME ?? path2.join(os2.homedir(), ".wellactually");
 }
@@ -12870,8 +12871,9 @@ function writeJson(file2, value) {
 }
 function readConfig() {
   const stored = readJson(path2.join(boardHome(), "config.json"));
+  const registry2 = stored?.registry === RAILWAY_REGISTRY ? DEFAULT_REGISTRY : stored?.registry;
   return {
-    registry: process.env.WELLACTUALLY_REGISTRY ?? stored?.registry ?? DEFAULT_REGISTRY,
+    registry: process.env.WELLACTUALLY_REGISTRY ?? registry2 ?? DEFAULT_REGISTRY,
     token: stored?.token ?? null,
     handle: stored?.handle ?? null,
     stats: stored?.stats ?? true
