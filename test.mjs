@@ -4008,6 +4008,11 @@ function environmentFor(api, ctx, project) {
 var SDK = "@wellactually/sdk";
 var current = `"${SDK}/v${API_VERSION}"`;
 
+// packages/core/src/licenses.ts
+var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
+var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
+var RULE = "-".repeat(72);
+
 // packages/core/src/bundle.ts
 var BUNDLE_GLOBAL = "__principle";
 var MAX_BUNDLE_BYTES = 1024 * 1024;

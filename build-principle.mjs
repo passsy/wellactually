@@ -3835,8 +3835,325 @@ function importedApi(sources) {
 }
 var BUILT_IN_SINCE = {};
 
+// packages/core/src/licenses.ts
+var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
+var LICENSE_FILE = /^(?:licen[sc]e|copying|unlicense)(?:[.-][\w.-]*)?$/i;
+var NOTICE_FILE = /^notice(?:[.-][\w.-]*)?$/i;
+var LICENSE_FILE_NAMES = [
+  "LICENSE",
+  "LICENSE.md",
+  "LICENSE.txt",
+  "LICENCE",
+  "LICENCE.md",
+  "LICENCE.txt",
+  "license",
+  "license.md",
+  "license.txt",
+  "LICENSE-MIT",
+  "LICENSE-MIT.txt",
+  "LICENSE-APACHE",
+  "LICENSE-APACHE.txt",
+  "LICENSE.MIT",
+  "LICENSE.APACHE2",
+  "LICENSE.BSD",
+  "COPYING",
+  "COPYING.md",
+  "COPYING.txt",
+  "UNLICENSE",
+  "NOTICE",
+  "NOTICE.md",
+  "NOTICE.txt"
+];
+var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
+function parseSpdx(source) {
+  const tokens = source.match(/\(|\)|[^\s()]+/g) ?? [];
+  let position = 0;
+  const one = () => {
+    const token = tokens[position];
+    if (token === void 0) {
+      return null;
+    }
+    if (token === "(") {
+      position++;
+      const inner = any();
+      if (inner === null || tokens[position] !== ")") {
+        return null;
+      }
+      position++;
+      return inner;
+    }
+    if (!/^[A-Za-z0-9.+-]+$/.test(token) || ["AND", "OR", "WITH"].includes(token.toUpperCase())) {
+      return null;
+    }
+    position++;
+    let id = CANONICAL.get(token.toLowerCase()) ?? token;
+    if (tokens[position]?.toUpperCase() === "WITH") {
+      const exception = tokens[position + 1];
+      if (exception === void 0 || !/^[A-Za-z0-9.-]+$/.test(exception)) {
+        return null;
+      }
+      position += 2;
+      id = `${id} WITH ${exception}`;
+    }
+    return { id };
+  };
+  const all = () => {
+    const parts = [];
+    for (; ; ) {
+      const part = one();
+      if (part === null) {
+        return null;
+      }
+      parts.push(part);
+      if (tokens[position]?.toUpperCase() !== "AND") {
+        break;
+      }
+      position++;
+    }
+    if (parts.length === 1) {
+      return parts[0] ?? null;
+    }
+    return { all: parts };
+  };
+  const any = () => {
+    const parts = [];
+    for (; ; ) {
+      const part = all();
+      if (part === null) {
+        return null;
+      }
+      parts.push(part);
+      if (tokens[position]?.toUpperCase() !== "OR") {
+        break;
+      }
+      position++;
+    }
+    if (parts.length === 1) {
+      return parts[0] ?? null;
+    }
+    return { any: parts };
+  };
+  const parsed = any();
+  if (parsed === null || position !== tokens.length) {
+    return null;
+  }
+  return parsed;
+}
+function render(expression, nested = false) {
+  if ("id" in expression) {
+    return expression.id;
+  }
+  let text;
+  if ("all" in expression) {
+    text = expression.all.map((part) => render(part, true)).join(" AND ");
+  } else {
+    text = expression.any.map((part) => render(part, true)).join(" OR ");
+  }
+  if (nested) {
+    return `(${text})`;
+  }
+  return text;
+}
+function idsOf(expression) {
+  if ("id" in expression) {
+    return [expression.id];
+  }
+  if ("all" in expression) {
+    return expression.all.flatMap(idsOf);
+  }
+  return expression.any.flatMap(idsOf);
+}
+function choicesOf(expression) {
+  if ("id" in expression) {
+    return [expression];
+  }
+  if ("any" in expression) {
+    return expression.any.flatMap(choicesOf);
+  }
+  let choices = [[]];
+  for (const part of expression.all) {
+    const next = [];
+    for (const taken of choices) {
+      for (const choice of choicesOf(part)) {
+        next.push([...taken, choice]);
+      }
+    }
+    choices = next;
+  }
+  return choices.map((parts) => ({ all: parts }));
+}
+function isPermissive(expression) {
+  return idsOf(expression).every((id) => PERMISSIVE_LICENSES.includes(id));
+}
+var TEXTS = [
+  { id: "MIT", has: /permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files/ },
+  { id: "ISC", has: /permission to use, copy, modify, and(?:\/or)? distribute this software for any purpose with or without fee is hereby granted, provided that/ },
+  { id: "0BSD", has: /permission to use, copy, modify, and(?:\/or)? distribute this software for any purpose with or without fee is hereby granted\./ },
+  { id: "BSD-2-Clause", has: /redistribution and use in source and binary forms, with or without modification, are permitted/, lacks: /neither the name|all advertising materials/ },
+  { id: "BSD-3-Clause", has: /redistribution and use in source and binary forms, with or without modification, are permitted[^]*neither the name/, lacks: /all advertising materials/ },
+  { id: "BSD-4-Clause", has: /redistribution and use in source and binary forms[^]*all advertising materials/ },
+  { id: "Apache-2.0", has: /apache license,? version 2\.0/ },
+  { id: "Zlib", has: /altered source versions must be plainly marked as such/ },
+  { id: "Unlicense", has: /this is free and unencumbered software released into the public domain/ },
+  { id: "CC0-1.0", has: /cc0 1\.0 universal/ },
+  { id: "BlueOak-1.0.0", has: /blue oak model license[^]*version 1\.0\.0/ },
+  { id: "Python-2.0", has: /python software foundation license version 2/ },
+  { id: "MPL", has: /mozilla public license/ },
+  { id: "EPL", has: /eclipse public license/ }
+];
+function recognizeLicense(text) {
+  const plain2 = text.toLowerCase().replace(/[“”"'`*#>_]/g, "").replace(/\s+/g, " ");
+  const found = [];
+  for (const known of TEXTS) {
+    if (!known.has.test(plain2)) {
+      continue;
+    }
+    if (known.lacks?.test(plain2)) {
+      continue;
+    }
+    found.push(known.id);
+  }
+  const gnu = /gnu (affero |lesser |library )?general public license/.exec(plain2);
+  if (gnu !== null) {
+    if (gnu[1] === void 0) {
+      found.push("GPL");
+    } else if (gnu[1] === "affero ") {
+      found.push("AGPL");
+    } else {
+      found.push("LGPL");
+    }
+  }
+  return found;
+}
+function isSame(declared, recognized) {
+  return declared === recognized || declared.startsWith(`${recognized}-`);
+}
+var COPYRIGHT_LINE = /^[\s*#/-]*((?:copyright\s+(?:\(c\)|©|\d{4})|©\s*\d{4}|\(c\)\s*\d{4}).*)$/i;
+function copyrightLines(files) {
+  const lines = [];
+  for (const file of files) {
+    for (const line of file.text.split(/\r?\n/)) {
+      const found = COPYRIGHT_LINE.exec(line)?.[1]?.trim();
+      if (found === void 0 || /[[{<](?:yyyy|year)[\]}>]/i.test(found) || lines.includes(found)) {
+        continue;
+      }
+      lines.push(found);
+    }
+  }
+  return lines;
+}
+function readLicensing(declared, own) {
+  const texts = [];
+  const notices = [];
+  for (const name of Object.keys(own).sort()) {
+    const text = own[name] ?? "";
+    if (LICENSE_FILE.test(name)) {
+      texts.push({ name, text });
+    } else if (NOTICE_FILE.test(name)) {
+      notices.push({ name, text });
+    }
+  }
+  const licensing = { spdx: "", review: "", texts, notices, copyright: copyrightLines([...texts, ...notices]) };
+  if (declared.trim() === "") {
+    licensing.review = "its package.json names no licence";
+    return licensing;
+  }
+  const expression = parseSpdx(declared);
+  if (expression === null) {
+    licensing.review = `its package.json says "${declared}", which is not the name of a licence`;
+    return licensing;
+  }
+  const permissive = choicesOf(expression).filter(isPermissive);
+  if (permissive.length === 0) {
+    licensing.spdx = render(expression);
+    licensing.review = `${licensing.spdx} is not a licence that passes by itself`;
+    return licensing;
+  }
+  licensing.spdx = render(permissive[0]);
+  if (texts.length === 0) {
+    licensing.review = `its package.json says ${declared}, and the package has no licence file to show it`;
+    return licensing;
+  }
+  const recognized = new Set(texts.flatMap((file) => recognizeLicense(file.text)));
+  const named = idsOf(expression);
+  for (const id of recognized) {
+    if (!named.some((declaredId) => isSame(declaredId, id))) {
+      licensing.review = `its package.json says ${declared}, and its licence file is the text of ${id}`;
+      return licensing;
+    }
+  }
+  for (const choice of permissive) {
+    if (idsOf(choice).every((id) => recognized.has(id))) {
+      licensing.spdx = render(choice);
+      return licensing;
+    }
+  }
+  licensing.review = `its package.json says ${declared}, and its licence file is not the text of that licence`;
+  return licensing;
+}
+var NOTICES_OPEN = "/*! Third-party notices";
+var NOTICES_CLOSE = "End of third-party notices */";
+var RULE = "-".repeat(72);
+function thirdPartyNotices(entries) {
+  if (entries.length === 0) {
+    return "";
+  }
+  const lines = ["", "This detector contains code of the packages below. Each is used under its own licence."];
+  for (const entry of entries) {
+    lines.push("", RULE);
+    let title = entry.name;
+    if (entry.version !== "") {
+      title = `${entry.name} ${entry.version}`;
+    }
+    lines.push(title);
+    let license = entry.licensing.spdx;
+    if (license === "") {
+      license = "unknown";
+    }
+    if (entry.licensing.review !== "") {
+      license = `${license} (${entry.licensing.review})`;
+    }
+    lines.push(`License: ${license}`);
+    lines.push(`Source: ${entry.source}`);
+    for (const line of entry.licensing.copyright) {
+      lines.push(line);
+    }
+    for (const file of [...entry.licensing.texts, ...entry.licensing.notices]) {
+      lines.push("", `${file.name}:`, "", file.text.trim());
+    }
+    if (entry.licensing.texts.length === 0) {
+      lines.push("", "The package has no licence file.");
+    }
+  }
+  lines.push("", RULE);
+  const body = lines.join("\n").replaceAll("*/", "* /");
+  return `${NOTICES_OPEN}
+${body}
+${NOTICES_CLOSE}
+`;
+}
+
 // packages/core/src/packages.ts
 var PACKAGE_DIR = "node_modules/";
+function approvalKey(info) {
+  if (info.from !== void 0) {
+    return `${info.name}@${info.from}`;
+  }
+  return `${info.name}@${info.version}`;
+}
+function sourceOf(info) {
+  if (info.from === void 0) {
+    return `https://www.npmjs.com/package/${info.name}/v/${info.version}`;
+  }
+  const github = parseGitHub(info.from);
+  if (github === null) {
+    return info.from;
+  }
+  if (github.ref === null) {
+    return `https://github.com/${github.owner}/${github.repo}`;
+  }
+  return `https://github.com/${github.owner}/${github.repo}/tree/${github.ref}`;
+}
 var TAKEN_FROM = ".wellactually-from";
 var PackageError = class extends Error {
 };
@@ -4107,7 +4424,34 @@ function pickCondition(value, required) {
   }
   return null;
 }
-function packagesOf(files) {
+function declaredLicense(json) {
+  if (typeof json.license === "string") {
+    return json.license.slice(0, 100);
+  }
+  const typeOf = (entry) => {
+    const type = entry?.type;
+    if (typeof type !== "string") {
+      return null;
+    }
+    return type;
+  };
+  const single = typeOf(json.license);
+  if (single !== null) {
+    return single.slice(0, 100);
+  }
+  if (Array.isArray(json.licenses)) {
+    const types = [];
+    for (const entry of json.licenses) {
+      const type = typeOf(entry);
+      if (type !== null) {
+        types.push(type);
+      }
+    }
+    return types.join(" OR ").slice(0, 100);
+  }
+  return "";
+}
+function carriedPackages(files) {
   const packages = [];
   for (const path2 of Object.keys(files).sort()) {
     const name = packageOf(path2);
@@ -4128,20 +4472,33 @@ function packagesOf(files) {
     if (version === "" && from === void 0) {
       throw new PackageError(`the package.json of ${name} names no version`);
     }
-    let license = "";
-    if (typeof json.license === "string") {
-      license = json.license.slice(0, 100);
-    }
-    const info = { name, version, license };
+    const info = { name, version, license: declaredLicense(json) };
     if (from !== void 0) {
       if (!isGitReference(from) || from.length > 300) {
         throw new PackageError(`${PACKAGE_DIR}${name}/${TAKEN_FROM} does not name a repository`);
       }
       info.from = from;
     }
-    packages.push(info);
+    const root = `${PACKAGE_DIR}${name}/`;
+    const own = {};
+    for (const [file, content] of Object.entries(files)) {
+      if (file.startsWith(root) && !file.slice(root.length).includes("/")) {
+        own[file.slice(root.length)] = content;
+      }
+    }
+    const licensing = readLicensing(info.license, own);
+    if (licensing.spdx !== "") {
+      info.spdx = licensing.spdx;
+    }
+    if (licensing.review !== "") {
+      info.review = licensing.review;
+    }
+    packages.push({ info, licensing });
   }
   return packages;
+}
+function noticeOf(carried) {
+  return { name: carried.info.name, version: carried.info.version, source: sourceOf(carried.info), licensing: carried.licensing };
 }
 
 // packages/core/src/sdk-source.generated.ts
@@ -4231,12 +4588,14 @@ async function vendorPackages(files, source) {
     if (from !== null) {
       fetched[`${PACKAGE_DIR}${name}/${TAKEN_FROM}`] = from;
     }
-    for (const file of ["LICENSE", "LICENSE.md", "LICENSE.txt", "license", "LICENCE"]) {
-      const text = await source(name, pins[name] ?? null, file);
-      if (text !== null) {
-        fetched[`${PACKAGE_DIR}${name}/${file}`] = text;
-        break;
+    const texts = await Promise.all(LICENSE_FILE_NAMES.map((file) => source(name, pins[name] ?? null, file)));
+    const taken = /* @__PURE__ */ new Set();
+    for (const [index, text] of texts.entries()) {
+      if (text === null || taken.has(text)) {
+        continue;
       }
+      taken.add(text);
+      fetched[`${PACKAGE_DIR}${name}/${LICENSE_FILE_NAMES[index] ?? ""}`] = text;
     }
   }
   return { ...fetched, ...files };
@@ -4247,9 +4606,10 @@ async function buildDetector(files, source, fetched = {}) {
     throw new BundleError(`no detector found; expected one of ${DETECTOR_ENTRIES.join(", ")}`);
   }
   const builtIns = /* @__PURE__ */ new Set();
+  const inlined = /* @__PURE__ */ new Set();
   const made = [`import { __dispatch, __handlers } from "${HANDLER_RUNTIME}";`, `import "./${entry}";`, "export const handlers = __handlers;", "export const run = __dispatch;", ""].join("\n");
-  const bundle = await build({ ...files, [DETECTOR_ENTRY]: made }, DETECTOR_ENTRY, BUNDLE_GLOBAL, false, builtIns, source, fetched);
-  return { bundle, builtIns: [...builtIns].sort() };
+  const bundle = await build({ ...files, [DETECTOR_ENTRY]: made }, DETECTOR_ENTRY, BUNDLE_GLOBAL, false, builtIns, source, fetched, inlined);
+  return { bundle, builtIns: [...builtIns].sort(), inlined: [...inlined].sort() };
 }
 async function buildTestBundle(files, source, fetched = {}) {
   const tests = testFiles(files);
@@ -4259,7 +4619,7 @@ async function buildTestBundle(files, source, fetched = {}) {
   const entry = [`import { __run } from "${TEST_RUNTIME}";`, ...tests.map((name) => `import "./${name}";`), "export const run = __run;", ""].join("\n");
   return build({ ...files, [TEST_ENTRY]: entry }, TEST_ENTRY, TESTS_GLOBAL, true, /* @__PURE__ */ new Set(), source, fetched);
 }
-async function build(files, entry, globalName, isTest, builtIns, source, fetched) {
+async function build(files, entry, globalName, isTest, builtIns, source, fetched, inlined = /* @__PURE__ */ new Set()) {
   const tests = new Set(isTest ? testFiles(files) : []);
   let pins;
   try {
@@ -4405,9 +4765,19 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
       logLevel: "silent",
       // Packages ask which build they are in. There is no process to ask in the isolate.
       define: { "process.env.NODE_ENV": '"production"' },
+      // Says which files ended up in the bundle. A package that is installed and never imported is not in it.
+      metafile: true,
       plugins: [virtual]
     });
     code = result.outputFiles?.[0]?.text ?? "";
+    for (const output of Object.values(result.metafile?.outputs ?? {})) {
+      for (const [input, used] of Object.entries(output.inputs)) {
+        const name = packageOf(input.replace(/^principle:/, ""));
+        if (name !== null && used.bytesInOutput > 0) {
+          inlined.add(name);
+        }
+      }
+    }
   } catch (error) {
     const failure = error;
     const messages = failure.errors?.map(formatMessage) ?? [String(error)];
@@ -4417,6 +4787,16 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
     throw new BundleError(`the bundled ${isTest ? "tests are" : "detector is"} larger than ${MAX_BUNDLE_BYTES / 1024} KB`);
   }
   return code;
+}
+function withNotices(bundle, notices) {
+  if (notices === "") {
+    return bundle;
+  }
+  const whole = `${bundle}${notices}`;
+  if (byteLength(whole) > MAX_BUNDLE_BYTES) {
+    throw new BundleError(`the bundled detector with the licences of its packages is larger than ${MAX_BUNDLE_BYTES / 1024} KB`);
+  }
+  return whole;
 }
 function formatMessage(message) {
   const where = message.location ? `${message.location.file.replace(/^(principle|sdk):/, "")}:${message.location.line}: ` : "";
@@ -4673,7 +5053,7 @@ function assertFileMapSize(files) {
     throw new ManifestError(`the packages of a principle may hold at most ${MAX_PACKAGE_BYTES / 1024 / 1024} MB, these have ${(packageTotal / 1024 / 1024).toFixed(1)} MB`);
   }
 }
-async function buildPrinciple(files) {
+async function buildPrinciple(files, approved = []) {
   const source = files["principle.md"];
   if (source === void 0) {
     throw new ManifestError("principle.md is missing");
@@ -4681,7 +5061,7 @@ async function buildPrinciple(files) {
   const { title, summary, advice } = parsePrinciple(source);
   const tags = parseTags(files["package.json"]);
   parseSettings(files["package.json"]);
-  const { bundle, builtIns } = await buildDetector(files);
+  const { bundle: code, builtIns, inlined } = await buildDetector(files);
   let api;
   try {
     api = importedApi(Object.fromEntries(codeFiles(files).map((name) => [name, files[name] ?? ""])));
@@ -4696,21 +5076,28 @@ async function buildPrinciple(files) {
   }
   let registered;
   try {
-    registered = await readRegistered(bundle);
+    registered = await readRegistered(code);
   } catch (error) {
     throw new BundleError(error.message);
   }
   const { events, globs, handlers } = readHandlers(registered);
   const manifest = { title, summary, tags, events, globs, handlers, api };
-  let packages;
+  let carried;
   try {
-    packages = packagesOf(files);
+    carried = carriedPackages(files);
   } catch (error) {
     throw new ManifestError(error.message);
   }
-  if (packages.length > 0) {
-    manifest.packages = packages;
+  const bundled = carried.filter((item) => inlined.includes(item.info.name));
+  for (const { info } of bundled) {
+    if (info.review !== void 0 && approved.includes(approvalKey(info))) {
+      info.approved = true;
+    }
   }
+  if (bundled.length > 0) {
+    manifest.packages = bundled.map((item) => item.info);
+  }
+  const bundle = withNotices(code, thirdPartyNotices(bundled.map(noticeOf)));
   return { manifest, advice, bundle, hash: await hashPrinciple(manifest, advice, bundle) };
 }
 async function hashPrinciple(manifest, advice, bundle) {

@@ -1,6 +1,6 @@
 {
   "name": "@wellactually/sdk",
-  "version": "0.9.2",
+  "version": "0.9.4",
   "type": "module",
   "description": "What a Well Actually principle's detector imports, and what its tests import to run under vitest.",
   "license": "MIT",
