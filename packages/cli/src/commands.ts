@@ -13,7 +13,9 @@ import {
   fileCtx,
   frame,
   probeRepo,
+  isPackageFile,
   readLockfile,
+  readPrinciple,
   readPrincipleDir,
   runDetector,
   textCtx,
@@ -23,11 +25,12 @@ import {
   type BuiltPrinciple,
   type CheckReport,
   type DetectorRun,
+  type FileMap,
   type ProbeReport,
   type SwitchResult,
 } from "@wellactually/core/node";
 import type { Ctx } from "@wellactually/sdk";
-import { fetchHistory, publishDraft, pullSource, type DraftResult, type History } from "./registry.ts";
+import { fetchHistory, publishDraft, pullSource, syncRepository, type DraftResult, type History, type RepositorySync } from "./registry.ts";
 
 /**
  * The verbs behind both the command line and the MCP server.
@@ -49,7 +52,7 @@ function idOf(dir: string): string {
 
 /** The check a principle directory has to pass, including that its folder name can be an id. */
 async function checkDir(dir: string) {
-  const { built, report } = await checkPrinciple(readPrincipleDir(path.resolve(dir)));
+  const { built, report } = await checkPrinciple(await readPrinciple(path.resolve(dir)));
   const id = idOf(dir);
   if (isPrincipleId(id)) {
     return { id, built, report };
@@ -70,10 +73,12 @@ export interface TryInput {
   read?: boolean;
   prompt?: string;
   command?: string;
+  /** What `command` printed. With it the event is the output, not the command about to run. */
+  output?: string;
 }
 
 export interface TryResult {
-  /** False when the detector's events or globs exclude this input, so it never ran. */
+  /** False when no handler of the detector wants this input, so it never ran. */
   applies: boolean;
   run: DetectorRun | null;
   /** What the agent would be shown, empty when nothing fired. */
@@ -81,7 +86,7 @@ export interface TryResult {
 }
 
 export async function tryPrinciple(dir: string, input: TryInput): Promise<TryResult> {
-  const built = await buildPrinciple(readPrincipleDir(path.resolve(dir)));
+  const built = await buildPrinciple(await readPrinciple(path.resolve(dir)));
   const ctx = tryCtx(input);
   if (!applies(built.manifest, ctx)) {
     return { applies: false, run: null, injected: "" };
@@ -94,13 +99,16 @@ export async function tryPrinciple(dir: string, input: TryInput): Promise<TryRes
 function tryCtx(input: TryInput): Ctx {
   const here = projectRootOf(process.cwd());
   if (input.prompt !== undefined) {
-    return textCtx("prompt", input.prompt, here === null ? null : toPosix(here));
+    return textCtx("prompt", input.prompt, here === null ? null : toPosix(here), "", toPosix(process.cwd()));
+  }
+  if (input.output !== undefined) {
+    return textCtx("output", input.output, here === null ? null : toPosix(here), input.command ?? "", toPosix(process.cwd()));
   }
   if (input.command !== undefined) {
-    return textCtx("command", input.command, here === null ? null : toPosix(here));
+    return textCtx("command", input.command, here === null ? null : toPosix(here), "", toPosix(process.cwd()));
   }
   if (input.file === undefined) {
-    throw new Error("pass a file, --prompt or --command");
+    throw new Error("pass a file, --prompt, --command or --output");
   }
   // Like the hook: the project root is the repository the file is in, when it is in one.
   const absolute = path.resolve(input.file);
@@ -111,7 +119,7 @@ function tryCtx(input: TryInput): Ctx {
 }
 
 export async function probePrinciple(dir: string, repo: string): Promise<ProbeReport> {
-  const built = await buildPrinciple(readPrincipleDir(path.resolve(dir)));
+  const built = await buildPrinciple(await readPrinciple(path.resolve(dir)));
   return probeRepo(built, path.resolve(repo));
 }
 
@@ -120,7 +128,30 @@ export async function publishPrinciple(dir: string, note = ""): Promise<DraftRes
   if (!isPrincipleId(id)) {
     throw new Error(`The folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}. Rename the folder, then publish again.`);
   }
-  return publishDraft(id, readPrincipleDir(path.resolve(dir)), note);
+  return publishDraft(id, await readPrinciple(path.resolve(dir)), note);
+}
+
+/** Has the registry read a repository that is connected on the website, without waiting for a push. */
+export async function syncRepo(name: string): Promise<RepositorySync> {
+  return syncRepository(name);
+}
+
+export function renderRepositorySync(result: RepositorySync): string {
+  const lines = [`${result.repository} at ${result.commit.slice(0, 7)}`];
+  for (const item of result.principles) {
+    let version = "";
+    if (item.version !== null) {
+      version = ` v${item.version}`;
+    }
+    lines.push(`  ${item.status.padEnd(9)} ${result.handle}/${item.slug}${version}  ${item.path}`);
+    for (const problem of item.problems) {
+      lines.push(`            ${problem}`);
+    }
+  }
+  if (result.principles.length === 0) {
+    lines.push("  No folder with a principle.md and a detector.ts was found.");
+  }
+  return lines.join("\n");
 }
 
 export async function principleHistory(id: string): Promise<History> {
@@ -176,13 +207,24 @@ export async function pullPrinciple(id: string, dir: string | undefined, force: 
       fs.rmSync(path.join(target, name));
     }
   }
-  writeFileMap(target, source.files);
-  return { id: source.id, version: source.version, status: source.status, dir: target, files: Object.keys(source.files).sort() };
+  // The code of packages is not written out. `npm install` puts the same versions there, complete.
+  const own: FileMap = {};
+  for (const [name, content] of Object.entries(source.files)) {
+    if (!isPackageFile(name)) {
+      own[name] = content;
+    }
+  }
+  writeFileMap(target, own);
+  return { id: source.id, version: source.version, status: source.status, dir: target, files: Object.keys(own).sort() };
 }
 
 export function renderPull(result: PullResult): string {
   const what = result.status === "draft" ? `the draft of version ${result.version}` : `version ${result.version}`;
-  return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).\nEdit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
+  let install = "";
+  if (result.files.includes("package.json")) {
+    install = `\nIt uses packages. Install them first: npm install --prefix ${result.dir}`;
+  }
+  return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).${install}\nEdit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
 }
 
 function asLocal(built: BuiltPrinciple, id: string) {
@@ -269,11 +311,11 @@ export function renderSwitch(result: SwitchResult, on: boolean): string {
 
 export function renderProbe(report: ProbeReport): string {
   const lines = [
-    `Scanned ${report.scanned} files, ${report.matched} matched the globs, ${report.fired} fired (${report.findings} findings). Slowest run ${report.slowestMs.toFixed(1)} ms.`,
+    `Scanned ${report.scanned} files, ${report.matched} are ones the detector handles, ${report.fired} fired (${report.findings} findings). Slowest run ${report.slowestMs.toFixed(1)} ms.`,
     report.verdict,
   ];
   for (const sample of report.samples) {
-    lines.push(`  ${sample.path}${sample.line ? `:${sample.line}` : ""}  ${sample.evidence}`);
+    lines.push(`  ${sample.path}  ${sample.text}`);
   }
   for (const failure of report.errors.slice(0, 10)) {
     lines.push(`  ✗ ${failure.path}  ${failure.error}`);
@@ -283,7 +325,7 @@ export function renderProbe(report: ProbeReport): string {
 
 export function renderTry(result: TryResult): string {
   if (!result.applies || !result.run) {
-    return "The events and globs that detector.ts exports do not select this input, so the detector does not run.";
+    return "No handler in detector.ts wants this input, so the detector does not run.";
   }
   const { run } = result;
   if (run.error) {
@@ -291,7 +333,7 @@ export function renderTry(result: TryResult): string {
   }
   const lines = [`${run.findings.length} findings in ${run.ms.toFixed(1)} ms.`];
   for (const dropped of run.dropped) {
-    lines.push(`Dropped: ${dropped}`);
+    lines.push(`Left out: ${dropped}`);
   }
   if (result.injected) {
     lines.push("", "The agent would be shown:", "", result.injected);

@@ -5,7 +5,7 @@
  * says about it:
  *
  *     test("fires on a late field", () => {
- *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1, evidence: "late String name;" }]);
+ *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1 }]);
  *     });
  *
  * On an author's machine the same file runs under vitest, where `test` and
@@ -19,7 +19,7 @@
 import type { Ctx, Finding } from "./index.ts";
 import type { DetectOptions } from "./events.ts";
 
-export { command, edit, prompt, read, source, write, type DetectOptions } from "./events.ts";
+export { command, edit, output, prompt, read, source, write, type DetectOptions } from "./events.ts";
 
 interface Host {
   __detect?: (call: string) => string;
@@ -31,9 +31,9 @@ const host = globalThis as Host;
 /**
  * What the detector reports for an event: the findings that passed the host's checks.
  *
- * It is empty when the detector's `events` or `globs` do not select the event,
- * exactly as in a session. It throws when the detector fails or reports a
- * finding the host would drop, so a test cannot pass on a broken detector.
+ * It is empty when no handler of the detector wants the event, exactly as in
+ * a session. It throws when the detector fails or reports something the host
+ * would drop, so a test cannot pass on a broken detector.
  */
 export function detect(event: Ctx, options: DetectOptions = {}): Finding[] {
   if (!host.__detect) {

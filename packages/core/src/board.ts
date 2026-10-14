@@ -4,6 +4,7 @@ import path from "node:path";
 import type { Ctx, Finding } from "@wellactually/sdk";
 import { apiOf } from "./api.ts";
 import { applies } from "./ctx.ts";
+import { describeFinding } from "./finding.ts";
 import { diskFiles } from "./fs.ts";
 import type { BoardEntry, CachedPrinciple, Lockfile } from "./types.ts";
 import type { DetectorPool } from "./pool.ts";
@@ -19,8 +20,11 @@ export interface Config {
   stats: boolean;
 }
 
-/** Where the advisory board lives unless `login --registry` or WELLACTUALLY_REGISTRY says otherwise. */
-export const DEFAULT_REGISTRY = "https://wellactually.dev";
+/**
+ * Where the advisory board lives unless `login --registry` or WELLACTUALLY_REGISTRY says otherwise.
+ * The Railway address until wellactually.dev points at the registry.
+ */
+export const DEFAULT_REGISTRY = "https://web-production-a1cda.up.railway.app";
 
 /** Where the advisory board lives on this machine. `WELLACTUALLY_HOME` moves it, which the tests use. */
 export function boardHome(): string {
@@ -179,8 +183,9 @@ export async function runBoard(
 const OPENERS: Record<Ctx["event"], string> = {
   write: "You just changed this file, so fixing it belongs in the change you are already making. Parts of the file you did not touch are not yours to clean up unless that is the task.",
   read: "You only read this file. You did not write this code, so cleaning it up is not your job. Apply the advice to whatever you do change.",
-  prompt: "A name matched in what the user wrote. No code was inspected and nothing is known to be wrong. Treat it as a recommendation while you work.",
+  prompt: "This is about what was just asked for. No code was inspected and nothing is known to be wrong. Treat it as a recommendation while you work.",
   command: "This is about the command you are about to run.",
+  output: "This is about what the command you ran printed.",
 };
 
 /**
@@ -206,10 +211,14 @@ export function frame(ctx: Ctx, firings: Firing[], alreadyShown: ReadonlySet<str
     const full = findings.some((finding) => finding.depth !== "pointer") && !alreadyShown.has(principle.hash);
     const expert = principle.id.split("/")[0] ?? "";
     lines.push(`<principle id="${principle.id}" expert="${expert}" title=${JSON.stringify(principle.manifest.title)}>`);
-    for (const finding of findings) {
-      lines.push(`- ${finding.line ? `line ${finding.line}: ` : ""}${finding.evidence}`);
+    // A finding that names no place adds nothing to read, and the same place is said once.
+    const places = new Set(findings.map((finding) => describeFinding(ctx, finding)).filter((place) => place !== null));
+    for (const place of places) {
+      lines.push(`- ${place}`);
     }
-    lines.push("");
+    if (places.size > 0) {
+      lines.push("");
+    }
     lines.push(full ? principle.advice : principle.manifest.summary);
     lines.push("</principle>", "");
   }

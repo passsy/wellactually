@@ -18,48 +18,41 @@ export const DEFAULT_LIMITS: Limits = {
 };
 
 export const MAX_FINDINGS = 20;
-export const MAX_EVIDENCE_LENGTH = 300;
+export const MAX_MATCH_LENGTH = 300;
 
 export interface DetectorRun {
   /** Findings that passed validation. */
   findings: Finding[];
   /** Why the run produced nothing usable, or null when it completed. */
   error: string | null;
-  /** Findings the host dropped, with the reason, for the author to read. */
+  /** What the host left out of the findings, with the reason, for the author to read. */
   dropped: string[];
   ms: number;
 }
 
-const RUN = `
-(function () {
-  const out = [];
-  const found = ${BUNDLE_GLOBAL}.detect(JSON.parse(__ctx));
-  if (found) {
-    for (const finding of found) {
-      out.push(finding);
-      if (out.length > ${MAX_FINDINGS}) {
-        break;
-      }
-    }
-  }
-  return JSON.stringify(out);
-})()
-`;
-
-const SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs, api: ${BUNDLE_GLOBAL}.api })`;
+const RUN = `JSON.stringify(${BUNDLE_GLOBAL}.run(JSON.parse(__ctx), ${MAX_FINDINGS}))`;
 
 /**
- * Reads what a bundled detector exports as `events`, `globs` and `api`.
- *
- * The bundle is evaluated once, at build time, under the limits a detector
- * run gets. The result is unvalidated: whatever the module exported.
+ * The limits for loading a detector at build time. Nothing waits on a build
+ * the way an agent waits on a hook, and builds run many at once in a test
+ * suite, so the clock is generous. A run still gets `DEFAULT_LIMITS`.
  */
-export async function readExports(bundle: string, limits: Limits = DEFAULT_LIMITS): Promise<{ events?: unknown; globs?: unknown; api?: unknown }> {
-  const { json, error } = evaluateIn(await loadSandbox(), `${bundle}\n;${SETTINGS}`, NOTHING, limits);
+const LOAD_LIMITS: Limits = { ...DEFAULT_LIMITS, ms: 2000 };
+
+const HANDLERS = `JSON.stringify(${BUNDLE_GLOBAL}.handlers())`;
+
+/**
+ * Reads which handlers a bundled detector registers: `onWrite` and the others, with their globs.
+ *
+ * The bundle is evaluated once, at build time. The result is unvalidated:
+ * whatever the module registered.
+ */
+export async function readRegistered(bundle: string, limits: Limits = LOAD_LIMITS): Promise<unknown> {
+  const { json, error } = evaluateIn(await loadSandbox(), `${bundle}\n;${HANDLERS}`, NOTHING, limits);
   if (json === null) {
     throw new Error(`detector.ts could not be loaded: ${error ?? "it returned nothing"}`);
   }
-  return JSON.parse(json) as { events?: unknown; globs?: unknown; api?: unknown };
+  return JSON.parse(json) as unknown;
 }
 
 /** An isolate with nothing in it but the script. */
@@ -222,13 +215,31 @@ function describeError(dumped: unknown, limits: Limits): string {
   return `${name}${message}`;
 }
 
+/** Whether the event's text has lines a finding can point at: a file, or what a command printed. */
+/** A path as the agent is shown it: from the project root when it lies inside the project. */
+function fromRoot(file: string, root: string | null): string {
+  if (root !== null && file.startsWith(`${root}/`)) {
+    return file.slice(root.length + 1);
+  }
+  return file;
+}
+
+function hasLines(ctx: Ctx): boolean {
+  return ctx.file !== null || ctx.event === "output";
+}
+
 /**
- * Keeps the findings a host can trust.
+ * Keeps what a host can trust of the findings a detector reported.
  *
- * Evidence ends up in the agent's context, so it must be a verbatim piece of
- * what the detector was shown. That keeps a detector from composing text of
- * its own at runtime: the only words it can put in front of an agent are
- * words that were already there.
+ * A finding says where, and the host quotes the place. The one piece of text
+ * a detector hands over is `match`, and it ends up in the agent's context, so
+ * it must be a verbatim piece of what the detector was shown. That keeps a
+ * detector from composing text of its own at runtime: the only words it can
+ * put in front of an agent are words that were already there.
+ *
+ * A finding is never thrown away for a wrong detail. The detail is left out,
+ * the finding still fires, and `dropped` says what happened. A test fails on
+ * anything in `dropped`, so an author hears about it before a user does.
  */
 export function validateFindings(json: string, ctx: Ctx): { findings: Finding[]; dropped: string[] } {
   const findings: Finding[] = [];
@@ -243,51 +254,73 @@ export function validateFindings(json: string, ctx: Ctx): { findings: Finding[];
     return { findings, dropped: ["the detector did not return a list of findings"] };
   }
 
-  const lineCount = ctx.file?.lines.length ?? 0;
+  const lines = ctx.file?.lines ?? ctx.text.split("\n");
   for (const raw of parsed) {
     if (findings.length >= MAX_FINDINGS) {
       dropped.push(`more than ${MAX_FINDINGS} findings; the rest were dropped`);
       break;
     }
-    if (typeof raw !== "object" || raw === null) {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
       dropped.push("a finding that is not an object");
       continue;
     }
     const candidate = raw as Record<string, unknown>;
-    const evidence = typeof candidate.evidence === "string" ? candidate.evidence.trim() : "";
-    if (evidence === "") {
-      dropped.push("a finding without evidence");
-      continue;
-    }
-    if (evidence.length > MAX_EVIDENCE_LENGTH) {
-      dropped.push(`evidence longer than ${MAX_EVIDENCE_LENGTH} characters`);
-      continue;
-    }
-    if (!ctx.text.includes(evidence)) {
-      dropped.push(`evidence that does not occur in the input: ${JSON.stringify(evidence.slice(0, 60))}`);
-      continue;
-    }
-    const finding: Finding = { evidence };
+    const finding: Finding = {};
+
     if (candidate.line !== undefined) {
       const line = candidate.line;
-      if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lineCount) {
-        dropped.push(`a finding on line ${String(line)}, which the file does not have`);
-        continue;
+      if (!hasLines(ctx)) {
+        dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
+      } else if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lines.length) {
+        dropped.push(`line ${String(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+      } else {
+        finding.line = line;
       }
-      // The line is where the agent is sent to look, so the evidence has to be there.
-      const firstLine = evidence.split("\n")[0] ?? "";
-      if (!(ctx.file?.lines[line - 1] ?? "").includes(firstLine)) {
-        dropped.push(`a finding on line ${line} whose evidence is not on that line: ${JSON.stringify(firstLine.slice(0, 60))}`);
-        continue;
+    }
+    if (candidate.endLine !== undefined) {
+      const endLine = candidate.endLine;
+      if (finding.line === undefined) {
+        dropped.push("the endLine of a finding without a line");
+      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || endLine > lines.length) {
+        dropped.push(`endLine ${String(endLine)} of a finding on line ${finding.line}`);
+      } else if (endLine > finding.line) {
+        finding.endLine = endLine;
       }
-      finding.line = line;
+    }
+    if (candidate.match !== undefined) {
+      const match = typeof candidate.match === "string" ? candidate.match.trim() : "";
+      // With a line the match has to be there, because that is where the agent is sent to look.
+      const scope = finding.line === undefined ? [ctx.text] : lines.slice(finding.line - 1, finding.endLine ?? finding.line);
+      if (match === "") {
+        dropped.push("an empty match");
+      } else if (match.includes("\n")) {
+        dropped.push(`a match that spans lines: ${JSON.stringify(match.slice(0, 60))}. Name the lines with line and endLine.`);
+      } else if (match.length > MAX_MATCH_LENGTH) {
+        dropped.push(`a match longer than ${MAX_MATCH_LENGTH} characters`);
+      } else if (!scope.some((text) => text.includes(match))) {
+        dropped.push(`a match that does not occur ${finding.line === undefined ? "in the input" : finding.endLine === undefined ? `on line ${finding.line}` : `in lines ${finding.line} to ${finding.endLine}`}: ${JSON.stringify(match.slice(0, 60))}`);
+      } else {
+        finding.match = match;
+      }
+    }
+    if (candidate.file !== undefined) {
+      const file = typeof candidate.file === "string" ? candidate.file.trim() : "";
+      if (file === "") {
+        dropped.push("the file of a finding, which is not a path");
+      } else if (file.includes("\n")) {
+        dropped.push("the file of a finding, which spans lines");
+      } else if (file.length > MAX_MATCH_LENGTH) {
+        dropped.push(`the file of a finding, a path longer than ${MAX_MATCH_LENGTH} characters`);
+      } else {
+        finding.file = fromRoot(file, ctx.project);
+      }
     }
     if (candidate.depth !== undefined) {
       if (candidate.depth !== "pointer" && candidate.depth !== "full") {
-        dropped.push(`a finding with unknown depth ${JSON.stringify(candidate.depth)}`);
-        continue;
+        dropped.push(`the unknown depth ${JSON.stringify(candidate.depth)}`);
+      } else {
+        finding.depth = candidate.depth;
       }
-      finding.depth = candidate.depth;
     }
     findings.push(finding);
   }

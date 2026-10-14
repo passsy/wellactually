@@ -9,3 +9,5 @@ Sign the user in to Well Actually and download their advisory board.
 3. When the command has finished, run `node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" sync` and tell the user how many principles are on their advisory board.
 
 If the advisory board is empty, tell them to add experts on the website and run `/wellactually:sync`.
+
+When a command above still shows a `$` variable instead of the plugin's path, as in Codex, use the nearest directory above this file that holds `dist/wellactually.mjs` in its place.

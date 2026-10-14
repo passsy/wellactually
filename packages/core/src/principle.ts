@@ -2,9 +2,10 @@ import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "
 import { apiOf, BUILT_IN_SINCE, importedApi } from "./api.ts";
 import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, type FileMap } from "./bundle.ts";
 import { applies, fileCtx, textCtx } from "./ctx.ts";
-import { languagesOf, ManifestError, parsePrinciple, readSettings, type Manifest } from "./manifest.ts";
+import { languagesOf, ManifestError, parsePrinciple, readHandlers, type Manifest } from "./manifest.ts";
+import { isPackageFile, PackageError, packagesOf } from "./packages.ts";
 import { mapProject, type ProjectFiles } from "./project.ts";
-import { readExports, runTestBundle, type DetectorRun } from "./sandbox.ts";
+import { readRegistered, runTestBundle, type DetectorRun } from "./sandbox.ts";
 import { scanAdvice } from "./scan.ts";
 
 /** A principle that compiled: everything a host needs to run it. */
@@ -28,7 +29,7 @@ export interface DetectCall {
   text: string;
   /** The lines that counted as written. Null when the event has no file. */
   written: number[] | null;
-  /** False when the detector's events or globs did not select the event, so it never ran. */
+  /** False when no handler of the detector wanted the event, so it never ran. */
   ran: boolean;
   findings: Finding[];
   ms: number;
@@ -64,18 +65,38 @@ export interface Checked {
 
 const MAX_FILES = 60;
 const MAX_TOTAL_BYTES = 512 * 1024;
+/** The code of packages a principle carries is counted apart from what its author wrote. */
+const MAX_PACKAGE_FILES = 500;
+const MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 const MAX_DETECT_CALLS = 300;
 const MAX_SHOWN_TEXT = 4000;
 
 /** Refuses a principle that is too large to be one principle. The registry applies it to uploads. */
-export function assertFileMapSize(files: FileMap, knownTotal?: number): void {
-  const count = Object.keys(files).length;
+export function assertFileMapSize(files: FileMap): void {
+  let count = 0;
+  let total = 0;
+  let packageCount = 0;
+  let packageTotal = 0;
+  for (const [name, content] of Object.entries(files)) {
+    if (isPackageFile(name)) {
+      packageCount++;
+      packageTotal += byteLength(content);
+    } else {
+      count++;
+      total += byteLength(content);
+    }
+  }
   if (count > MAX_FILES) {
     throw new ManifestError(`a principle may hold at most ${MAX_FILES} files, this one has ${count}`);
   }
-  const total = knownTotal ?? Object.values(files).reduce((sum, content) => sum + byteLength(content), 0);
   if (total > MAX_TOTAL_BYTES) {
     throw new ManifestError(`a principle may hold at most ${MAX_TOTAL_BYTES / 1024} KB, this one has ${Math.ceil(total / 1024)} KB`);
+  }
+  if (packageCount > MAX_PACKAGE_FILES) {
+    throw new ManifestError(`the packages of a principle may hold at most ${MAX_PACKAGE_FILES} files, these have ${packageCount}`);
+  }
+  if (packageTotal > MAX_PACKAGE_BYTES) {
+    throw new ManifestError(`the packages of a principle may hold at most ${MAX_PACKAGE_BYTES / 1024 / 1024} MB, these have ${(packageTotal / 1024 / 1024).toFixed(1)} MB`);
   }
 }
 
@@ -87,13 +108,6 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
   }
   const { title, summary, advice } = parsePrinciple(source);
   const { bundle, builtIns } = await buildDetector(files);
-  let exported: { events?: unknown; globs?: unknown; api?: unknown };
-  try {
-    exported = await readExports(bundle);
-  } catch (error) {
-    throw new BundleError((error as Error).message);
-  }
-  const { events, globs } = readSettings(exported);
   // The version the principle is written against is the one its files import the SDK from.
   // From now on every host hands its detector the event of that version.
   let api: number;
@@ -102,16 +116,29 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
   } catch (error) {
     throw new ManifestError((error as Error).message);
   }
-  if (exported.api !== undefined) {
-    throw new ManifestError(`detector.ts exports api. The version is part of the import path now, and this principle imports version ${api}. Remove the line.`);
-  }
   for (const name of builtIns) {
     const since = BUILT_IN_SINCE[name] ?? 1;
     if (api < since) {
       throw new ManifestError(`detector.ts imports ${name}, which exists from detector API ${since} on, and the principle is written against version ${api}. Import from "@wellactually/sdk/v${API_VERSION}" to use it.`);
     }
   }
-  const manifest: Manifest = { title, summary, languages: languagesOf(globs), events, globs, api };
+  let registered: unknown;
+  try {
+    registered = await readRegistered(bundle);
+  } catch (error) {
+    throw new BundleError((error as Error).message);
+  }
+  const { events, globs, handlers } = readHandlers(registered);
+  const manifest: Manifest = { title, summary, languages: languagesOf(globs), events, globs, handlers, api };
+  let packages;
+  try {
+    packages = packagesOf(files);
+  } catch (error) {
+    throw new ManifestError((error as Error).message);
+  }
+  if (packages.length > 0) {
+    manifest.packages = packages;
+  }
   return { manifest, advice, bundle, hash: await hashPrinciple(manifest, advice, bundle) };
 }
 
@@ -217,8 +244,8 @@ async function runTests(built: BuiltPrinciple, files: FileMap, tests: string): P
 /**
  * Answers one `detect(event, options)` call of a test with the real detector.
  *
- * Every call is answered the way the hook would: the detector's events and
- * globs first, then a fresh isolate under the normal limits, then the checks
+ * Every call is answered the way the hook would: whether a handler wants the
+ * event first, then a fresh isolate under the normal limits, then the checks
  * every finding has to pass. This one function answers vitest on an author's
  * machine, `wellactually test`, the browser editor and the registry, which is
  * why a test means the same in all four.
@@ -236,7 +263,7 @@ export function answerDetect(
   const { event, options } = (typeof call === "object" && call !== null ? call : {}) as { event?: unknown; options?: { project?: unknown } };
   const ctx = eventCtx(event);
   if (!ctx) {
-    return { error: "detect() needs an event from write(), edit(), read(), prompt() or command()" };
+    return { error: "detect() needs an event from write(), edit(), read(), prompt(), command() or output()" };
   }
   const fixture = options?.project;
   if (fixture !== undefined && typeof fixture !== "string") {
@@ -271,7 +298,7 @@ export function answerDetect(
     return { error: `The detector failed: ${result.error}` };
   }
   if (result.dropped.length > 0) {
-    return { error: `The host dropped ${result.dropped.join("; ")}.` };
+    return { error: `The host would leave out ${result.dropped.join("; ")}.` };
   }
   recorded.findings = result.findings;
   return { findings: result.findings };
@@ -305,9 +332,12 @@ function eventCtx(raw: unknown): Ctx | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
   }
-  const event = raw as { event?: unknown; text?: unknown; file?: { relativePath?: unknown; content?: unknown; written?: unknown; isNew?: unknown } | null };
+  const event = raw as { event?: unknown; text?: unknown; command?: unknown; file?: { relativePath?: unknown; content?: unknown; written?: unknown; isNew?: unknown } | null };
   if (event.event === "prompt" || event.event === "command") {
     return typeof event.text === "string" ? textCtx(event.event, event.text) : null;
+  }
+  if (event.event === "output") {
+    return typeof event.text === "string" && typeof event.command === "string" ? textCtx("output", event.text, undefined, event.command) : null;
   }
   const relativePath = event.file?.relativePath;
   if ((event.event !== "write" && event.event !== "read") || typeof relativePath !== "string" || typeof event.file?.content !== "string") {

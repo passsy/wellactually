@@ -8,10 +8,13 @@
  */
 export * from "./api.ts";
 export * from "./bundle.ts";
+export * from "./cdn.ts";
 export * from "./ctx.ts";
 export * from "./engines.ts";
+export * from "./finding.ts";
 export * from "./glob.ts";
 export * from "./manifest.ts";
+export * from "./packages.ts";
 export * from "./principle.ts";
 export * from "./project.ts";
 export * from "./sandbox.ts";

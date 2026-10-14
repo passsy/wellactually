@@ -1,5 +1,5 @@
 import { fileCtx, textCtx, type Ctx } from "@wellactually/sdk";
-import { matchesAnyGlob } from "./glob.ts";
+import { matchesGlobs } from "./glob.ts";
 import type { Manifest } from "./manifest.ts";
 
 // The events themselves are built by the SDK, so a test builds exactly what the hook builds.
@@ -12,13 +12,11 @@ export { fileCtx, textCtx };
  * edit to a Dart file never loads a Python principle. The test runner and
  * the probe ask the same question, which is why a test can prove that a
  * principle stays quiet on a file its globs exclude.
+ *
+ * It applies when one of its handlers wants the event. Inside the isolate
+ * the SDK asks the same of each handler, with the same matcher.
  */
 export function applies(manifest: Manifest, ctx: Ctx): boolean {
-  if (!manifest.events.includes(ctx.event)) {
-    return false;
-  }
-  if (!ctx.file) {
-    return true;
-  }
-  return matchesAnyGlob(ctx.file.relativePath, manifest.globs);
+  const file = ctx.file;
+  return (manifest.handlers ?? []).some((handler) => handler.event === ctx.event && (!file || matchesGlobs(file.relativePath, handler.globs)));
 }

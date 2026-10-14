@@ -3733,7 +3733,7 @@ function loadSandbox() {
 }
 
 // packages/sdk/src/index.ts
-var API_VERSION = 2;
+var API_VERSION = 3;
 
 // packages/core/src/project.ts
 var MAX_FS_CALLS = 500;
@@ -3800,7 +3800,7 @@ function fsHost(cwd, project) {
 }
 
 // packages/core/src/api.ts
-var MIN_API_VERSION = 1;
+var MIN_API_VERSION = 3;
 function unsupported(api) {
   if (!Number.isInteger(api) || api < 1) {
     return `it names a detector API version this host does not know: ${String(api)}`;
@@ -3813,26 +3813,7 @@ function unsupported(api) {
   }
   return null;
 }
-function toV1(ctx) {
-  return {
-    event: ctx.event,
-    file: ctx.file && {
-      path: ctx.file.relativePath,
-      name: ctx.file.name,
-      ext: ctx.file.ext,
-      content: ctx.file.content,
-      lines: ctx.file.lines,
-      written: ctx.file.written
-    },
-    text: ctx.text,
-    isUserPrompt: ctx.isUserPrompt,
-    isCommand: ctx.isCommand,
-    isConversation: ctx.isConversation
-  };
-}
-var DOWNGRADE = {
-  2: toV1
-};
+var DOWNGRADE = {};
 function ctxFor(api, ctx) {
   let event = ctx;
   for (let version = API_VERSION; version > api; version--) {
@@ -3845,20 +3826,18 @@ function ctxFor(api, ctx) {
   return event;
 }
 function environmentFor(api, ctx, project) {
-  const strings = { __ctx: JSON.stringify(ctxFor(api, ctx)) };
-  const functions = {};
-  if (api >= 2) {
-    strings.__cwd = ctx.project ?? "/";
-    functions.__fs = fsHost(ctx.project ?? "/", project);
-  }
-  return { strings, functions };
+  return {
+    // `node:path` resolves against the project root, and `node:fs` asks the host.
+    strings: { __ctx: JSON.stringify(ctxFor(api, ctx)), __cwd: ctx.project ?? "/" },
+    functions: { __fs: fsHost(ctx.project ?? "/", project) }
+  };
 }
 var SDK = "@wellactually/sdk";
 var current = `"${SDK}/v${API_VERSION}"`;
 
 // packages/core/src/bundle.ts
 var BUNDLE_GLOBAL = "__principle";
-var MAX_BUNDLE_BYTES = 256 * 1024;
+var MAX_BUNDLE_BYTES = 1024 * 1024;
 var SDK2 = "@wellactually/sdk";
 var SDK_NOW = `${SDK2}/v${API_VERSION}`;
 
@@ -3868,23 +3847,10 @@ var DEFAULT_LIMITS = {
   memoryBytes: 32 * 1024 * 1024
 };
 var MAX_FINDINGS = 20;
-var MAX_EVIDENCE_LENGTH = 300;
-var RUN = `
-(function () {
-  const out = [];
-  const found = ${BUNDLE_GLOBAL}.detect(JSON.parse(__ctx));
-  if (found) {
-    for (const finding of found) {
-      out.push(finding);
-      if (out.length > ${MAX_FINDINGS}) {
-        break;
-      }
-    }
-  }
-  return JSON.stringify(out);
-})()
-`;
-var SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs, api: ${BUNDLE_GLOBAL}.api })`;
+var MAX_MATCH_LENGTH = 300;
+var RUN = `JSON.stringify(${BUNDLE_GLOBAL}.run(JSON.parse(__ctx), ${MAX_FINDINGS}))`;
+var LOAD_LIMITS = { ...DEFAULT_LIMITS, ms: 2e3 };
+var HANDLERS = `JSON.stringify(${BUNDLE_GLOBAL}.handlers())`;
 function evaluateIn(QuickJS, script, environment, limits) {
   const runtime = QuickJS.newRuntime();
   runtime.setMemoryLimit(limits.memoryBytes);
@@ -3954,6 +3920,15 @@ function describeError(dumped, limits) {
   const name = typeof dumped === "object" && dumped !== null && "name" in dumped ? `${String(dumped.name)}: ` : "";
   return `${name}${message}`;
 }
+function fromRoot(file, root) {
+  if (root !== null && file.startsWith(`${root}/`)) {
+    return file.slice(root.length + 1);
+  }
+  return file;
+}
+function hasLines(ctx) {
+  return ctx.file !== null || ctx.event === "output";
+}
 function validateFindings(json, ctx) {
   const findings = [];
   const dropped = [];
@@ -3966,50 +3941,71 @@ function validateFindings(json, ctx) {
   if (!Array.isArray(parsed)) {
     return { findings, dropped: ["the detector did not return a list of findings"] };
   }
-  const lineCount = ctx.file?.lines.length ?? 0;
+  const lines = ctx.file?.lines ?? ctx.text.split("\n");
   for (const raw of parsed) {
     if (findings.length >= MAX_FINDINGS) {
       dropped.push(`more than ${MAX_FINDINGS} findings; the rest were dropped`);
       break;
     }
-    if (typeof raw !== "object" || raw === null) {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
       dropped.push("a finding that is not an object");
       continue;
     }
     const candidate = raw;
-    const evidence = typeof candidate.evidence === "string" ? candidate.evidence.trim() : "";
-    if (evidence === "") {
-      dropped.push("a finding without evidence");
-      continue;
-    }
-    if (evidence.length > MAX_EVIDENCE_LENGTH) {
-      dropped.push(`evidence longer than ${MAX_EVIDENCE_LENGTH} characters`);
-      continue;
-    }
-    if (!ctx.text.includes(evidence)) {
-      dropped.push(`evidence that does not occur in the input: ${JSON.stringify(evidence.slice(0, 60))}`);
-      continue;
-    }
-    const finding = { evidence };
+    const finding = {};
     if (candidate.line !== void 0) {
       const line = candidate.line;
-      if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lineCount) {
-        dropped.push(`a finding on line ${String(line)}, which the file does not have`);
-        continue;
+      if (!hasLines(ctx)) {
+        dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
+      } else if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lines.length) {
+        dropped.push(`line ${String(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+      } else {
+        finding.line = line;
       }
-      const firstLine = evidence.split("\n")[0] ?? "";
-      if (!(ctx.file?.lines[line - 1] ?? "").includes(firstLine)) {
-        dropped.push(`a finding on line ${line} whose evidence is not on that line: ${JSON.stringify(firstLine.slice(0, 60))}`);
-        continue;
+    }
+    if (candidate.endLine !== void 0) {
+      const endLine = candidate.endLine;
+      if (finding.line === void 0) {
+        dropped.push("the endLine of a finding without a line");
+      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || endLine > lines.length) {
+        dropped.push(`endLine ${String(endLine)} of a finding on line ${finding.line}`);
+      } else if (endLine > finding.line) {
+        finding.endLine = endLine;
       }
-      finding.line = line;
+    }
+    if (candidate.match !== void 0) {
+      const match = typeof candidate.match === "string" ? candidate.match.trim() : "";
+      const scope = finding.line === void 0 ? [ctx.text] : lines.slice(finding.line - 1, finding.endLine ?? finding.line);
+      if (match === "") {
+        dropped.push("an empty match");
+      } else if (match.includes("\n")) {
+        dropped.push(`a match that spans lines: ${JSON.stringify(match.slice(0, 60))}. Name the lines with line and endLine.`);
+      } else if (match.length > MAX_MATCH_LENGTH) {
+        dropped.push(`a match longer than ${MAX_MATCH_LENGTH} characters`);
+      } else if (!scope.some((text) => text.includes(match))) {
+        dropped.push(`a match that does not occur ${finding.line === void 0 ? "in the input" : finding.endLine === void 0 ? `on line ${finding.line}` : `in lines ${finding.line} to ${finding.endLine}`}: ${JSON.stringify(match.slice(0, 60))}`);
+      } else {
+        finding.match = match;
+      }
+    }
+    if (candidate.file !== void 0) {
+      const file = typeof candidate.file === "string" ? candidate.file.trim() : "";
+      if (file === "") {
+        dropped.push("the file of a finding, which is not a path");
+      } else if (file.includes("\n")) {
+        dropped.push("the file of a finding, which spans lines");
+      } else if (file.length > MAX_MATCH_LENGTH) {
+        dropped.push(`the file of a finding, a path longer than ${MAX_MATCH_LENGTH} characters`);
+      } else {
+        finding.file = fromRoot(file, ctx.project);
+      }
     }
     if (candidate.depth !== void 0) {
       if (candidate.depth !== "pointer" && candidate.depth !== "full") {
-        dropped.push(`a finding with unknown depth ${JSON.stringify(candidate.depth)}`);
-        continue;
+        dropped.push(`the unknown depth ${JSON.stringify(candidate.depth)}`);
+      } else {
+        finding.depth = candidate.depth;
       }
-      finding.depth = candidate.depth;
     }
     findings.push(finding);
   }
@@ -4018,6 +4014,7 @@ function validateFindings(json, ctx) {
 
 // packages/core/src/principle.ts
 var MAX_TOTAL_BYTES = 512 * 1024;
+var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 
 // packages/core/src/fs.ts
 import fs from "node:fs";

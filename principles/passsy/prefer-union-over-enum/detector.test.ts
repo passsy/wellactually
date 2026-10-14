@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { detect, edit, source, write } from "@wellactually/sdk/v2/test";
+import { detect, edit, source, write } from "@wellactually/sdk/v3/test";
 
 const status = source`
   export enum Status {
@@ -11,7 +11,7 @@ const status = source`
 `;
 
 test("fires on an enum the agent writes", () => {
-  expect(detect(write("src/status.ts", status))).toEqual([{ line: 1, evidence: "export enum Status {" }]);
+  expect(detect(write("src/status.ts", status))).toEqual([{ line: 1 }]);
 });
 
 test("fires on a const enum", () => {
@@ -21,7 +21,7 @@ test("fires on a const enum", () => {
       Down,
     }
   `;
-  expect(detect(write("src/direction.ts", code))).toEqual([{ line: 1, evidence: "const enum Direction {" }]);
+  expect(detect(write("src/direction.ts", code))).toEqual([{ line: 1 }]);
 });
 
 test("stays quiet on an enum that was already there when the agent edits another line", () => {

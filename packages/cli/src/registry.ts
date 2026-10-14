@@ -50,6 +50,12 @@ async function call(pathname: string, init: { method?: string; body?: unknown; t
 /** Pauses between attempts while the registry wakes up, in milliseconds. */
 const WAKE_RETRIES = [1000, 2000, 4000];
 
+/** How long a 429 or 503 asks the client to wait, in milliseconds. Zero when it does not say. */
+function retryAfterMs(response: Response): number {
+  const seconds = Number(response.headers.get("retry-after"));
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 0;
+}
+
 async function failure(response: Response): Promise<RegistryError> {
   if (response.status === 401) {
     return new RegistryError("not signed in, or the token was revoked. Run `wellactually login`.");
@@ -62,6 +68,32 @@ function requireToken(): void {
   if (!readConfig().token) {
     throw new RegistryError("not signed in. Run `wellactually login`.");
   }
+}
+
+/** What a sync of a repository made of one principle folder. */
+export interface SyncedPrinciple {
+  slug: string;
+  path: string;
+  status: "draft" | "released" | "unchanged" | "failed";
+  version: number | null;
+  problems: string[];
+}
+
+export interface RepositorySync {
+  repository: string;
+  handle: string;
+  commit: string;
+  principles: SyncedPrinciple[];
+}
+
+/** Asks the registry to read a connected repository now. */
+export async function syncRepository(name: string): Promise<RepositorySync> {
+  requireToken();
+  const response = await call("/api/repositories/sync", { method: "POST", body: { repository: name } });
+  if (!response.ok) {
+    throw await failure(response);
+  }
+  return (await response.json()) as RepositorySync;
 }
 
 export interface DeviceStart {
@@ -87,6 +119,11 @@ export async function finishDeviceLogin(start: DeviceStart): Promise<string> {
     await new Promise((resolve) => setTimeout(resolve, start.interval * 1000));
     const response = await call("/api/device/poll", { method: "POST", body: { device_code: start.device_code }, token: null });
     if (response.status === 202) {
+      continue;
+    }
+    if (response.status === 429) {
+      // Several logins behind one address can use up the registry's limit on polls. It says how long to stay quiet.
+      await new Promise((resolve) => setTimeout(resolve, retryAfterMs(response)));
       continue;
     }
     if (!response.ok) {

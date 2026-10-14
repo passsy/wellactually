@@ -1,13 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { buildPrinciple, checkPrinciple, languagesOf, matchesGlob, parsePrinciple, readPrincipleDir, scanAdvice } from "../src/node.ts";
+import { buildPrinciple, checkPrinciple, languagesOf, matchesGlob, matchesGlobs, parsePrinciple, readPrincipleDir, scanAdvice } from "../src/node.ts";
 
 const root = path.resolve(import.meta.dirname, "../../../principles");
 
 describe("the example principles", () => {
-  for (const expert of fs.readdirSync(root)) {
-    for (const slug of fs.readdirSync(path.join(root, expert))) {
+  // Next to the experts lies the tsconfig that type-checks their principles.
+  for (const expert of fs.readdirSync(root).filter((name) => fs.statSync(path.join(root, name)).isDirectory())) {
+    // A principle is a folder. A file next to them, such as collections.json, is not one.
+    for (const slug of fs.readdirSync(path.join(root, expert)).filter((name) => fs.statSync(path.join(root, expert, name)).isDirectory())) {
       test(`${expert}/${slug} passes its cases and the publish gates`, async () => {
         const { report } = await checkPrinciple(readPrincipleDir(path.join(root, expert, slug)));
         expect(report.tests.filter((result) => !result.passed)).toEqual([]);
@@ -21,16 +23,18 @@ describe("the example principles", () => {
 describe("the tests of a principle", () => {
   const principle = ["# No TODO", "", "Finish it or file it.", "", "A TODO in code is a ticket nobody can find. File it or finish it."].join("\n");
   const detector = `
-    import { writtenLines } from "@wellactually/sdk/v2";
-    export const globs = ["**/*.ts"];
-    export function* detect(ctx) {
-      for (const written of writtenLines(ctx)) {
-        if (written.text.includes("TODO")) yield { line: written.line, evidence: "TODO" };
-      }
-    }`;
+    import { onWrite } from "@wellactually/sdk/v3";
+    onWrite({
+      globs: ["**/*.ts"],
+      *detect(event) {
+        for (const written of event.written) {
+          if (written.text.includes("TODO")) yield { line: written.line, match: "TODO" };
+        }
+      },
+    });`;
   const check = (tests: Record<string, string>, source = detector) => checkPrinciple({ "principle.md": principle, "detector.ts": source, ...tests });
-  const header = `import { detect, edit, expect, prompt, read, source, test, write } from "@wellactually/sdk/v2/test";`;
-  const fires = `test("fires", () => { expect(detect(write("a.ts", "// TODO"))).toEqual([{ line: 1, evidence: "TODO" }]); });`;
+  const header = `import { detect, edit, expect, prompt, read, source, test, write } from "@wellactually/sdk/v3/test";`;
+  const fires = `test("fires", () => { expect(detect(write("a.ts", "// TODO"))).toEqual([{ line: 1, match: "TODO" }]); });`;
   const quiet = `test("quiet", () => { expect(detect(write("a.ts", "const a = 1;"))).toEqual([]); });`;
 
   test("a principle whose tests fire and stay quiet may be published", async () => {
@@ -41,7 +45,7 @@ describe("the tests of a principle", () => {
       ["detector.test.ts", "fires", true],
       ["detector.test.ts", "quiet", true],
     ]);
-    expect(report.tests[0]?.calls).toMatchObject([{ event: "write", path: "a.ts", text: "// TODO", written: [1], ran: true, findings: [{ line: 1, evidence: "TODO" }] }]);
+    expect(report.tests[0]?.calls).toMatchObject([{ event: "write", path: "a.ts", text: "// TODO", written: [1], ran: true, findings: [{ line: 1, match: "TODO" }] }]);
   });
 
   test("tests may be spread over several files", async () => {
@@ -65,7 +69,7 @@ describe("the tests of a principle", () => {
     const { report } = await check({ "detector.test.ts": [header, fires, quiet, wrong].join("\n") });
     expect(report.ok).toBe(false);
     expect(report.problems).toEqual(["1 of 3 tests failed"]);
-    expect(report.tests[2]?.message).toMatch(/Expected to equal\n\[\]\nReceived\n\[\n\s+\{\n\s+"evidence": "TODO"/);
+    expect(report.tests[2]?.message).toMatch(/Expected to equal\n\[\]\nReceived\n\[\n\s+\{\n\s+"line": 1,\n\s+"match": "TODO"/);
   });
 
   test("tests that never make the detector fire are refused", async () => {
@@ -93,7 +97,7 @@ describe("the tests of a principle", () => {
         const a = 2;
       \`;
       expect(detect(edit("a.ts", file, { written: "const a = 2;" }))).toEqual([]);
-      expect(detect(edit("a.ts", file, { written: "// TODO old" }))).toEqual([{ line: 1, evidence: "TODO" }]);
+      expect(detect(edit("a.ts", file, { written: "// TODO old" }))).toEqual([{ line: 1, match: "TODO" }]);
       expect(detect(read("a.ts", file))).toEqual([]);
     });`;
     const { report } = await check({ "detector.test.ts": [header, legacy].join("\n") });
@@ -101,20 +105,20 @@ describe("the tests of a principle", () => {
     expect(report.tests[0]?.calls.map((call) => call.written)).toEqual([[2], [1], []]);
   });
 
-  test("detect throws when the detector reports evidence on the wrong line", async () => {
+  test("detect throws when the detector reports a match on the wrong line", async () => {
     const offByOne = detector.replace("line: written.line", "line: written.line + 1");
     const { report } = await check({ "detector.test.ts": [header, `test("fires", () => { detect(write("a.ts", "// TODO\\nconst a = 1;")); });`].join("\n") }, offByOne);
-    expect(report.tests[0]?.message).toMatch(/The host dropped a finding on line 2 whose evidence is not on that line: "TODO"/);
+    expect(report.tests[0]?.message).toBe('The host would leave out a match that does not occur on line 2: "TODO".');
   });
 
   test("detect throws when the detector fails", async () => {
-    const broken = `export function detect() { throw new Error("boom"); }`;
+    const broken = `import { onWrite } from "@wellactually/sdk/v3"; onWrite({ detect: () => { throw new Error("boom"); } });`;
     const { report } = await check({ "detector.test.ts": [header, fires].join("\n") }, broken);
     expect(report.tests[0]?.message).toBe("The detector failed: Error: boom");
   });
 
   test("describe and test.each name their tests", async () => {
-    const table = `import { describe } from "@wellactually/sdk/v2/test";
+    const table = `import { describe } from "@wellactually/sdk/v3/test";
       describe("prompts", () => { test.each(["a", "b"])("quiet on %s", (text) => { expect(detect(prompt(text))).toEqual([]); }); });`;
     const { report } = await check({ "detector.test.ts": [header, table].join("\n") });
     expect(report.tests.map((result) => result.name)).toEqual(["prompts > quiet on a", "prompts > quiet on b"]);
@@ -122,7 +126,7 @@ describe("the tests of a principle", () => {
 
   test("a test may be written against vitest, which is how an author runs it", async () => {
     const standard = `import { describe, expect, it, test } from "vitest";
-      import { detect, write } from "@wellactually/sdk/v2/test";
+      import { detect, write } from "@wellactually/sdk/v3/test";
       describe("todo", () => { it("fires", () => { expect(detect(write("a.ts", "// TODO"))).toHaveLength(1); }); });
       test("quiet", () => { expect(detect(write("a.ts", "const a = 1;"))).toStrictEqual([]); });`;
     const { report } = await check({ "detector.test.ts": standard });
@@ -135,7 +139,7 @@ describe("the tests of a principle", () => {
 
   test("a matcher the registry does not have says so, instead of failing as a missing function", async () => {
     const snapshot = `import { expect, test } from "vitest";
-      import { detect, write } from "@wellactually/sdk/v2/test";
+      import { detect, write } from "@wellactually/sdk/v3/test";
       test("snapshot", () => { expect(detect(write("a.ts", "// TODO"))).toMatchInlineSnapshot(); });`;
     const { report } = await check({ "detector.test.ts": [snapshot, fires, quiet].join("\n") });
     expect(report.tests.find((result) => result.name === "snapshot")?.message).toMatch(/toMatchInlineSnapshot is not available when the registry runs the tests/);
@@ -150,21 +154,23 @@ describe("the tests of a principle", () => {
     const reader = `
       import fs from "node:fs";
       import path from "node:path";
-      import { writtenLines } from "@wellactually/sdk/v2";
-      export const globs = ["**/*.dart"];
+      import { onWrite } from "@wellactually/sdk/v3";
       /** Flags print() in a package whose pubspec depends on logging. */
-      export function* detect(ctx) {
-        const pubspec = path.join(ctx.project, "pubspec.yaml");
-        if (!fs.existsSync(pubspec) || !fs.readFileSync(pubspec, "utf8").includes("logging:")) return;
-        for (const written of writtenLines(ctx)) {
-          if (written.text.includes("print(")) yield { line: written.line, evidence: written.text.trim() };
-        }
-      }`;
-    const imports = `import { expect, test } from "vitest";\nimport { detect, prompt, write } from "@wellactually/sdk/v2/test";`;
+      onWrite({
+        globs: ["**/*.dart"],
+        *detect(event) {
+          const pubspec = path.join(event.project, "pubspec.yaml");
+          if (!fs.existsSync(pubspec) || !fs.readFileSync(pubspec, "utf8").includes("logging:")) return;
+          for (const written of event.written) {
+            if (written.text.includes("print(")) yield { line: written.line };
+          }
+        },
+      });`;
+    const imports = `import { expect, test } from "vitest";\nimport { detect, prompt, write } from "@wellactually/sdk/v3/test";`;
     const withLogging = { "fixtures/with_logging/pubspec.yaml": "name: app\ndependencies:\n  logging: ^1.0.0\n", "fixtures/plain/pubspec.yaml": "name: app\n" };
     const tests = `${imports}
       test("fires where logging is a dependency", () => {
-        expect(detect(write("lib/a.dart", "print('x');"), { project: "fixtures/with_logging" })).toEqual([{ line: 1, evidence: "print('x');" }]);
+        expect(detect(write("lib/a.dart", "print('x');"), { project: "fixtures/with_logging" })).toEqual([{ line: 1 }]);
       });
       test("quiet where it is not", () => { expect(detect(write("lib/a.dart", "print('x');"), { project: "fixtures/plain" })).toEqual([]); });
       test("quiet without a project", () => { expect(detect(write("lib/a.dart", "print('x');"))).toEqual([]); });`;
@@ -178,8 +184,9 @@ describe("the tests of a principle", () => {
 
     test("holds the file of the event as well", async () => {
       const sees = `import fs from "node:fs";
-        export const events = ["write", "prompt"];
-        export function detect(ctx) { return ctx.file && fs.readFileSync(ctx.file.path, "utf8") === ctx.text ? [{ evidence: ctx.text }] : []; }`;
+        import { onPrompt, onWrite } from "@wellactually/sdk/v3";
+        onWrite({ detect: (event) => (fs.readFileSync(event.file.path, "utf8") === event.text ? [{}] : []) });
+        onPrompt({ detect: () => [] });`;
       const own = `${imports}
         test("fires", () => { expect(detect(write("lib/a.dart", "hello"))).toHaveLength(1); });
         test("quiet", () => { expect(detect(prompt("hello"))).toEqual([]); });`;
@@ -214,9 +221,9 @@ describe("the tests of a principle", () => {
   });
 
   test("a file the agent created is new", async () => {
-    const fresh = `export function detect(ctx) { return ctx.file.isNew ? [{ evidence: ctx.text }] : []; }`;
+    const fresh = `import { onWrite } from "@wellactually/sdk/v3"; onWrite({ detect: (event) => (event.file.isNew ? [{}] : []) });`;
     const own = `import { expect, test } from "vitest";
-      import { detect, write } from "@wellactually/sdk/v2/test";
+      import { detect, write } from "@wellactually/sdk/v3/test";
       test("fires", () => { expect(detect(write("a.ts", "x", { isNew: true }))).toHaveLength(1); });
       test("quiet", () => { expect(detect(write("a.ts", "x"))).toEqual([]); });`;
     const { report } = await check({ "detector.test.ts": own }, fresh);
@@ -229,7 +236,7 @@ describe("the tests of a principle", () => {
   });
 
   test("a detector cannot import the test framework", async () => {
-    const { report } = await check({ "detector.test.ts": [header, fires].join("\n") }, `import { write } from "@wellactually/sdk/v2/test"; export function detect() { return [write("a.ts", "")].slice(1); }`);
+    const { report } = await check({ "detector.test.ts": [header, fires].join("\n") }, `import { onWrite } from "@wellactually/sdk/v3"; import { write } from "@wellactually/sdk/v3/test"; onWrite({ detect: () => [write("a.ts", "")].slice(1) });`);
     expect(report.problems.join("\n")).toMatch(/is for test files. A detector cannot import it/);
   });
 
@@ -266,37 +273,22 @@ describe("principle.md", () => {
   });
 });
 
-describe("what detector.ts exports", () => {
+describe("a detector that cannot be loaded", () => {
   const principle = ["# T", "", "A summary.", "", "x".repeat(50)].join("\n");
-  const build = (detector: string) => buildPrinciple({ "principle.md": principle, "detector.ts": `import type { Ctx } from "@wellactually/sdk/v2"; ${detector}` });
+  const build = (detector: string) => buildPrinciple({ "principle.md": principle, "detector.ts": `import { onWrite } from "@wellactually/sdk/v3"; ${detector}` });
 
-  test("events and globs decide when the detector runs", async () => {
-    const built = await build(`export const events = ["write", "read"]; export const globs = ["**/*.{ts,tsx}", "lib/**"]; export function detect() { return []; }`);
-    expect(built.manifest).toEqual({ title: "T", summary: "A summary.", languages: ["typescript"], events: ["write", "read"], globs: ["**/*.{ts,tsx}", "lib/**"], api: 2 });
+  test("is reported when it throws while loading", async () => {
+    await expect(build(`throw new Error("boom"); onWrite({ detect: () => [] });`)).rejects.toThrow(/could not be loaded: Error: boom/);
   });
 
-  test("a detector that exports neither runs on every written file", async () => {
-    const built = await build(`export function detect() { return []; }`);
-    expect(built.manifest.events).toEqual(["write"]);
-    expect(built.manifest.globs).toEqual([]);
-  });
-
-  test("an unknown event is refused", async () => {
-    await expect(build(`export const events = ["save"]; export function detect() { return []; }`)).rejects.toThrow(/must export events as a list of write, read, prompt, command/);
-  });
-
-  test("globs that are not strings are refused", async () => {
-    await expect(build(`export const globs = "**/*.ts"; export function detect() { return []; }`)).rejects.toThrow(/must export globs as a list of strings/);
-  });
-
-  test("a detector that throws while loading is reported", async () => {
-    await expect(build(`throw new Error("boom"); export function detect() { return []; }`)).rejects.toThrow(/could not be loaded: Error: boom/);
+  test("is told what replaced detect, events and globs", async () => {
+    await expect(build(`export const globs = ["**/*.ts"]; export function detect() { return []; }`)).rejects.toThrow(/registers no handler, so it would never run. Call onWrite, onRead, onPrompt, onCommand or onOutput at its top level/);
   });
 });
 
 describe("languages", () => {
   test("come from the extensions in the globs", () => {
-    expect(languagesOf(["**/*.dart", "lib/**/*.{ts,tsx}", "test/**", "**/*.proto"])).toEqual(["dart", "typescript", "proto"]);
+    expect(languagesOf(["**/*.dart", "lib/**/*.{ts,tsx}", "test/**", "**/*.proto", "!**/*.g.dart", "!**/*.js"])).toEqual(["dart", "typescript", "proto"]);
   });
 });
 
@@ -312,6 +304,20 @@ describe("globs", () => {
     ["src/a.jsx", "**/*.{ts,tsx}", false],
   ])("%s against %s is %s", (file, glob, expected) => {
     expect(matchesGlob(file, glob)).toBe(expected);
+  });
+
+  test("a pattern starting with ! takes files out again", () => {
+    const dart = ["**/*.dart", "!**/*.g.dart", "!test/**"];
+    expect(matchesGlobs("lib/user.dart", dart)).toBe(true);
+    expect(matchesGlobs("lib/user.g.dart", dart)).toBe(false);
+    expect(matchesGlobs("test/user_test.dart", dart)).toBe(false);
+    expect(matchesGlobs("lib/user.ts", dart)).toBe(false);
+  });
+
+  test("without a pattern that selects, every file is in", () => {
+    expect(matchesGlobs("anything", [])).toBe(true);
+    expect(matchesGlobs("lib/user.dart", ["!**/*.g.dart"])).toBe(true);
+    expect(matchesGlobs("lib/user.g.dart", ["!**/*.g.dart"])).toBe(false);
   });
 });
 

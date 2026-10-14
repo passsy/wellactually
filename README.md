@@ -4,10 +4,7 @@ Engineering principles that run inside your coding agent.
 
 A principle is advice plus a detector.
 The detector looks at what your agent just did, and when it finds something, the agent reads the advice.
-Anyone can publish principles on [wellactually.dev](https://wellactually.dev), and you choose whose principles sit on your advisory board.
-
-> wellactually.dev is not live yet.
-> Until it is, this repository is here to be read, not installed.
+Anyone can publish principles on [the Well Actually registry](https://web-production-a1cda.up.railway.app), and you choose whose principles sit on your advisory board.
 
 ## Install
 
@@ -63,7 +60,7 @@ The code that does this is in `packages/core`: `sandbox.ts` is the isolate, `boa
 - How often each principle fired: a day, a hash and a count.
 - A rating, when your agent gives one: the principle's hash and `up`, `down` or `not_applicable`.
 
-No path, file content, prompt, command or evidence is sent.
+No path, file content, prompt, command or finding is sent.
 `wellactually stats off` turns both off.
 
 ## Write a principle
@@ -73,13 +70,14 @@ A principle is a directory, and its name is the principle's id:
 ```text
 avoid-late/
   principle.md      the advice: a heading, one sentence of summary, then the rest
-  detector.ts       export function* detect(ctx), plus the events and globs it runs on
+  detector.ts       a handler per event it reacts to: onWrite, onRead, onPrompt, onCommand, onOutput
   detector.test.ts  the tests: what the detector reports for an event
 ```
 
-A test reads `expect(detect(write("lib/user.dart", code))).toEqual([{ line: 2, evidence: "late String name;" }])`.
+A detector reads `onWrite({ globs: ["**/*.dart"], *detect(event) { ... yield { line: written.line }; } })`.
+A test reads `expect(detect(write("lib/user.dart", code))).toEqual([{ line: 2 }])`.
 The tests must pass, make the detector fire at least once, and show it staying quiet at least once.
-`principles/` holds three examples.
+`principles/passsy` holds the examples: Pascal's own principles.
 
 ```bash
 wellactually init avoid-late
@@ -100,8 +98,8 @@ Building a principle needs esbuild, which the plugin does not carry, so the auth
 npm install && npm link -w wellactually
 ```
 
-A detector may import `@wellactually/sdk/v2`, which is in `packages/sdk`, and its own files.
-The `v2` is the detector API version it is written against.
+A detector may import `@wellactually/sdk/v3`, which is in `packages/sdk`, its own files, and packages from npm that its `package.json` names.
+The `v3` is the detector API version it is written against.
 
 ## What is in here
 
@@ -114,7 +112,7 @@ The `v2` is the detector API version it is written against.
 | `packages/cli`      | The `wellactually` command and its MCP server.                                |
 | `principles`        | Example principles.                                                           |
 
-The registry behind wellactually.dev is not in this repository.
+The registry is not in this repository.
 
 ## Build it yourself
 

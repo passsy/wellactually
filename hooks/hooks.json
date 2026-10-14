@@ -25,7 +25,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|exec_command",
+        "matcher": "Bash|exec_command|Task|Agent",
         "hooks": [
           {
             "type": "command",
@@ -37,7 +37,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|Read|apply_patch",
+        "matcher": "Edit|Write|MultiEdit|Read|apply_patch|Bash|exec_command",
         "hooks": [
           {
             "type": "command",

@@ -6,10 +6,10 @@
  * `detect`.
  *
  *     import { expect, test } from "vitest";
- *     import { detect, write } from "@wellactually/sdk/v2/test";
+ *     import { detect, write } from "@wellactually/sdk/v3/test";
  *
  *     test("fires on a late field", () => {
- *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1, evidence: "late String name;" }]);
+ *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1 }]);
  *     });
  *
  * `detect` builds the principle the test file belongs to and runs its real
@@ -27,7 +27,7 @@ import { answerDetect, detectorRunner, type BuiltPrinciple, type FileMap } from 
 import type { DetectOptions } from "./events.ts";
 import type { Ctx, Finding } from "./index.ts";
 
-export { command, edit, prompt, read, source, write, type DetectOptions } from "./events.ts";
+export { command, edit, output, prompt, read, source, write, type DetectOptions } from "./events.ts";
 
 const runOnce = await detectorRunner();
 
@@ -97,9 +97,9 @@ function prepare(dir: string): Prepared {
 /**
  * What the detector reports for an event: the findings that passed the host's checks.
  *
- * It is empty when the detector's `events` or `globs` do not select the event,
- * exactly as in a session. It throws when the detector fails or reports a
- * finding the host would drop, so a test cannot pass on a broken detector.
+ * It is empty when no handler of the detector wants the event, exactly as in
+ * a session. It throws when the detector fails or reports something the host
+ * would drop, so a test cannot pass on a broken detector.
  *
  * The principle is the one whose folder the calling test file is in.
  */

@@ -10930,9 +10930,69 @@ function loadSandbox() {
   return quickjs;
 }
 
+// packages/sdk/src/glob.ts
+var cache = /* @__PURE__ */ new Map();
+function matchesGlob(path9, pattern) {
+  let regex = cache.get(pattern);
+  if (!regex) {
+    regex = globToRegExp(pattern);
+    cache.set(pattern, regex);
+  }
+  return regex.test(path9);
+}
+function matchesGlobs(path9, globs) {
+  const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
+  if (excluded.some((glob) => matchesGlob(path9, glob))) {
+    return false;
+  }
+  const included = globs.filter((glob) => !glob.startsWith("!"));
+  return included.length === 0 || included.some((glob) => matchesGlob(path9, glob));
+}
+function globToRegExp(pattern) {
+  const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
+  let source = "";
+  let braceDepth = 0;
+  for (let i = 0; i < anchored.length; i++) {
+    const char = anchored[i] ?? "";
+    if (char === "*" && anchored[i + 1] === "*") {
+      const slashAfter = anchored[i + 2] === "/";
+      source += slashAfter ? "(?:.*/)?" : ".*";
+      i += slashAfter ? 2 : 1;
+      continue;
+    }
+    switch (char) {
+      case "*":
+        source += "[^/]*";
+        break;
+      case "?":
+        source += "[^/]";
+        break;
+      case "{":
+        braceDepth++;
+        source += "(?:";
+        break;
+      case "}":
+        if (braceDepth > 0) {
+          braceDepth--;
+          source += ")";
+          break;
+        }
+        source += "\\}";
+        break;
+      case ",":
+        source += braceDepth > 0 ? "|" : ",";
+        break;
+      default:
+        source += char.replace(/[.+^$()|[\]\\]/g, "\\$&");
+    }
+  }
+  return new RegExp(`^${source}$`);
+}
+
 // packages/sdk/src/index.ts
-var API_VERSION = 2;
-var EVENTS = ["write", "read", "prompt", "command"];
+var API_VERSION = 3;
+var EVENTS = ["write", "read", "prompt", "command", "output"];
+var FILE_EVENTS = ["write", "read"];
 var C_LIKE = {
   lineComment: "//",
   blockComment: ["/*", "*/"],
@@ -11003,20 +11063,18 @@ function fileCtx(event, relativePath, content, written, where = {}) {
       isNew: event === "write" && where.isNew === true
     },
     text: content,
-    isUserPrompt: false,
-    isCommand: false,
-    isConversation: false,
+    command: null,
+    cwd: null,
     project: root
   };
 }
-function textCtx(event, text2, root = TEST_ROOT) {
+function textCtx(event, text2, root = TEST_ROOT, command = "", cwd = root ?? "/") {
   return {
     event,
     file: null,
     text: text2,
-    isUserPrompt: event === "prompt",
-    isCommand: event === "command",
-    isConversation: true,
+    command: event === "prompt" ? null : event === "command" ? text2 : command,
+    cwd,
     project: root
   };
 }
@@ -11153,7 +11211,7 @@ function fsHost(cwd, project) {
 }
 
 // packages/core/src/api.ts
-var MIN_API_VERSION = 1;
+var MIN_API_VERSION = 3;
 function apiOf(manifest) {
   return manifest.api ?? 1;
 }
@@ -11169,26 +11227,7 @@ function unsupported(api) {
   }
   return null;
 }
-function toV1(ctx) {
-  return {
-    event: ctx.event,
-    file: ctx.file && {
-      path: ctx.file.relativePath,
-      name: ctx.file.name,
-      ext: ctx.file.ext,
-      content: ctx.file.content,
-      lines: ctx.file.lines,
-      written: ctx.file.written
-    },
-    text: ctx.text,
-    isUserPrompt: ctx.isUserPrompt,
-    isCommand: ctx.isCommand,
-    isConversation: ctx.isConversation
-  };
-}
-var DOWNGRADE = {
-  2: toV1
-};
+var DOWNGRADE = {};
 function ctxFor(api, ctx) {
   let event = ctx;
   for (let version2 = API_VERSION; version2 > api; version2--) {
@@ -11201,13 +11240,11 @@ function ctxFor(api, ctx) {
   return event;
 }
 function environmentFor(api, ctx, project) {
-  const strings = { __ctx: JSON.stringify(ctxFor(api, ctx)) };
-  const functions = {};
-  if (api >= 2) {
-    strings.__cwd = ctx.project ?? "/";
-    functions.__fs = fsHost(ctx.project ?? "/", project);
-  }
-  return { strings, functions };
+  return {
+    // `node:path` resolves against the project root, and `node:fs` asks the host.
+    strings: { __ctx: JSON.stringify(ctxFor(api, ctx)), __cwd: ctx.project ?? "/" },
+    functions: { __fs: fsHost(ctx.project ?? "/", project) }
+  };
 }
 var SDK = "@wellactually/sdk";
 var current = `"${SDK}/v${API_VERSION}"`;
@@ -11236,7 +11273,8 @@ function importedApi(sources) {
       }
       const api = Number(version2);
       if (api < MIN_API_VERSION || api > API_VERSION) {
-        throw new Error(`${where}. This version of Well Actually builds for the detector API versions ${MIN_API_VERSION} to ${API_VERSION}.`);
+        const built = MIN_API_VERSION === API_VERSION ? `detector API ${API_VERSION}` : `the detector API versions ${MIN_API_VERSION} to ${API_VERSION}`;
+        throw new Error(`${where}. This version of Well Actually builds for ${built}: import from ${specifier.endsWith("/test") ? `"${SDK}/v${API_VERSION}/test"` : current}.`);
       }
       if (!seen.has(api)) {
         seen.set(api, where);
@@ -11244,24 +11282,335 @@ function importedApi(sources) {
     }
   }
   if (seen.size === 0) {
-    throw new Error(`no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import type { Ctx, Finding } from ${current};`);
+    throw new Error(`no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import { onWrite } from ${current};`);
   }
   if (seen.size > 1) {
     throw new Error(`the principle is written against ${seen.size} versions of the detector API: ${[...seen.values()].join(", ")}. Import from one version everywhere.`);
   }
   return [...seen.keys()][0];
 }
-var BUILT_IN_SINCE = { "node:fs": 2 };
+var BUILT_IN_SINCE = {};
+
+// packages/core/src/packages.ts
+var PACKAGE_DIR = "node_modules/";
+var TAKEN_FROM = ".wellactually-from";
+var PackageError = class extends Error {
+};
+var EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+var VERSION_RANGE = /^[0-9A-Za-z.^~<>=|* -]+$/;
+var GITHUB_FORMS = [
+  /^github:([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:#([\w./-]+))?$/,
+  /^([\w.-]+)\/([\w.-]+?)(?:#([\w./-]+))?$/,
+  /^(?:git\+)?https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:#([\w./-]+))?$/,
+  /^git\+ssh:\/\/git@github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:#([\w./-]+))?$/
+];
+function parseGitHub(version2) {
+  for (const form of GITHUB_FORMS) {
+    const match = form.exec(version2);
+    if (match?.[1] && match[2]) {
+      return { owner: match[1], repo: match[2], ref: match[3] ?? null };
+    }
+  }
+  return null;
+}
+function isGitReference(version2) {
+  return parseGitHub(version2) !== null || /^git(?:\+ssh|\+https|\+http)?:\/\/[\w.@:/~+#-]+$/.test(version2);
+}
+function isExactVersion(version2) {
+  return EXACT_VERSION.test(version2);
+}
+var PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
+function isPackageFile(path9) {
+  return path9.startsWith(PACKAGE_DIR);
+}
+function readPins(files) {
+  const source = files["package.json"];
+  if (source === void 0) {
+    return {};
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(source);
+  } catch {
+    throw new PackageError("package.json is not valid JSON");
+  }
+  const dependencies = parsed.dependencies ?? {};
+  if (typeof dependencies !== "object" || dependencies === null || Array.isArray(dependencies)) {
+    throw new PackageError('the dependencies in package.json are an object, for example: { "dependencies": { "yaml": "2.8.1" } }');
+  }
+  const pins = {};
+  for (const [name, version2] of Object.entries(dependencies)) {
+    if (!PACKAGE_NAME.test(name)) {
+      throw new PackageError(`"${name}" in package.json is not the name of a package`);
+    }
+    if (typeof version2 !== "string" || !(VERSION_RANGE.test(version2.trim()) || isGitReference(version2.trim()))) {
+      throw new PackageError(`package.json has to name a version of ${name} from npm, for example "^2.9.1", or a repository, for example "github:owner/repo". It says ${JSON.stringify(version2)}.`);
+    }
+    pins[name] = version2.trim();
+  }
+  return pins;
+}
+function splitSpecifier(specifier) {
+  const parts = specifier.split("/");
+  const count2 = specifier.startsWith("@") ? 2 : 1;
+  const name = parts.slice(0, count2).join("/");
+  if (parts.length < count2 || !PACKAGE_NAME.test(name)) {
+    return null;
+  }
+  return { name, subpath: parts.slice(count2).join("/") };
+}
+function packageOf(path9) {
+  if (!isPackageFile(path9)) {
+    return null;
+  }
+  return splitSpecifier(path9.slice(PACKAGE_DIR.length))?.name ?? null;
+}
+async function readPackageJson(read2, name) {
+  const source = await read2(`${PACKAGE_DIR}${name}/package.json`);
+  if (source === null) {
+    return null;
+  }
+  try {
+    return JSON.parse(source);
+  } catch {
+    throw new PackageError(`the package.json of ${name} is not valid JSON`);
+  }
+}
+async function resolvePackage(read2, specifier, pins, importer, required2) {
+  const split = splitSpecifier(specifier);
+  if (split === null) {
+    throw new PackageError(`"${specifier}" is not something a detector can import`);
+  }
+  const { name, subpath } = split;
+  const from = packageOf(importer);
+  const pinned = pins[name];
+  if (from === null && pinned === void 0) {
+    throw new PackageError(`"${name}" is not in the package.json of the principle. Add it: { "dependencies": { "${name}": "^1.2.3" } }`);
+  }
+  const json2 = await readPackageJson(read2, name);
+  if (json2 === null) {
+    if (from !== null) {
+      throw new PackageError(`${from} imports "${name}", which is not installed`);
+    }
+    throw new PackageError(`"${name}" is in package.json but not installed. Run npm install in the folder of the principle.`);
+  }
+  if (pinned !== void 0 && !satisfies(String(json2.version), pinned)) {
+    throw new PackageError(`package.json asks for ${name} ${pinned}, and ${String(json2.version)} is installed. Run npm install.`);
+  }
+  const root = `${PACKAGE_DIR}${name}`;
+  let target;
+  if (json2.exports !== void 0 && json2.exports !== null) {
+    let key = ".";
+    if (subpath !== "") {
+      key = `./${subpath}`;
+    }
+    target = matchExports(json2.exports, key, required2);
+    if (target === null) {
+      throw new PackageError(`the package ${name} does not export "${key}"`);
+    }
+  } else if (subpath !== "") {
+    target = subpath;
+  } else if (typeof json2.module === "string") {
+    target = json2.module;
+  } else if (typeof json2.main === "string") {
+    target = json2.main;
+  } else {
+    target = "index.js";
+  }
+  const found = await probe(read2, joinPath(root, target));
+  if (found === null) {
+    throw new PackageError(`the package ${name} has no file for "${specifier}"`);
+  }
+  return found;
+}
+function satisfies(version2, wanted) {
+  if (isGitReference(wanted)) {
+    return true;
+  }
+  if (isExactVersion(wanted)) {
+    return version2 === wanted;
+  }
+  const range = /^([\^~])(\d+)\.(\d+)\.(\d+)$/.exec(wanted);
+  const have = /^(\d+)\.(\d+)\.(\d+)/.exec(version2);
+  if (range === null || have === null) {
+    return true;
+  }
+  const want = [Number(range[2]), Number(range[3]), Number(range[4])];
+  const got = [Number(have[1]), Number(have[2]), Number(have[3])];
+  let fixed = 2;
+  if (range[1] === "^") {
+    fixed = 1;
+    if (want[0] === 0) {
+      fixed = 2;
+      if (want[1] === 0) {
+        fixed = 3;
+      }
+    }
+  }
+  for (let index = 0; index < 3; index++) {
+    const a = got[index] ?? 0;
+    const b = want[index] ?? 0;
+    if (index < fixed) {
+      if (a !== b) {
+        return false;
+      }
+      continue;
+    }
+    if (a !== b) {
+      return a > b;
+    }
+  }
+  return true;
+}
+async function resolveInPackage(read2, importer, relative) {
+  const slash = importer.lastIndexOf("/");
+  const joined = joinPath(importer.slice(0, slash), relative);
+  if (!isPackageFile(joined)) {
+    return null;
+  }
+  return probe(read2, joined);
+}
+var SUFFIXES = ["", ".js", ".mjs", ".cjs", ".ts", ".json", "/index.js", "/index.mjs", "/index.cjs", "/index.ts"];
+async function probe(read2, path9) {
+  for (const suffix of SUFFIXES) {
+    const candidate = `${path9}${suffix}`;
+    if (suffix === "" && !/\.[a-z]+$/.test(candidate)) {
+      continue;
+    }
+    if (await read2(candidate) !== null) {
+      return candidate;
+    }
+  }
+  return null;
+}
+function joinPath(base, relative) {
+  const out = [];
+  for (const part of `${base}/${relative}`.split("/")) {
+    if (part === "" || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      out.pop();
+      continue;
+    }
+    out.push(part);
+  }
+  return out.join("/");
+}
+function matchExports(exports, key, required2) {
+  if (typeof exports === "string" || Array.isArray(exports)) {
+    if (key !== ".") {
+      return null;
+    }
+    return pickCondition(exports, required2);
+  }
+  if (typeof exports !== "object" || exports === null) {
+    return null;
+  }
+  const entries = Object.entries(exports);
+  const bySubpath = entries.some(([name]) => name.startsWith("."));
+  if (!bySubpath) {
+    if (key !== ".") {
+      return null;
+    }
+    return pickCondition(exports, required2);
+  }
+  for (const [pattern, value] of entries) {
+    if (pattern === key) {
+      return pickCondition(value, required2);
+    }
+    const star = pattern.indexOf("*");
+    if (star === -1) {
+      continue;
+    }
+    const before = pattern.slice(0, star);
+    const after = pattern.slice(star + 1);
+    if (key.length >= pattern.length - 1 && key.startsWith(before) && key.endsWith(after)) {
+      const middle = key.slice(before.length, key.length - after.length);
+      const picked = pickCondition(value, required2);
+      if (picked !== null) {
+        return picked.replaceAll("*", middle);
+      }
+    }
+  }
+  return null;
+}
+function pickCondition(value, required2) {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const picked = pickCondition(item, required2);
+      if (picked !== null) {
+        return picked;
+      }
+    }
+    return null;
+  }
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const accepted = required2 ? ["browser", "require", "default"] : ["browser", "import", "module", "default"];
+  for (const [condition, inner] of Object.entries(value)) {
+    if (!accepted.includes(condition)) {
+      continue;
+    }
+    const picked = pickCondition(inner, required2);
+    if (picked !== null) {
+      return picked;
+    }
+  }
+  return null;
+}
+function packagesOf(files) {
+  const packages = [];
+  for (const path9 of Object.keys(files).sort()) {
+    const name = packageOf(path9);
+    if (name === null || path9 !== `${PACKAGE_DIR}${name}/package.json`) {
+      continue;
+    }
+    let json2;
+    try {
+      json2 = JSON.parse(files[path9] ?? "");
+    } catch {
+      throw new PackageError(`the package.json of ${name} is not valid JSON`);
+    }
+    const from = files[`${PACKAGE_DIR}${name}/${TAKEN_FROM}`]?.trim();
+    let version2 = "";
+    if (typeof json2.version === "string" && EXACT_VERSION.test(json2.version)) {
+      version2 = json2.version;
+    }
+    if (version2 === "" && from === void 0) {
+      throw new PackageError(`the package.json of ${name} names no version`);
+    }
+    let license = "";
+    if (typeof json2.license === "string") {
+      license = json2.license.slice(0, 100);
+    }
+    const info = { name, version: version2, license };
+    if (from !== void 0) {
+      if (!isGitReference(from) || from.length > 300) {
+        throw new PackageError(`${PACKAGE_DIR}${name}/${TAKEN_FROM} does not name a repository`);
+      }
+      info.from = from;
+    }
+    packages.push(info);
+  }
+  return packages;
+}
 
 // packages/core/src/sdk-source.generated.ts
 var SDK_SOURCES = {
-  "events.ts": '/**\n * The events a test shows to a detector.\n *\n * They are the same in every runner: vitest on the author\'s machine,\n * `wellactually test`, the browser editor and the registry. A path is relative\n * to a made-up project root, and the detector sees it below that root.\n */\nimport { fileCtx, locateWritten, textCtx, type Ctx } from "./index.ts";\n\n/** What `detect` takes besides the event. */\nexport interface DetectOptions {\n  /**\n   * A folder of the principle, e.g. "fixtures/flutter_app", that is the\n   * project the event happens in. The detector reads its files with `node:fs`.\n   * Without it the only file there is, anywhere, is the file of the event.\n   */\n  project?: string;\n}\n\n/**\n * The agent wrote this file in full. Every line counts as written.\n * Pass `{ isNew: true }` when the write created the file.\n */\nexport function write(path: string, content: string, options: { isNew?: boolean } = {}): Ctx {\n  return fileCtx("write", path, content, undefined, { isNew: options.isNew === true });\n}\n\n/**\n * The agent edited a file. `content` is the file after the edit and\n * `change.written` is the text the agent put in, as one piece or several.\n */\nexport function edit(path: string, content: string, change: { written: string | readonly string[] }): Ctx {\n  const fragments = typeof change.written === "string" ? [change.written] : change.written;\n  const written = locateWritten(content, fragments);\n  if (written.length === 0) {\n    throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);\n  }\n  return fileCtx("write", path, content, written);\n}\n\n/** The agent read this file. It wrote none of it. */\nexport function read(path: string, content: string): Ctx {\n  return fileCtx("read", path, content);\n}\n\n/** The user typed this. */\nexport function prompt(text: string): Ctx {\n  return textCtx("prompt", text);\n}\n\n/** The agent is about to run this shell command. */\nexport function command(text: string): Ctx {\n  return textCtx("command", text);\n}\n\n/**\n * A multi-line string without the indentation of the test around it.\n *\n * `${` and a backtick inside it need a backslash, as in any template string.\n */\nexport function source(strings: TemplateStringsArray, ...values: unknown[]): string {\n  const text = strings.raw.reduce((out, part, index) => out + part.replace(/\\\\([`$\\\\])/g, "$1") + (index < values.length ? String(values[index]) : ""), "");\n  const lines = text.split("\\n");\n  if (lines[0]?.trim() === "") {\n    lines.shift();\n  }\n  if (lines.at(-1)?.trim() === "") {\n    lines.pop();\n  }\n  const indent = Math.min(...lines.filter((line) => line.trim() !== "").map((line) => /^[ \\t]*/.exec(line)?.[0].length ?? 0));\n  return lines.map((line) => line.slice(Number.isFinite(indent) ? indent : 0)).join("\\n");\n}\n',
+  "events.ts": '/**\n * The events a test shows to a detector.\n *\n * They are the same in every runner: vitest on the author\'s machine,\n * `wellactually test`, the browser editor and the registry. A path is relative\n * to a made-up project root, and the detector sees it below that root.\n */\nimport { fileCtx, locateWritten, textCtx, type Ctx } from "./index.ts";\n\n/** What `detect` takes besides the event. */\nexport interface DetectOptions {\n  /**\n   * A folder of the principle, e.g. "fixtures/flutter_app", that is the\n   * project the event happens in. The detector reads its files with `node:fs`.\n   * Without it the only file there is, anywhere, is the file of the event.\n   */\n  project?: string;\n}\n\n/**\n * The agent wrote this file in full. Every line counts as written.\n * Pass `{ isNew: true }` when the write created the file.\n */\nexport function write(path: string, content: string, options: { isNew?: boolean } = {}): Ctx {\n  return fileCtx("write", path, content, undefined, { isNew: options.isNew === true });\n}\n\n/**\n * The agent edited a file. `content` is the file after the edit and\n * `change.written` is the text the agent put in, as one piece or several.\n */\nexport function edit(path: string, content: string, change: { written: string | readonly string[] }): Ctx {\n  const fragments = typeof change.written === "string" ? [change.written] : change.written;\n  const written = locateWritten(content, fragments);\n  if (written.length === 0) {\n    throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);\n  }\n  return fileCtx("write", path, content, written);\n}\n\n/** The agent read this file. It wrote none of it. */\nexport function read(path: string, content: string): Ctx {\n  return fileCtx("read", path, content);\n}\n\n/** The user typed this, or the agent handed it to a subagent. */\nexport function prompt(text: string): Ctx {\n  return textCtx("prompt", text);\n}\n\n/** The agent is about to run this shell command. */\nexport function command(text: string): Ctx {\n  return textCtx("command", text);\n}\n\n/** `command` ran, and this is what it printed. */\nexport function output(command: string, text: string): Ctx {\n  return textCtx("output", text, undefined, command);\n}\n\n/**\n * A multi-line string without the indentation of the test around it.\n *\n * `${` and a backtick inside it need a backslash, as in any template string.\n */\nexport function source(strings: TemplateStringsArray, ...values: unknown[]): string {\n  const text = strings.raw.reduce((out, part, index) => out + part.replace(/\\\\([`$\\\\])/g, "$1") + (index < values.length ? String(values[index]) : ""), "");\n  const lines = text.split("\\n");\n  if (lines[0]?.trim() === "") {\n    lines.shift();\n  }\n  if (lines.at(-1)?.trim() === "") {\n    lines.pop();\n  }\n  const indent = Math.min(...lines.filter((line) => line.trim() !== "").map((line) => /^[ \\t]*/.exec(line)?.[0].length ?? 0));\n  return lines.map((line) => line.slice(Number.isFinite(indent) ? indent : 0)).join("\\n");\n}\n',
+  "find.ts": '/**\n * Looking around the project from where an event happened.\n *\n * A detector reads files with `node:fs`, and may read any text file. What it\n * usually wants to know first is what kind of project it is in, and the\n * answer lies in a file somewhere above: a `pubspec.yaml`, a `package.json`.\n */\nimport { existsSync } from "./fs.ts";\nimport { dirname, join } from "./path.ts";\n\n/**\n * The nearest file called `name`, looking in `from` and then in every folder\n * above it, as an absolute path. Null when there is none.\n *\n *     findUp("pubspec.yaml", event.cwd)                  // for a prompt\n *     findUp("pubspec.yaml", path.dirname(event.file.path)) // for a file\n */\nexport function findUp(name: string, from: string): string | null {\n  for (let dir = from; ; dir = dirname(dir)) {\n    const candidate = join(dir, name);\n    if (existsSync(candidate)) {\n      return candidate;\n    }\n    if (dir === dirname(dir)) {\n      return null;\n    }\n  }\n}\n',
   "fs.ts": '/**\n * What `node:fs` resolves to inside the isolate: the reading half of it.\n *\n * A detector has no file system of its own. Each call here is a question to\n * the host, which reads the file for it. A file that is not text, is very\n * large or cannot be read looks like a file that does not exist.\n *\n * Only the synchronous calls exist, because a detector is synchronous.\n * Nothing can be written.\n */\n\ninterface Host {\n  __fs?: (request: string) => string;\n}\n\ninterface Entry {\n  name: string;\n  kind: "file" | "dir";\n}\n\ntype Answer =\n  | { text: string }\n  | { stat: { kind: "file" | "dir"; size: number } }\n  | { entries: Entry[] }\n  | { error: { code: string; message: string } };\n\nfunction ask(op: "read" | "stat" | "list", path: string): Answer {\n  const host = (globalThis as Host).__fs;\n  if (!host) {\n    return { error: { code: "ENOENT", message: `ENOENT: no such file or directory, ${op} \'${path}\'` } };\n  }\n  return JSON.parse(host(JSON.stringify({ op, path: String(path) }))) as Answer;\n}\n\nfunction fail(error: { code: string; message: string }): never {\n  throw Object.assign(new Error(error.message), { code: error.code });\n}\n\n/** The file as text. The encoding is always UTF-8, whatever is passed. */\nexport function readFileSync(path: string, _options?: unknown): string {\n  const answer = ask("read", path);\n  if ("error" in answer) {\n    fail(answer.error);\n  }\n  return (answer as { text: string }).text;\n}\n\nexport function existsSync(path: string): boolean {\n  return !("error" in ask("stat", path));\n}\n\nexport interface Stats {\n  size: number;\n  isFile(): boolean;\n  isDirectory(): boolean;\n  isSymbolicLink(): boolean;\n}\n\nexport function statSync(path: string, options?: { throwIfNoEntry?: boolean }): Stats | undefined {\n  const answer = ask("stat", path);\n  if ("error" in answer) {\n    if (options?.throwIfNoEntry === false) {\n      return undefined;\n    }\n    fail(answer.error);\n  }\n  const { kind, size } = (answer as { stat: { kind: "file" | "dir"; size: number } }).stat;\n  return { size, isFile: () => kind === "file", isDirectory: () => kind === "dir", isSymbolicLink: () => false };\n}\n\n/** Symlinks are resolved by the host, so this is `statSync`. */\nexport const lstatSync = statSync;\n\nexport interface Dirent {\n  name: string;\n  isFile(): boolean;\n  isDirectory(): boolean;\n  isSymbolicLink(): boolean;\n}\n\nexport function readdirSync(path: string, options: { withFileTypes: true }): Dirent[];\nexport function readdirSync(path: string, options?: { withFileTypes?: false } | string): string[];\nexport function readdirSync(path: string, options?: { withFileTypes?: boolean } | string): string[] | Dirent[] {\n  const answer = ask("list", path);\n  if ("error" in answer) {\n    fail(answer.error);\n  }\n  const entries = (answer as { entries: Entry[] }).entries;\n  if (typeof options === "object" && options.withFileTypes) {\n    return entries.map((entry) => ({ name: entry.name, isFile: () => entry.kind === "file", isDirectory: () => entry.kind === "dir", isSymbolicLink: () => false }));\n  }\n  return entries.map((entry) => entry.name);\n}\n\nfunction readOnly(name: string): () => never {\n  return () => {\n    throw Object.assign(new Error(`EROFS: read-only file system, ${name}. A detector can read the project and cannot change it.`), { code: "EROFS" });\n  };\n}\n\nexport const writeFileSync = readOnly("writeFileSync");\nexport const appendFileSync = readOnly("appendFileSync");\nexport const mkdirSync = readOnly("mkdirSync");\nexport const rmSync = readOnly("rmSync");\nexport const unlinkSync = readOnly("unlinkSync");\nexport const renameSync = readOnly("renameSync");\nexport const copyFileSync = readOnly("copyFileSync");\n\nexport default { readFileSync, existsSync, statSync, lstatSync, readdirSync, writeFileSync, appendFileSync, mkdirSync, rmSync, unlinkSync, renameSync, copyFileSync };\n',
-  "index.ts": '/**\n * Everything a detector may import, next to `node:fs` and `node:path`.\n *\n * A detector runs inside an isolate with no network and no process. It can\n * read files and cannot change any. This module is bundled into it at publish\n * time, so it must stay free of Node imports and of any state.\n */\n\n/**\n * The version of the detector API this SDK is: the event a detector is handed\n * and what it may ask the host for.\n *\n * A principle records the version it was built against, and a host runs each\n * detector against the version it was built for. So the API changes by adding\n * a version here, with the host\'s step back to the one before. Changing what\n * an existing version means would break principles that are already released.\n *\n * - 1: the event with `file.path` relative. A detector could reach nothing outside it.\n * - 2: `file.path` is absolute. Added `file.relativePath`, `file.isNew` and\n *   `project`, and reading files through `node:fs` and `node:path`.\n *\n * A detector says which one it was written against by where it imports from:\n * `@wellactually/sdk/v2`. Each version has its own file next to this one, with\n * the event of that version as `Ctx`. A principle is then handed the event of\n * that version for as long as it is run, also when it is uploaded again after\n * the API has moved on. The helpers in this file work on the event of every\n * version. This file itself is what the host imports, not a detector.\n */\nexport const API_VERSION = 2;\n\n/**\n * The event of API 1. A detector that imports `@wellactually/sdk/v1` is handed\n * this, and gets it there as `Ctx`.\n */\nexport interface CtxV1 {\n  event: EventName;\n  file: {\n    /** Relative, with forward slashes. */\n    path: string;\n    name: string;\n    ext: string;\n    content: string;\n    lines: string[];\n    written: WrittenLine[];\n  } | null;\n  text: string;\n  isUserPrompt: boolean;\n  isCommand: boolean;\n  isConversation: boolean;\n}\n\n/**\n * What happened in the session.\n *\n * - `write`: the agent wrote or edited a file. `ctx.file.written` holds the lines it wrote.\n * - `read`: the agent read a file. It did not write this code.\n * - `prompt`: the user typed a message.\n * - `command`: the agent is about to run a shell command.\n */\nexport type EventName = "write" | "read" | "prompt" | "command";\n\nexport const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command"];\n\n/** A line the agent wrote in this event. */\nexport interface WrittenLine {\n  /** 1-based line in the file. */\n  line: number;\n  /** The line as written, untrimmed. */\n  text: string;\n}\n\nexport interface FileContext {\n  /** Absolute path, with forward slashes. Navigate from here with `node:path` and read neighbours with `node:fs`. */\n  path: string;\n  /**\n   * Path from the project root, e.g. "lib/src/config_loader.dart". This is what `globs` are matched against.\n   * Without a project root it is the path from where the session runs, or just the file\'s name.\n   */\n  relativePath: string;\n  /** Basename, e.g. "config_loader.dart". */\n  name: string;\n  /** Extension including the dot, lower case. Empty when there is none. */\n  ext: string;\n  content: string;\n  /** `content` split into lines. */\n  lines: string[];\n  /** The lines the agent wrote. Empty on `read`. */\n  written: WrittenLine[];\n  /** The agent created this file with this write. It did not exist before. */\n  isNew: boolean;\n}\n\n/** Everything a detector can look at. It is plain data, parsed from JSON. */\nexport interface Ctx {\n  event: EventName;\n  /** Null when the event carries text instead of a file. */\n  file: FileContext | null;\n  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`. */\n  text: string;\n  /** The user typed this. A request for work that has not happened yet. */\n  isUserPrompt: boolean;\n  /** A shell command the agent is about to run. */\n  isCommand: boolean;\n  /** The event carries text rather than a file. */\n  isConversation: boolean;\n  /**\n   * The root of the project the event happened in, as an absolute path: the\n   * nearest folder upwards with a `.git`. Null when there is none, which is\n   * normal, so do not rely on it. To find a `pubspec.yaml` or a\n   * `package.json`, walk up from `file.path` instead.\n   */\n  project: string | null;\n}\n\n/**\n * How much of the advice a finding deserves.\n *\n * A word match established a topic and asks for a `pointer`: title and summary.\n * Code that breaks the principle asks for `full`: the whole advice text.\n */\nexport type Depth = "pointer" | "full";\n\nexport interface Finding {\n  /** 1-based. Omit when the finding is not about a line. */\n  line?: number;\n  /**\n   * The text that triggered the finding.\n   * It must occur verbatim in `ctx.text`; the host drops findings whose evidence does not.\n   */\n  evidence: string;\n  /** Omitted means `full`. */\n  depth?: Depth;\n}\n\n/** What `detect` returns: a generator or any other iterable of findings. */\nexport type Findings = Iterable<Finding>;\n\n/** The shape of a detector module. */\nexport interface Detector {\n  detect: (ctx: Ctx) => Findings | null | undefined;\n}\n\nconst WORD_CHAR = /[A-Za-z0-9_$]/;\n\n/**\n * Index of `word` in `text` where it stands alone, or -1.\n * `findWord("isolate", "late")` is -1; `findWord("late final x", "late")` is 0.\n */\nexport function findWord(text: string, word: string, from = 0): number {\n  let at = text.indexOf(word, from);\n  while (at !== -1) {\n    const before = at === 0 ? "" : (text[at - 1] ?? "");\n    const after = text[at + word.length] ?? "";\n    if (!WORD_CHAR.test(before) && !WORD_CHAR.test(after)) {\n      return at;\n    }\n    at = text.indexOf(word, at + 1);\n  }\n  return -1;\n}\n\n/**\n * Pointer findings for each of `names` that occurs in a conversation event.\n *\n * This is a name check for a named technology, not a keyword cloud.\n * Pass the few phrases that can only mean your topic.\n */\nexport function* mentioned(ctx: Pick<Ctx, "isConversation" | "text">, names: readonly string[]): Generator<Finding> {\n  if (!ctx.isConversation) {\n    return;\n  }\n  const haystack = ctx.text.toLowerCase();\n  for (const name of names) {\n    const at = findWord(haystack, name.toLowerCase());\n    if (at === -1) {\n      continue;\n    }\n    yield { evidence: ctx.text.slice(at, at + name.length), depth: "pointer" };\n    return;\n  }\n}\n\n/** The lines the agent wrote in this event. Empty when no file is involved. */\nexport function writtenLines(ctx: { file: { written: WrittenLine[] } | null }): WrittenLine[] {\n  return ctx.file?.written ?? [];\n}\n\n/** 1-based line of a character offset in `text`. */\nexport function lineAt(text: string, offset: number): number {\n  let line = 1;\n  for (let i = 0; i < offset && i < text.length; i++) {\n    if (text[i] === "\\n") {\n      line++;\n    }\n  }\n  return line;\n}\n\nexport interface CodeSyntax {\n  /** Starts a comment that runs to the end of the line. */\n  lineComment?: string;\n  /** Opens and closes a block comment. */\n  blockComment?: readonly [string, string];\n  /** Characters that open and close a string literal. */\n  quotes?: readonly string[];\n}\n\n/** Comments and strings as written in C, Dart, Java, JavaScript, Kotlin, Swift and friends. */\nexport const C_LIKE: CodeSyntax = {\n  lineComment: "//",\n  blockComment: ["/*", "*/"],\n  quotes: [\'"\', "\'", "`"],\n};\n\n/** Comments and strings as written in Python, Ruby, shell and YAML. */\nexport const HASH_LIKE: CodeSyntax = {\n  lineComment: "#",\n  quotes: [\'"\', "\'"],\n};\n\n/**\n * `text` with comments and string contents replaced by spaces.\n *\n * Positions and line breaks are preserved, so an offset or line found in the\n * result points at the same place in the original. Use it to keep a keyword\n * inside a comment or a string from counting as code.\n */\nexport function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIKE): string {\n  const out: string[] = [];\n  const quotes = syntax.quotes ?? [];\n  let i = 0;\n  while (i < text.length) {\n    const char = text[i] ?? "";\n    if (syntax.lineComment && text.startsWith(syntax.lineComment, i)) {\n      while (i < text.length && text[i] !== "\\n") {\n        out.push(" ");\n        i++;\n      }\n      continue;\n    }\n    if (syntax.blockComment && text.startsWith(syntax.blockComment[0], i)) {\n      const close = text.indexOf(syntax.blockComment[1], i + syntax.blockComment[0].length);\n      const end = close === -1 ? text.length : close + syntax.blockComment[1].length;\n      for (; i < end; i++) {\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n      }\n      continue;\n    }\n    if (quotes.includes(char)) {\n      out.push(char);\n      i++;\n      while (i < text.length && text[i] !== char) {\n        if (text[i] === "\\\\" && i + 1 < text.length) {\n          out.push(" ");\n          i++;\n        }\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n        i++;\n      }\n      if (i < text.length) {\n        out.push(char);\n        i++;\n      }\n      continue;\n    }\n    out.push(char);\n    i++;\n  }\n  return out.join("");\n}\n\n/** The project root of every event a test builds. It is made up, and the same in every runner. */\nexport const TEST_ROOT = "/project";\n\n/** Where an event happened. A test leaves it out and gets `TEST_ROOT`. */\nexport interface Where {\n  /** The repository root, or null when the file is in none. */\n  root?: string | null;\n  /** The file\'s absolute path, when it is not simply `root/relativePath`. */\n  absolute?: string;\n  isNew?: boolean;\n}\n\n/**\n * The event for a file the agent wrote or read.\n *\n * On `write`, `written` defaults to every line: a new file is written whole.\n * On `read` nothing was written, whatever is passed.\n */\nexport function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: WrittenLine[], where: Where = {}): Ctx {\n  const relative = relativePath.replaceAll("\\\\", "/").replace(/^\\.?\\/+/, "");\n  const root = where.root === undefined ? TEST_ROOT : where.root;\n  const path = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\\\", "/");\n  const name = path.slice(path.lastIndexOf("/") + 1);\n  const dot = name.lastIndexOf(".");\n  const lines = content.split("\\n");\n  const allLines = lines.map((text, index) => ({ line: index + 1, text }));\n  return {\n    event,\n    file: {\n      path,\n      relativePath: relative,\n      name,\n      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",\n      content,\n      lines,\n      written: event === "read" ? [] : (written ?? allLines),\n      isNew: event === "write" && where.isNew === true,\n    },\n    text: content,\n    isUserPrompt: false,\n    isCommand: false,\n    isConversation: false,\n    project: root,\n  };\n}\n\n/** The event for text: what the user typed, or a command about to run. */\nexport function textCtx(event: "prompt" | "command", text: string, root: string | null = TEST_ROOT): Ctx {\n  return {\n    event,\n    file: null,\n    text,\n    isUserPrompt: event === "prompt",\n    isCommand: event === "command",\n    isConversation: true,\n    project: root,\n  };\n}\n\n/**\n * The lines of `content` the agent just wrote, given the text it inserted.\n *\n * The file after the edit is the truth. A fragment is found there as a whole\n * first; when it is not, for instance because a formatter ran, its lines are\n * matched one by one.\n */\nexport function locateWritten(content: string, fragments: readonly string[]): WrittenLine[] {\n  const lines = content.split("\\n");\n  const written = new Map<number, string>();\n  for (const fragment of fragments) {\n    if (fragment.trim() === "") {\n      continue;\n    }\n    const at = content.indexOf(fragment);\n    if (at !== -1) {\n      const first = content.slice(0, at).split("\\n").length;\n      const count = fragment.split("\\n").length;\n      for (let line = first; line < first + count && line <= lines.length; line++) {\n        written.set(line, lines[line - 1] ?? "");\n      }\n      continue;\n    }\n    for (const wanted of fragment.split("\\n")) {\n      const trimmed = wanted.trim();\n      if (trimmed === "") {\n        continue;\n      }\n      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);\n      if (index !== -1) {\n        written.set(index + 1, lines[index] ?? "");\n      }\n    }\n  }\n  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text]) => ({ line, text }));\n}\n',
+  "glob.ts": '/**\n * Glob matching for the `globs` of a file handler, on forward-slash relative paths.\n *\n * Supports `**`, `*`, `?` and `{a,b}`. A pattern without a slash matches the\n * basename anywhere, so `*.dart` and `**\\/*.dart` mean the same thing.\n * A pattern that starts with `!` takes files out again: `!**\\/*.g.dart`.\n */\n\nconst cache = new Map<string, RegExp>();\n\nexport function matchesGlob(path: string, pattern: string): boolean {\n  let regex = cache.get(pattern);\n  if (!regex) {\n    regex = globToRegExp(pattern);\n    cache.set(pattern, regex);\n  }\n  return regex.test(path);\n}\n\n/**\n * Whether `globs` select the file at `path`.\n *\n * A file is selected when one of the patterns matches it and no pattern\n * starting with `!` does. Without a pattern that selects, every file is in:\n * an empty list means all files, and `["!**\\/*.g.dart"]` all but generated ones.\n */\nexport function matchesGlobs(path: string, globs: readonly string[]): boolean {\n  const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));\n  if (excluded.some((glob) => matchesGlob(path, glob))) {\n    return false;\n  }\n  const included = globs.filter((glob) => !glob.startsWith("!"));\n  return included.length === 0 || included.some((glob) => matchesGlob(path, glob));\n}\n\nfunction globToRegExp(pattern: string): RegExp {\n  const anchored = pattern.includes("/") ? pattern.replace(/^\\.?\\//, "") : `**/${pattern}`;\n  let source = "";\n  let braceDepth = 0;\n  for (let i = 0; i < anchored.length; i++) {\n    const char = anchored[i] ?? "";\n    if (char === "*" && anchored[i + 1] === "*") {\n      const slashAfter = anchored[i + 2] === "/";\n      source += slashAfter ? "(?:.*/)?" : ".*";\n      i += slashAfter ? 2 : 1;\n      continue;\n    }\n    switch (char) {\n      case "*":\n        source += "[^/]*";\n        break;\n      case "?":\n        source += "[^/]";\n        break;\n      case "{":\n        braceDepth++;\n        source += "(?:";\n        break;\n      case "}":\n        if (braceDepth > 0) {\n          braceDepth--;\n          source += ")";\n          break;\n        }\n        source += "\\\\}";\n        break;\n      case ",":\n        source += braceDepth > 0 ? "|" : ",";\n        break;\n      default:\n        source += char.replace(/[.+^$()|[\\]\\\\]/g, "\\\\$&");\n    }\n  }\n  return new RegExp(`^${source}$`);\n}\n',
+  "handlers.ts": '/**\n * How a detector says what it reacts to.\n *\n *     onWrite({\n *       globs: ["**\\/*.dart", "!**\\/*.g.dart"],\n *       *detect(event) {\n *         for (const written of event.written) {\n *           if (/\\blate\\b/.test(written.text)) {\n *             yield { line: written.line };\n *           }\n *         }\n *       },\n *     });\n *\n *     onPrompt({\n *       *detect(event) {\n *         yield* mentioned(event, ["late keyword", "late final"]);\n *       },\n *     });\n *\n * Each call takes one object. Its `detect` is a generator method, the star\n * in front of the name. It yields a finding for each thing it found, and\n * passes on what a helper returns with `yield*`.\n *\n * A detector file calls these at its top level. The build loads the file once\n * to learn which handlers it has and which files they want, so a host knows\n * without starting an isolate that an edit to a Python file is none of a Dart\n * principle\'s business. For that reason a call inside a function, an `if` or\n * another handler does not count.\n *\n * This file holds the one piece of state a detector has: its handlers. Each\n * detector is bundled with its own copy and runs in a fresh isolate.\n */\nimport { matchesGlobs } from "./glob.ts";\nimport type { CommandEvent, Ctx, EventName, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, TextFinding, WriteEvent, WrittenLine } from "./index.ts";\n\n/**\n * `F`, with every field that `Allowed` does not have turned into an error.\n *\n * A handler written inline has its return type inferred, and TypeScript lets\n * an inferred object carry extra fields. This is what makes `yield { line: 1 }`\n * in a prompt handler, or a misspelled field anywhere, fail to compile.\n */\ntype Only<F, Allowed> = F extends unknown ? F & { [K in Exclude<keyof F, keyof Allowed>]: never } : never;\n\n/**\n * A handler of an event with lines: it yields findings that may name a line.\n * It may also return written lines as they are, each of which is a finding on its line.\n *\n * The first half of the union is what lets one handler yield a finding for\n * the file, `{}`, next to findings with a line.\n */\ntype FileHandler<E, F> = (event: E) => Findings<Only<F, Finding>> | Findings<Only<F, Finding> | WrittenLine>;\n/** A handler of a prompt or a command: its findings have no line to name. */\ntype TextHandler<E, F> = (event: E) => Findings<Only<F, TextFinding>>;\n\n/** What `onWrite` and `onRead` take: which files, and what to look for in them. */\nexport interface FileOptions<E, F> {\n  /**\n   * Patterns for the path from the project root: `**`, `*`, `?` and `{a,b}`.\n   * A pattern starting with `!` takes files out again. Without a pattern that\n   * selects, `detect` runs on every file.\n   */\n  globs?: readonly string[];\n  /** Yields a finding for each thing it found in the event. */\n  detect: FileHandler<E, F>;\n}\n\n/** What `onPrompt` and `onCommand` take. */\nexport interface TextOptions<E, F> {\n  /** Yields a finding for each thing it found in the event. */\n  detect: TextHandler<E, F>;\n}\n\n/** What `onOutput` takes. */\nexport interface OutputOptions<F> {\n  /** Yields a finding for each thing it found in what the command printed. */\n  detect: FileHandler<OutputEvent, F>;\n}\n\n/** A handler as the build sees it: its event and the files it wants. */\nexport interface Registered {\n  event: EventName;\n  /** Empty on the events that carry no file. */\n  globs: string[];\n}\n\ninterface Registration extends Registered {\n  handler: (event: never) => Findings<Finding>;\n}\n\nconst registered: Registration[] = [];\n/** True once the file has been loaded. A handler registered after that was never seen by the build. */\nlet sealed = false;\n\nfunction register(event: EventName, options: unknown): void {\n  const name = `on${event[0]?.toUpperCase() ?? ""}${event.slice(1)}`;\n  if (sealed) {\n    throw new Error(`${name}() was called while a handler ran. Register handlers at the top level of detector.ts.`);\n  }\n  const { globs, detect } = (typeof options === "object" && options !== null ? options : {}) as { globs?: unknown; detect?: unknown };\n  if (typeof detect !== "function") {\n    throw new Error(`${name}() takes an object with a detect function: ${name}({ *detect(event) { ... } })`);\n  }\n  // What is not a list of patterns is kept as it is, for the build to refuse with a message for the author.\n  registered.push({ event, globs: (Array.isArray(globs) ? [...globs] : (globs ?? [])) as string[], handler: detect as Registration["handler"] });\n}\n\n/** Runs when the agent wrote or edited a file. `event.written` holds the lines it wrote. */\nexport function onWrite<F extends Finding>(options: FileOptions<WriteEvent, F>): void {\n  register("write", options);\n}\n\n/** Runs when the agent read a file. It did not write this code, so judge the place, not the author. */\nexport function onRead<F extends Finding>(options: FileOptions<ReadEvent, F>): void {\n  register("read", options);\n}\n\n/** Runs when the user typed a message, and when the agent briefed a subagent. */\nexport function onPrompt<F extends TextFinding>(options: TextOptions<PromptEvent, F>): void {\n  register("prompt", options);\n}\n\n/** Runs before the agent runs a shell command. */\nexport function onCommand<F extends TextFinding>(options: TextOptions<CommandEvent, F>): void {\n  register("command", options);\n}\n\n/** Runs after a shell command, on what it printed. */\nexport function onOutput<F extends Finding>(options: OutputOptions<F>): void {\n  register("output", options);\n}\n\n/** What the build reads: the handlers the detector file registered while it loaded. */\nexport function __handlers(): Registered[] {\n  return registered.map(({ handler: _, ...rest }) => rest);\n}\n\n/** The event as the handlers of its kind get it. */\nfunction eventOf(ctx: Ctx): unknown {\n  const base = { event: ctx.event, text: ctx.text, lines: ctx.file?.lines ?? ctx.text.split("\\n"), project: ctx.project };\n  if (!ctx.file) {\n    const text = { ...base, cwd: ctx.cwd ?? ctx.project ?? "/" };\n    return ctx.command === null ? text : { ...text, command: ctx.command };\n  }\n  const { written, ...file } = ctx.file;\n  if (ctx.event !== "write") {\n    return { ...base, file };\n  }\n  return { ...base, file, written };\n}\n\n/**\n * What the host calls inside the isolate: runs every handler that wants this\n * event and collects what they yield, up to `limit` findings and one more, so\n * the host can tell that there were too many.\n */\nexport function __dispatch(ctx: Ctx, limit: number): unknown[] {\n  sealed = true;\n  const out: unknown[] = [];\n  let event: unknown;\n  for (const { event: kind, globs, handler } of registered) {\n    if (kind !== ctx.event || (ctx.file && !matchesGlobs(ctx.file.relativePath, globs))) {\n      continue;\n    }\n    const found = (handler as (event: unknown) => unknown)((event ??= eventOf(ctx)));\n    if (found === null || found === undefined) {\n      continue;\n    }\n    if (typeof (found as { [Symbol.iterator]?: unknown })[Symbol.iterator] !== "function" || typeof found === "string") {\n      throw new Error(`a handler has to return findings: a generator, a list, or nothing. This one returned ${typeof found === "object" ? "an object" : String(found)}.`);\n    }\n    for (const finding of found as Iterable<unknown>) {\n      out.push(asFinding(finding));\n      if (out.length > limit) {\n        return out;\n      }\n    }\n  }\n  return out;\n}\n\n/**\n * What a handler yielded, reduced to what a finding is. A written line that\n * was returned as it is becomes a finding on its line: its text stays here.\n */\nfunction asFinding(found: unknown): unknown {\n  if (typeof found !== "object" || found === null || Array.isArray(found)) {\n    return found;\n  }\n  const { line, endLine, match, file, depth } = found as Record<string, unknown>;\n  return { line, endLine, match, file, depth };\n}\n',
+  "index.ts": '/**\n * Everything a detector may import, next to `node:fs` and `node:path`.\n *\n * A detector runs inside an isolate with no network and no process. It can\n * read files and cannot change any. This module is bundled into it at publish\n * time, so it must stay free of Node imports and of any state. The one piece\n * of state a detector has, the handlers it registered, lives in `handlers.ts`.\n */\n\n/**\n * The version of the detector API this SDK is: the event a detector is handed\n * and what it may ask the host for.\n *\n * A principle records the version it was built against, and a host runs each\n * detector against the version it was built for. So the API changes by adding\n * a version here, with the host\'s step back to the one before. Changing what\n * an existing version means would break principles that are already released.\n *\n * - 1: one `detect(ctx)` with `file.path` relative. No longer run.\n * - 2: `file.path` absolute, `file.relativePath`, `file.isNew`, `project`, and\n *   reading files through `node:fs` and `node:path`. No longer run.\n * - 3: handlers in place of `detect`: `onWrite`, `onRead`, `onPrompt`,\n *   `onCommand` and `onOutput`, each with its own typed event, and globs on\n *   the file handlers. A finding names a line or a match and carries no text\n *   of its own. Added the `output` event, and a prompt is also what the agent\n *   hands to a subagent.\n *\n * A detector says which one it was written against by where it imports from:\n * `@wellactually/sdk/v3`. Each version has its own file next to this one. A\n * principle is then handed the event of that version for as long as it is\n * run, also when it is uploaded again after the API has moved on. This file\n * itself is what the host imports, not a detector.\n */\nexport const API_VERSION = 3;\n\nexport { matchesGlob, matchesGlobs } from "./glob.ts";\n\n/**\n * What happened in the session.\n *\n * - `write`: the agent wrote or edited a file.\n * - `read`: the agent read a file. It did not write this code.\n * - `prompt`: the user typed a message, or the agent briefed a subagent.\n * - `command`: the agent is about to run a shell command.\n * - `output`: a shell command ran, and this is what it printed.\n */\nexport type EventName = "write" | "read" | "prompt" | "command" | "output";\n\nexport const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command", "output"];\n\n/** The events that carry a file, and so the ones a handler can have globs for. */\nexport const FILE_EVENTS: readonly EventName[] = ["write", "read"];\n\n/** A line the agent wrote in this event, as the host records it. */\nexport interface Written {\n  /** 1-based line in the file. */\n  line: number;\n  /** The line as written, untrimmed. */\n  text: string;\n}\n\n/** A line the agent wrote in this event, as a handler of `onWrite` gets it. */\nexport type WrittenLine = Written;\n\n/** The file of a `write` or `read` event. */\nexport interface File {\n  /** Absolute path, with forward slashes. Navigate from here with `node:path` and read neighbours with `node:fs`. */\n  path: string;\n  /**\n   * Path from the project root, e.g. "lib/src/config_loader.dart". This is what `globs` are matched against.\n   * Without a project root it is the path from where the session runs, or just the file\'s name.\n   */\n  relativePath: string;\n  /** Basename, e.g. "config_loader.dart". */\n  name: string;\n  /** Extension including the dot, lower case. Empty when there is none. */\n  ext: string;\n  content: string;\n  /** `content` split into lines. */\n  lines: string[];\n  /** The agent created this file with this write. It did not exist before. Always false on `read`. */\n  isNew: boolean;\n}\n\n/**\n * An event as the host builds it and hands it to the isolate: one shape for\n * all five. A detector never sees this. Its handlers get the event of their\n * kind, see `WriteEvent` and the others.\n */\nexport interface Ctx {\n  event: EventName;\n  /** Null when the event carries text instead of a file. */\n  file: (File & { written: Written[] }) | null;\n  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */\n  text: string;\n  /** The command line on `command` and `output`. Null on the others. */\n  command: string | null;\n  /** The folder the session runs in, as an absolute path, on the events without a file. Null on `write` and `read`. */\n  cwd: string | null;\n  /**\n   * The root of the project the event happened in, as an absolute path: the\n   * nearest folder upwards with a `.git`. Null when there is none.\n   */\n  project: string | null;\n}\n\n/** What every event has. */\ninterface EventBase {\n  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */\n  text: string;\n  /** `text` split into lines. A finding\'s `line` counts in here. */\n  lines: string[];\n  /**\n   * The root of the project the event happened in, as an absolute path: the\n   * nearest folder upwards with a `.git`. Null when there is none, which is\n   * normal, so do not rely on it. To find a `pubspec.yaml` or a\n   * `package.json`, walk up from `file.path` instead.\n   */\n  project: string | null;\n}\n\n/** The agent wrote or edited a file. */\nexport interface WriteEvent extends EventBase {\n  event: "write";\n  file: File;\n  /** The lines the agent wrote. Code that was there before is not in here. */\n  written: WrittenLine[];\n}\n\n/** The agent read a file. It wrote none of it. */\nexport interface ReadEvent extends EventBase {\n  event: "read";\n  file: File;\n}\n\n/** What an event without a file has in its place: where the session is. */\ninterface TextEventBase extends EventBase {\n  /**\n   * The folder the session runs in, as an absolute path. Start here to look\n   * at the project with `node:fs`, e.g. `findUp("pubspec.yaml", event.cwd)`.\n   */\n  cwd: string;\n}\n\n/** The user typed a message, or the agent briefed a subagent. A request for work that has not happened yet. */\nexport interface PromptEvent extends TextEventBase {\n  event: "prompt";\n}\n\n/** The agent is about to run a shell command. */\nexport interface CommandEvent extends TextEventBase {\n  event: "command";\n  /** The command line. The same as `text`. */\n  command: string;\n}\n\n/** A shell command ran. `text` is what it printed. */\nexport interface OutputEvent extends TextEventBase {\n  event: "output";\n  /** The command line that printed it. */\n  command: string;\n}\n\n/** An event that carries a file, for a helper that serves `onWrite` and `onRead` alike. */\nexport type FileEvent = WriteEvent | ReadEvent;\n\n/**\n * How much of the advice a finding deserves.\n *\n * A word match established a topic and asks for a `pointer`: title and summary.\n * Code that breaks the principle asks for `full`: the whole advice text.\n */\nexport type Depth = "pointer" | "full";\n\n/**\n * What a handler of `onPrompt` or `onCommand` yields. Nothing in it is\n * required: `yield {}` fires the principle and says nothing more.\n */\nexport interface TextFinding {\n  /**\n   * The exact text that triggered: the keyword in a prompt, a piece of a line.\n   * It has to occur word for word in the event, within the lines the finding\n   * names when it names some, and may not span lines. The agent is shown it.\n   * A match that does not occur is left out, and the finding still fires.\n   */\n  match?: string;\n  /**\n   * Another file the finding points at: the jpg that should be a webp, the\n   * test that already exists. A path from the project root, or an absolute\n   * one. The agent is told the file. `line` and `match` stay about the event.\n   */\n  file?: string;\n  /** Omitted means `full`. */\n  depth?: Depth;\n}\n\n/**\n * What a handler of `onWrite`, `onRead` or `onOutput` yields. Nothing in it\n * is required.\n *\n * A finding with a `line` points at that line, and the host quotes it to the\n * agent. A finding carries no text of its own.\n *\n * A finding without a `line` points at the file: `yield {}` in `onWrite` or\n * `onRead` says the file itself is the problem, for its name, its place or\n * something it lacks. Do not pick a first line to stand in for it. In\n * `onOutput` it fires the principle and says nothing more.\n *\n * A finding with a `file` points at another file than the one of the event:\n * `yield { line: written.line, file: "assets/hero.jpg" }`.\n */\nexport interface Finding extends TextFinding {\n  /** 1-based line of the event\'s text: of the file, or of what a command printed. */\n  line?: number;\n  /** The last line, when the finding spans several. Needs `line`. */\n  endLine?: number;\n}\n\n/** What a handler returns: a generator or any other iterable of findings, or nothing. */\nexport type Findings<F = Finding> = Iterable<F> | null | undefined | void;\n\nconst WORD_CHAR = /[A-Za-z0-9_$]/;\n\n/**\n * Index of `word` in `text` where it stands alone, or -1.\n * `findWord("isolate", "late")` is -1; `findWord("late final x", "late")` is 0.\n */\nexport function findWord(text: string, word: string, from = 0): number {\n  let at = text.indexOf(word, from);\n  while (at !== -1) {\n    const before = at === 0 ? "" : (text[at - 1] ?? "");\n    const after = text[at + word.length] ?? "";\n    if (!WORD_CHAR.test(before) && !WORD_CHAR.test(after)) {\n      return at;\n    }\n    at = text.indexOf(word, at + 1);\n  }\n  return -1;\n}\n\n/**\n * A pointer finding for the first of `names` that the event\'s text mentions.\n *\n * A name counts where it stands alone, in any case, and with or without the\n * separators people put inside names: `rxdart` also finds rx_dart, rx-dart\n * and RxDart. A space in a name stands for any whitespace.\n *\n * This is a name check for a named technology, not a keyword cloud.\n * Pass the few phrases that can only mean your topic.\n *\n *     onPrompt({\n *       *detect(event) {\n *         yield* mentioned(event, ["late keyword", "late final"]);\n *       },\n *     });\n */\nexport function mentioned(event: { text: string }, names: readonly string[]): TextFinding[] {\n  for (const name of names) {\n    const letters = [...name.toLowerCase().replaceAll(/[_\\-.]/g, "")];\n    if (letters.length === 0) {\n      continue;\n    }\n    const body = letters.map((letter) => (letter === " " ? "\\\\s+" : letter.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&"))).join("[_\\\\-.]?");\n    // Any letter ends a word, not just ASCII: "Pr\xFCfe" must not read as "pr" and "fe".\n    const match = new RegExp(`(?<![\\\\p{L}\\\\p{N}_$.\\\\-])${body}(?![\\\\p{L}\\\\p{N}_$\\\\-])`, "iu").exec(event.text);\n    if (match) {\n      // A match may not span lines, and a name with a space in it can. Then the finding goes without one.\n      return [match[0].includes("\\n") ? { depth: "pointer" } : { match: match[0], depth: "pointer" }];\n    }\n  }\n  return [];\n}\n\n/** 1-based line of a character offset in `text`. */\nexport function lineAt(text: string, offset: number): number {\n  let line = 1;\n  for (let i = 0; i < offset && i < text.length; i++) {\n    if (text[i] === "\\n") {\n      line++;\n    }\n  }\n  return line;\n}\n\nexport interface CodeSyntax {\n  /** Starts a comment that runs to the end of the line. */\n  lineComment?: string;\n  /** Opens and closes a block comment. */\n  blockComment?: readonly [string, string];\n  /** Characters that open and close a string literal. */\n  quotes?: readonly string[];\n}\n\n/** Comments and strings as written in C, Dart, Java, JavaScript, Kotlin, Swift and friends. */\nexport const C_LIKE: CodeSyntax = {\n  lineComment: "//",\n  blockComment: ["/*", "*/"],\n  quotes: [\'"\', "\'", "`"],\n};\n\n/** Comments and strings as written in Python, Ruby, shell and YAML. */\nexport const HASH_LIKE: CodeSyntax = {\n  lineComment: "#",\n  quotes: [\'"\', "\'"],\n};\n\n/**\n * `text` with comments and string contents replaced by spaces.\n *\n * Positions and line breaks are preserved, so an offset or line found in the\n * result points at the same place in the original. Use it to keep a keyword\n * inside a comment or a string from counting as code.\n */\nexport function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIKE): string {\n  const out: string[] = [];\n  const quotes = syntax.quotes ?? [];\n  let i = 0;\n  while (i < text.length) {\n    const char = text[i] ?? "";\n    if (syntax.lineComment && text.startsWith(syntax.lineComment, i)) {\n      while (i < text.length && text[i] !== "\\n") {\n        out.push(" ");\n        i++;\n      }\n      continue;\n    }\n    if (syntax.blockComment && text.startsWith(syntax.blockComment[0], i)) {\n      const close = text.indexOf(syntax.blockComment[1], i + syntax.blockComment[0].length);\n      const end = close === -1 ? text.length : close + syntax.blockComment[1].length;\n      for (; i < end; i++) {\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n      }\n      continue;\n    }\n    if (quotes.includes(char)) {\n      out.push(char);\n      i++;\n      while (i < text.length && text[i] !== char) {\n        if (text[i] === "\\\\" && i + 1 < text.length) {\n          out.push(" ");\n          i++;\n        }\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n        i++;\n      }\n      if (i < text.length) {\n        out.push(char);\n        i++;\n      }\n      continue;\n    }\n    out.push(char);\n    i++;\n  }\n  return out.join("");\n}\n\n/** The project root of every event a test builds. It is made up, and the same in every runner. */\nexport const TEST_ROOT = "/project";\n\n/** Where an event happened. A test leaves it out and gets `TEST_ROOT`. */\nexport interface Where {\n  /** The repository root, or null when the file is in none. */\n  root?: string | null;\n  /** The file\'s absolute path, when it is not simply `root/relativePath`. */\n  absolute?: string;\n  isNew?: boolean;\n}\n\n/**\n * The event for a file the agent wrote or read.\n *\n * On `write`, `written` defaults to every line: a new file is written whole.\n * On `read` nothing was written, whatever is passed.\n */\nexport function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: Written[], where: Where = {}): Ctx {\n  const relative = relativePath.replaceAll("\\\\", "/").replace(/^\\.?\\/+/, "");\n  const root = where.root === undefined ? TEST_ROOT : where.root;\n  const path = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\\\", "/");\n  const name = path.slice(path.lastIndexOf("/") + 1);\n  const dot = name.lastIndexOf(".");\n  const lines = content.split("\\n");\n  const allLines = lines.map((text, index) => ({ line: index + 1, text }));\n  return {\n    event,\n    file: {\n      path,\n      relativePath: relative,\n      name,\n      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",\n      content,\n      lines,\n      written: event === "read" ? [] : (written ?? allLines),\n      isNew: event === "write" && where.isNew === true,\n    },\n    text: content,\n    command: null,\n    cwd: null,\n    project: root,\n  };\n}\n\n/**\n * The event for text: a prompt, a command about to run, or what a command printed.\n * `command` is the command line an `output` belongs to, and `cwd` the folder\n * the session runs in, which is the project root unless said otherwise.\n */\nexport function textCtx(event: "prompt" | "command" | "output", text: string, root: string | null = TEST_ROOT, command = "", cwd: string = root ?? "/"): Ctx {\n  return {\n    event,\n    file: null,\n    text,\n    command: event === "prompt" ? null : event === "command" ? text : command,\n    cwd,\n    project: root,\n  };\n}\n\n/**\n * The lines of `content` the agent just wrote, given the text it inserted.\n *\n * The file after the edit is the truth. A fragment is found there as a whole\n * first; when it is not, for instance because a formatter ran, its lines are\n * matched one by one.\n */\nexport function locateWritten(content: string, fragments: readonly string[]): Written[] {\n  const lines = content.split("\\n");\n  const written = new Map<number, string>();\n  for (const fragment of fragments) {\n    if (fragment.trim() === "") {\n      continue;\n    }\n    const at = content.indexOf(fragment);\n    if (at !== -1) {\n      const first = content.slice(0, at).split("\\n").length;\n      const count = fragment.split("\\n").length;\n      for (let line = first; line < first + count && line <= lines.length; line++) {\n        written.set(line, lines[line - 1] ?? "");\n      }\n      continue;\n    }\n    for (const wanted of fragment.split("\\n")) {\n      const trimmed = wanted.trim();\n      if (trimmed === "") {\n        continue;\n      }\n      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);\n      if (index !== -1) {\n        written.set(index + 1, lines[index] ?? "");\n      }\n    }\n  }\n  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text]) => ({ line, text }));\n}\n',
   "path.ts": '/**\n * What `node:path` resolves to inside the isolate: the POSIX half of it.\n *\n * Every path a detector sees has forward slashes, on every system, so this is\n * all it needs. It is string logic and never asks the host for anything.\n */\n\ninterface WithCwd {\n  __cwd?: string;\n}\n\nexport const sep = "/";\nexport const delimiter = ":";\n\n/** The project root, which is what a relative path is relative to. */\nfunction cwd(): string {\n  return (globalThis as WithCwd).__cwd ?? "/";\n}\n\nexport function isAbsolute(path: string): boolean {\n  return path.startsWith("/") || /^[A-Za-z]:\\//.test(path);\n}\n\nexport function normalize(path: string): string {\n  if (path === "") {\n    return ".";\n  }\n  const absolute = path.startsWith("/");\n  const out: string[] = [];\n  for (const part of path.split("/")) {\n    if (part === "" || part === ".") {\n      continue;\n    }\n    if (part === ".." && out.length > 0 && out.at(-1) !== "..") {\n      out.pop();\n      continue;\n    }\n    if (part === ".." && absolute) {\n      continue;\n    }\n    out.push(part);\n  }\n  const joined = out.join("/");\n  if (absolute) {\n    return `/${joined}`;\n  }\n  return joined === "" ? "." : joined;\n}\n\nexport function join(...parts: string[]): string {\n  return normalize(parts.filter((part) => part !== "").join("/"));\n}\n\nexport function resolve(...parts: string[]): string {\n  let resolved = "";\n  for (let index = parts.length - 1; index >= 0 && !isAbsolute(resolved); index--) {\n    const part = parts[index] ?? "";\n    if (part !== "") {\n      resolved = resolved === "" ? part : `${part}/${resolved}`;\n    }\n  }\n  if (!isAbsolute(resolved)) {\n    resolved = resolved === "" ? cwd() : `${cwd()}/${resolved}`;\n  }\n  const normalized = normalize(resolved);\n  return normalized.length > 1 && normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;\n}\n\nexport function dirname(path: string): string {\n  const trimmed = path.length > 1 ? path.replace(/\\/+$/, "") : path;\n  const slash = trimmed.lastIndexOf("/");\n  if (slash === -1) {\n    return ".";\n  }\n  return slash === 0 ? "/" : trimmed.slice(0, slash);\n}\n\nexport function basename(path: string, suffix = ""): string {\n  const trimmed = path.replace(/\\/+$/, "");\n  const name = trimmed.slice(trimmed.lastIndexOf("/") + 1);\n  return suffix !== "" && name.endsWith(suffix) && name !== suffix ? name.slice(0, -suffix.length) : name;\n}\n\nexport function extname(path: string): string {\n  const name = basename(path);\n  const dot = name.lastIndexOf(".");\n  return dot > 0 ? name.slice(dot) : "";\n}\n\nexport function relative(from: string, to: string): string {\n  const a = resolve(from).split("/").filter(Boolean);\n  const b = resolve(to).split("/").filter(Boolean);\n  let shared = 0;\n  while (shared < a.length && shared < b.length && a[shared] === b[shared]) {\n    shared++;\n  }\n  return [...a.slice(shared).map(() => ".."), ...b.slice(shared)].join("/");\n}\n\nexport interface ParsedPath {\n  root: string;\n  dir: string;\n  base: string;\n  ext: string;\n  name: string;\n}\n\nexport function parse(path: string): ParsedPath {\n  const base = basename(path);\n  const ext = extname(path);\n  const dir = dirname(path);\n  return { root: path.startsWith("/") ? "/" : "", dir: dir === "." && !path.includes("/") ? "" : dir, base, ext, name: ext === "" ? base : base.slice(0, -ext.length) };\n}\n\nconst path = { sep, delimiter, isAbsolute, normalize, join, resolve, dirname, basename, extname, relative, parse };\n\nexport const posix = path;\nexport default path;\n',
-  "test.ts": '/**\n * The test framework for a principle, as it runs inside the isolate.\n *\n * A test builds the event a detector receives and asks what the detector\n * says about it:\n *\n *     test("fires on a late field", () => {\n *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1, evidence: "late String name;" }]);\n *     });\n *\n * On an author\'s machine the same file runs under vitest, where `test` and\n * `expect` are vitest\'s and `detect` comes from `test.node.ts`. Here, in\n * `wellactually test`, the browser editor and the registry, `vitest` resolves\n * to this file\'s small copy of that API. Either way `detect` does not call\n * the detector directly. It asks the host, which runs the real detector the\n * way the hook does and keeps a record, so the registry knows what was shown\n * to fire and what was shown to stay quiet.\n */\nimport type { Ctx, Finding } from "./index.ts";\nimport type { DetectOptions } from "./events.ts";\n\nexport { command, edit, prompt, read, source, write, type DetectOptions } from "./events.ts";\n\ninterface Host {\n  __detect?: (call: string) => string;\n  __begin?: (test: string) => void;\n}\n\nconst host = globalThis as Host;\n\n/**\n * What the detector reports for an event: the findings that passed the host\'s checks.\n *\n * It is empty when the detector\'s `events` or `globs` do not select the event,\n * exactly as in a session. It throws when the detector fails or reports a\n * finding the host would drop, so a test cannot pass on a broken detector.\n */\nexport function detect(event: Ctx, options: DetectOptions = {}): Finding[] {\n  if (!host.__detect) {\n    throw new Error("detect() only works inside a principle\'s test run.");\n  }\n  const answer = JSON.parse(host.__detect(JSON.stringify({ event, options }))) as { findings?: Finding[]; error?: string };\n  if (answer.error !== undefined) {\n    throw new Error(answer.error);\n  }\n  return answer.findings ?? [];\n}\n\ninterface Registered {\n  file: string;\n  name: string;\n  run: () => unknown;\n}\n\nconst MAX_TESTS = 100;\nconst registered: Registered[] = [];\nconst groups: string[] = [];\nlet currentFile = "";\n\n/** Groups tests under a name. */\nexport function describe(name: string, body: () => void): void {\n  groups.push(name);\n  try {\n    body();\n  } finally {\n    groups.pop();\n  }\n}\n\nfunction register(name: string, run: () => unknown): void {\n  registered.push({ file: currentFile, name: [...groups, name].join(" > "), run });\n}\n\nfunction each<Row>(rows: readonly Row[]) {\n  return (name: string, body: (row: Row) => unknown): void => {\n    for (const row of rows) {\n      const shown = typeof row === "string" ? row : JSON.stringify(row);\n      register(name.includes("%s") ? name.replace("%s", shown) : `${name} (${shown})`, () => body(row));\n    }\n  };\n}\n\n/** Declares one test. `test.each(rows)(name, body)` declares one per row; `%s` in the name is the row. */\nexport const test = Object.assign(register, { each });\nexport const it = test;\n\nfunction show(value: unknown): string {\n  return value === undefined ? "undefined" : JSON.stringify(value, null, 2);\n}\n\n/** Deep equality that ignores properties set to undefined, as a finding without a line has no `line`. */\nfunction equal(a: unknown, b: unknown): boolean {\n  if (a === b) {\n    return true;\n  }\n  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) {\n    return false;\n  }\n  const left = a as Record<string, unknown>;\n  const right = b as Record<string, unknown>;\n  const keys = new Set([...Object.keys(left), ...Object.keys(right)].filter((key) => left[key] !== undefined || right[key] !== undefined));\n  if (Array.isArray(a) && a.length !== (b as unknown[]).length) {\n    return false;\n  }\n  return [...keys].every((key) => equal(left[key], right[key]));\n}\n\n/** Whether `actual` has everything `expected` has. Arrays must match item by item. */\nfunction matches(actual: unknown, expected: unknown): boolean {\n  if (typeof expected !== "object" || expected === null) {\n    return equal(actual, expected);\n  }\n  if (typeof actual !== "object" || actual === null || Array.isArray(actual) !== Array.isArray(expected)) {\n    return false;\n  }\n  if (Array.isArray(expected)) {\n    return (actual as unknown[]).length === expected.length && expected.every((item, index) => matches((actual as unknown[])[index], item));\n  }\n  return Object.entries(expected).every(([key, value]) => matches((actual as Record<string, unknown>)[key], value));\n}\n\nexport interface Expectation {\n  /** Deeply equal. */\n  toEqual(expected: unknown): void;\n  /** Deeply equal. Here it is the same as `toEqual`. */\n  toStrictEqual(expected: unknown): void;\n  /** The same value. */\n  toBe(expected: unknown): void;\n  toHaveLength(length: number): void;\n  /** An array holding `item` itself, or a string holding the text. */\n  toContain(item: unknown): void;\n  /** An array holding an item deeply equal to `item`. */\n  toContainEqual(item: unknown): void;\n  /** Has everything `expected` has, and may have more. */\n  toMatchObject(expected: unknown): void;\n  toBeTruthy(): void;\n  toBeFalsy(): void;\n  toBeNull(): void;\n  toBeUndefined(): void;\n  toBeDefined(): void;\n  /** A function that throws. With `message`, the error has to contain it. */\n  toThrow(message?: string): void;\n  not: Expectation;\n}\n\nfunction expectation(actual: unknown, negated: boolean): Expectation {\n  const check = (passed: boolean, what: string, expected?: unknown): void => {\n    if (passed === negated) {\n      throw new Error(`Expected ${negated ? "not " : ""}${what}${expected === undefined ? "" : `\\n${show(expected)}`}\\nReceived\\n${show(actual)}`);\n    }\n  };\n  const thrown = (): string | null => {\n    try {\n      (actual as () => unknown)();\n      return null;\n    } catch (error) {\n      return error instanceof Error ? error.message : String(error);\n    }\n  };\n  const matchers: Expectation = {\n    toEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toStrictEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toBe: (expected) => check(Object.is(actual, expected), "to be", expected),\n    toHaveLength: (length) => check((actual as { length?: unknown } | null)?.length === length, "length", length),\n    toContain: (item) => check(typeof actual === "string" ? actual.includes(String(item)) : Array.isArray(actual) && actual.includes(item), "to contain", item),\n    toContainEqual: (item) => check(Array.isArray(actual) && actual.some((candidate) => equal(candidate, item)), "to contain", item),\n    toMatchObject: (expected) => check(matches(actual, expected), "to match", expected),\n    toBeTruthy: () => check(Boolean(actual), "a truthy value"),\n    toBeFalsy: () => check(!actual, "a falsy value"),\n    toBeNull: () => check(actual === null, "null"),\n    toBeUndefined: () => check(actual === undefined, "undefined"),\n    toBeDefined: () => check(actual !== undefined, "a defined value"),\n    toThrow: (message) => {\n      const error = thrown();\n      check(error !== null && (message === undefined || error.includes(message)), message === undefined ? "to throw" : "to throw an error containing", message);\n    },\n    get not() {\n      return expectation(actual, !negated);\n    },\n  };\n  // A test also runs under vitest, which knows many more matchers. One that is\n  // missing here must say so, or it fails on the registry as "not a function".\n  return new Proxy(matchers, {\n    get(target, name, receiver) {\n      if (typeof name === "string" && !(name in target)) {\n        throw new Error(\n          `expect().${name} is not available when the registry runs the tests. Use one of: ${Object.keys(target).filter((key) => key !== "not").join(", ")}.`,\n        );\n      }\n      return Reflect.get(target, name, receiver);\n    },\n  });\n}\n\nexport function expect(actual: unknown): Expectation {\n  return expectation(actual, false);\n}\n\n/** Called by the runner before a test file is loaded, so its tests carry its name. */\nexport function __file(name: string): void {\n  currentFile = name;\n}\n\n/** Called by the runner once every test file is loaded. Returns the results as JSON. */\nexport function __run(): string {\n  if (registered.length > MAX_TESTS) {\n    throw new Error(`a principle may hold at most ${MAX_TESTS} tests, this one has ${registered.length}`);\n  }\n  const results = registered.map((entry) => {\n    host.__begin?.(JSON.stringify({ file: entry.file, name: entry.name }));\n    try {\n      const returned = entry.run();\n      if (typeof (returned as { then?: unknown } | null)?.then === "function") {\n        throw new Error("A test must not be async. detect() answers immediately.");\n      }\n      return { file: entry.file, name: entry.name, passed: true, message: "" };\n    } catch (error) {\n      return { file: entry.file, name: entry.name, passed: false, message: error instanceof Error ? error.message : String(error) };\n    }\n  });\n  return JSON.stringify(results);\n}\n',
-  "v1.ts": '/**\n * Detector API 1: what a detector that stays on it imports.\n *\n *     import { writtenLines, type Ctx, type Finding } from "@wellactually/sdk/v1";\n *\n * In version 1 `file.path` is relative, there is no `project`, and a detector\n * can reach nothing outside its event. The types here are the event of that\n * version, so a detector that uses what came later does not compile.\n */\nimport type { CtxV1, Findings } from "./index.ts";\n\nexport type Ctx = CtxV1;\nexport type FileContext = NonNullable<CtxV1["file"]>;\n\n/** The shape of a detector module. */\nexport interface Detector {\n  detect: (ctx: Ctx) => Findings | null | undefined;\n}\n\nexport type { CodeSyntax, Depth, EventName, Finding, Findings, WrittenLine } from "./index.ts";\nexport { blankCommentsAndStrings, C_LIKE, EVENTS, findWord, HASH_LIKE, lineAt, mentioned, writtenLines } from "./index.ts";\n',
-  "v2.ts": '/**\n * Detector API 2: what a detector written against it imports.\n *\n *     import { writtenLines, type Ctx, type Finding } from "@wellactually/sdk/v2";\n *\n * The path is the declaration. A principle whose files import from here is\n * built against version 2 and is handed the event of version 2 for as long\n * as that version is run, also when it is uploaded again after the API has\n * moved on. Its tests import `@wellactually/sdk/v2/test`.\n *\n * In version 2 `file.path` is absolute, the event carries `file.relativePath`,\n * `file.isNew` and `project`, and a detector can read files through `node:fs`.\n */\nexport type { CodeSyntax, Ctx, Depth, Detector, EventName, FileContext, Finding, Findings, WrittenLine } from "./index.ts";\nexport { blankCommentsAndStrings, C_LIKE, EVENTS, findWord, HASH_LIKE, lineAt, mentioned, writtenLines } from "./index.ts";\n',
+  "test.ts": '/**\n * The test framework for a principle, as it runs inside the isolate.\n *\n * A test builds the event a detector receives and asks what the detector\n * says about it:\n *\n *     test("fires on a late field", () => {\n *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1 }]);\n *     });\n *\n * On an author\'s machine the same file runs under vitest, where `test` and\n * `expect` are vitest\'s and `detect` comes from `test.node.ts`. Here, in\n * `wellactually test`, the browser editor and the registry, `vitest` resolves\n * to this file\'s small copy of that API. Either way `detect` does not call\n * the detector directly. It asks the host, which runs the real detector the\n * way the hook does and keeps a record, so the registry knows what was shown\n * to fire and what was shown to stay quiet.\n */\nimport type { Ctx, Finding } from "./index.ts";\nimport type { DetectOptions } from "./events.ts";\n\nexport { command, edit, output, prompt, read, source, write, type DetectOptions } from "./events.ts";\n\ninterface Host {\n  __detect?: (call: string) => string;\n  __begin?: (test: string) => void;\n}\n\nconst host = globalThis as Host;\n\n/**\n * What the detector reports for an event: the findings that passed the host\'s checks.\n *\n * It is empty when no handler of the detector wants the event, exactly as in\n * a session. It throws when the detector fails or reports something the host\n * would drop, so a test cannot pass on a broken detector.\n */\nexport function detect(event: Ctx, options: DetectOptions = {}): Finding[] {\n  if (!host.__detect) {\n    throw new Error("detect() only works inside a principle\'s test run.");\n  }\n  const answer = JSON.parse(host.__detect(JSON.stringify({ event, options }))) as { findings?: Finding[]; error?: string };\n  if (answer.error !== undefined) {\n    throw new Error(answer.error);\n  }\n  return answer.findings ?? [];\n}\n\ninterface Registered {\n  file: string;\n  name: string;\n  run: () => unknown;\n}\n\nconst MAX_TESTS = 100;\nconst registered: Registered[] = [];\nconst groups: string[] = [];\nlet currentFile = "";\n\n/** Groups tests under a name. */\nexport function describe(name: string, body: () => void): void {\n  groups.push(name);\n  try {\n    body();\n  } finally {\n    groups.pop();\n  }\n}\n\nfunction register(name: string, run: () => unknown): void {\n  registered.push({ file: currentFile, name: [...groups, name].join(" > "), run });\n}\n\nfunction each<Row>(rows: readonly Row[]) {\n  return (name: string, body: (row: Row) => unknown): void => {\n    for (const row of rows) {\n      const shown = typeof row === "string" ? row : JSON.stringify(row);\n      register(name.includes("%s") ? name.replace("%s", shown) : `${name} (${shown})`, () => body(row));\n    }\n  };\n}\n\n/** Declares one test. `test.each(rows)(name, body)` declares one per row; `%s` in the name is the row. */\nexport const test = Object.assign(register, { each });\nexport const it = test;\n\nfunction show(value: unknown): string {\n  return value === undefined ? "undefined" : JSON.stringify(value, null, 2);\n}\n\n/** Deep equality that ignores properties set to undefined, as a finding without a line has no `line`. */\nfunction equal(a: unknown, b: unknown): boolean {\n  if (a === b) {\n    return true;\n  }\n  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) {\n    return false;\n  }\n  const left = a as Record<string, unknown>;\n  const right = b as Record<string, unknown>;\n  const keys = new Set([...Object.keys(left), ...Object.keys(right)].filter((key) => left[key] !== undefined || right[key] !== undefined));\n  if (Array.isArray(a) && a.length !== (b as unknown[]).length) {\n    return false;\n  }\n  return [...keys].every((key) => equal(left[key], right[key]));\n}\n\n/** Whether `actual` has everything `expected` has. Arrays must match item by item. */\nfunction matches(actual: unknown, expected: unknown): boolean {\n  if (typeof expected !== "object" || expected === null) {\n    return equal(actual, expected);\n  }\n  if (typeof actual !== "object" || actual === null || Array.isArray(actual) !== Array.isArray(expected)) {\n    return false;\n  }\n  if (Array.isArray(expected)) {\n    return (actual as unknown[]).length === expected.length && expected.every((item, index) => matches((actual as unknown[])[index], item));\n  }\n  return Object.entries(expected).every(([key, value]) => matches((actual as Record<string, unknown>)[key], value));\n}\n\nexport interface Expectation {\n  /** Deeply equal. */\n  toEqual(expected: unknown): void;\n  /** Deeply equal. Here it is the same as `toEqual`. */\n  toStrictEqual(expected: unknown): void;\n  /** The same value. */\n  toBe(expected: unknown): void;\n  toHaveLength(length: number): void;\n  /** An array holding `item` itself, or a string holding the text. */\n  toContain(item: unknown): void;\n  /** An array holding an item deeply equal to `item`. */\n  toContainEqual(item: unknown): void;\n  /** Has everything `expected` has, and may have more. */\n  toMatchObject(expected: unknown): void;\n  toBeTruthy(): void;\n  toBeFalsy(): void;\n  toBeNull(): void;\n  toBeUndefined(): void;\n  toBeDefined(): void;\n  /** A function that throws. With `message`, the error has to contain it. */\n  toThrow(message?: string): void;\n  not: Expectation;\n}\n\nfunction expectation(actual: unknown, negated: boolean): Expectation {\n  const check = (passed: boolean, what: string, expected?: unknown): void => {\n    if (passed === negated) {\n      throw new Error(`Expected ${negated ? "not " : ""}${what}${expected === undefined ? "" : `\\n${show(expected)}`}\\nReceived\\n${show(actual)}`);\n    }\n  };\n  const thrown = (): string | null => {\n    try {\n      (actual as () => unknown)();\n      return null;\n    } catch (error) {\n      return error instanceof Error ? error.message : String(error);\n    }\n  };\n  const matchers: Expectation = {\n    toEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toStrictEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toBe: (expected) => check(Object.is(actual, expected), "to be", expected),\n    toHaveLength: (length) => check((actual as { length?: unknown } | null)?.length === length, "length", length),\n    toContain: (item) => check(typeof actual === "string" ? actual.includes(String(item)) : Array.isArray(actual) && actual.includes(item), "to contain", item),\n    toContainEqual: (item) => check(Array.isArray(actual) && actual.some((candidate) => equal(candidate, item)), "to contain", item),\n    toMatchObject: (expected) => check(matches(actual, expected), "to match", expected),\n    toBeTruthy: () => check(Boolean(actual), "a truthy value"),\n    toBeFalsy: () => check(!actual, "a falsy value"),\n    toBeNull: () => check(actual === null, "null"),\n    toBeUndefined: () => check(actual === undefined, "undefined"),\n    toBeDefined: () => check(actual !== undefined, "a defined value"),\n    toThrow: (message) => {\n      const error = thrown();\n      check(error !== null && (message === undefined || error.includes(message)), message === undefined ? "to throw" : "to throw an error containing", message);\n    },\n    get not() {\n      return expectation(actual, !negated);\n    },\n  };\n  // A test also runs under vitest, which knows many more matchers. One that is\n  // missing here must say so, or it fails on the registry as "not a function".\n  return new Proxy(matchers, {\n    get(target, name, receiver) {\n      if (typeof name === "string" && !(name in target)) {\n        throw new Error(\n          `expect().${name} is not available when the registry runs the tests. Use one of: ${Object.keys(target).filter((key) => key !== "not").join(", ")}.`,\n        );\n      }\n      return Reflect.get(target, name, receiver);\n    },\n  });\n}\n\nexport function expect(actual: unknown): Expectation {\n  return expectation(actual, false);\n}\n\n/** Called by the runner before a test file is loaded, so its tests carry its name. */\nexport function __file(name: string): void {\n  currentFile = name;\n}\n\n/** Called by the runner once every test file is loaded. Returns the results as JSON. */\nexport function __run(): string {\n  if (registered.length > MAX_TESTS) {\n    throw new Error(`a principle may hold at most ${MAX_TESTS} tests, this one has ${registered.length}`);\n  }\n  const results = registered.map((entry) => {\n    host.__begin?.(JSON.stringify({ file: entry.file, name: entry.name }));\n    try {\n      const returned = entry.run();\n      if (typeof (returned as { then?: unknown } | null)?.then === "function") {\n        throw new Error("A test must not be async. detect() answers immediately.");\n      }\n      return { file: entry.file, name: entry.name, passed: true, message: "" };\n    } catch (error) {\n      return { file: entry.file, name: entry.name, passed: false, message: error instanceof Error ? error.message : String(error) };\n    }\n  });\n  return JSON.stringify(results);\n}\n',
+  "v3.ts": '/**\n * Detector API 3: what a detector written against it imports.\n *\n *     import { onPrompt, onWrite, mentioned } from "@wellactually/sdk/v3";\n *\n * The path is the declaration. A principle whose files import from here is\n * built against version 3 and is handed the events of version 3 for as long\n * as that version is run, also when it is uploaded again after the API has\n * moved on. Its tests import `@wellactually/sdk/v3/test`.\n *\n * In version 3 a detector registers a handler per event, with `onWrite`,\n * `onRead`, `onPrompt`, `onCommand` and `onOutput`. Each handler gets the\n * event of its kind and yields findings. It can read files through `node:fs`.\n */\nexport type { CommandEvent, Depth, EventName, File, FileEvent, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, TextFinding, WriteEvent, WrittenLine } from "./index.ts";\nexport { EVENTS, findWord, lineAt, mentioned } from "./index.ts";\nexport { matchesGlob, matchesGlobs } from "./glob.ts";\nexport type { FileOptions } from "./handlers.ts";\nexport { findUp } from "./find.ts";\nexport { onCommand, onOutput, onPrompt, onRead, onWrite } from "./handlers.ts";\n',
   "vitest.ts": "/**\n * What `vitest` resolves to when a principle's tests run inside the isolate.\n *\n * An author runs the tests with vitest itself. The registry cannot: it runs\n * code from strangers, and only inside the isolate. So it gives the tests the\n * part of vitest's API a detector test needs. An import of anything else\n * fails the build with the name that is missing.\n */\nexport { describe, expect, it, test } from \"./test.ts\";\n"
 };
 
@@ -11269,11 +11618,14 @@ var SDK_SOURCES = {
 var BundleError = class extends Error {
 };
 var BUNDLE_GLOBAL = "__principle";
-var MAX_BUNDLE_BYTES = 256 * 1024;
+var MAX_BUNDLE_BYTES = 1024 * 1024;
+var NODE_MODULES = /* @__PURE__ */ new Set(["assert", "buffer", "child_process", "crypto", "events", "http", "https", "module", "net", "os", "process", "stream", "string_decoder", "tty", "url", "util", "worker_threads", "zlib"]);
 var SDK2 = "@wellactually/sdk";
 var SDK_ENTRY = /^@wellactually\/sdk\/(v\d+)(\/test)?$/;
 var SDK_NOW = `${SDK2}/v${API_VERSION}`;
 var TEST_RUNTIME = "wellactually:test-runtime";
+var HANDLER_RUNTIME = "wellactually:handler-runtime";
+var DETECTOR_ENTRY = "__detector__.ts";
 var BUILT_INS = { "node:fs": "fs.ts", fs: "fs.ts", "node:path": "path.ts", path: "path.ts" };
 var VITEST = "vitest";
 var FIXTURES = /(^|\/)fixtures\//;
@@ -11284,10 +11636,10 @@ function detectorEntry(files) {
   return DETECTOR_ENTRIES.find((name) => name in files) ?? null;
 }
 function codeFiles(files) {
-  return Object.keys(files).filter((name) => /\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name)).sort();
+  return Object.keys(files).filter((name) => /\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name) && !isPackageFile(name)).sort();
 }
 function testFiles(files) {
-  return Object.keys(files).filter((name) => /\.test\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name)).sort();
+  return Object.keys(files).filter((name) => /\.test\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name) && !isPackageFile(name)).sort();
 }
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
@@ -11310,34 +11662,97 @@ function dirname(path9) {
   const slash = path9.lastIndexOf("/");
   return slash === -1 ? "" : path9.slice(0, slash);
 }
-async function buildDetector(files) {
+async function vendorPackages(files, source) {
+  let pins;
+  try {
+    pins = readPins(files);
+  } catch (error62) {
+    throw new BundleError(error62.message);
+  }
+  if (Object.keys(pins).length === 0) {
+    return files;
+  }
+  const fetched = {};
+  await buildDetector(files, source, fetched);
+  await buildTestBundle(files, source, fetched);
+  const names = /* @__PURE__ */ new Set();
+  for (const path9 of Object.keys(fetched)) {
+    const name = packageOf(path9);
+    if (name !== null) {
+      names.add(name);
+    }
+  }
+  for (const name of names) {
+    const from = await source(name, pins[name] ?? null, TAKEN_FROM);
+    if (from !== null) {
+      fetched[`${PACKAGE_DIR}${name}/${TAKEN_FROM}`] = from;
+    }
+    for (const file2 of ["LICENSE", "LICENSE.md", "LICENSE.txt", "license", "LICENCE"]) {
+      const text2 = await source(name, pins[name] ?? null, file2);
+      if (text2 !== null) {
+        fetched[`${PACKAGE_DIR}${name}/${file2}`] = text2;
+        break;
+      }
+    }
+  }
+  return { ...fetched, ...files };
+}
+async function buildDetector(files, source, fetched = {}) {
   const entry = detectorEntry(files);
   if (!entry) {
     throw new BundleError(`no detector found; expected one of ${DETECTOR_ENTRIES.join(", ")}`);
   }
   const builtIns = /* @__PURE__ */ new Set();
-  const bundle = await build(files, entry, BUNDLE_GLOBAL, false, builtIns);
+  const made = [`import { __dispatch, __handlers } from "${HANDLER_RUNTIME}";`, `import "./${entry}";`, "export const handlers = __handlers;", "export const run = __dispatch;", ""].join("\n");
+  const bundle = await build({ ...files, [DETECTOR_ENTRY]: made }, DETECTOR_ENTRY, BUNDLE_GLOBAL, false, builtIns, source, fetched);
   return { bundle, builtIns: [...builtIns].sort() };
 }
-async function buildTestBundle(files) {
+async function buildTestBundle(files, source, fetched = {}) {
   const tests = testFiles(files);
   if (tests.length === 0) {
     return null;
   }
   const entry = [`import { __run } from "${TEST_RUNTIME}";`, ...tests.map((name) => `import "./${name}";`), "export const run = __run;", ""].join("\n");
-  return build({ ...files, [TEST_ENTRY]: entry }, TEST_ENTRY, TESTS_GLOBAL, true);
+  return build({ ...files, [TEST_ENTRY]: entry }, TEST_ENTRY, TESTS_GLOBAL, true, /* @__PURE__ */ new Set(), source, fetched);
 }
-async function build(files, entry, globalName, isTest, builtIns = /* @__PURE__ */ new Set()) {
+async function build(files, entry, globalName, isTest, builtIns, source, fetched) {
   const tests = new Set(isTest ? testFiles(files) : []);
+  let pins;
+  try {
+    pins = readPins(files);
+  } catch (error62) {
+    throw new BundleError(error62.message);
+  }
+  const missing = /* @__PURE__ */ new Set();
+  const read2 = async (path9) => {
+    const own2 = files[path9] ?? fetched[path9];
+    if (own2 !== void 0) {
+      return own2;
+    }
+    const name = packageOf(path9);
+    if (name === null || source === void 0 || missing.has(path9)) {
+      return null;
+    }
+    const text2 = await source(name, pins[name] ?? null, path9.slice(PACKAGE_DIR.length + name.length + 1));
+    if (text2 === null) {
+      missing.add(path9);
+      return null;
+    }
+    fetched[path9] = text2;
+    return text2;
+  };
   const virtual = {
     name: "principle-files",
     setup(build2) {
-      build2.onResolve({ filter: /.*/ }, (args) => {
+      build2.onResolve({ filter: /.*/ }, async (args) => {
         if (args.kind === "entry-point") {
           return { path: normalize(args.path), namespace: "principle" };
         }
         if (args.path === TEST_RUNTIME) {
           return { path: "test.ts", namespace: "sdk" };
+        }
+        if (args.path === HANDLER_RUNTIME) {
+          return { path: "handlers.ts", namespace: "sdk" };
         }
         const sdk = SDK_ENTRY.exec(args.path);
         if (sdk) {
@@ -11373,6 +11788,13 @@ async function build(files, entry, globalName, isTest, builtIns = /* @__PURE__ *
         if (args.namespace === "sdk" && args.path.startsWith("./")) {
           return { path: args.path.slice(2), namespace: "sdk" };
         }
+        if (args.namespace === "principle" && isPackageFile(args.importer) && args.path.startsWith(".")) {
+          const found = await resolveInPackage(read2, args.importer, args.path);
+          if (found === null) {
+            return { errors: [{ text: `cannot find "${args.path}" in the package ${packageOf(args.importer) ?? ""}` }] };
+          }
+          return { path: found, namespace: "principle" };
+        }
         if (args.namespace === "principle" && args.path.startsWith(".")) {
           const joined = normalize(`${dirname(args.importer)}/${args.path}`);
           const found = [joined, `${joined}.ts`, `${joined}.js`].find((candidate) => candidate in files);
@@ -11381,10 +11803,25 @@ async function build(files, entry, globalName, isTest, builtIns = /* @__PURE__ *
           }
           return { errors: [{ text: `cannot find "${args.path}" in the principle's files` }] };
         }
+        const fromPackage = packageOf(args.importer);
+        if (args.path.startsWith("node:") || NODE_MODULES.has(args.path)) {
+          const who = fromPackage === null ? `A ${isTest ? "test" : "detector"}` : `The package ${fromPackage}`;
+          return { errors: [{ text: `"${args.path}" cannot be imported. ${who} runs in an isolate without Node. Of Node there is node:fs and node:path, to read files.` }] };
+        }
+        if (args.namespace === "principle" && (fromPackage !== null || Object.keys(pins).length > 0)) {
+          try {
+            return { path: await resolvePackage(read2, args.path, pins, args.importer, args.kind === "require-call"), namespace: "principle" };
+          } catch (error62) {
+            if (error62 instanceof PackageError) {
+              return { errors: [{ text: error62.message }] };
+            }
+            throw error62;
+          }
+        }
         return {
           errors: [
             {
-              text: `"${args.path}" cannot be imported. A ${isTest ? "test" : "detector"} may import its own relative files, ${SDK_NOW}, node:fs and node:path${isTest ? `, ${SDK_NOW}/test and ${VITEST}` : ""}, nothing else.`
+              text: `"${args.path}" cannot be imported. A ${isTest ? "test" : "detector"} may import its own relative files, ${SDK_NOW}, node:fs and node:path${isTest ? `, ${SDK_NOW}/test and ${VITEST}` : ""}, and the packages its package.json names.`
             }
           ]
         };
@@ -11393,12 +11830,17 @@ async function build(files, entry, globalName, isTest, builtIns = /* @__PURE__ *
         const contents = SDK_SOURCES[args.path];
         return contents === void 0 ? { errors: [{ text: `the SDK has no file "${args.path}"` }] } : { contents, loader: "ts" };
       });
-      build2.onLoad({ filter: /.*/, namespace: "principle" }, (args) => {
-        const contents = files[args.path];
-        if (contents === void 0) {
+      build2.onLoad({ filter: /.*/, namespace: "principle" }, async (args) => {
+        const contents = await read2(args.path);
+        if (contents === null) {
           return { errors: [{ text: `"${args.path}" is not one of the principle's files` }] };
         }
-        const loader = args.path.endsWith(".ts") ? "ts" : "js";
+        let loader = "js";
+        if (args.path.endsWith(".ts")) {
+          loader = "ts";
+        } else if (args.path.endsWith(".json")) {
+          loader = "json";
+        }
         if (tests.has(args.path)) {
           return { contents: `import { __file as __wellactuallyFile } from "${TEST_RUNTIME}";__wellactuallyFile(${JSON.stringify(args.path)});${contents}`, loader };
         }
@@ -11417,6 +11859,8 @@ async function build(files, entry, globalName, isTest, builtIns = /* @__PURE__ *
       platform: "neutral",
       target: "es2020",
       logLevel: "silent",
+      // Packages ask which build they are in. There is no process to ask in the isolate.
+      define: { "process.env.NODE_ENV": '"production"' },
       plugins: [virtual]
     });
     code = result.outputFiles?.[0]?.text ?? "";
@@ -11435,72 +11879,35 @@ function formatMessage(message) {
   return `${where}${message.text}`;
 }
 
-// packages/core/src/glob.ts
-var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path9, pattern) {
-  let regex = cache.get(pattern);
-  if (!regex) {
-    regex = globToRegExp(pattern);
-    cache.set(pattern, regex);
-  }
-  return regex.test(path9);
-}
-function matchesAnyGlob(path9, globs) {
-  if (globs.length === 0) {
-    return true;
-  }
-  return globs.some((glob) => matchesGlob(path9, glob));
-}
-function globToRegExp(pattern) {
-  const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
-  let source = "";
-  let braceDepth = 0;
-  for (let i = 0; i < anchored.length; i++) {
-    const char = anchored[i] ?? "";
-    if (char === "*" && anchored[i + 1] === "*") {
-      const slashAfter = anchored[i + 2] === "/";
-      source += slashAfter ? "(?:.*/)?" : ".*";
-      i += slashAfter ? 2 : 1;
-      continue;
-    }
-    switch (char) {
-      case "*":
-        source += "[^/]*";
-        break;
-      case "?":
-        source += "[^/]";
-        break;
-      case "{":
-        braceDepth++;
-        source += "(?:";
-        break;
-      case "}":
-        if (braceDepth > 0) {
-          braceDepth--;
-          source += ")";
-          break;
-        }
-        source += "\\}";
-        break;
-      case ",":
-        source += braceDepth > 0 ? "|" : ",";
-        break;
-      default:
-        source += char.replace(/[.+^$()|[\]\\]/g, "\\$&");
-    }
-  }
-  return new RegExp(`^${source}$`);
-}
-
 // packages/core/src/ctx.ts
 function applies(manifest, ctx) {
-  if (!manifest.events.includes(ctx.event)) {
-    return false;
+  const file2 = ctx.file;
+  return (manifest.handlers ?? []).some((handler) => handler.event === ctx.event && (!file2 || matchesGlobs(file2.relativePath, handler.globs)));
+}
+
+// packages/core/src/finding.ts
+var MAX_QUOTED_LENGTH = 300;
+function describeFinding(ctx, finding) {
+  const place = describePlace(ctx, finding);
+  if (finding.file === void 0 || finding.file === ctx.file?.relativePath) {
+    return place ?? (ctx.file ? `the file ${ctx.file.relativePath}` : null);
   }
-  if (!ctx.file) {
-    return true;
+  if (place === null) {
+    return `the file ${finding.file}`;
   }
-  return matchesAnyGlob(ctx.file.relativePath, manifest.globs);
+  return `the file ${finding.file}, from ${place}`;
+}
+function describePlace(ctx, finding) {
+  const match = finding.match === void 0 ? null : JSON.stringify(finding.match);
+  if (finding.line === void 0) {
+    return match;
+  }
+  const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  const text2 = (lines[finding.line - 1] ?? "").trim();
+  const quoted = text2.length > MAX_QUOTED_LENGTH ? `${text2.slice(0, MAX_QUOTED_LENGTH)}\u2026` : text2;
+  const where = finding.endLine === void 0 ? `line ${finding.line}` : `lines ${finding.line}-${finding.endLine}`;
+  const named = match !== null && finding.match !== text2 ? `${where}, ${match}` : where;
+  return quoted === "" ? named : `${named}: ${quoted}`;
 }
 
 // packages/core/src/manifest.ts
@@ -11517,7 +11924,7 @@ function parsePrinciple(source) {
   const lines = advice.split(/\r?\n/);
   if (lines[0] === "---") {
     throw new ManifestError(
-      "principle.md no longer has a header. Remove the block between the --- lines: the id is the folder name, the title is the # heading, the summary is the paragraph below it, and events and globs are exports of detector.ts."
+      "principle.md no longer has a header. Remove the block between the --- lines: the id is the folder name, the title is the # heading, the summary is the paragraph below it, and detector.ts says which events and files it handles."
     );
   }
   const heading = /^#\s+(.+?)\s*#*$/.exec(lines[0] ?? "");
@@ -11557,16 +11964,33 @@ function parsePrinciple(source) {
 function plain(markdown) {
   return markdown.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/`([^`]*)`/g, "$1").replace(/(\*\*|__)(.+?)\1/g, "$2").trim();
 }
-function readSettings(exported) {
-  const events = exported.events ?? ["write"];
-  if (!Array.isArray(events) || events.length === 0 || events.some((event) => !EVENTS.includes(event))) {
-    throw new ManifestError(`detector.ts must export events as a list of ${EVENTS.join(", ")}, for example: export const events = ["write"];`);
+var EXAMPLE = 'onWrite({ globs: ["**/*.ts"], *detect(event) { ... } });';
+function readHandlers(registered) {
+  if (!Array.isArray(registered) || registered.length === 0) {
+    throw new ManifestError(
+      `detector.ts registers no handler, so it would never run. Call onWrite, onRead, onPrompt, onCommand or onOutput at its top level, for example: ${EXAMPLE}`
+    );
   }
-  const globs = exported.globs ?? [];
-  if (!Array.isArray(globs) || globs.some((glob) => typeof glob !== "string" || glob === "")) {
-    throw new ManifestError('detector.ts must export globs as a list of strings, for example: export const globs = ["**/*.ts"];');
+  const handlers = [];
+  for (const raw of registered) {
+    const event = raw?.event;
+    if (!EVENTS.includes(event)) {
+      throw new ManifestError(`detector.ts registers a handler for an event this host does not know: ${String(raw?.event)}`);
+    }
+    const globs = raw.globs ?? [];
+    if (!Array.isArray(globs) || globs.some((glob) => typeof glob !== "string" || glob === "" || glob === "!")) {
+      throw new ManifestError(`the globs of a handler are a list of patterns, for example: ${EXAMPLE}`);
+    }
+    if (globs.length > 0 && !FILE_EVENTS.includes(event)) {
+      throw new ManifestError(`only onWrite and onRead take globs, and a handler for ${event} has some`);
+    }
+    handlers.push({ event, globs });
   }
-  return { events: [...new Set(events)], globs };
+  return {
+    events: EVENTS.filter((event) => handlers.some((handler) => handler.event === event)),
+    globs: [...new Set(handlers.flatMap((handler) => handler.globs))],
+    handlers
+  };
 }
 var LANGUAGE_OF_EXTENSION = {
   ts: "typescript",
@@ -11590,6 +12014,9 @@ var LANGUAGE_OF_EXTENSION = {
 function languagesOf(globs) {
   const languages = /* @__PURE__ */ new Set();
   for (const glob of globs) {
+    if (glob.startsWith("!")) {
+      continue;
+    }
     const extension = /\.(?:\{([a-z0-9,]+)\}|([a-z0-9]+))$/.exec(glob);
     for (const name of (extension?.[1] ?? extension?.[2] ?? "").split(",")) {
       if (name !== "") {
@@ -11606,26 +12033,13 @@ var DEFAULT_LIMITS = {
   memoryBytes: 32 * 1024 * 1024
 };
 var MAX_FINDINGS = 20;
-var MAX_EVIDENCE_LENGTH = 300;
-var RUN = `
-(function () {
-  const out = [];
-  const found = ${BUNDLE_GLOBAL}.detect(JSON.parse(__ctx));
-  if (found) {
-    for (const finding of found) {
-      out.push(finding);
-      if (out.length > ${MAX_FINDINGS}) {
-        break;
-      }
-    }
-  }
-  return JSON.stringify(out);
-})()
-`;
-var SETTINGS = `JSON.stringify({ events: ${BUNDLE_GLOBAL}.events, globs: ${BUNDLE_GLOBAL}.globs, api: ${BUNDLE_GLOBAL}.api })`;
-async function readExports(bundle, limits = DEFAULT_LIMITS) {
+var MAX_MATCH_LENGTH = 300;
+var RUN = `JSON.stringify(${BUNDLE_GLOBAL}.run(JSON.parse(__ctx), ${MAX_FINDINGS}))`;
+var LOAD_LIMITS = { ...DEFAULT_LIMITS, ms: 2e3 };
+var HANDLERS = `JSON.stringify(${BUNDLE_GLOBAL}.handlers())`;
+async function readRegistered(bundle, limits = LOAD_LIMITS) {
   const { json: json2, error: error62 } = evaluateIn(await loadSandbox(), `${bundle}
-;${SETTINGS}`, NOTHING, limits);
+;${HANDLERS}`, NOTHING, limits);
   if (json2 === null) {
     throw new Error(`detector.ts could not be loaded: ${error62 ?? "it returned nothing"}`);
   }
@@ -11729,6 +12143,15 @@ function describeError(dumped, limits) {
   const name = typeof dumped === "object" && dumped !== null && "name" in dumped ? `${String(dumped.name)}: ` : "";
   return `${name}${message}`;
 }
+function fromRoot(file2, root) {
+  if (root !== null && file2.startsWith(`${root}/`)) {
+    return file2.slice(root.length + 1);
+  }
+  return file2;
+}
+function hasLines(ctx) {
+  return ctx.file !== null || ctx.event === "output";
+}
 function validateFindings(json2, ctx) {
   const findings = [];
   const dropped = [];
@@ -11741,50 +12164,71 @@ function validateFindings(json2, ctx) {
   if (!Array.isArray(parsed)) {
     return { findings, dropped: ["the detector did not return a list of findings"] };
   }
-  const lineCount = ctx.file?.lines.length ?? 0;
+  const lines = ctx.file?.lines ?? ctx.text.split("\n");
   for (const raw of parsed) {
     if (findings.length >= MAX_FINDINGS) {
       dropped.push(`more than ${MAX_FINDINGS} findings; the rest were dropped`);
       break;
     }
-    if (typeof raw !== "object" || raw === null) {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
       dropped.push("a finding that is not an object");
       continue;
     }
     const candidate = raw;
-    const evidence = typeof candidate.evidence === "string" ? candidate.evidence.trim() : "";
-    if (evidence === "") {
-      dropped.push("a finding without evidence");
-      continue;
-    }
-    if (evidence.length > MAX_EVIDENCE_LENGTH) {
-      dropped.push(`evidence longer than ${MAX_EVIDENCE_LENGTH} characters`);
-      continue;
-    }
-    if (!ctx.text.includes(evidence)) {
-      dropped.push(`evidence that does not occur in the input: ${JSON.stringify(evidence.slice(0, 60))}`);
-      continue;
-    }
-    const finding = { evidence };
+    const finding = {};
     if (candidate.line !== void 0) {
       const line = candidate.line;
-      if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lineCount) {
-        dropped.push(`a finding on line ${String(line)}, which the file does not have`);
-        continue;
+      if (!hasLines(ctx)) {
+        dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
+      } else if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lines.length) {
+        dropped.push(`line ${String(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+      } else {
+        finding.line = line;
       }
-      const firstLine = evidence.split("\n")[0] ?? "";
-      if (!(ctx.file?.lines[line - 1] ?? "").includes(firstLine)) {
-        dropped.push(`a finding on line ${line} whose evidence is not on that line: ${JSON.stringify(firstLine.slice(0, 60))}`);
-        continue;
+    }
+    if (candidate.endLine !== void 0) {
+      const endLine = candidate.endLine;
+      if (finding.line === void 0) {
+        dropped.push("the endLine of a finding without a line");
+      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || endLine > lines.length) {
+        dropped.push(`endLine ${String(endLine)} of a finding on line ${finding.line}`);
+      } else if (endLine > finding.line) {
+        finding.endLine = endLine;
       }
-      finding.line = line;
+    }
+    if (candidate.match !== void 0) {
+      const match = typeof candidate.match === "string" ? candidate.match.trim() : "";
+      const scope = finding.line === void 0 ? [ctx.text] : lines.slice(finding.line - 1, finding.endLine ?? finding.line);
+      if (match === "") {
+        dropped.push("an empty match");
+      } else if (match.includes("\n")) {
+        dropped.push(`a match that spans lines: ${JSON.stringify(match.slice(0, 60))}. Name the lines with line and endLine.`);
+      } else if (match.length > MAX_MATCH_LENGTH) {
+        dropped.push(`a match longer than ${MAX_MATCH_LENGTH} characters`);
+      } else if (!scope.some((text2) => text2.includes(match))) {
+        dropped.push(`a match that does not occur ${finding.line === void 0 ? "in the input" : finding.endLine === void 0 ? `on line ${finding.line}` : `in lines ${finding.line} to ${finding.endLine}`}: ${JSON.stringify(match.slice(0, 60))}`);
+      } else {
+        finding.match = match;
+      }
+    }
+    if (candidate.file !== void 0) {
+      const file2 = typeof candidate.file === "string" ? candidate.file.trim() : "";
+      if (file2 === "") {
+        dropped.push("the file of a finding, which is not a path");
+      } else if (file2.includes("\n")) {
+        dropped.push("the file of a finding, which spans lines");
+      } else if (file2.length > MAX_MATCH_LENGTH) {
+        dropped.push(`the file of a finding, a path longer than ${MAX_MATCH_LENGTH} characters`);
+      } else {
+        finding.file = fromRoot(file2, ctx.project);
+      }
     }
     if (candidate.depth !== void 0) {
       if (candidate.depth !== "pointer" && candidate.depth !== "full") {
-        dropped.push(`a finding with unknown depth ${JSON.stringify(candidate.depth)}`);
-        continue;
+        dropped.push(`the unknown depth ${JSON.stringify(candidate.depth)}`);
+      } else {
+        finding.depth = candidate.depth;
       }
-      finding.depth = candidate.depth;
     }
     findings.push(finding);
   }
@@ -11845,16 +12289,35 @@ function scanAdvice(advice) {
 // packages/core/src/principle.ts
 var MAX_FILES = 60;
 var MAX_TOTAL_BYTES = 512 * 1024;
+var MAX_PACKAGE_FILES = 500;
+var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 var MAX_DETECT_CALLS = 300;
 var MAX_SHOWN_TEXT = 4e3;
-function assertFileMapSize(files, knownTotal) {
-  const count2 = Object.keys(files).length;
+function assertFileMapSize(files) {
+  let count2 = 0;
+  let total = 0;
+  let packageCount = 0;
+  let packageTotal = 0;
+  for (const [name, content] of Object.entries(files)) {
+    if (isPackageFile(name)) {
+      packageCount++;
+      packageTotal += byteLength(content);
+    } else {
+      count2++;
+      total += byteLength(content);
+    }
+  }
   if (count2 > MAX_FILES) {
     throw new ManifestError(`a principle may hold at most ${MAX_FILES} files, this one has ${count2}`);
   }
-  const total = knownTotal ?? Object.values(files).reduce((sum, content) => sum + byteLength(content), 0);
   if (total > MAX_TOTAL_BYTES) {
     throw new ManifestError(`a principle may hold at most ${MAX_TOTAL_BYTES / 1024} KB, this one has ${Math.ceil(total / 1024)} KB`);
+  }
+  if (packageCount > MAX_PACKAGE_FILES) {
+    throw new ManifestError(`the packages of a principle may hold at most ${MAX_PACKAGE_FILES} files, these have ${packageCount}`);
+  }
+  if (packageTotal > MAX_PACKAGE_BYTES) {
+    throw new ManifestError(`the packages of a principle may hold at most ${MAX_PACKAGE_BYTES / 1024 / 1024} MB, these have ${(packageTotal / 1024 / 1024).toFixed(1)} MB`);
   }
 }
 async function buildPrinciple(files) {
@@ -11864,21 +12327,11 @@ async function buildPrinciple(files) {
   }
   const { title, summary, advice } = parsePrinciple(source);
   const { bundle, builtIns } = await buildDetector(files);
-  let exported;
-  try {
-    exported = await readExports(bundle);
-  } catch (error62) {
-    throw new BundleError(error62.message);
-  }
-  const { events, globs } = readSettings(exported);
   let api;
   try {
     api = importedApi(Object.fromEntries(codeFiles(files).map((name) => [name, files[name] ?? ""])));
   } catch (error62) {
     throw new ManifestError(error62.message);
-  }
-  if (exported.api !== void 0) {
-    throw new ManifestError(`detector.ts exports api. The version is part of the import path now, and this principle imports version ${api}. Remove the line.`);
   }
   for (const name of builtIns) {
     const since = BUILT_IN_SINCE[name] ?? 1;
@@ -11886,7 +12339,23 @@ async function buildPrinciple(files) {
       throw new ManifestError(`detector.ts imports ${name}, which exists from detector API ${since} on, and the principle is written against version ${api}. Import from "@wellactually/sdk/v${API_VERSION}" to use it.`);
     }
   }
-  const manifest = { title, summary, languages: languagesOf(globs), events, globs, api };
+  let registered;
+  try {
+    registered = await readRegistered(bundle);
+  } catch (error62) {
+    throw new BundleError(error62.message);
+  }
+  const { events, globs, handlers } = readHandlers(registered);
+  const manifest = { title, summary, languages: languagesOf(globs), events, globs, handlers, api };
+  let packages;
+  try {
+    packages = packagesOf(files);
+  } catch (error62) {
+    throw new ManifestError(error62.message);
+  }
+  if (packages.length > 0) {
+    manifest.packages = packages;
+  }
   return { manifest, advice, bundle, hash: await hashPrinciple(manifest, advice, bundle) };
 }
 async function hashPrinciple(manifest, advice, bundle) {
@@ -11969,7 +12438,7 @@ function answerDetect(built, files, call2, run, record2 = () => {
   const { event, options } = typeof call2 === "object" && call2 !== null ? call2 : {};
   const ctx = eventCtx(event);
   if (!ctx) {
-    return { error: "detect() needs an event from write(), edit(), read(), prompt() or command()" };
+    return { error: "detect() needs an event from write(), edit(), read(), prompt(), command() or output()" };
   }
   const fixture = options?.project;
   if (fixture !== void 0 && typeof fixture !== "string") {
@@ -12003,7 +12472,7 @@ function answerDetect(built, files, call2, run, record2 = () => {
     return { error: `The detector failed: ${result.error}` };
   }
   if (result.dropped.length > 0) {
-    return { error: `The host dropped ${result.dropped.join("; ")}.` };
+    return { error: `The host would leave out ${result.dropped.join("; ")}.` };
   }
   recorded.findings = result.findings;
   return { findings: result.findings };
@@ -12028,6 +12497,9 @@ function eventCtx(raw) {
   const event = raw;
   if (event.event === "prompt" || event.event === "command") {
     return typeof event.text === "string" ? textCtx(event.event, event.text) : null;
+  }
+  if (event.event === "output") {
+    return typeof event.text === "string" && typeof event.command === "string" ? textCtx("output", event.text, void 0, event.command) : null;
   }
   const relativePath = event.file?.relativePath;
   if (event.event !== "write" && event.event !== "read" || typeof relativePath !== "string" || typeof event.file?.content !== "string") {
@@ -12073,29 +12545,31 @@ if (items.length === 0) {
 Name the cases where the principle does not apply.
 The detector should stay quiet on exactly those, and a test should prove it.
 `,
-    "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk/v${API_VERSION}";
-
-/** When the detector runs: write, read, prompt, command. */
-export const events: EventName[] = ["write"];
-
-/** Which files it runs on. Leave the list empty for every file. */
-export const globs = ["**/*.ts"];
+    "detector.ts": `import { onWrite } from "@wellactually/sdk/v${API_VERSION}";
 
 /**
- * Runs inside an isolate: no network, no process, nothing to write to.
- * It gets a context and yields findings. Evidence must be text from the input.
- * It can read the files of the project with node:fs, from ctx.file.path.
+ * A detector registers a handler per event it reacts to: onWrite, onRead,
+ * onPrompt, onCommand and onOutput. Each takes one object: globs for the
+ * files it wants, and detect, which gets the event and yields findings.
+ *
+ * It runs inside an isolate: no network, no process, nothing to write to.
+ * A finding says where, and the agent is shown that line. It can read the
+ * files of the project with node:fs, from event.file.path.
  *
  * Replace this stub. It flags a FIXME comment the agent writes.
  */
-export function* detect(ctx: Ctx): Generator<Finding> {
-  // Only lines the agent wrote. Code that was already there stays unjudged.
-  for (const written of writtenLines(ctx)) {
-    if (/\\/\\/\\s*FIXME\\b/.test(written.text)) {
-      yield { line: written.line, evidence: written.text.trim() };
+onWrite({
+  globs: ["**/*.ts", "!**/*.d.ts"],
+  *detect(event) {
+    // Only lines the agent wrote. Code that was already there stays unjudged.
+    for (const written of event.written) {
+      // written.text is the line as it is in the file, comments included.
+      if (/\\/\\/\\s*FIXME\\b/.test(written.text)) {
+        yield { line: written.line };
+      }
     }
-  }
-}
+  },
+});
 `,
     "detector.test.ts": `import { expect, test } from "vitest";
 import { detect, edit, source, write } from "@wellactually/sdk/v${API_VERSION}/test";
@@ -12103,7 +12577,7 @@ import { detect, edit, source, write } from "@wellactually/sdk/v${API_VERSION}/t
 // Run with vitest, for example through npm test. The registry runs the same file again.
 // A test builds the event a detector receives and checks what it reports.
 // write() is a file the agent wrote in full, edit() one it changed, and there
-// are read(), prompt() and command() as well.
+// are read(), prompt(), command() and output() as well.
 
 const code = source\`
   export function total(items: number[]): number {
@@ -12113,7 +12587,7 @@ const code = source\`
 \`;
 
 test("fires on a FIXME the agent writes", () => {
-  expect(detect(write("src/total.ts", code))).toEqual([{ line: 2, evidence: "// FIXME: handle the empty list" }]);
+  expect(detect(write("src/total.ts", code))).toEqual([{ line: 2 }]);
 });
 
 test("stays quiet on a FIXME that was already there when the agent edits another line", () => {
@@ -12125,7 +12599,7 @@ test("stays quiet on an ordinary comment", () => {
 });
 
 test("stays quiet in other languages", () => {
-  // The globs in detector.ts do not select this file, so the detector never runs.
+  // The globs of the handler do not select this file, so the detector never runs.
   expect(detect(write("total.py", "# FIXME: this is Python"))).toEqual([]);
 });
 `
@@ -12143,7 +12617,6 @@ import os from "node:os";
 import path from "node:path";
 function readPrincipleDir(dir) {
   const files = {};
-  let total = 0;
   const walk = (current2) => {
     for (const entry of fs.readdirSync(current2, { withFileTypes: true })) {
       if (entry.name.startsWith(".") || entry.name === "node_modules") {
@@ -12156,13 +12629,76 @@ function readPrincipleDir(dir) {
       }
       const relative = path.relative(dir, full).split(path.sep).join("/");
       const content = fs.readFileSync(full, "utf8");
-      total += byteLength(content);
       files[relative] = content;
     }
   };
   walk(dir);
-  assertFileMapSize(files, total);
+  assertFileMapSize(files);
   return files;
+}
+function diskPackages(dir) {
+  const roots = /* @__PURE__ */ new Map();
+  const rootOf = (name) => {
+    const known = roots.get(name);
+    if (known !== void 0) {
+      return known;
+    }
+    let found = null;
+    for (let current2 = path.resolve(dir); ; current2 = path.dirname(current2)) {
+      const candidate = path.join(current2, "node_modules", name);
+      if (fs.existsSync(path.join(candidate, "package.json"))) {
+        found = candidate;
+        break;
+      }
+      if (current2 === path.dirname(current2)) {
+        break;
+      }
+    }
+    roots.set(name, found);
+    return found;
+  };
+  return async (name, _version, file2) => {
+    const root = rootOf(name);
+    if (root === null) {
+      return null;
+    }
+    if (file2 === TAKEN_FROM) {
+      return takenFrom(root, name);
+    }
+    const full = path.resolve(root, file2);
+    if (!full.startsWith(root + path.sep)) {
+      return null;
+    }
+    try {
+      if (!fs.statSync(full).isFile()) {
+        return null;
+      }
+      return fs.readFileSync(full, "utf8");
+    } catch {
+      return null;
+    }
+  };
+}
+function takenFrom(root, name) {
+  const modules = root.slice(0, root.length - name.length - 1);
+  let lock;
+  try {
+    lock = JSON.parse(fs.readFileSync(path.join(modules, ".package-lock.json"), "utf8"));
+  } catch {
+    return null;
+  }
+  const resolved = lock.packages?.[`node_modules/${name}`]?.resolved;
+  if (typeof resolved !== "string" || !/^(?:git[+:]|github:)/.test(resolved) || !isGitReference(resolved)) {
+    return null;
+  }
+  const github = parseGitHub(resolved);
+  if (github?.ref) {
+    return `github:${github.owner}/${github.repo}#${github.ref}`;
+  }
+  return resolved;
+}
+async function readPrinciple(dir) {
+  return vendorPackages(readPrincipleDir(dir), diskPackages(dir));
 }
 function scaffold(slug, parent) {
   const files = scaffoldFiles(slug);
@@ -12260,7 +12796,7 @@ function diskFiles() {
 }
 
 // packages/core/src/board.ts
-var DEFAULT_REGISTRY = "https://wellactually.dev";
+var DEFAULT_REGISTRY = "https://web-production-a1cda.up.railway.app";
 function boardHome() {
   return process.env.WELLACTUALLY_HOME ?? path2.join(os2.homedir(), ".wellactually");
 }
@@ -12361,8 +12897,9 @@ async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ ne
 var OPENERS = {
   write: "You just changed this file, so fixing it belongs in the change you are already making. Parts of the file you did not touch are not yours to clean up unless that is the task.",
   read: "You only read this file. You did not write this code, so cleaning it up is not your job. Apply the advice to whatever you do change.",
-  prompt: "A name matched in what the user wrote. No code was inspected and nothing is known to be wrong. Treat it as a recommendation while you work.",
-  command: "This is about the command you are about to run."
+  prompt: "This is about what was just asked for. No code was inspected and nothing is known to be wrong. Treat it as a recommendation while you work.",
+  command: "This is about the command you are about to run.",
+  output: "This is about what the command you ran printed."
 };
 function frame(ctx, firings, alreadyShown = /* @__PURE__ */ new Set()) {
   if (firings.length === 0) {
@@ -12379,10 +12916,13 @@ function frame(ctx, firings, alreadyShown = /* @__PURE__ */ new Set()) {
     const full = findings.some((finding) => finding.depth !== "pointer") && !alreadyShown.has(principle.hash);
     const expert = principle.id.split("/")[0] ?? "";
     lines.push(`<principle id="${principle.id}" expert="${expert}" title=${JSON.stringify(principle.manifest.title)}>`);
-    for (const finding of findings) {
-      lines.push(`- ${finding.line ? `line ${finding.line}: ` : ""}${finding.evidence}`);
+    const places = new Set(findings.map((finding) => describeFinding(ctx, finding)).filter((place) => place !== null));
+    for (const place of places) {
+      lines.push(`- ${place}`);
     }
-    lines.push("");
+    if (places.size > 0) {
+      lines.push("");
+    }
     lines.push(full ? principle.advice : principle.manifest.summary);
     lines.push("</principle>", "");
   }
@@ -12448,6 +12988,14 @@ async function drainDetections(send) {
 import path4 from "node:path";
 var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "MultiEdit"]);
 var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "exec_command"]);
+var SUBAGENT_TOOLS = /* @__PURE__ */ new Set(["Task", "Agent"]);
+var MAX_OUTPUT_LENGTH = 2e5;
+function printed(response) {
+  if (typeof response === "string") {
+    return response;
+  }
+  return [response?.stdout, response?.stderr, response?.output].filter((part) => typeof part === "string" && part !== "").join("\n");
+}
 function eventsOf(payload, readFile) {
   const event = payload.hook_event_name ?? "";
   const tool = payload.tool_name ?? "";
@@ -12462,14 +13010,21 @@ function eventsOf(payload, readFile) {
     return fileCtx(kind, relativePath, content2, written, { ...where, isNew });
   };
   if (event === "UserPromptSubmit") {
-    return payload.prompt ? [textCtx("prompt", payload.prompt, sessionRoot())] : [];
+    return payload.prompt ? [textCtx("prompt", payload.prompt, sessionRoot(), "", toPosix(cwd))] : [];
   }
   if (event === "PreToolUse" && SHELL_TOOLS.has(tool)) {
     const command = input2.command ?? input2.cmd;
-    return command ? [textCtx("command", command, sessionRoot())] : [];
+    return command ? [textCtx("command", command, sessionRoot(), "", toPosix(cwd))] : [];
+  }
+  if (event === "PreToolUse" && SUBAGENT_TOOLS.has(tool)) {
+    return input2.prompt ? [textCtx("prompt", input2.prompt, sessionRoot(), "", toPosix(cwd))] : [];
   }
   if (event !== "PostToolUse") {
     return [];
+  }
+  if (SHELL_TOOLS.has(tool)) {
+    const text2 = printed(payload.tool_response).slice(0, MAX_OUTPUT_LENGTH);
+    return text2.trim() === "" ? [] : [textCtx("output", text2, sessionRoot(), input2.command ?? input2.cmd ?? "", toPosix(cwd))];
   }
   if (tool === "apply_patch") {
     return patchedFiles(input2.command ?? input2.patch ?? "").flatMap(({ file: patched, added, isNew }) => {
@@ -12490,7 +13045,7 @@ function eventsOf(payload, readFile) {
     return [file2("read", absolute, content)];
   }
   if (tool === "Write") {
-    const response = payload.tool_response;
+    const response = typeof payload.tool_response === "string" ? null : payload.tool_response;
     const created = response?.type === "create" || response !== null && response !== void 0 && "originalFile" in response && response.originalFile === null;
     return [file2("write", absolute, content, void 0, created)];
   }
@@ -12782,7 +13337,7 @@ async function probeRepo(built, dir, maxFiles = 5e3) {
       if (report.samples.length >= MAX_SAMPLES) {
         break;
       }
-      report.samples.push({ path: relative, line: finding.line ?? null, evidence: finding.evidence });
+      report.samples.push({ path: relative, line: finding.line ?? null, text: describeFinding(ctx, finding) ?? "" });
     }
   }
   report.rate = report.matched === 0 ? 0 : report.fired / report.matched;
@@ -12793,7 +13348,7 @@ async function probeRepo(built, dir, maxFiles = 5e3) {
     return report;
   }
   if (report.matched < MIN_FILES_FOR_VERDICT) {
-    report.verdict = `Only ${report.matched} files matched the globs, too few to judge a fire rate.`;
+    report.verdict = `Only ${report.matched} files are ones the detector handles, too few to judge a fire rate.`;
     return report;
   }
   if (report.rate > MAX_FIRE_RATE) {
@@ -12905,6 +13460,10 @@ async function call(pathname, init = {}) {
   }
 }
 var WAKE_RETRIES = [1e3, 2e3, 4e3];
+function retryAfterMs(response) {
+  const seconds = Number(response.headers.get("retry-after"));
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1e3 : 0;
+}
 async function failure(response) {
   if (response.status === 401) {
     return new RegistryError("not signed in, or the token was revoked. Run `wellactually login`.");
@@ -12916,6 +13475,14 @@ function requireToken() {
   if (!readConfig().token) {
     throw new RegistryError("not signed in. Run `wellactually login`.");
   }
+}
+async function syncRepository(name) {
+  requireToken();
+  const response = await call("/api/repositories/sync", { method: "POST", body: { repository: name } });
+  if (!response.ok) {
+    throw await failure(response);
+  }
+  return await response.json();
 }
 async function startDeviceLogin() {
   const response = await call("/api/device/start", { method: "POST", body: {}, token: null });
@@ -12930,6 +13497,10 @@ async function finishDeviceLogin(start) {
     await new Promise((resolve) => setTimeout(resolve, start.interval * 1e3));
     const response = await call("/api/device/poll", { method: "POST", body: { device_code: start.device_code }, token: null });
     if (response.status === 202) {
+      continue;
+    }
+    if (response.status === 429) {
+      await new Promise((resolve) => setTimeout(resolve, retryAfterMs(response)));
       continue;
     }
     if (!response.ok) {
@@ -13058,7 +13629,7 @@ function idOf(dir) {
   return path7.basename(path7.resolve(dir));
 }
 async function checkDir(dir) {
-  const { built, report } = await checkPrinciple(readPrincipleDir(path7.resolve(dir)));
+  const { built, report } = await checkPrinciple(await readPrinciple(path7.resolve(dir)));
   const id = idOf(dir);
   if (isPrincipleId(id)) {
     return { id, built, report };
@@ -13071,7 +13642,7 @@ async function testPrinciple(dir) {
   return { id, title: built?.manifest.title ?? null, report };
 }
 async function tryPrinciple(dir, input2) {
-  const built = await buildPrinciple(readPrincipleDir(path7.resolve(dir)));
+  const built = await buildPrinciple(await readPrinciple(path7.resolve(dir)));
   const ctx = tryCtx(input2);
   if (!applies(built.manifest, ctx)) {
     return { applies: false, run: null, injected: "" };
@@ -13083,13 +13654,16 @@ async function tryPrinciple(dir, input2) {
 function tryCtx(input2) {
   const here = projectRootOf(process.cwd());
   if (input2.prompt !== void 0) {
-    return textCtx("prompt", input2.prompt, here === null ? null : toPosix(here));
+    return textCtx("prompt", input2.prompt, here === null ? null : toPosix(here), "", toPosix(process.cwd()));
+  }
+  if (input2.output !== void 0) {
+    return textCtx("output", input2.output, here === null ? null : toPosix(here), input2.command ?? "", toPosix(process.cwd()));
   }
   if (input2.command !== void 0) {
-    return textCtx("command", input2.command, here === null ? null : toPosix(here));
+    return textCtx("command", input2.command, here === null ? null : toPosix(here), "", toPosix(process.cwd()));
   }
   if (input2.file === void 0) {
-    throw new Error("pass a file, --prompt or --command");
+    throw new Error("pass a file, --prompt, --command or --output");
   }
   const absolute = path7.resolve(input2.file);
   const root = projectRootOf(path7.dirname(absolute));
@@ -13098,7 +13672,7 @@ function tryCtx(input2) {
   return fileCtx(input2.read ? "read" : "write", shown, fs6.readFileSync(absolute, "utf8"), void 0, { root: root === null ? null : toPosix(root), absolute: toPosix(absolute) });
 }
 async function probePrinciple(dir, repo) {
-  const built = await buildPrinciple(readPrincipleDir(path7.resolve(dir)));
+  const built = await buildPrinciple(await readPrinciple(path7.resolve(dir)));
   return probeRepo(built, path7.resolve(repo));
 }
 async function publishPrinciple(dir, note = "") {
@@ -13106,7 +13680,27 @@ async function publishPrinciple(dir, note = "") {
   if (!isPrincipleId(id)) {
     throw new Error(`The folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}. Rename the folder, then publish again.`);
   }
-  return publishDraft(id, readPrincipleDir(path7.resolve(dir)), note);
+  return publishDraft(id, await readPrinciple(path7.resolve(dir)), note);
+}
+async function syncRepo(name) {
+  return syncRepository(name);
+}
+function renderRepositorySync(result) {
+  const lines = [`${result.repository} at ${result.commit.slice(0, 7)}`];
+  for (const item of result.principles) {
+    let version2 = "";
+    if (item.version !== null) {
+      version2 = ` v${item.version}`;
+    }
+    lines.push(`  ${item.status.padEnd(9)} ${result.handle}/${item.slug}${version2}  ${item.path}`);
+    for (const problem of item.problems) {
+      lines.push(`            ${problem}`);
+    }
+  }
+  if (result.principles.length === 0) {
+    lines.push("  No folder with a principle.md and a detector.ts was found.");
+  }
+  return lines.join("\n");
 }
 async function principleHistory(id) {
   return fetchHistory(id);
@@ -13142,12 +13736,23 @@ async function pullPrinciple(id, dir, force) {
       fs6.rmSync(path7.join(target, name));
     }
   }
-  writeFileMap(target, source.files);
-  return { id: source.id, version: source.version, status: source.status, dir: target, files: Object.keys(source.files).sort() };
+  const own2 = {};
+  for (const [name, content] of Object.entries(source.files)) {
+    if (!isPackageFile(name)) {
+      own2[name] = content;
+    }
+  }
+  writeFileMap(target, own2);
+  return { id: source.id, version: source.version, status: source.status, dir: target, files: Object.keys(own2).sort() };
 }
 function renderPull(result) {
   const what = result.status === "draft" ? `the draft of version ${result.version}` : `version ${result.version}`;
-  return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).
+  let install = "";
+  if (result.files.includes("package.json")) {
+    install = `
+It uses packages. Install them first: npm install --prefix ${result.dir}`;
+  }
+  return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).${install}
 Edit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
 }
 function asLocal(built, id) {
@@ -13221,11 +13826,11 @@ function renderSwitch(result, on) {
 }
 function renderProbe(report) {
   const lines = [
-    `Scanned ${report.scanned} files, ${report.matched} matched the globs, ${report.fired} fired (${report.findings} findings). Slowest run ${report.slowestMs.toFixed(1)} ms.`,
+    `Scanned ${report.scanned} files, ${report.matched} are ones the detector handles, ${report.fired} fired (${report.findings} findings). Slowest run ${report.slowestMs.toFixed(1)} ms.`,
     report.verdict
   ];
   for (const sample of report.samples) {
-    lines.push(`  ${sample.path}${sample.line ? `:${sample.line}` : ""}  ${sample.evidence}`);
+    lines.push(`  ${sample.path}  ${sample.text}`);
   }
   for (const failure3 of report.errors.slice(0, 10)) {
     lines.push(`  \u2717 ${failure3.path}  ${failure3.error}`);
@@ -13234,7 +13839,7 @@ function renderProbe(report) {
 }
 function renderTry(result) {
   if (!result.applies || !result.run) {
-    return "The events and globs that detector.ts exports do not select this input, so the detector does not run.";
+    return "No handler in detector.ts wants this input, so the detector does not run.";
   }
   const { run } = result;
   if (run.error) {
@@ -13242,7 +13847,7 @@ function renderTry(result) {
   }
   const lines = [`${run.findings.length} findings in ${run.ms.toFixed(1)} ms.`];
   for (const dropped of run.dropped) {
-    lines.push(`Dropped: ${dropped}`);
+    lines.push(`Left out: ${dropped}`);
   }
   if (result.injected) {
     lines.push("", "The agent would be shown:", "", result.injected);
@@ -42650,19 +43255,28 @@ The name of the directory is the principle's id.
 
 - principle.md: plain markdown, the advice an agent reads. No header.
   Its \`# heading\` is the title. The paragraph right below it is the summary shown in lists: one sentence, at most 200 characters.
-- detector.ts: \`export function* detect(ctx)\` yielding findings \`{ line?, evidence, depth? }\`.
-  It also says when it runs: \`export const events = ["write"]\` (write, read, prompt, command) and \`export const globs = ["**/*.ts"]\`.
-  It imports types and helpers from \`@wellactually/sdk/v2\`. The v2 in the path is the detector API version it is written against, and its tests import from the same version. Keep the path as scaffold wrote it; what follows describes version 2.
-  It runs in an isolate without network or process. It may import @wellactually/sdk/v2, node:fs, node:path and its own relative files, and nothing else: no dependencies.
-  ctx.file.path is absolute, ctx.file.relativePath is the path from the project root and what globs match, ctx.file.isNew says the write created the file.
-  It can read other files with node:fs (readFileSync, existsSync, statSync, readdirSync; text only, read-only, sync only). Walk up from ctx.file.path to find a pubspec.yaml or package.json. ctx.project is the git root or null, do not rely on it.
-  Evidence must be text that occurs verbatim in the event's input, or the host drops the finding. Text read from another file cannot be evidence.
+- detector.ts: registers a handler per event it reacts to, at the top level of the file:
+  \`onWrite({ globs: ["**/*.ts", "!**/*.d.ts"], *detect(event) { for (const written of event.written) { if (/\\benum\\b/.test(written.text)) { yield { line: written.line }; } } } });\`
+  Each call takes one object: \`globs\` where the event has a file, and \`detect\`. Write it over several lines, \`globs\` and \`*detect(event) {\` each on their own line, with plain if statements. The star makes \`detect\` a generator method, because an arrow function cannot yield.
+  The handlers are \`onWrite\` (the agent wrote a file), \`onRead\` (it read one), \`onPrompt\` (the user typed, or the agent briefed a subagent), \`onCommand\` (a shell command is about to run) and \`onOutput\` (what a command printed). A detector registers as many as it needs, also several for one event.
+  \`onWrite\` and \`onRead\` take globs for the path from the project root: \`**\`, \`*\`, \`?\`, \`{a,b}\`, and a leading \`!\` excludes. Without globs the handler runs on every file.
+  Each handler gets the event of its kind. All have \`event.text\`, \`event.lines\` and \`event.project\`. Write and read have \`event.file\` (\`path\` absolute, \`relativePath\` from the project root, \`name\`, \`ext\`, \`content\`, \`lines\`, \`isNew\`). Write has \`event.written\`, the lines the agent wrote as \`{ line, text }\`: judge those, not the whole file. \`text\` is the line as it is in the file, comments and strings included, so skip a comment line yourself where it matters: \`if (written.text.trim().startsWith("//")) { continue; }\`. Command and output have \`event.command\`.
+  Prompt, command and output have \`event.cwd\`, the folder the session runs in. To keep a prompt handler to one kind of project, look from there: \`onPrompt({ *detect(event) { if (findUp("pubspec.yaml", event.cwd)) { yield* mentioned(event, ["riverpod"]); } } })\`. \`findUp(name, from)\` from the SDK returns the nearest file of that name upwards, or null.
+  A handler yields findings. A helper that returns a list of them is passed on with \`yield*\`. A finding is \`{ line?, endLine?, match?, file?, depth? }\` and nothing in it is required.
+  A finding without a \`line\` in \`onWrite\` or \`onRead\` points at the file: \`yield {}\` says the file itself is the problem, for its name, its place or something it lacks. Never pick a first line to stand in for the file. Elsewhere \`yield {}\` just fires.
+  \`file\` points at another file than the one of the event, as a path from the project root or an absolute one: \`yield { line: written.line, file: "assets/hero.jpg" }\` for a jpg that should be a webp. \`line\` and \`match\` stay about the event.
+  \`line\` is the 1-based line of the file, or of what a command printed. The agent is shown that line, quoted by the host, so a finding carries no text of its own. \`endLine\` is for a finding that spans lines. Prompt and command findings have no line.
+  \`match\` is the exact text that triggered: the keyword in a prompt, a piece of a line. It must occur verbatim in the event, on the named line when there is one, and may not span lines. A match that does not is left out and the finding still fires. Text read from another file cannot be a match.
+  \`depth: "pointer"\` shows only the summary, for a word that matched while nothing is known to be wrong. \`mentioned(event, ["some phrase"])\` from the SDK returns that for a prompt. It finds a name where it stands alone, in any case and with or without separators (rxdart, rx_dart, RxDart).
+  It imports from \`@wellactually/sdk/v3\`. The v3 in the path is the detector API version it is written against, and its tests import from the same version. Keep the path as scaffold wrote it; what follows describes version 3.
+  It runs in an isolate without network or process. It may import @wellactually/sdk/v3, node:fs, node:path, its own relative files, and packages from npm. A package needs an entry in a package.json in the principle folder, \`{ "dependencies": { "yaml": "^2.9.1" } }\`, and has to be installed with npm install. Its code is copied into the principle on publish, at the version that is installed then. A package may also come from a repository, \`"dart-kit": "github:owner/dart-kit#main"\`, and may then be TypeScript. Only plain JavaScript works: a package that needs Node or WebAssembly fails at build time. The bundle may be 1 MB.
+  It can read other files with node:fs (readFileSync, existsSync, statSync, readdirSync; text only, read-only, sync only). Walk up from event.file.path to find a pubspec.yaml or package.json. event.project is the git root or null, do not rely on it.
 - *.test.ts: the tests. Any number of files, each complete on its own, with the source it tests written inline.
   A test builds the event a detector receives and checks what the detector reports:
-  \`expect(detect(write("lib/a.dart", content))).toEqual([{ line: 2, evidence: "late String name;" }])\`.
-  Events come from \`write(path, content)\`, \`edit(path, contentAfterTheEdit, { written })\`, \`read(path, content)\`, \`prompt(text)\` and \`command(text)\`.
+  \`expect(detect(write("lib/a.dart", content))).toEqual([{ line: 2 }])\`.
+  Events come from \`write(path, content)\`, \`edit(path, contentAfterTheEdit, { written })\`, \`read(path, content)\`, \`prompt(text)\`, \`command(text)\` and \`output(command, text)\`.
   \`edit\` is how to show that code which was already there is left alone: only \`written\` counts as written.
-  Import \`test\`, \`describe\` and \`expect\` from vitest, and the events, \`detect\` and \`source\` from @wellactually/sdk/v2/test.
+  Import \`test\`, \`describe\` and \`expect\` from vitest, and the events, \`detect\` and \`source\` from @wellactually/sdk/v3/test.
   For a detector that reads other files, put a small project into the principle, e.g. fixtures/flutter_app/pubspec.yaml, and pass it: \`detect(write("lib/a.dart", content), { project: "fixtures/flutter_app" })\`.
   The project sits at a made-up root, so never assert on absolute paths. \`write(path, content, { isNew: true })\` is a write that created the file.
   The tests are ordinary vitest files. Where the repository has vitest and @wellactually/sdk installed, npm test runs them. run_tests always works and also checks the publish gates.
@@ -42707,13 +43321,14 @@ ${AUTHORING_GUIDE}`)
   server.registerTool(
     "try",
     {
-      description: "Show one input to a principle's detector and return the findings and the exact text an agent would be shown. Pass exactly one of file, prompt or command.",
+      description: "Show one input to a principle's detector and return the findings and the exact text an agent would be shown. Pass exactly one of file, prompt or command. Add output to a command to show what it printed after it ran.",
       inputSchema: {
         dir: external_exports.string().describe("Absolute path of the principle directory"),
         file: external_exports.string().optional().describe("Absolute path of a file, treated as just written by the agent"),
         read: external_exports.boolean().optional().describe("Treat the file as read rather than written"),
         prompt: external_exports.string().optional().describe("A user message"),
-        command: external_exports.string().optional().describe("A shell command the agent is about to run")
+        command: external_exports.string().optional().describe("A shell command the agent is about to run"),
+        output: external_exports.string().optional().describe("What the command printed. With it the event is the output of the command")
       }
     },
     async ({ dir, ...input2 }) => text(renderTry(await tryPrinciple(dir, input2)))
@@ -42838,12 +43453,14 @@ Authoring
         --read                   ... as if the agent had only read it
         --prompt <text>          ... or a user message
         --command <text>         ... or a shell command
+        --output <text>          ... or what a command printed, with --command naming it
   wellactually probe <repo> [dir]       Run the detector over a repository and report the fire rate
   wellactually publish [dir]            Upload a private draft; a human releases it on the website
         -m, --message <text>     ... with a note on what changed, shown in the history
   wellactually pull <id>[@version] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's versions, what each changed and why
+  wellactually sync-repo <owner/repo>   Have the registry read a connected GitHub repository now
 
 Your advisory board
   wellactually login [--registry <url>] Sign in through the browser
@@ -42875,6 +43492,7 @@ async function main() {
       message: { type: "string", short: "m" },
       prompt: { type: "string" },
       command: { type: "string" },
+      output: { type: "string" },
       registry: { type: "string" },
       global: { type: "boolean", default: false }
     }
@@ -42903,7 +43521,7 @@ Next: wellactually test ${slug}`);
       const hasText = values.prompt !== void 0 || values.command !== void 0;
       const dir = positionals.length > (hasText ? 0 : 1) ? positionals[0] ?? "." : ".";
       const file2 = hasText ? void 0 : positionals[positionals.length - 1];
-      const result = await tryPrinciple(dir, { file: file2, read: values.read, prompt: values.prompt, command: values.command });
+      const result = await tryPrinciple(dir, { file: file2, read: values.read, prompt: values.prompt, command: values.command, output: values.output });
       print(result, renderTry(result));
       return 0;
     }
@@ -42928,6 +43546,16 @@ ${rendered}`);
       print(result, `${rendered}
 Draft version ${result.version} uploaded. Review and release it at ${result.url}`);
       return 0;
+    }
+    case "sync-repo": {
+      const name = positionals[0];
+      if (!name) {
+        console.error("usage: wellactually sync-repo <owner/repo>");
+        return 2;
+      }
+      const result = await syncRepo(name);
+      print(result, renderRepositorySync(result));
+      return result.principles.some((item) => item.status === "failed") ? 1 : 0;
     }
     case "log": {
       const id = positionals[0];
@@ -42985,7 +43613,7 @@ and confirm the code ${start.user_code}`);
         return 2;
       }
       console.log(
-        readConfig().stats ? "Reporting is on: `wellactually sync` sends how often each principle fired, as a count per day. No file, prompt or evidence is sent." : "Reporting is off: nothing about what fires on this machine is sent."
+        readConfig().stats ? "Reporting is on: `wellactually sync` sends how often each principle fired, as a count per day. No file, prompt or finding is sent." : "Reporting is off: nothing about what fires on this machine is sent."
       );
       return 0;
     }

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { apiOf } from "./api.ts";
 import { applies, fileCtx } from "./ctx.ts";
+import { describeFinding } from "./finding.ts";
 import { diskFiles, toPosix } from "./fs.ts";
 import type { BuiltPrinciple } from "./principle.ts";
 import { runDetector } from "./sandbox.ts";
@@ -10,13 +11,14 @@ import { runDetector } from "./sandbox.ts";
 export interface ProbeSample {
   path: string;
   line: number | null;
-  evidence: string;
+  /** The finding in words, as an agent is shown it: `line 12: late final x;`. Empty when it names no place and no match. */
+  text: string;
 }
 
 export interface ProbeReport {
   /** Files in the repository that were readable text. */
   scanned: number;
-  /** Files the principle's globs selected, which is what the rate is measured against. */
+  /** Files a handler of the principle wants, which is what the rate is measured against. */
   matched: number;
   /** Matched files with at least one finding. */
   fired: number;
@@ -94,7 +96,7 @@ export async function probeRepo(built: BuiltPrinciple, dir: string, maxFiles = 5
       if (report.samples.length >= MAX_SAMPLES) {
         break;
       }
-      report.samples.push({ path: relative, line: finding.line ?? null, evidence: finding.evidence });
+      report.samples.push({ path: relative, line: finding.line ?? null, text: describeFinding(ctx, finding) ?? "" });
     }
   }
 
@@ -106,7 +108,7 @@ export async function probeRepo(built: BuiltPrinciple, dir: string, maxFiles = 5
     return report;
   }
   if (report.matched < MIN_FILES_FOR_VERDICT) {
-    report.verdict = `Only ${report.matched} files matched the globs, too few to judge a fire rate.`;
+    report.verdict = `Only ${report.matched} files are ones the detector handles, too few to judge a fire rate.`;
     return report;
   }
   if (report.rate > MAX_FIRE_RATE) {

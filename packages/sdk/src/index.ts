@@ -3,7 +3,8 @@
  *
  * A detector runs inside an isolate with no network and no process. It can
  * read files and cannot change any. This module is bundled into it at publish
- * time, so it must stay free of Node imports and of any state.
+ * time, so it must stay free of Node imports and of any state. The one piece
+ * of state a detector has, the handlers it registered, lives in `handlers.ts`.
  */
 
 /**
@@ -15,61 +16,54 @@
  * a version here, with the host's step back to the one before. Changing what
  * an existing version means would break principles that are already released.
  *
- * - 1: the event with `file.path` relative. A detector could reach nothing outside it.
- * - 2: `file.path` is absolute. Added `file.relativePath`, `file.isNew` and
- *   `project`, and reading files through `node:fs` and `node:path`.
+ * - 1: one `detect(ctx)` with `file.path` relative. No longer run.
+ * - 2: `file.path` absolute, `file.relativePath`, `file.isNew`, `project`, and
+ *   reading files through `node:fs` and `node:path`. No longer run.
+ * - 3: handlers in place of `detect`: `onWrite`, `onRead`, `onPrompt`,
+ *   `onCommand` and `onOutput`, each with its own typed event, and globs on
+ *   the file handlers. A finding names a line or a match and carries no text
+ *   of its own. Added the `output` event, and a prompt is also what the agent
+ *   hands to a subagent.
  *
  * A detector says which one it was written against by where it imports from:
- * `@wellactually/sdk/v2`. Each version has its own file next to this one, with
- * the event of that version as `Ctx`. A principle is then handed the event of
- * that version for as long as it is run, also when it is uploaded again after
- * the API has moved on. The helpers in this file work on the event of every
- * version. This file itself is what the host imports, not a detector.
+ * `@wellactually/sdk/v3`. Each version has its own file next to this one. A
+ * principle is then handed the event of that version for as long as it is
+ * run, also when it is uploaded again after the API has moved on. This file
+ * itself is what the host imports, not a detector.
  */
-export const API_VERSION = 2;
+export const API_VERSION = 3;
 
-/**
- * The event of API 1. A detector that imports `@wellactually/sdk/v1` is handed
- * this, and gets it there as `Ctx`.
- */
-export interface CtxV1 {
-  event: EventName;
-  file: {
-    /** Relative, with forward slashes. */
-    path: string;
-    name: string;
-    ext: string;
-    content: string;
-    lines: string[];
-    written: WrittenLine[];
-  } | null;
-  text: string;
-  isUserPrompt: boolean;
-  isCommand: boolean;
-  isConversation: boolean;
-}
+export { matchesGlob, matchesGlobs } from "./glob.ts";
 
 /**
  * What happened in the session.
  *
- * - `write`: the agent wrote or edited a file. `ctx.file.written` holds the lines it wrote.
+ * - `write`: the agent wrote or edited a file.
  * - `read`: the agent read a file. It did not write this code.
- * - `prompt`: the user typed a message.
+ * - `prompt`: the user typed a message, or the agent briefed a subagent.
  * - `command`: the agent is about to run a shell command.
+ * - `output`: a shell command ran, and this is what it printed.
  */
-export type EventName = "write" | "read" | "prompt" | "command";
+export type EventName = "write" | "read" | "prompt" | "command" | "output";
 
-export const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command"];
+export const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command", "output"];
 
-/** A line the agent wrote in this event. */
-export interface WrittenLine {
+/** The events that carry a file, and so the ones a handler can have globs for. */
+export const FILE_EVENTS: readonly EventName[] = ["write", "read"];
+
+/** A line the agent wrote in this event, as the host records it. */
+export interface Written {
   /** 1-based line in the file. */
   line: number;
   /** The line as written, untrimmed. */
   text: string;
 }
 
-export interface FileContext {
+/** A line the agent wrote in this event, as a handler of `onWrite` gets it. */
+export type WrittenLine = Written;
+
+/** The file of a `write` or `read` event. */
+export interface File {
   /** Absolute path, with forward slashes. Navigate from here with `node:path` and read neighbours with `node:fs`. */
   path: string;
   /**
@@ -84,25 +78,38 @@ export interface FileContext {
   content: string;
   /** `content` split into lines. */
   lines: string[];
-  /** The lines the agent wrote. Empty on `read`. */
-  written: WrittenLine[];
-  /** The agent created this file with this write. It did not exist before. */
+  /** The agent created this file with this write. It did not exist before. Always false on `read`. */
   isNew: boolean;
 }
 
-/** Everything a detector can look at. It is plain data, parsed from JSON. */
+/**
+ * An event as the host builds it and hands it to the isolate: one shape for
+ * all five. A detector never sees this. Its handlers get the event of their
+ * kind, see `WriteEvent` and the others.
+ */
 export interface Ctx {
   event: EventName;
   /** Null when the event carries text instead of a file. */
-  file: FileContext | null;
-  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`. */
+  file: (File & { written: Written[] }) | null;
+  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */
   text: string;
-  /** The user typed this. A request for work that has not happened yet. */
-  isUserPrompt: boolean;
-  /** A shell command the agent is about to run. */
-  isCommand: boolean;
-  /** The event carries text rather than a file. */
-  isConversation: boolean;
+  /** The command line on `command` and `output`. Null on the others. */
+  command: string | null;
+  /** The folder the session runs in, as an absolute path, on the events without a file. Null on `write` and `read`. */
+  cwd: string | null;
+  /**
+   * The root of the project the event happened in, as an absolute path: the
+   * nearest folder upwards with a `.git`. Null when there is none.
+   */
+  project: string | null;
+}
+
+/** What every event has. */
+interface EventBase {
+  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */
+  text: string;
+  /** `text` split into lines. A finding's `line` counts in here. */
+  lines: string[];
   /**
    * The root of the project the event happened in, as an absolute path: the
    * nearest folder upwards with a `.git`. Null when there is none, which is
@@ -112,6 +119,51 @@ export interface Ctx {
   project: string | null;
 }
 
+/** The agent wrote or edited a file. */
+export interface WriteEvent extends EventBase {
+  event: "write";
+  file: File;
+  /** The lines the agent wrote. Code that was there before is not in here. */
+  written: WrittenLine[];
+}
+
+/** The agent read a file. It wrote none of it. */
+export interface ReadEvent extends EventBase {
+  event: "read";
+  file: File;
+}
+
+/** What an event without a file has in its place: where the session is. */
+interface TextEventBase extends EventBase {
+  /**
+   * The folder the session runs in, as an absolute path. Start here to look
+   * at the project with `node:fs`, e.g. `findUp("pubspec.yaml", event.cwd)`.
+   */
+  cwd: string;
+}
+
+/** The user typed a message, or the agent briefed a subagent. A request for work that has not happened yet. */
+export interface PromptEvent extends TextEventBase {
+  event: "prompt";
+}
+
+/** The agent is about to run a shell command. */
+export interface CommandEvent extends TextEventBase {
+  event: "command";
+  /** The command line. The same as `text`. */
+  command: string;
+}
+
+/** A shell command ran. `text` is what it printed. */
+export interface OutputEvent extends TextEventBase {
+  event: "output";
+  /** The command line that printed it. */
+  command: string;
+}
+
+/** An event that carries a file, for a helper that serves `onWrite` and `onRead` alike. */
+export type FileEvent = WriteEvent | ReadEvent;
+
 /**
  * How much of the advice a finding deserves.
  *
@@ -120,25 +172,52 @@ export interface Ctx {
  */
 export type Depth = "pointer" | "full";
 
-export interface Finding {
-  /** 1-based. Omit when the finding is not about a line. */
-  line?: number;
+/**
+ * What a handler of `onPrompt` or `onCommand` yields. Nothing in it is
+ * required: `yield {}` fires the principle and says nothing more.
+ */
+export interface TextFinding {
   /**
-   * The text that triggered the finding.
-   * It must occur verbatim in `ctx.text`; the host drops findings whose evidence does not.
+   * The exact text that triggered: the keyword in a prompt, a piece of a line.
+   * It has to occur word for word in the event, within the lines the finding
+   * names when it names some, and may not span lines. The agent is shown it.
+   * A match that does not occur is left out, and the finding still fires.
    */
-  evidence: string;
+  match?: string;
+  /**
+   * Another file the finding points at: the jpg that should be a webp, the
+   * test that already exists. A path from the project root, or an absolute
+   * one. The agent is told the file. `line` and `match` stay about the event.
+   */
+  file?: string;
   /** Omitted means `full`. */
   depth?: Depth;
 }
 
-/** What `detect` returns: a generator or any other iterable of findings. */
-export type Findings = Iterable<Finding>;
-
-/** The shape of a detector module. */
-export interface Detector {
-  detect: (ctx: Ctx) => Findings | null | undefined;
+/**
+ * What a handler of `onWrite`, `onRead` or `onOutput` yields. Nothing in it
+ * is required.
+ *
+ * A finding with a `line` points at that line, and the host quotes it to the
+ * agent. A finding carries no text of its own.
+ *
+ * A finding without a `line` points at the file: `yield {}` in `onWrite` or
+ * `onRead` says the file itself is the problem, for its name, its place or
+ * something it lacks. Do not pick a first line to stand in for it. In
+ * `onOutput` it fires the principle and says nothing more.
+ *
+ * A finding with a `file` points at another file than the one of the event:
+ * `yield { line: written.line, file: "assets/hero.jpg" }`.
+ */
+export interface Finding extends TextFinding {
+  /** 1-based line of the event's text: of the file, or of what a command printed. */
+  line?: number;
+  /** The last line, when the finding spans several. Needs `line`. */
+  endLine?: number;
 }
+
+/** What a handler returns: a generator or any other iterable of findings, or nothing. */
+export type Findings<F = Finding> = Iterable<F> | null | undefined | void;
 
 const WORD_CHAR = /[A-Za-z0-9_$]/;
 
@@ -160,29 +239,36 @@ export function findWord(text: string, word: string, from = 0): number {
 }
 
 /**
- * Pointer findings for each of `names` that occurs in a conversation event.
+ * A pointer finding for the first of `names` that the event's text mentions.
+ *
+ * A name counts where it stands alone, in any case, and with or without the
+ * separators people put inside names: `rxdart` also finds rx_dart, rx-dart
+ * and RxDart. A space in a name stands for any whitespace.
  *
  * This is a name check for a named technology, not a keyword cloud.
  * Pass the few phrases that can only mean your topic.
+ *
+ *     onPrompt({
+ *       *detect(event) {
+ *         yield* mentioned(event, ["late keyword", "late final"]);
+ *       },
+ *     });
  */
-export function* mentioned(ctx: Pick<Ctx, "isConversation" | "text">, names: readonly string[]): Generator<Finding> {
-  if (!ctx.isConversation) {
-    return;
-  }
-  const haystack = ctx.text.toLowerCase();
+export function mentioned(event: { text: string }, names: readonly string[]): TextFinding[] {
   for (const name of names) {
-    const at = findWord(haystack, name.toLowerCase());
-    if (at === -1) {
+    const letters = [...name.toLowerCase().replaceAll(/[_\-.]/g, "")];
+    if (letters.length === 0) {
       continue;
     }
-    yield { evidence: ctx.text.slice(at, at + name.length), depth: "pointer" };
-    return;
+    const body = letters.map((letter) => (letter === " " ? "\\s+" : letter.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))).join("[_\\-.]?");
+    // Any letter ends a word, not just ASCII: "Prüfe" must not read as "pr" and "fe".
+    const match = new RegExp(`(?<![\\p{L}\\p{N}_$.\\-])${body}(?![\\p{L}\\p{N}_$\\-])`, "iu").exec(event.text);
+    if (match) {
+      // A match may not span lines, and a name with a space in it can. Then the finding goes without one.
+      return [match[0].includes("\n") ? { depth: "pointer" } : { match: match[0], depth: "pointer" }];
+    }
   }
-}
-
-/** The lines the agent wrote in this event. Empty when no file is involved. */
-export function writtenLines(ctx: { file: { written: WrittenLine[] } | null }): WrittenLine[] {
-  return ctx.file?.written ?? [];
+  return [];
 }
 
 /** 1-based line of a character offset in `text`. */
@@ -287,7 +373,7 @@ export interface Where {
  * On `write`, `written` defaults to every line: a new file is written whole.
  * On `read` nothing was written, whatever is passed.
  */
-export function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: WrittenLine[], where: Where = {}): Ctx {
+export function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: Written[], where: Where = {}): Ctx {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === undefined ? TEST_ROOT : where.root;
   const path = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
@@ -308,22 +394,24 @@ export function fileCtx(event: "write" | "read", relativePath: string, content: 
       isNew: event === "write" && where.isNew === true,
     },
     text: content,
-    isUserPrompt: false,
-    isCommand: false,
-    isConversation: false,
+    command: null,
+    cwd: null,
     project: root,
   };
 }
 
-/** The event for text: what the user typed, or a command about to run. */
-export function textCtx(event: "prompt" | "command", text: string, root: string | null = TEST_ROOT): Ctx {
+/**
+ * The event for text: a prompt, a command about to run, or what a command printed.
+ * `command` is the command line an `output` belongs to, and `cwd` the folder
+ * the session runs in, which is the project root unless said otherwise.
+ */
+export function textCtx(event: "prompt" | "command" | "output", text: string, root: string | null = TEST_ROOT, command = "", cwd: string = root ?? "/"): Ctx {
   return {
     event,
     file: null,
     text,
-    isUserPrompt: event === "prompt",
-    isCommand: event === "command",
-    isConversation: true,
+    command: event === "prompt" ? null : event === "command" ? text : command,
+    cwd,
     project: root,
   };
 }
@@ -335,7 +423,7 @@ export function textCtx(event: "prompt" | "command", text: string, root: string 
  * first; when it is not, for instance because a formatter ran, its lines are
  * matched one by one.
  */
-export function locateWritten(content: string, fragments: readonly string[]): WrittenLine[] {
+export function locateWritten(content: string, fragments: readonly string[]): Written[] {
   const lines = content.split("\n");
   const written = new Map<number, string>();
   for (const fragment of fragments) {

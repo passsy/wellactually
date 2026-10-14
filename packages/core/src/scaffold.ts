@@ -44,29 +44,31 @@ if (items.length === 0) {
 Name the cases where the principle does not apply.
 The detector should stay quiet on exactly those, and a test should prove it.
 `,
-    "detector.ts": `import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk/v${API_VERSION}";
-
-/** When the detector runs: write, read, prompt, command. */
-export const events: EventName[] = ["write"];
-
-/** Which files it runs on. Leave the list empty for every file. */
-export const globs = ["**/*.ts"];
+    "detector.ts": `import { onWrite } from "@wellactually/sdk/v${API_VERSION}";
 
 /**
- * Runs inside an isolate: no network, no process, nothing to write to.
- * It gets a context and yields findings. Evidence must be text from the input.
- * It can read the files of the project with node:fs, from ctx.file.path.
+ * A detector registers a handler per event it reacts to: onWrite, onRead,
+ * onPrompt, onCommand and onOutput. Each takes one object: globs for the
+ * files it wants, and detect, which gets the event and yields findings.
+ *
+ * It runs inside an isolate: no network, no process, nothing to write to.
+ * A finding says where, and the agent is shown that line. It can read the
+ * files of the project with node:fs, from event.file.path.
  *
  * Replace this stub. It flags a FIXME comment the agent writes.
  */
-export function* detect(ctx: Ctx): Generator<Finding> {
-  // Only lines the agent wrote. Code that was already there stays unjudged.
-  for (const written of writtenLines(ctx)) {
-    if (/\\/\\/\\s*FIXME\\b/.test(written.text)) {
-      yield { line: written.line, evidence: written.text.trim() };
+onWrite({
+  globs: ["**/*.ts", "!**/*.d.ts"],
+  *detect(event) {
+    // Only lines the agent wrote. Code that was already there stays unjudged.
+    for (const written of event.written) {
+      // written.text is the line as it is in the file, comments included.
+      if (/\\/\\/\\s*FIXME\\b/.test(written.text)) {
+        yield { line: written.line };
+      }
     }
-  }
-}
+  },
+});
 `,
     "detector.test.ts": `import { expect, test } from "vitest";
 import { detect, edit, source, write } from "@wellactually/sdk/v${API_VERSION}/test";
@@ -74,7 +76,7 @@ import { detect, edit, source, write } from "@wellactually/sdk/v${API_VERSION}/t
 // Run with vitest, for example through npm test. The registry runs the same file again.
 // A test builds the event a detector receives and checks what it reports.
 // write() is a file the agent wrote in full, edit() one it changed, and there
-// are read(), prompt() and command() as well.
+// are read(), prompt(), command() and output() as well.
 
 const code = source\`
   export function total(items: number[]): number {
@@ -84,7 +86,7 @@ const code = source\`
 \`;
 
 test("fires on a FIXME the agent writes", () => {
-  expect(detect(write("src/total.ts", code))).toEqual([{ line: 2, evidence: "// FIXME: handle the empty list" }]);
+  expect(detect(write("src/total.ts", code))).toEqual([{ line: 2 }]);
 });
 
 test("stays quiet on a FIXME that was already there when the agent edits another line", () => {
@@ -96,7 +98,7 @@ test("stays quiet on an ordinary comment", () => {
 });
 
 test("stays quiet in other languages", () => {
-  // The globs in detector.ts do not select this file, so the detector never runs.
+  // The globs of the handler do not select this file, so the detector never runs.
   expect(detect(write("total.py", "# FIXME: this is Python"))).toEqual([]);
 });
 `,

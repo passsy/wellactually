@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { detect, edit, source, write } from "@wellactually/sdk/v2/test";
+import { detect, edit, source, write } from "@wellactually/sdk/v3/test";
 
 // fixtures/app is a small Dart package: lib/cart/cart.dart imports the checkout, lib/shared/money.dart imports nothing.
 const app = { project: "fixtures/app" };
@@ -12,12 +12,12 @@ const checkout = source`
 `;
 
 test("fires when the imported file imports this one back", () => {
-  expect(detect(write("lib/checkout/checkout.dart", checkout), app)).toEqual([{ line: 1, evidence: "import 'package:app/cart/cart.dart';" }]);
+  expect(detect(write("lib/checkout/checkout.dart", checkout), app)).toEqual([{ line: 1 }]);
 });
 
 test("fires on a relative import as well", () => {
   const code = "import '../cart/cart.dart';\n\nclass Checkout {}";
-  expect(detect(write("lib/checkout/checkout.dart", code), app)).toEqual([{ line: 1, evidence: "import '../cart/cart.dart';" }]);
+  expect(detect(write("lib/checkout/checkout.dart", code), app)).toEqual([{ line: 1 }]);
 });
 
 test("stays quiet on an import that leads nowhere back", () => {

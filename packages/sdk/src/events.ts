@@ -43,7 +43,7 @@ export function read(path: string, content: string): Ctx {
   return fileCtx("read", path, content);
 }
 
-/** The user typed this. */
+/** The user typed this, or the agent handed it to a subagent. */
 export function prompt(text: string): Ctx {
   return textCtx("prompt", text);
 }
@@ -51,6 +51,11 @@ export function prompt(text: string): Ctx {
 /** The agent is about to run this shell command. */
 export function command(text: string): Ctx {
   return textCtx("command", text);
+}
+
+/** `command` ran, and this is what it printed. */
+export function output(command: string, text: string): Ctx {
+  return textCtx("output", text, undefined, command);
 }
 
 /**

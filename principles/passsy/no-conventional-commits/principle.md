@@ -1,18 +1,31 @@
-# No conventional commit prefixes
+# Avoid Conventional Commits
 
-Write the subject as a sentence about the change; prefixes like feat and fix spend the best characters of the line on a category.
+Describe what changed and why in the commit subject instead of prefixing it with feat:, fix: or chore:, which add noise the diff already shows.
 
-A commit subject has about fifty characters to say what changed.
-`feat(auth): add login` spends eleven of them on a category the diff already shows.
+Do not use [Conventional Commits](https://www.conventionalcommits.org/) format for commit messages. Avoid prefixes like `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.
 
-Write the subject as a plain imperative sentence that starts with a capital letter.
+## Why?
 
-```text
-Bad:  feat(auth): add passkey login
-Bad:  fix: crash on empty cart
-Good: Add passkey login
-Good: Stop the cart from crashing when it is empty
+- **Redundant information**: The type of change is already visible in the diff
+- **Noise over signal**: Prefixes add visual clutter without adding meaning
+- **False categorization**: Many changes don't fit neatly into categories, leading to arbitrary choices
+- **Tooling dependency**: Assumes automated changelog generation, which often produces low-quality output
+- **Verbosity**: Takes space away from describing what actually changed
+
+## Instead
+
+Write commit messages that describe **what** changed and **why**:
+
+```
+# Bad
+feat: add user authentication
+fix: resolve login button issue
+chore: update dependencies
+
+# Good
+Add user authentication with OAuth2
+Fix login button not responding on iOS
+Update dependencies to patch security vulnerabilities
 ```
 
-If the repository's own history uses conventional commits consistently, follow the repository.
-Its convention wins over this principle.
+Focus on clear, action-oriented messages that tell the story of the change.

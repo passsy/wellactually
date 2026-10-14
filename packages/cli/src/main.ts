@@ -13,8 +13,10 @@ import {
   renderProbe,
   renderPull,
   renderReport,
+  renderRepositorySync,
   renderSwitch,
   renderTry,
+  syncRepo,
   testPrinciple,
   tryPrinciple,
 } from "./commands.ts";
@@ -31,12 +33,14 @@ Authoring
         --read                   ... as if the agent had only read it
         --prompt <text>          ... or a user message
         --command <text>         ... or a shell command
+        --output <text>          ... or what a command printed, with --command naming it
   wellactually probe <repo> [dir]       Run the detector over a repository and report the fire rate
   wellactually publish [dir]            Upload a private draft; a human releases it on the website
         -m, --message <text>     ... with a note on what changed, shown in the history
   wellactually pull <id>[@version] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's versions, what each changed and why
+  wellactually sync-repo <owner/repo>   Have the registry read a connected GitHub repository now
 
 Your advisory board
   wellactually login [--registry <url>] Sign in through the browser
@@ -69,6 +73,7 @@ async function main(): Promise<number> {
       message: { type: "string", short: "m" },
       prompt: { type: "string" },
       command: { type: "string" },
+      output: { type: "string" },
       registry: { type: "string" },
       global: { type: "boolean", default: false },
     },
@@ -97,7 +102,7 @@ async function main(): Promise<number> {
       const hasText = values.prompt !== undefined || values.command !== undefined;
       const dir = positionals.length > (hasText ? 0 : 1) ? (positionals[0] ?? ".") : ".";
       const file = hasText ? undefined : positionals[positionals.length - 1];
-      const result = await tryPrinciple(dir, { file, read: values.read, prompt: values.prompt, command: values.command });
+      const result = await tryPrinciple(dir, { file, read: values.read, prompt: values.prompt, command: values.command, output: values.output });
       print(result, renderTry(result));
       return 0;
     }
@@ -120,6 +125,16 @@ async function main(): Promise<number> {
       }
       print(result, `${rendered}\nDraft version ${result.version} uploaded. Review and release it at ${result.url}`);
       return 0;
+    }
+    case "sync-repo": {
+      const name = positionals[0];
+      if (!name) {
+        console.error("usage: wellactually sync-repo <owner/repo>");
+        return 2;
+      }
+      const result = await syncRepo(name);
+      print(result, renderRepositorySync(result));
+      return result.principles.some((item) => item.status === "failed") ? 1 : 0;
     }
     case "log": {
       const id = positionals[0];
@@ -177,7 +192,7 @@ async function main(): Promise<number> {
       }
       console.log(
         readConfig().stats
-          ? "Reporting is on: `wellactually sync` sends how often each principle fired, as a count per day. No file, prompt or evidence is sent."
+          ? "Reporting is on: `wellactually sync` sends how often each principle fired, as a count per day. No file, prompt or finding is sent."
           : "Reporting is off: nothing about what fires on this machine is sent.",
       );
       return 0;

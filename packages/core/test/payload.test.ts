@@ -31,6 +31,24 @@ describe("Claude Code payloads", () => {
     expect(summary({ hook_event_name: "PostToolUse", ...payload })).toEqual([]);
   });
 
+  test("what a Bash call printed is an output event after it ran", () => {
+    const payload = { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "dart analyze" } };
+    const ran = eventsOf({ cwd, ...payload, tool_response: { stdout: "Analyzing app...", stderr: "warning - unused_import" } }, disk({}));
+    expect(ran.map((ctx) => [ctx.event, ctx.command, ctx.text, ctx.file])).toEqual([["output", "dart analyze", "Analyzing app...\nwarning - unused_import", null]]);
+    // A host that answers with plain text.
+    expect(summary({ ...payload, tool_response: "No issues found!" })).toEqual([{ event: "output", path: null, text: "No issues found!", written: null }]);
+    // A command that printed nothing is nothing to judge.
+    expect(summary({ ...payload, tool_response: { stdout: "", stderr: "" } })).toEqual([]);
+  });
+
+  test("what the agent hands to a subagent is a prompt event", () => {
+    for (const tool_name of ["Task", "Agent"]) {
+      const payload = { hook_event_name: "PreToolUse", tool_name, tool_input: { prompt: "Add a late field to Session" } };
+      expect(summary(payload)).toEqual([{ event: "prompt", path: null, text: "Add a late field to Session", written: null }]);
+    }
+    expect(summary({ hook_event_name: "PostToolUse", tool_name: "Task", tool_input: { prompt: "x" } })).toEqual([]);
+  });
+
   test("Write counts every line as written", () => {
     const payload = { hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: "/repo/lib/a.dart", content: legacy } };
     expect(summary(payload, { "/repo/lib/a.dart": legacy })).toEqual([{ event: "write", path: "lib/a.dart", text: legacy, written: [1, 2, 3] }]);
@@ -126,6 +144,13 @@ describe("where an event happened", () => {
     const ctx = write(path.join(base, "notes.dart"));
     expect(ctx?.file).toMatchObject({ path: `${base}/notes.dart`, relativePath: "notes.dart" });
     expect(ctx?.project).toBeNull();
+  });
+
+  test("a prompt and a command know the folder the session runs in", () => {
+    const below = path.join(session, "packages");
+    expect(eventsOf({ cwd: below, hook_event_name: "UserPromptSubmit", prompt: "hi" }, read)[0]?.cwd).toBe(below);
+    expect(eventsOf({ cwd: base, hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "ls" } }, read)[0]?.cwd).toBe(base);
+    expect(write("lib/new.dart")?.cwd).toBeNull();
   });
 
   test("a prompt and a command happen in the session's repository", () => {

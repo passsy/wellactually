@@ -1,4 +1,4 @@
-import { API_VERSION, blankCommentsAndStrings, type Ctx, type CtxV1 } from "@wellactually/sdk";
+import { API_VERSION, blankCommentsAndStrings, type Ctx } from "@wellactually/sdk";
 import { fsHost, type ProjectFiles } from "./project.ts";
 
 /**
@@ -24,7 +24,7 @@ import { fsHost, type ProjectFiles } from "./project.ts";
  */
 
 /** The oldest version this host still runs. Raise it to retire one, and delete its step. */
-export const MIN_API_VERSION = 1;
+export const MIN_API_VERSION = 3;
 
 /** The version a principle was built against. Principles from before versions were recorded are version 1. */
 export function apiOf(manifest: { api?: number }): number {
@@ -45,33 +45,12 @@ export function unsupported(api: number): string | null {
   return null;
 }
 
-/** API 2 made `file.path` absolute and added `relativePath`, `isNew` and `project`. */
-function toV1(ctx: Ctx): CtxV1 {
-  return {
-    event: ctx.event,
-    file: ctx.file && {
-      path: ctx.file.relativePath,
-      name: ctx.file.name,
-      ext: ctx.file.ext,
-      content: ctx.file.content,
-      lines: ctx.file.lines,
-      written: ctx.file.written,
-    },
-    text: ctx.text,
-    isUserPrompt: ctx.isUserPrompt,
-    isCommand: ctx.isCommand,
-    isConversation: ctx.isConversation,
-  };
-}
-
 /**
  * One step per version: `DOWNGRADE[n]` turns the event of version `n` into
  * the event of version `n - 1`. A detector of an old version gets today's
  * event walked down, step by step, so a new version only ever adds one step.
  */
-const DOWNGRADE: Record<number, (ctx: never) => unknown> = {
-  2: toV1,
-};
+const DOWNGRADE: Record<number, (ctx: never) => unknown> = {};
 
 /** Today's event as a detector of version `api` expects it. */
 export function ctxFor(api: number, ctx: Ctx): unknown {
@@ -95,14 +74,11 @@ export interface Environment {
 
 /** The isolate a detector of version `api` was built to run in. */
 export function environmentFor(api: number, ctx: Ctx, project: ProjectFiles | null): Environment {
-  const strings: Record<string, string> = { __ctx: JSON.stringify(ctxFor(api, ctx)) };
-  const functions: Environment["functions"] = {};
-  if (api >= 2) {
-    // API 2 added reading files: `node:fs` asks the host, and `node:path` resolves against the project root.
-    strings.__cwd = ctx.project ?? "/";
-    functions.__fs = fsHost(ctx.project ?? "/", project);
-  }
-  return { strings, functions };
+  return {
+    // `node:path` resolves against the project root, and `node:fs` asks the host.
+    strings: { __ctx: JSON.stringify(ctxFor(api, ctx)), __cwd: ctx.project ?? "/" },
+    functions: { __fs: fsHost(ctx.project ?? "/", project) },
+  };
 }
 
 /**
@@ -129,7 +105,7 @@ const SDK = "@wellactually/sdk";
 const current = `"${SDK}/v${API_VERSION}"`;
 
 /**
- * What a source file imports from the SDK, as written: `@wellactually/sdk/v2`, `@wellactually/sdk/v2/test`.
+ * What a source file imports from the SDK, as written: `@wellactually/sdk/v3`, `@wellactually/sdk/v3/test`.
  *
  * It is read from the source, not from the build, because an import of types
  * only is gone by the time esbuild has compiled the file, and types are all
@@ -168,7 +144,8 @@ export function importedApi(sources: Record<string, string>): number {
       }
       const api = Number(version);
       if (api < MIN_API_VERSION || api > API_VERSION) {
-        throw new Error(`${where}. This version of Well Actually builds for the detector API versions ${MIN_API_VERSION} to ${API_VERSION}.`);
+        const built = MIN_API_VERSION === API_VERSION ? `detector API ${API_VERSION}` : `the detector API versions ${MIN_API_VERSION} to ${API_VERSION}`;
+        throw new Error(`${where}. This version of Well Actually builds for ${built}: import from ${specifier.endsWith("/test") ? `"${SDK}/v${API_VERSION}/test"` : current}.`);
       }
       if (!seen.has(api)) {
         seen.set(api, where);
@@ -176,7 +153,7 @@ export function importedApi(sources: Record<string, string>): number {
     }
   }
   if (seen.size === 0) {
-    throw new Error(`no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import type { Ctx, Finding } from ${current};`);
+    throw new Error(`no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import { onWrite } from ${current};`);
   }
   if (seen.size > 1) {
     throw new Error(`the principle is written against ${seen.size} versions of the detector API: ${[...seen.values()].join(", ")}. Import from one version everywhere.`);
@@ -185,4 +162,4 @@ export function importedApi(sources: Record<string, string>): number {
 }
 
 /** What a detector can import that only exists from some version on, with that version. */
-export const BUILT_IN_SINCE: Record<string, number> = { "node:fs": 2 };
+export const BUILT_IN_SINCE: Record<string, number> = {};

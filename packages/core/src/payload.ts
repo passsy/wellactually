@@ -1,5 +1,5 @@
 import path from "node:path";
-import { fileCtx, locateWritten, textCtx, type Ctx, type Where, type WrittenLine } from "@wellactually/sdk";
+import { fileCtx, locateWritten, textCtx, type Ctx, type Where, type Written } from "@wellactually/sdk";
 import { projectRootOf, toPosix } from "./fs.ts";
 
 /** The fields of a Claude Code or Codex hook payload this host reads. */
@@ -20,13 +20,30 @@ export interface HookPayload {
     cmd?: string;
     /** For hosts that name the patch body explicitly. */
     patch?: string;
+    /** What the agent hands to a subagent. */
+    prompt?: string;
   };
-  /** What the tool answered. Claude Code says here whether a Write created the file. */
-  tool_response?: { type?: string; originalFile?: string | null } | null;
+  /**
+   * What the tool answered. Claude Code says here whether a Write created the
+   * file, and what a shell command printed. Some hosts answer a command with plain text.
+   */
+  tool_response?: { type?: string; originalFile?: string | null; stdout?: string; stderr?: string; output?: string } | string | null;
 }
 
 const EDIT_TOOLS = new Set(["Edit", "MultiEdit"]);
 const SHELL_TOOLS = new Set(["Bash", "exec_command"]);
+/** The tools that start a subagent. What they are given is a prompt like the user's. */
+const SUBAGENT_TOOLS = new Set(["Task", "Agent"]);
+/** What a command printed can be very long, and a detector reads all of what it is given. */
+const MAX_OUTPUT_LENGTH = 200_000;
+
+/** What a shell command printed, as one text: standard output, then errors. */
+function printed(response: HookPayload["tool_response"]): string {
+  if (typeof response === "string") {
+    return response;
+  }
+  return [response?.stdout, response?.stderr, response?.output].filter((part): part is string => typeof part === "string" && part !== "").join("\n");
+}
 
 /**
  * Turns what an agent reports into the events detectors see.
@@ -52,20 +69,28 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
     const root = projectRootOf(cwd);
     return root === null ? null : toPosix(root);
   };
-  const file = (kind: "write" | "read", absolute: string, content: string, written?: WrittenLine[], isNew = false): Ctx => {
+  const file = (kind: "write" | "read", absolute: string, content: string, written?: Written[], isNew = false): Ctx => {
     const { relativePath, where } = locate(absolute, cwd);
     return fileCtx(kind, relativePath, content, written, { ...where, isNew });
   };
 
   if (event === "UserPromptSubmit") {
-    return payload.prompt ? [textCtx("prompt", payload.prompt, sessionRoot())] : [];
+    return payload.prompt ? [textCtx("prompt", payload.prompt, sessionRoot(), "", toPosix(cwd))] : [];
   }
   if (event === "PreToolUse" && SHELL_TOOLS.has(tool)) {
     const command = input.command ?? input.cmd;
-    return command ? [textCtx("command", command, sessionRoot())] : [];
+    return command ? [textCtx("command", command, sessionRoot(), "", toPosix(cwd))] : [];
+  }
+  if (event === "PreToolUse" && SUBAGENT_TOOLS.has(tool)) {
+    return input.prompt ? [textCtx("prompt", input.prompt, sessionRoot(), "", toPosix(cwd))] : [];
   }
   if (event !== "PostToolUse") {
     return [];
+  }
+
+  if (SHELL_TOOLS.has(tool)) {
+    const text = printed(payload.tool_response).slice(0, MAX_OUTPUT_LENGTH);
+    return text.trim() === "" ? [] : [textCtx("output", text, sessionRoot(), input.command ?? input.cmd ?? "", toPosix(cwd))];
   }
 
   if (tool === "apply_patch") {
@@ -89,7 +114,7 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
     return [file("read", absolute, content)];
   }
   if (tool === "Write") {
-    const response = payload.tool_response;
+    const response = typeof payload.tool_response === "string" ? null : payload.tool_response;
     const created = response?.type === "create" || (response !== null && response !== undefined && "originalFile" in response && response.originalFile === null);
     return [file("write", absolute, content, undefined, created)];
   }

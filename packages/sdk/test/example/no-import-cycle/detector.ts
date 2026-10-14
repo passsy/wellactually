@@ -1,9 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { writtenLines, type Ctx, type EventName, type Finding } from "@wellactually/sdk/v2";
-
-export const events: EventName[] = ["write"];
-export const globs = ["**/*.dart"];
+import { onWrite } from "@wellactually/sdk/v3";
 
 const IMPORT = /^import\s+['"]([^'"]+)['"]/;
 
@@ -12,18 +9,17 @@ const IMPORT = /^import\s+['"]([^'"]+)['"]/;
  * follows each import the agent just wrote to the file it names and looks
  * whether that file imports this one back.
  */
-export function* detect(ctx: Ctx): Generator<Finding> {
-  const file = ctx.file;
-  if (!file) {
-    return;
-  }
-  for (const written of writtenLines(ctx)) {
-    const target = resolveImport(IMPORT.exec(written.text.trim())?.[1], file.path);
-    if (target !== null && importsBack(target, file.path)) {
-      yield { line: written.line, evidence: written.text.trim() };
+onWrite({
+  globs: ["**/*.dart"],
+  *detect(event) {
+    for (const written of event.written) {
+      const target = resolveImport(IMPORT.exec(written.text.trim())?.[1], event.file.path);
+      if (target !== null && importsBack(target, event.file.path)) {
+        yield { line: written.line };
+      }
     }
-  }
-}
+  },
+});
 
 function importsBack(target: string, self: string): boolean {
   if (!fs.existsSync(target)) {
