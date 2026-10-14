@@ -16,6 +16,24 @@ const detector = `
       }
     },
   });`;
+const ISC = [
+  "ISC License",
+  "",
+  "Copyright (c) 2024 the tiny authors",
+  "",
+  "Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.",
+  "",
+  'THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE.',
+].join("\n");
+const MIT = [
+  "MIT License",
+  "",
+  "Copyright (c) 2023 Split Contributors",
+  "",
+  'Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction.',
+  "",
+  'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.',
+].join("\n");
 const pins = JSON.stringify({ dependencies: { "tiny-yaml": "1.2.0" } });
 
 /** What is installed: a package with an entry, a file it imports and a package it depends on. */
@@ -26,11 +44,12 @@ const installed: Record<string, FileMap> = {
     "dist/pairs.js": `import split from "@tiny/split";\nexport function pairs(text) { return text.split("\\n").filter(Boolean).map((line) => split(line, ": ")); }`,
     "node.js": `import fs from "node:child_process";\nexport const parse = fs;`,
     "docs/unused.js": "export const unused = 1;",
-    LICENSE: "ISC, the tiny authors",
+    LICENSE: ISC,
   },
   "@tiny/split": {
     "package.json": JSON.stringify({ name: "@tiny/split", version: "3.1.4", license: "MIT", main: "index.cjs" }),
     "index.cjs": `module.exports = function split(text, by) { return text.split(by); };`,
+    "LICENSE.md": MIT,
   },
 };
 const source: PackageSource = async (name, _version, file) => installed[name]?.[file] ?? null;
@@ -40,6 +59,7 @@ describe("a package from npm", () => {
   test("travels with the principle: the files the detector reaches, its package.json and its licence", async () => {
     const vendored = await vendorPackages(files, source);
     expect(Object.keys(vendored).filter((name) => name.startsWith("node_modules/")).sort()).toEqual([
+      "node_modules/@tiny/split/LICENSE.md",
       "node_modules/@tiny/split/index.cjs",
       "node_modules/@tiny/split/package.json",
       "node_modules/tiny-yaml/LICENSE",
@@ -52,8 +72,8 @@ describe("a package from npm", () => {
   test("is built from the files alone afterwards, and runs in the isolate", async () => {
     const built = await buildPrinciple(await vendorPackages(files, source));
     expect(built.manifest.packages).toEqual([
-      { name: "@tiny/split", version: "3.1.4", license: "MIT" },
-      { name: "tiny-yaml", version: "1.2.0", license: "ISC" },
+      { name: "@tiny/split", version: "3.1.4", license: "MIT", spdx: "MIT" },
+      { name: "tiny-yaml", version: "1.2.0", license: "ISC", spdx: "ISC" },
     ]);
     expect((await runDetector(built.bundle, fileCtx("write", "config.yaml", "port: 80\nhost: a"))).findings).toEqual([{ line: 1 }]);
     expect((await runDetector(built.bundle, fileCtx("write", "config.yaml", "port: 81"))).findings).toEqual([]);
@@ -89,6 +109,7 @@ describe("a package from npm", () => {
   test("can come from a repository, in TypeScript, and records the commit it was taken at", async () => {
     const kit: FileMap = {
       "package.json": JSON.stringify({ name: "dart-kit", license: "MIT", exports: "./src/index.ts" }),
+      LICENSE: MIT,
       "src/index.ts": `import { strip } from "./strip";\nexport function parse(text: string): Record<string, string> { return { port: strip(text) }; }`,
       "src/strip.ts": `export const strip = (text: string): string => text.replace("port: ", "");`,
       ".wellactually-from": "github:passsy/dart-kit#0123456789abcdef0123456789abcdef01234567",
@@ -99,7 +120,7 @@ describe("a package from npm", () => {
     };
     const uses = { ...files, "detector.ts": detector.replace('"tiny-yaml"', '"dart-kit"'), "package.json": JSON.stringify({ dependencies: { "dart-kit": "github:passsy/dart-kit#main" } }) };
     const built = await buildPrinciple(await vendorPackages(uses, fromRepository));
-    expect(built.manifest.packages).toEqual([{ name: "dart-kit", version: "", license: "MIT", from: "github:passsy/dart-kit#0123456789abcdef0123456789abcdef01234567" }]);
+    expect(built.manifest.packages).toEqual([{ name: "dart-kit", version: "", license: "MIT", from: "github:passsy/dart-kit#0123456789abcdef0123456789abcdef01234567", spdx: "MIT" }]);
     expect((await runDetector(built.bundle, fileCtx("write", "config.yaml", "port: 80"))).findings).toEqual([{ line: 1 }]);
   });
 

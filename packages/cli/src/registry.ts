@@ -117,8 +117,18 @@ export async function finishDeviceLogin(start: DeviceStart): Promise<string> {
   const deadline = Date.now() + start.expires_in * 1000;
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, start.interval * 1000));
-    const response = await call("/api/device/poll", { method: "POST", body: { device_code: start.device_code }, token: null });
-    if (response.status === 202) {
+    let response: Response;
+    try {
+      response = await call("/api/device/poll", { method: "POST", body: { device_code: start.device_code }, token: null });
+    } catch (error) {
+      // The user may take minutes to confirm, and a laptop changes networks or sleeps meanwhile. One poll that gets
+      // no answer says nothing about the code, so the login keeps waiting until it expires.
+      if (error instanceof RegistryError) {
+        continue;
+      }
+      throw error;
+    }
+    if (response.status === 202 || response.status >= 500) {
       continue;
     }
     if (response.status === 429) {
@@ -159,10 +169,15 @@ export interface DraftResult {
   report: CheckReport;
 }
 
-/** Uploads a principle as a private draft of `slug`. The registry rebuilds it and reruns the tests. */
-export async function publishDraft(slug: string, files: FileMap, note = ""): Promise<DraftResult> {
+/**
+ * Uploads a principle as a private draft of `slug`. The registry rebuilds it and reruns the tests.
+ *
+ * `approved` names the packages the expert approved. The registry works out
+ * itself which packages need that, and refuses the draft when one is missing.
+ */
+export async function publishDraft(slug: string, files: FileMap, note = "", approved: string[] = []): Promise<DraftResult> {
   requireToken();
-  const response = await call("/api/drafts", { method: "POST", body: { slug, files, note } });
+  const response = await call("/api/drafts", { method: "POST", body: { slug, files, note, approved } });
   if (response.status !== 201 && response.status !== 422) {
     throw await failure(response);
   }

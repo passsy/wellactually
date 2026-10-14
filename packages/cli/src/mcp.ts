@@ -2,8 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { scaffold, switchPrinciple } from "@wellactually/core/node";
 import { z } from "zod";
-import { ratePrinciple, RegistryError } from "./registry.ts";
+import { ratePrinciple, RegistryError, type DraftResult } from "./registry.ts";
 import {
+  ApprovalError,
   principleHistory,
   probePrinciple,
   publishPrinciple,
@@ -38,7 +39,7 @@ The name of the directory is the principle's id.
   \`match\` is the exact text that triggered: the keyword in a prompt, a piece of a line. It must occur verbatim in the event, on the named line when there is one, and may not span lines. A match that does not is left out and the finding still fires. Text read from another file cannot be a match.
   \`depth: "pointer"\` shows only the summary, for a word that matched while nothing is known to be wrong. \`mentioned(event, ["some phrase"])\` from the SDK returns that for a prompt. It finds a name where it stands alone, in any case and with or without separators (rxdart, rx_dart, RxDart).
   It imports from \`@wellactually/sdk/v3\`. The v3 in the path is the detector API version it is written against, and its tests import from the same version. Keep the path as scaffold wrote it; what follows describes version 3.
-  It runs in an isolate without network or process. It may import @wellactually/sdk/v3, node:fs, node:path, its own relative files, and packages from npm. A package needs an entry in a package.json in the principle folder, \`{ "dependencies": { "yaml": "^2.9.1" } }\`, and has to be installed with npm install. Its code is copied into the principle on publish, at the version that is installed then. A package may also come from a repository, \`"dart-kit": "github:owner/dart-kit#main"\`, and may then be TypeScript. Only plain JavaScript works: a package that needs Node or WebAssembly fails at build time. The bundle may be 1 MB.
+  It runs in an isolate without network or process. It may import @wellactually/sdk/v3, node:fs, node:path, its own relative files, and packages from npm. A package needs an entry in a package.json in the principle folder, \`{ "dependencies": { "yaml": "^2.9.1" } }\`, and has to be installed with npm install. Its code is copied into the principle on publish, at the version that is installed then. A package may also come from a repository, \`"dart-kit": "github:owner/dart-kit#main"\`, and may then be TypeScript. Only plain JavaScript works: a package that needs Node or WebAssembly fails at build time. The bundle may be 1 MB. The licence of every package goes into the bundle. MIT, ISC, BSD, Apache-2.0 and the like pass by themselves when the package has its licence file. Any other licence, or none, has to be approved by the human when they publish, so prefer packages with a permissive licence.
   It can read other files with node:fs (readFileSync, existsSync, statSync, readdirSync; text only, read-only, sync only). Walk up from event.file.path to find a pubspec.yaml or package.json. event.project is the git root or null, do not rely on it.
 - *.test.ts: the tests. Any number of files, each complete on its own, with the source it tests written inline.
   A test builds the event a detector receives and checks what the detector reports:
@@ -134,7 +135,16 @@ export async function serveMcp(): Promise<void> {
       },
     },
     async ({ dir, note }) => {
-      const result = await publishPrinciple(dir, note ?? "");
+      let result: DraftResult;
+      try {
+        // No approvals from here: a licence is approved by the human, at their terminal or on the website.
+        result = await publishPrinciple(dir, { note: note ?? "" });
+      } catch (error) {
+        if (error instanceof ApprovalError) {
+          return text(`${error.message}\n\nThis is the human's decision. Show them the list and let them run the command. Do not approve a licence for them.`);
+        }
+        throw error;
+      }
       const report = renderReport({ id: result.id, title: null, report: result.report });
       if (!result.accepted) {
         return text(`The registry refused the draft.\n\n${report}`);

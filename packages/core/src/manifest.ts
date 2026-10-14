@@ -37,8 +37,10 @@ export interface Manifest {
    */
   api?: number;
   /**
-   * The packages from npm whose code is part of the bundle, each at the exact
-   * version that was submitted. Absent when the detector uses none.
+   * The packages whose code is part of the bundle, each at the exact version
+   * that was submitted, with its licence. One whose licence does not pass by
+   * itself is `approved` in every version the registry took. The full text of
+   * each licence is at the end of the bundle. Absent when the detector uses none.
    */
   packages?: PackageInfo[];
 }

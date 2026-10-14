@@ -1,6 +1,7 @@
 import type { BuildFailure, Message, Plugin } from "esbuild";
 import { API_VERSION } from "@wellactually/sdk";
 import { currentEngines } from "./engines.ts";
+import { LICENSE_FILE_NAMES } from "./licenses.ts";
 import { isPackageFile, packageOf, PACKAGE_DIR, PackageError, readPins, resolveInPackage, resolvePackage, TAKEN_FROM, type PackageSource } from "./packages.ts";
 import { SDK_SOURCES } from "./sdk-source.generated.ts";
 
@@ -107,7 +108,7 @@ export async function buildBundle(files: FileMap, source?: PackageSource): Promi
  * checked and uploaded.
  *
  * Only the files of a package that the detector and the tests reach are
- * taken, with its package.json and its licence. After this the files are the
+ * taken, with its package.json, its licence and its NOTICE. After this the files are the
  * whole principle: the registry builds them again with no source to ask.
  */
 export async function vendorPackages(files: FileMap, source: PackageSource): Promise<FileMap> {
@@ -136,28 +137,38 @@ export async function vendorPackages(files: FileMap, source: PackageSource): Pro
     if (from !== null) {
       fetched[`${PACKAGE_DIR}${name}/${TAKEN_FROM}`] = from;
     }
-    for (const file of ["LICENSE", "LICENSE.md", "LICENSE.txt", "license", "LICENCE"]) {
-      const text = await source(name, pins[name] ?? null, file);
-      if (text !== null) {
-        fetched[`${PACKAGE_DIR}${name}/${file}`] = text;
-        break;
+    // Every licence and NOTICE file of the package, asked for at once: on the website each is a request.
+    const texts = await Promise.all(LICENSE_FILE_NAMES.map((file) => source(name, pins[name] ?? null, file)));
+    const taken = new Set<string>();
+    for (const [index, text] of texts.entries()) {
+      // A disk that ignores case answers LICENSE and license with the same file.
+      if (text === null || taken.has(text)) {
+        continue;
       }
+      taken.add(text);
+      fetched[`${PACKAGE_DIR}${name}/${LICENSE_FILE_NAMES[index] ?? ""}`] = text;
     }
   }
   return { ...fetched, ...files };
 }
 
-/** The same, with what the detector imported from Node: "node:fs", "node:path". Which of them exist depends on the detector API version. */
-export async function buildDetector(files: FileMap, source?: PackageSource, fetched: FileMap = {}): Promise<{ bundle: string; builtIns: string[] }> {
+/**
+ * The same, with what the detector imported from Node: "node:fs", "node:path".
+ * Which of them exist depends on the detector API version. `inlined` names
+ * the packages whose code is in the bundle, which are the ones whose licence
+ * the bundle has to carry.
+ */
+export async function buildDetector(files: FileMap, source?: PackageSource, fetched: FileMap = {}): Promise<{ bundle: string; builtIns: string[]; inlined: string[] }> {
   const entry = detectorEntry(files);
   if (!entry) {
     throw new BundleError(`no detector found; expected one of ${DETECTOR_ENTRIES.join(", ")}`);
   }
   const builtIns = new Set<string>();
+  const inlined = new Set<string>();
   // The detector file registers its handlers while it loads. What the isolate is given is how to list them and how to run them.
   const made = [`import { __dispatch, __handlers } from "${HANDLER_RUNTIME}";`, `import "./${entry}";`, "export const handlers = __handlers;", "export const run = __dispatch;", ""].join("\n");
-  const bundle = await build({ ...files, [DETECTOR_ENTRY]: made }, DETECTOR_ENTRY, BUNDLE_GLOBAL, false, builtIns, source, fetched);
-  return { bundle, builtIns: [...builtIns].sort() };
+  const bundle = await build({ ...files, [DETECTOR_ENTRY]: made }, DETECTOR_ENTRY, BUNDLE_GLOBAL, false, builtIns, source, fetched, inlined);
+  return { bundle, builtIns: [...builtIns].sort(), inlined: [...inlined].sort() };
 }
 
 /**
@@ -177,7 +188,7 @@ export async function buildTestBundle(files: FileMap, source?: PackageSource, fe
   return build({ ...files, [TEST_ENTRY]: entry }, TEST_ENTRY, TESTS_GLOBAL, true, new Set(), source, fetched);
 }
 
-async function build(files: FileMap, entry: string, globalName: string, isTest: boolean, builtIns: Set<string>, source: PackageSource | undefined, fetched: FileMap): Promise<string> {
+async function build(files: FileMap, entry: string, globalName: string, isTest: boolean, builtIns: Set<string>, source: PackageSource | undefined, fetched: FileMap, inlined = new Set<string>()): Promise<string> {
   const tests = new Set(isTest ? testFiles(files) : []);
   let pins: Record<string, string>;
   try {
@@ -329,9 +340,19 @@ async function build(files: FileMap, entry: string, globalName: string, isTest: 
       logLevel: "silent",
       // Packages ask which build they are in. There is no process to ask in the isolate.
       define: { "process.env.NODE_ENV": '"production"' },
+      // Says which files ended up in the bundle. A package that is installed and never imported is not in it.
+      metafile: true,
       plugins: [virtual],
     });
     code = result.outputFiles?.[0]?.text ?? "";
+    for (const output of Object.values(result.metafile?.outputs ?? {})) {
+      for (const [input, used] of Object.entries(output.inputs)) {
+        const name = packageOf(input.replace(/^principle:/, ""));
+        if (name !== null && used.bytesInOutput > 0) {
+          inlined.add(name);
+        }
+      }
+    }
   } catch (error) {
     const failure = error as BuildFailure;
     const messages = failure.errors?.map(formatMessage) ?? [String(error)];
@@ -342,6 +363,18 @@ async function build(files: FileMap, entry: string, globalName: string, isTest: 
     throw new BundleError(`the bundled ${isTest ? "tests are" : "detector is"} larger than ${MAX_BUNDLE_BYTES / 1024} KB`);
   }
   return code;
+}
+
+/** A detector bundle with the notices of its packages at its end. The limit on its size is for all of it. */
+export function withNotices(bundle: string, notices: string): string {
+  if (notices === "") {
+    return bundle;
+  }
+  const whole = `${bundle}${notices}`;
+  if (byteLength(whole) > MAX_BUNDLE_BYTES) {
+    throw new BundleError(`the bundled detector with the licences of its packages is larger than ${MAX_BUNDLE_BYTES / 1024} KB`);
+  }
+  return whole;
 }
 
 function formatMessage(message: Message): string {

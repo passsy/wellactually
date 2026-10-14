@@ -1,4 +1,5 @@
 import type { FileMap } from "./bundle.ts";
+import { readLicensing, type Licensing, type NoticeEntry } from "./licenses.ts";
 
 /**
  * Packages from npm in a principle.
@@ -32,6 +33,84 @@ export interface PackageInfo {
   license: string;
   /** For a package from a repository: where it was taken from, with the commit when that is known. */
   from?: string;
+  /**
+   * The licence the code is taken under, as its package.json names it and its
+   * licence file shows it. Of `MIT OR GPL-3.0-only` the branch that was
+   * chosen. Absent when the package names no licence that can be read.
+   */
+  spdx?: string;
+  /**
+   * Why the licence does not pass by itself, in words for the expert. A
+   * package that has this is only published when the expert approved it.
+   */
+  review?: string;
+  /** The expert approved this package at this version when the principle was submitted. */
+  approved?: true;
+}
+
+/**
+ * How an expert names a package they approve: `name@1.2.3`, and
+ * `name@github:owner/repo#commit` for one from a repository. An approval is
+ * for that code and no other, so a new version has to be approved again.
+ */
+export function approvalKey(info: PackageInfo): string {
+  if (info.from !== undefined) {
+    return `${info.name}@${info.from}`;
+  }
+  return `${info.name}@${info.version}`;
+}
+
+/** Whether a package still waits for the expert to approve its licence. */
+export function needsApproval(info: PackageInfo): boolean {
+  return info.review !== undefined && info.approved !== true;
+}
+
+const GPL_LICENSE = /\b(?:AGPL|GPL)-[A-Za-z0-9.+-]+/;
+const LGPL_LICENSE = /\bLGPL-[A-Za-z0-9.+-]+/;
+
+/**
+ * The licence a package puts the whole bundle under: the GPL or the AGPL, as
+ * the package names it. A bundle with such a package in it is distributed
+ * under the terms of that licence as a whole, not only the package. Null for
+ * a package under any other licence, the LGPL included, which asks this of
+ * the library alone.
+ */
+export function bundleTermsOf(info: PackageInfo): string | null {
+  return GPL_LICENSE.exec(info.spdx ?? "")?.[0] ?? null;
+}
+
+/**
+ * What approving a package means, as a sentence for the expert. For most it
+ * is the reason alone. For one under a GNU licence it also says what that
+ * licence asks: of the whole detector for the GPL and the AGPL, of the
+ * library for the LGPL.
+ */
+export function describeReview(info: PackageInfo): string {
+  const review = info.review ?? "its licence is not known";
+  const terms = bundleTermsOf(info);
+  if (terms !== null) {
+    return `${review}. With it in the detector, the whole detector bundle is distributed under the terms of ${terms}`;
+  }
+  const library = LGPL_LICENSE.exec(info.spdx ?? "")?.[0];
+  if (library !== undefined) {
+    return `${review}. The part under ${library} has to stay replaceable by whoever uses the detector, and its source has to be available. The notices in the bundle link to it`;
+  }
+  return review;
+}
+
+/** Where the code of a package can be found by someone who reads the notices of a bundle. */
+function sourceOf(info: PackageInfo): string {
+  if (info.from === undefined) {
+    return `https://www.npmjs.com/package/${info.name}/v/${info.version}`;
+  }
+  const github = parseGitHub(info.from);
+  if (github === null) {
+    return info.from;
+  }
+  if (github.ref === null) {
+    return `https://github.com/${github.owner}/${github.repo}`;
+  }
+  return `https://github.com/${github.owner}/${github.repo}/tree/${github.ref}`;
 }
 
 /**
@@ -176,6 +255,7 @@ interface PackageJson {
   name?: string;
   version?: string;
   license?: unknown;
+  licenses?: unknown;
   main?: unknown;
   module?: unknown;
   exports?: unknown;
@@ -412,9 +492,48 @@ function pickCondition(value: unknown, required: boolean): string | null {
   return null;
 }
 
-/** Every package a principle carries, by name. Read from the code that travels with it. */
-export function packagesOf(files: FileMap): PackageInfo[] {
-  const packages: PackageInfo[] = [];
+/** A package a principle carries, with what its files say about its licence. */
+export interface CarriedPackage {
+  info: PackageInfo;
+  licensing: Licensing;
+}
+
+/**
+ * The `license` of a package.json as one string. Old packages wrote
+ * `{ "type": "MIT" }` or a list of those under `licenses`, and a list means
+ * any of them.
+ */
+function declaredLicense(json: PackageJson): string {
+  if (typeof json.license === "string") {
+    return json.license.slice(0, 100);
+  }
+  const typeOf = (entry: unknown): string | null => {
+    const type = (entry as { type?: unknown } | null)?.type;
+    if (typeof type !== "string") {
+      return null;
+    }
+    return type;
+  };
+  const single = typeOf(json.license);
+  if (single !== null) {
+    return single.slice(0, 100);
+  }
+  if (Array.isArray(json.licenses)) {
+    const types: string[] = [];
+    for (const entry of json.licenses) {
+      const type = typeOf(entry);
+      if (type !== null) {
+        types.push(type);
+      }
+    }
+    return types.join(" OR ").slice(0, 100);
+  }
+  return "";
+}
+
+/** Every package a principle carries, by name, with its licence. Read from the code that travels with it. */
+export function carriedPackages(files: FileMap): CarriedPackage[] {
+  const packages: CarriedPackage[] = [];
   for (const path of Object.keys(files).sort()) {
     const name = packageOf(path);
     if (name === null || path !== `${PACKAGE_DIR}${name}/package.json`) {
@@ -435,18 +554,39 @@ export function packagesOf(files: FileMap): PackageInfo[] {
     if (version === "" && from === undefined) {
       throw new PackageError(`the package.json of ${name} names no version`);
     }
-    let license = "";
-    if (typeof json.license === "string") {
-      license = json.license.slice(0, 100);
-    }
-    const info: PackageInfo = { name, version, license };
+    const info: PackageInfo = { name, version, license: declaredLicense(json) };
     if (from !== undefined) {
       if (!isGitReference(from) || from.length > 300) {
         throw new PackageError(`${PACKAGE_DIR}${name}/${TAKEN_FROM} does not name a repository`);
       }
       info.from = from;
     }
-    packages.push(info);
+    // The files at the top of the package: that is where a licence lies.
+    const root = `${PACKAGE_DIR}${name}/`;
+    const own: FileMap = {};
+    for (const [file, content] of Object.entries(files)) {
+      if (file.startsWith(root) && !file.slice(root.length).includes("/")) {
+        own[file.slice(root.length)] = content;
+      }
+    }
+    const licensing = readLicensing(info.license, own);
+    if (licensing.spdx !== "") {
+      info.spdx = licensing.spdx;
+    }
+    if (licensing.review !== "") {
+      info.review = licensing.review;
+    }
+    packages.push({ info, licensing });
   }
   return packages;
+}
+
+/** Every package a principle carries, by name. */
+export function packagesOf(files: FileMap): PackageInfo[] {
+  return carriedPackages(files).map((carried) => carried.info);
+}
+
+/** What the notices of a bundle say about a package. */
+export function noticeOf(carried: CarriedPackage): NoticeEntry {
+  return { name: carried.info.name, version: carried.info.version, source: sourceOf(carried.info), licensing: carried.licensing };
 }

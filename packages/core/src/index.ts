@@ -13,6 +13,7 @@ export * from "./ctx.ts";
 export * from "./engines.ts";
 export * from "./finding.ts";
 export * from "./glob.ts";
+export * from "./licenses.ts";
 export * from "./manifest.ts";
 export * from "./packages.ts";
 export * from "./principle.ts";

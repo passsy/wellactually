@@ -1,9 +1,24 @@
-# Well Actually
+<p align="center">
+  <img src="assets/illustration.png" width="420" alt="An experienced developer raises one finger over the shoulder of a coding robot">
+</p>
 
-Engineering principles that run inside your coding agent.
+<h1 align="center">Well Actually</h1>
+
+<p align="center">
+  <em>Well actually, that's not idiomatic React.</em>
+</p>
+
+Your coding agent is a capable generalist.
+It has not spent years in your framework, your niche or closed source enterprise software.
+Well Actually brings what the experts there have learned into your agent.
+
+Principles are not hard rules like a linter's.
+They are advice, like an expert glancing over a diff who has seen a pattern go wrong twenty times: it is most likely wrong again, and there is a better way.
+Your agent hears it and decides.
 
 A principle is advice plus a detector.
 The detector looks at what your agent just did, and when it finds something, the agent reads the advice.
+Unlike a rules file, nothing sits in your agent's context up front: advice only enters it when it applies.
 Anyone can publish principles on [the Well Actually registry](https://wellactually.dev), and you choose whose principles sit on your advisory board.
 
 ## Install

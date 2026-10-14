@@ -1,9 +1,10 @@
 import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
 import { apiOf, BUILT_IN_SINCE, importedApi } from "./api.ts";
-import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, type FileMap } from "./bundle.ts";
+import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, withNotices, type FileMap } from "./bundle.ts";
 import { applies, fileCtx, textCtx } from "./ctx.ts";
 import { ManifestError, parsePrinciple, parseSettings, parseTags, readHandlers, type Manifest } from "./manifest.ts";
-import { isPackageFile, PackageError, packagesOf } from "./packages.ts";
+import { thirdPartyNotices } from "./licenses.ts";
+import { approvalKey, carriedPackages, isPackageFile, needsApproval, noticeOf, PackageError, type CarriedPackage, type PackageInfo } from "./packages.ts";
 import { mapProject, type ProjectFiles } from "./project.ts";
 import { readRegistered, runTestBundle, type DetectorRun } from "./sandbox.ts";
 import { scanAdvice } from "./scan.ts";
@@ -55,6 +56,12 @@ export interface CheckReport {
   tests: TestResult[];
   /** The slowest detector run, as a share of the time limit a detector gets. */
   slowestMs: number;
+  /**
+   * The packages in the bundle whose licence does not pass by itself and that
+   * the expert has not approved. They do not stop a test run. They stop a
+   * submit: the registry takes none of them without an approval.
+   */
+  unapproved: PackageInfo[];
 }
 
 export interface Checked {
@@ -100,8 +107,14 @@ export function assertFileMapSize(files: FileMap): void {
   }
 }
 
-/** Compiles a principle. Throws `ManifestError` or `BundleError` with a message for the author. */
-export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
+/**
+ * Compiles a principle. Throws `ManifestError` or `BundleError` with a message for the author.
+ *
+ * `approved` names the packages the expert approved, as `approvalKey` writes
+ * them. It only matters for a package whose licence does not pass by itself,
+ * and what was approved is recorded in the manifest.
+ */
+export async function buildPrinciple(files: FileMap, approved: string[] = []): Promise<BuiltPrinciple> {
   const source = files["principle.md"];
   if (source === undefined) {
     throw new ManifestError("principle.md is missing");
@@ -110,7 +123,7 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
   const tags = parseTags(files["package.json"]);
   // Not part of the version, but a mistake in them is told now, not at the next sync.
   parseSettings(files["package.json"]);
-  const { bundle, builtIns } = await buildDetector(files);
+  const { bundle: code, builtIns, inlined } = await buildDetector(files);
   // The version the principle is written against is the one its files import the SDK from.
   // From now on every host hands its detector the event of that version.
   let api: number;
@@ -127,21 +140,29 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
   }
   let registered: unknown;
   try {
-    registered = await readRegistered(bundle);
+    registered = await readRegistered(code);
   } catch (error) {
     throw new BundleError((error as Error).message);
   }
   const { events, globs, handlers } = readHandlers(registered);
   const manifest: Manifest = { title, summary, tags, events, globs, handlers, api };
-  let packages;
+  let carried: CarriedPackage[];
   try {
-    packages = packagesOf(files);
+    carried = carriedPackages(files);
   } catch (error) {
     throw new ManifestError((error as Error).message);
   }
-  if (packages.length > 0) {
-    manifest.packages = packages;
+  // A package only the tests import is among the files and not in the bundle, so nobody is sent its code.
+  const bundled = carried.filter((item) => inlined.includes(item.info.name));
+  for (const { info } of bundled) {
+    if (info.review !== undefined && approved.includes(approvalKey(info))) {
+      info.approved = true;
+    }
   }
+  if (bundled.length > 0) {
+    manifest.packages = bundled.map((item) => item.info);
+  }
+  const bundle = withNotices(code, thirdPartyNotices(bundled.map(noticeOf)));
   return { manifest, advice, bundle, hash: await hashPrinciple(manifest, advice, bundle) };
 }
 
@@ -159,14 +180,14 @@ export async function hashPrinciple(manifest: Manifest, advice: string, bundle: 
  * upload, because a report that came from the author's machine is a claim
  * and one that came from here is a result.
  */
-export async function checkPrinciple(files: FileMap): Promise<Checked> {
-  const report: CheckReport = { ok: false, problems: [], warnings: [], tests: [], slowestMs: 0 };
+export async function checkPrinciple(files: FileMap, approved: string[] = []): Promise<Checked> {
+  const report: CheckReport = { ok: false, problems: [], warnings: [], tests: [], slowestMs: 0, unapproved: [] };
 
   let built: BuiltPrinciple;
   let tests: string | null;
   try {
     assertFileMapSize(files);
-    built = await buildPrinciple(files);
+    built = await buildPrinciple(files, approved);
     tests = await buildTestBundle(files);
   } catch (error) {
     if (error instanceof ManifestError || error instanceof BundleError) {
@@ -177,6 +198,7 @@ export async function checkPrinciple(files: FileMap): Promise<Checked> {
   }
 
   report.warnings.push(...scanAdvice(built.advice));
+  report.unapproved = (built.manifest.packages ?? []).filter(needsApproval);
 
   if (tests === null) {
     const hint = Object.keys(files).some((name) => name.startsWith("cases/"))

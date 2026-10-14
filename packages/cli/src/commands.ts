@@ -3,7 +3,10 @@ import path from "node:path";
 import {
   apiOf,
   applies,
+  approvalKey,
   buildPrinciple,
+  BundleError,
+  describeReview,
   diskFiles,
   projectRootOf,
   toPosix,
@@ -14,6 +17,8 @@ import {
   frame,
   probeRepo,
   isPackageFile,
+  ManifestError,
+  needsApproval,
   readLockfile,
   readPrinciple,
   readPrincipleDir,
@@ -26,6 +31,7 @@ import {
   type CheckReport,
   type DetectorRun,
   type FileMap,
+  type PackageInfo,
   type ProbeReport,
   type SwitchResult,
 } from "@wellactually/core/node";
@@ -123,12 +129,78 @@ export async function probePrinciple(dir: string, repo: string): Promise<ProbeRe
   return probeRepo(built, path.resolve(repo));
 }
 
-export async function publishPrinciple(dir: string, note = ""): Promise<DraftResult> {
+/** Thrown when a principle has packages the expert has to approve, and nobody was there to ask. */
+export class ApprovalError extends Error {}
+
+export interface PublishOptions {
+  /** What changed, for the history. */
+  note?: string;
+  /** The packages the expert approved beforehand, each as `name@version`. */
+  approved?: string[];
+  /**
+   * Asks the expert about one package. Without it nobody can be asked, and a
+   * package that was not approved beforehand stops the publish.
+   */
+  confirm?: (info: PackageInfo) => Promise<boolean>;
+}
+
+/** One line about a package whose licence the expert has to approve. */
+export function describeApproval(info: PackageInfo): string {
+  return `${approvalKey(info)}: ${describeReview(info)}`;
+}
+
+/**
+ * The packages in the bundle the expert has to approve before the principle
+ * is uploaded. Empty when it does not build: then the registry says why.
+ */
+async function packagesToApprove(files: FileMap): Promise<PackageInfo[]> {
+  try {
+    return ((await buildPrinciple(files)).manifest.packages ?? []).filter(needsApproval);
+  } catch (error) {
+    if (error instanceof ManifestError || error instanceof BundleError) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
+ * Uploads a principle as a draft.
+ *
+ * A package whose licence does not pass by itself goes into the bundle only
+ * when the expert approved it: named in `approved`, or answered with yes when
+ * asked. The registry checks the same and takes no draft without it.
+ */
+export async function publishPrinciple(dir: string, options: PublishOptions = {}): Promise<DraftResult> {
   const id = idOf(dir);
   if (!isPrincipleId(id)) {
     throw new Error(`The folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}. Rename the folder, then publish again.`);
   }
-  return publishDraft(id, await readPrinciple(path.resolve(dir)), note);
+  const files = await readPrinciple(path.resolve(dir));
+  const approved: string[] = [];
+  const open: PackageInfo[] = [];
+  for (const info of await packagesToApprove(files)) {
+    const key = approvalKey(info);
+    if (options.approved?.includes(key)) {
+      approved.push(key);
+      continue;
+    }
+    if (options.confirm !== undefined && (await options.confirm(info))) {
+      approved.push(key);
+      continue;
+    }
+    open.push(info);
+  }
+  if (open.length > 0) {
+    const lines = ["Not uploaded. The detector contains packages whose licence you have to approve:"];
+    for (const info of open) {
+      lines.push(`  - ${describeApproval(info)}`);
+    }
+    lines.push("Approve them by name, each at exactly this version:");
+    lines.push(`  wellactually publish ${dir} ${open.map((info) => `--approve ${approvalKey(info)}`).join(" ")}`);
+    throw new ApprovalError(lines.join("\n"));
+  }
+  return publishDraft(id, files, options.note ?? "", approved);
 }
 
 /** Has the registry read a repository that is connected on the website, without waiting for a push. */
@@ -284,6 +356,10 @@ export function renderReport(result: TestResult): string {
   }
   for (const warning of result.report.warnings) {
     lines.push(`  ! ${warning}`);
+  }
+  // Reports from a registry that does not know about licences yet have no such list.
+  for (const info of result.report.unapproved ?? []) {
+    lines.push(`  ! Needs your approval to be published: ${describeApproval(info)}`);
   }
   if (result.report.ok) {
     lines.push("Ready to publish.");

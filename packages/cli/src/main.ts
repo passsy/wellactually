@@ -1,9 +1,11 @@
 #!/usr/bin/env node
+import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
-import { readConfig, readCached, readLockfile, scaffold, serveDetectors, switchedOff, switchPrinciple, writeConfig } from "@wellactually/core/node";
+import { approvalKey, describeReview, readConfig, readCached, readLockfile, scaffold, serveDetectors, switchedOff, switchPrinciple, writeConfig, type PackageInfo } from "@wellactually/core/node";
 import {
   addLocal,
+  ApprovalError,
   principleHistory,
   probePrinciple,
   publishPrinciple,
@@ -22,7 +24,7 @@ import {
 } from "./commands.ts";
 import { logHookFailure, runHook } from "./hook.ts";
 import { serveMcp } from "./mcp.ts";
-import { finishDeviceLogin, logout, RegistryError, startDeviceLogin, sync, whoami } from "./registry.ts";
+import { finishDeviceLogin, logout, RegistryError, startDeviceLogin, sync, whoami, type DraftResult } from "./registry.ts";
 
 const HELP = `wellactually: author principles and run your advisory board
 
@@ -37,6 +39,7 @@ Authoring
   wellactually probe <repo> [dir]       Run the detector over a repository and report the fire rate
   wellactually publish [dir]            Upload a private draft; a human releases it on the website
         -m, --message <text>     ... with a note on what changed, shown in the history
+        --approve <name@version> ... with a package whose licence needs your approval. Repeat it for each
   wellactually pull <id>[@version] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's versions, what each changed and why
@@ -71,6 +74,7 @@ async function main(): Promise<number> {
       draft: { type: "boolean", default: false },
       force: { type: "boolean", default: false },
       message: { type: "string", short: "m" },
+      approve: { type: "string", multiple: true },
       prompt: { type: "string" },
       command: { type: "string" },
       output: { type: "string" },
@@ -117,7 +121,28 @@ async function main(): Promise<number> {
       return report.ok ? 0 : 1;
     }
     case "publish": {
-      const result = await publishPrinciple(positionals[0] ?? ".", values.message ?? "");
+      // Only a person at a terminal can be asked. A script names what it approves with --approve.
+      let confirm: ((info: PackageInfo) => Promise<boolean>) | undefined;
+      if (process.stdin.isTTY && process.stdout.isTTY && !values.json) {
+        confirm = async (info) => {
+          const terminal = readline.createInterface({ input: process.stdin, output: process.stdout });
+          console.log(`${approvalKey(info)} goes into the detector, and ${describeReview(info)}.`);
+          console.log("Everyone who uses the principle gets its code. A licence like this can ask more of you than passing on its text.");
+          const answer = await terminal.question("Publish the principle with it? [y/N] ");
+          terminal.close();
+          return /^y(es)?$/i.test(answer.trim());
+        };
+      }
+      let result: DraftResult;
+      try {
+        result = await publishPrinciple(positionals[0] ?? ".", { note: values.message ?? "", approved: values.approve ?? [], confirm });
+      } catch (error) {
+        if (error instanceof ApprovalError) {
+          console.error(error.message);
+          return 1;
+        }
+        throw error;
+      }
       const rendered = renderReport({ id: result.id, title: null, report: result.report });
       if (!result.accepted) {
         print(result, `The registry refused the draft.\n${rendered}`);
