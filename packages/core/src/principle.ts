@@ -2,7 +2,7 @@ import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "
 import { apiOf, BUILT_IN_SINCE, importedApi } from "./api.ts";
 import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, type FileMap } from "./bundle.ts";
 import { applies, fileCtx, textCtx } from "./ctx.ts";
-import { languagesOf, ManifestError, parsePrinciple, readHandlers, type Manifest } from "./manifest.ts";
+import { ManifestError, parsePrinciple, parseSettings, parseTags, readHandlers, type Manifest } from "./manifest.ts";
 import { isPackageFile, PackageError, packagesOf } from "./packages.ts";
 import { mapProject, type ProjectFiles } from "./project.ts";
 import { readRegistered, runTestBundle, type DetectorRun } from "./sandbox.ts";
@@ -107,6 +107,9 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
     throw new ManifestError("principle.md is missing");
   }
   const { title, summary, advice } = parsePrinciple(source);
+  const tags = parseTags(files["package.json"]);
+  // Not part of the version, but a mistake in them is told now, not at the next sync.
+  parseSettings(files["package.json"]);
   const { bundle, builtIns } = await buildDetector(files);
   // The version the principle is written against is the one its files import the SDK from.
   // From now on every host hands its detector the event of that version.
@@ -129,7 +132,7 @@ export async function buildPrinciple(files: FileMap): Promise<BuiltPrinciple> {
     throw new BundleError((error as Error).message);
   }
   const { events, globs, handlers } = readHandlers(registered);
-  const manifest: Manifest = { title, summary, languages: languagesOf(globs), events, globs, handlers, api };
+  const manifest: Manifest = { title, summary, tags, events, globs, handlers, api };
   let packages;
   try {
     packages = packagesOf(files);

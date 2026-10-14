@@ -3,7 +3,7 @@ import { API_VERSION, type Ctx, type Finding } from "@wellactually/sdk";
 import { environmentFor, unsupported, type Environment } from "./api.ts";
 import { BUNDLE_GLOBAL, TESTS_GLOBAL } from "./bundle.ts";
 import { loadSandbox } from "./engines.ts";
-import type { ProjectFiles } from "./project.ts";
+import { normalizeAbsolute, type ProjectFiles } from "./project.ts";
 
 export interface Limits {
   /** Wall clock budget for one detector run. */
@@ -139,7 +139,7 @@ function runDetectorIn(QuickJS: QuickJSWASMModule, bundle: string, ctx: Ctx, lim
   if (json === null) {
     return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };
   }
-  const { findings, dropped } = validateFindings(json, ctx);
+  const { findings, dropped } = validateFindings(json, ctx, project);
   return { findings, error: null, dropped, ms };
 }
 
@@ -215,7 +215,6 @@ function describeError(dumped: unknown, limits: Limits): string {
   return `${name}${message}`;
 }
 
-/** Whether the event's text has lines a finding can point at: a file, or what a command printed. */
 /** A path as the agent is shown it: from the project root when it lies inside the project. */
 function fromRoot(file: string, root: string | null): string {
   if (root !== null && file.startsWith(`${root}/`)) {
@@ -224,6 +223,21 @@ function fromRoot(file: string, root: string | null): string {
   return file;
 }
 
+/**
+ * The path of a finding's `file` as the agent is shown it, when the file or
+ * folder exists. Null when it does not, or when there are no files to ask.
+ * A relative path is from the project root, or from where the session runs
+ * when there is none.
+ */
+function existingFile(file: string, ctx: Ctx, project: ProjectFiles | null): string | null {
+  const base = ctx.project ?? ctx.cwd ?? "/";
+  const absolute = normalizeAbsolute(file.startsWith("/") ? file : `${base}/${file}`);
+  // The file of the event is there: it was just written or read.
+  const exists = absolute === ctx.file?.path || (project !== null && project.stat(absolute) !== null);
+  return exists ? fromRoot(absolute, ctx.project) : null;
+}
+
+/** Whether the event's text has lines a finding can point at: a file, or what a command printed. */
 function hasLines(ctx: Ctx): boolean {
   return ctx.file !== null || ctx.event === "output";
 }
@@ -231,17 +245,18 @@ function hasLines(ctx: Ctx): boolean {
 /**
  * Keeps what a host can trust of the findings a detector reported.
  *
- * A finding says where, and the host quotes the place. The one piece of text
- * a detector hands over is `match`, and it ends up in the agent's context, so
- * it must be a verbatim piece of what the detector was shown. That keeps a
- * detector from composing text of its own at runtime: the only words it can
- * put in front of an agent are words that were already there.
+ * A finding says where, and the host quotes the place. The pieces of text a
+ * detector hands over are `match` and `file`, and both end up in the agent's
+ * context. A match must be a verbatim piece of what the detector was shown,
+ * and a file must be one that exists or a verbatim piece of the event. That
+ * keeps a detector from composing text of its own at runtime: the only words
+ * it can put in front of an agent are words that were already there.
  *
  * A finding is never thrown away for a wrong detail. The detail is left out,
  * the finding still fires, and `dropped` says what happened. A test fails on
  * anything in `dropped`, so an author hears about it before a user does.
  */
-export function validateFindings(json: string, ctx: Ctx): { findings: Finding[]; dropped: string[] } {
+export function validateFindings(json: string, ctx: Ctx, project: ProjectFiles | null = null): { findings: Finding[]; dropped: string[] } {
   const findings: Finding[] = [];
   const dropped: string[] = [];
   let parsed: unknown;
@@ -312,7 +327,15 @@ export function validateFindings(json: string, ctx: Ctx): { findings: Finding[];
       } else if (file.length > MAX_MATCH_LENGTH) {
         dropped.push(`the file of a finding, a path longer than ${MAX_MATCH_LENGTH} characters`);
       } else {
-        finding.file = fromRoot(file, ctx.project);
+        const shown = existingFile(file, ctx, project);
+        if (shown !== null) {
+          finding.file = shown;
+        } else if (ctx.text.includes(file)) {
+          // A path the event names, such as the output file of a command about to run, may not exist yet.
+          finding.file = fromRoot(file, ctx.project);
+        } else {
+          dropped.push(`the file of a finding, which does not exist and does not occur in the input: ${JSON.stringify(file.slice(0, 60))}`);
+        }
       }
     }
     if (candidate.depth !== undefined) {

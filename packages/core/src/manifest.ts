@@ -6,7 +6,7 @@ import type { PackageInfo } from "./packages.ts";
  *
  * Nobody writes this. The build reads it out of the principle: title and
  * summary from `principle.md`, the handlers from what `detector.ts` registers,
- * languages from their globs.
+ * tags from `package.json`.
  */
 export interface Handler {
   event: EventName;
@@ -19,8 +19,8 @@ export interface Manifest {
   title: string;
   /** The first paragraph of principle.md. Shown in lists and injected for a `pointer` finding. */
   summary: string;
-  /** Display tags, e.g. ["dart"], derived from the extensions in the globs. They filter nothing. */
-  languages: string[];
+  /** What the principle is about, e.g. ["dart", "testing"], as its expert wrote them in the `tags` of `package.json`. They filter nothing. */
+  tags: string[];
   /** The events the detector has a handler for. A summary of `handlers`, for display. */
   events: EventName[];
   /** Every glob of every handler, once. A summary of `handlers`, for display. */
@@ -153,39 +153,143 @@ export function readHandlers(registered: unknown): Pick<Manifest, "events" | "gl
   };
 }
 
-const LANGUAGE_OF_EXTENSION: Record<string, string> = {
-  ts: "typescript",
-  tsx: "typescript",
-  mts: "typescript",
-  cts: "typescript",
-  js: "javascript",
-  jsx: "javascript",
-  mjs: "javascript",
-  cjs: "javascript",
-  py: "python",
-  rb: "ruby",
-  rs: "rust",
-  kt: "kotlin",
-  kts: "kotlin",
-  cs: "csharp",
-  sh: "shell",
-  md: "markdown",
-  yml: "yaml",
-};
+export const MAX_TAGS = 5;
+const MAX_TAG_LENGTH = 30;
+const TAGS_EXAMPLE = '"tags": ["dart", "testing"]';
 
-/** The languages a list of globs selects, read off their file extensions. */
-export function languagesOf(globs: string[]): string[] {
-  const languages = new Set<string>();
-  for (const glob of globs) {
-    if (glob.startsWith("!")) {
+/**
+ * Normalizes the tags an expert wrote: trimmed, inner spaces collapsed, each
+ * once. Throws a `ManifestError` naming what is wrong for its author.
+ */
+export function cleanTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    throw new ManifestError(`the tags in package.json are a list of up to ${MAX_TAGS} words, for example ${TAGS_EXAMPLE}`);
+  }
+  const tags: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") {
+      throw new ManifestError(`a tag in package.json is a word in quotes, for example ${TAGS_EXAMPLE}`);
+    }
+    const tag = item.trim().replace(/\s+/g, " ");
+    if (tag === "") {
       continue;
     }
-    const extension = /\.(?:\{([a-z0-9,]+)\}|([a-z0-9]+))$/.exec(glob);
-    for (const name of (extension?.[1] ?? extension?.[2] ?? "").split(",")) {
-      if (name !== "") {
-        languages.add(LANGUAGE_OF_EXTENSION[name] ?? name);
-      }
+    if (tag.length > MAX_TAG_LENGTH) {
+      throw new ManifestError(`a tag may be at most ${MAX_TAG_LENGTH} characters, "${tag}" has ${tag.length}`);
+    }
+    if (!tags.some((known) => known.toLowerCase() === tag.toLowerCase())) {
+      tags.push(tag);
     }
   }
-  return [...languages];
+  if (tags.length > MAX_TAGS) {
+    throw new ManifestError(`a principle may have at most ${MAX_TAGS} tags, package.json has ${tags.length}`);
+  }
+  return tags;
+}
+
+/** Reads the `tags` of a principle's `package.json`. A principle without them has no tags. */
+export function parseTags(packageJson: string | undefined): string[] {
+  if (packageJson === undefined) {
+    return [];
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(packageJson);
+  } catch {
+    throw new ManifestError("package.json is not valid JSON");
+  }
+  const tags = (parsed as { tags?: unknown } | null)?.tags;
+  return tags === undefined ? [] : cleanTags(tags);
+}
+
+/** `package.json` with `tags` set, or without them when there are none. Null when nothing else is left in it. */
+export function withTags(packageJson: string | undefined, tags: string[]): string | null {
+  let parsed: Record<string, unknown> = {};
+  if (packageJson !== undefined) {
+    try {
+      const value: unknown = JSON.parse(packageJson);
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        parsed = value as Record<string, unknown>;
+      }
+    } catch {
+      // A package.json that is no JSON is the build's to report. The tags start it over.
+    }
+  }
+  const { tags: _old, ...rest } = parsed;
+  const next = tags.length === 0 ? rest : { ...rest, tags };
+  return Object.keys(next).length === 0 ? null : `${JSON.stringify(next, null, 2)}\n`;
+}
+
+/**
+ * What a principle's `package.json` may say about the principle itself, apart
+ * from its tags. They are not part of a version: a repository sync applies
+ * them to the principle, and what they leave out its owner sets on the website.
+ */
+export interface PrincipleSettings {
+  /** Who can see it and run it. */
+  visibility?: "public" | "private";
+  /** Why it was retired. Retired while it is set, running again once it is gone. */
+  retired?: string;
+}
+
+const MAX_RETIRED_LENGTH = 500;
+
+/** Reads `visibility` and `retired` from a principle's `package.json`. Throws a `ManifestError` naming what is wrong. */
+export function parseSettings(packageJson: string | undefined): PrincipleSettings {
+  if (packageJson === undefined) {
+    return {};
+  }
+  let parsed: { visibility?: unknown; retired?: unknown } | null;
+  try {
+    parsed = JSON.parse(packageJson) as { visibility?: unknown; retired?: unknown } | null;
+  } catch {
+    throw new ManifestError("package.json is not valid JSON");
+  }
+  const settings: PrincipleSettings = {};
+  if (parsed?.visibility !== undefined) {
+    if (parsed.visibility !== "public" && parsed.visibility !== "private") {
+      throw new ManifestError('the visibility in package.json is "public" or "private"');
+    }
+    settings.visibility = parsed.visibility;
+  }
+  if (parsed?.retired !== undefined) {
+    const reason = typeof parsed.retired === "string" ? parsed.retired.trim() : "";
+    if (reason === "") {
+      throw new ManifestError('retired in package.json is the reason people who ran the principle will read, for example "retired": "Superseded by avoid-late"');
+    }
+    if (reason.length > MAX_RETIRED_LENGTH) {
+      throw new ManifestError(`the reason in retired in package.json may be at most ${MAX_RETIRED_LENGTH} characters, this one has ${reason.length}`);
+    }
+    settings.retired = reason;
+  }
+  return settings;
+}
+
+/**
+ * `package.json` without `visibility` and `retired`, which are not part of a
+ * version, in one form whatever its formatting. Two files that differ only in
+ * those two give the same text. A file that is no JSON object stays as it is.
+ */
+export function withoutSettings(packageJson: string | undefined): string | undefined {
+  if (packageJson === undefined) {
+    return undefined;
+  }
+  try {
+    const parsed: unknown = JSON.parse(packageJson);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return packageJson;
+    }
+    const { visibility: _visibility, retired: _retired, ...rest } = parsed as Record<string, unknown>;
+    return JSON.stringify(rest);
+  } catch {
+    return packageJson;
+  }
+}
+
+/**
+ * The tags of a manifest. Versions built before tags show the languages
+ * their globs selected, which is what they showed then.
+ */
+export function tagsOf(manifest: Partial<Manifest> & { languages?: string[] }): string[] {
+  return manifest.tags ?? manifest.languages ?? [];
 }

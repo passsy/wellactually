@@ -188,6 +188,8 @@ export interface TextFinding {
    * Another file the finding points at: the jpg that should be a webp, the
    * test that already exists. A path from the project root, or an absolute
    * one. The agent is told the file. `line` and `match` stay about the event.
+   * It has to be a file or folder that exists, or occur word for word in the
+   * event. Any other path is left out, and the finding still fires.
    */
   file?: string;
   /** Omitted means `full`. */

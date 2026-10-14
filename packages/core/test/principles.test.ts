@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { buildPrinciple, checkPrinciple, languagesOf, matchesGlob, matchesGlobs, parsePrinciple, readPrincipleDir, scanAdvice } from "../src/node.ts";
+import { buildPrinciple, checkPrinciple, cleanTags, matchesGlob, parseSettings, parseTags, tagsOf, withoutSettings, withTags, matchesGlobs, parsePrinciple, readPrincipleDir, scanAdvice } from "../src/node.ts";
 
 const root = path.resolve(import.meta.dirname, "../../../principles");
 
@@ -286,9 +286,58 @@ describe("a detector that cannot be loaded", () => {
   });
 });
 
-describe("languages", () => {
-  test("come from the extensions in the globs", () => {
-    expect(languagesOf(["**/*.dart", "lib/**/*.{ts,tsx}", "test/**", "**/*.proto", "!**/*.g.dart", "!**/*.js"])).toEqual(["dart", "typescript", "proto"]);
+describe("tags", () => {
+  test("are read from package.json, trimmed and each once", () => {
+    expect(parseTags('{"tags": ["dart", "  null   safety ", "Dart", ""]}')).toEqual(["dart", "null safety"]);
+  });
+
+  test("are none without them in package.json", () => {
+    expect(parseTags(undefined)).toEqual([]);
+    expect(parseTags('{"dependencies": {}}')).toEqual([]);
+  });
+
+  test("are at most five short words", () => {
+    expect(() => cleanTags(["a", "b", "c", "d", "e", "f"])).toThrow("a principle may have at most 5 tags, package.json has 6");
+    expect(() => cleanTags(["x".repeat(31)])).toThrow(/at most 30 characters/);
+  });
+
+  test("tell the author how to write them", () => {
+    expect(() => parseTags('{"tags": "dart, testing"}')).toThrow('the tags in package.json are a list of up to 5 words, for example "tags": ["dart", "testing"]');
+    expect(() => parseTags('{"tags": [1]}')).toThrow(/a tag in package.json is a word in quotes/);
+  });
+
+  test("are written into package.json next to what it holds, and the file goes when nothing is left", () => {
+    expect(withTags('{"dependencies": {"a": "1.0.0"}}', ["dart"])).toBe('{\n  "dependencies": {\n    "a": "1.0.0"\n  },\n  "tags": [\n    "dart"\n  ]\n}\n');
+    expect(withTags('{"dependencies": {}, "tags": ["dart"]}', [])).toBe('{\n  "dependencies": {}\n}\n');
+    expect(withTags('{"tags": ["dart"]}', [])).toBeNull();
+    expect(withTags(undefined, [])).toBeNull();
+  });
+
+  test("of a version from before tags are the languages it showed", () => {
+    expect(tagsOf({ languages: ["dart"] })).toEqual(["dart"]);
+    expect(tagsOf({ tags: ["testing"], languages: ["dart"] })).toEqual(["testing"]);
+    expect(tagsOf({})).toEqual([]);
+  });
+});
+
+describe("visibility and retired in package.json", () => {
+  test("are read when they are there, and absent otherwise", () => {
+    expect(parseSettings('{"visibility": "public", "retired": "  Superseded by avoid-late "}')).toEqual({ visibility: "public", retired: "Superseded by avoid-late" });
+    expect(parseSettings('{"tags": ["dart"]}')).toEqual({});
+    expect(parseSettings(undefined)).toEqual({});
+  });
+
+  test("tell the author what is wrong", () => {
+    expect(() => parseSettings('{"visibility": "secret"}')).toThrow('the visibility in package.json is "public" or "private"');
+    expect(() => parseSettings('{"retired": true}')).toThrow(/retired in package.json is the reason/);
+    expect(() => parseSettings(`{"retired": "${"x".repeat(501)}"}`)).toThrow(/at most 500 characters/);
+  });
+
+  test("are left out of what a sync compares, whatever the formatting", () => {
+    expect(withoutSettings('{"name": "a", "visibility": "public", "retired": "Gone"}')).toBe('{"name":"a"}');
+    expect(withoutSettings('{\n  "name": "a"\n}\n')).toBe('{"name":"a"}');
+    expect(withoutSettings("not json")).toBe("not json");
+    expect(withoutSettings(undefined)).toBeUndefined();
   });
 });
 

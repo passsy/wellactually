@@ -1,0 +1,9 @@
+{
+  "name": "no-conventional-commits",
+  "private": true,
+  "type": "module",
+  "tags": [
+    "git",
+    "commits"
+  ]
+}

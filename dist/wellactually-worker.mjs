@@ -3902,7 +3902,7 @@ function runDetectorIn(QuickJS, bundle, ctx, limits, project, api) {
   if (json === null) {
     return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };
   }
-  const { findings, dropped } = validateFindings(json, ctx);
+  const { findings, dropped } = validateFindings(json, ctx, project);
   return { findings, error: null, dropped, ms };
 }
 var TEST_LIMITS = {
@@ -3926,10 +3926,16 @@ function fromRoot(file, root) {
   }
   return file;
 }
+function existingFile(file, ctx, project) {
+  const base = ctx.project ?? ctx.cwd ?? "/";
+  const absolute = normalizeAbsolute(file.startsWith("/") ? file : `${base}/${file}`);
+  const exists = absolute === ctx.file?.path || project !== null && project.stat(absolute) !== null;
+  return exists ? fromRoot(absolute, ctx.project) : null;
+}
 function hasLines(ctx) {
   return ctx.file !== null || ctx.event === "output";
 }
-function validateFindings(json, ctx) {
+function validateFindings(json, ctx, project = null) {
   const findings = [];
   const dropped = [];
   let parsed;
@@ -3997,7 +4003,14 @@ function validateFindings(json, ctx) {
       } else if (file.length > MAX_MATCH_LENGTH) {
         dropped.push(`the file of a finding, a path longer than ${MAX_MATCH_LENGTH} characters`);
       } else {
-        finding.file = fromRoot(file, ctx.project);
+        const shown = existingFile(file, ctx, project);
+        if (shown !== null) {
+          finding.file = shown;
+        } else if (ctx.text.includes(file)) {
+          finding.file = fromRoot(file, ctx.project);
+        } else {
+          dropped.push(`the file of a finding, which does not exist and does not occur in the input: ${JSON.stringify(file.slice(0, 60))}`);
+        }
       }
     }
     if (candidate.depth !== void 0) {

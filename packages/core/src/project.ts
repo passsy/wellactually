@@ -28,7 +28,7 @@ export const MAX_FS_CALLS = 500;
 export const MAX_FS_BYTES = 4 * 1024 * 1024;
 
 /** Resolves `.` and `..` in an absolute forward-slash path. */
-function normalizeAbsolute(path: string): string {
+export function normalizeAbsolute(path: string): string {
   const out: string[] = [];
   for (const part of path.split("/")) {
     if (part === "" || part === ".") {
