@@ -54,7 +54,7 @@ test("fires on a late field", () => {
 
 ## Versions
 
-This is version 0.9.0.
+This is version 0.9.1.
 The lockfile of your repository pins the commit it installed.
 `npm update @wellactually/sdk` moves to the newest.
 The API is still changing.

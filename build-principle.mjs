@@ -3894,19 +3894,6 @@ function readPins(files) {
   }
   return pins;
 }
-function inheritedPackageJson(source) {
-  let dependencies;
-  try {
-    dependencies = JSON.parse(source).dependencies;
-  } catch {
-    return null;
-  }
-  if (typeof dependencies !== "object" || dependencies === null || Array.isArray(dependencies) || Object.keys(dependencies).length === 0) {
-    return null;
-  }
-  return `${JSON.stringify({ dependencies }, null, 2)}
-`;
-}
 function splitSpecifier(specifier) {
   const parts = specifier.split("/");
   const count = specifier.startsWith("@") ? 2 : 1;
@@ -4779,25 +4766,7 @@ function takenFrom(root, name) {
   return resolved;
 }
 async function readPrinciple(dir2) {
-  const files = readPrincipleDir(dir2);
-  if (files["package.json"] === void 0) {
-    const inherited = nearestDependencies(path.dirname(path.resolve(dir2)));
-    if (inherited !== null) {
-      files["package.json"] = inherited;
-    }
-  }
-  return vendorPackages(files, diskPackages(dir2));
-}
-function nearestDependencies(from) {
-  for (let current2 = from; ; current2 = path.dirname(current2)) {
-    const candidate = path.join(current2, "package.json");
-    if (fs.existsSync(candidate)) {
-      return inheritedPackageJson(fs.readFileSync(candidate, "utf8"));
-    }
-    if (fs.existsSync(path.join(current2, ".git")) || current2 === path.dirname(current2)) {
-      return null;
-    }
-  }
+  return vendorPackages(readPrincipleDir(dir2), diskPackages(dir2));
 }
 var MAX_READ_BYTES = 512 * 1024;
 
