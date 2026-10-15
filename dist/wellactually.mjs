@@ -14773,7 +14773,7 @@ import os5 from "node:os";
 import path9 from "node:path";
 var NAME = /^[A-Za-z0-9][A-Za-z0-9._:/@[\]-]{0,79}$/;
 var TRANSCRIPT_TAIL = 8 * 1024 * 1024;
-function raterOf(clientName, meta3) {
+async function raterOf(clientName, meta3) {
   const agent = agentOf(clientName);
   let model = null;
   const turn = meta3?.["x-codex-turn-metadata"];
@@ -14782,7 +14782,7 @@ function raterOf(clientName, meta3) {
   }
   const toolUseId = meta3?.["claudecode/toolUseId"];
   if (!model && typeof toolUseId === "string") {
-    model = claudeModel(toolUseId);
+    model = await claudeModel(toolUseId);
   }
   return { agent: agent && NAME.test(agent) ? agent : null, model: model && NAME.test(model) ? model : null };
 }
@@ -14798,10 +14798,12 @@ function agentOf(clientName) {
   }
   return clientName;
 }
-function noteToolUse(toolUseId, transcript) {
+var TRANSCRIPT_WAIT_MS = 3e3;
+async function noteToolUse(toolUseId, transcript) {
+  const model = await waitForModel(transcript, toolUseId, TRANSCRIPT_WAIT_MS);
   const dir = path9.join(boardHome(), "tool-uses");
   fs7.mkdirSync(dir, { recursive: true });
-  fs7.writeFileSync(path9.join(dir, `${safe(toolUseId)}.json`), JSON.stringify({ transcript }), { mode: 384 });
+  fs7.writeFileSync(path9.join(dir, `${safe(toolUseId)}.json`), JSON.stringify({ transcript, model }), { mode: 384 });
   const stale = Date.now() - 864e5;
   for (const name of fs7.readdirSync(dir)) {
     const file2 = path9.join(dir, name);
@@ -14813,25 +14815,41 @@ function noteToolUse(toolUseId, transcript) {
     }
   }
 }
-function claudeModel(toolUseId) {
+async function claudeModel(toolUseId) {
   const note = path9.join(boardHome(), "tool-uses", `${safe(toolUseId)}.json`);
   const transcripts = [];
   try {
-    const { transcript } = JSON.parse(fs7.readFileSync(note, "utf8"));
+    const { transcript, model } = JSON.parse(fs7.readFileSync(note, "utf8"));
+    fs7.rmSync(note, { force: true });
+    if (typeof model === "string") {
+      return model;
+    }
     if (typeof transcript === "string") {
       transcripts.push(transcript);
     }
-    fs7.rmSync(note, { force: true });
   } catch {
   }
   const session = process.env.CLAUDE_CODE_SESSION_ID;
   if (transcripts.length === 0 && session) {
     const projects = path9.join(process.env.CLAUDE_CONFIG_DIR ?? path9.join(os5.homedir(), ".claude"), "projects");
     for (const project of safeList(projects)) {
-      transcripts.push(path9.join(projects, project, `${safe(session)}.jsonl`));
+      const transcript = path9.join(projects, project, `${safe(session)}.jsonl`);
+      if (fs7.existsSync(transcript)) {
+        transcripts.push(transcript);
+      }
     }
   }
   for (const transcript of transcripts) {
+    const model = await waitForModel(transcript, toolUseId, TRANSCRIPT_WAIT_MS);
+    if (model) {
+      return model;
+    }
+  }
+  return null;
+}
+async function waitForModel(transcript, toolUseId, ms) {
+  const until = Date.now() + ms;
+  for (; ; ) {
     const subagents = path9.join(transcript.replace(/\.jsonl$/, ""), "subagents");
     for (const file2 of [transcript, ...safeList(subagents).map((name) => path9.join(subagents, name))]) {
       const model = modelInTranscript(file2, toolUseId);
@@ -14839,8 +14857,11 @@ function claudeModel(toolUseId) {
         return model;
       }
     }
+    if (Date.now() >= until) {
+      return null;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  return null;
 }
 function modelInTranscript(file2, toolUseId) {
   let text2;
@@ -14898,7 +14919,7 @@ async function runHook(stdin) {
   }
   if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
     if (payload.tool_use_id && payload.transcript_path) {
-      noteToolUse(payload.tool_use_id, payload.transcript_path);
+      await noteToolUse(payload.tool_use_id, payload.transcript_path);
     }
     return "";
   }
@@ -44484,7 +44505,7 @@ ${report}`);
     },
     async ({ id, rating }, extra) => {
       try {
-        return text(await ratePrinciple(id, rating, raterOf(server.server.getClientVersion()?.name, extra._meta)));
+        return text(await ratePrinciple(id, rating, await raterOf(server.server.getClientVersion()?.name, extra._meta)));
       } catch (error62) {
         if (error62 instanceof RegistryError) {
           return text(`The rating was not recorded: ${error62.message} Carry on with your task.`);

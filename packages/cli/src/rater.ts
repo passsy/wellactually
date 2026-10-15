@@ -25,7 +25,7 @@ const TRANSCRIPT_TAIL = 8 * 1024 * 1024;
  * names the tool call, and the model that made it is in the session's
  * transcript: the hook notes where that is before the call reaches the server.
  */
-export function raterOf(clientName: string | undefined, meta: Record<string, unknown> | undefined): Rater {
+export async function raterOf(clientName: string | undefined, meta: Record<string, unknown> | undefined): Promise<Rater> {
   const agent = agentOf(clientName);
   let model: string | null = null;
   const turn = meta?.["x-codex-turn-metadata"];
@@ -34,7 +34,7 @@ export function raterOf(clientName: string | undefined, meta: Record<string, unk
   }
   const toolUseId = meta?.["claudecode/toolUseId"];
   if (!model && typeof toolUseId === "string") {
-    model = claudeModel(toolUseId);
+    model = await claudeModel(toolUseId);
   }
   return { agent: agent && NAME.test(agent) ? agent : null, model: model && NAME.test(model) ? model : null };
 }
@@ -52,15 +52,21 @@ function agentOf(clientName: string | undefined): string | null {
   return clientName;
 }
 
+/** How long to wait for Claude Code to write a tool call to its transcript. It writes in batches, about half a second apart. */
+const TRANSCRIPT_WAIT_MS = 3000;
+
 /**
- * Notes, from the hook that runs right before a rating, which transcript the
- * tool call is in. The MCP server is not told, and a session can change its
- * transcript after the server started.
+ * Notes, from the hook that runs right before a rating, the model that made
+ * the tool call and the transcript it is in. The MCP server is not told
+ * either, and a session can change its transcript after the server started.
+ *
+ * The tool call waits for the hook, so the hook can wait for the transcript.
  */
-export function noteToolUse(toolUseId: string, transcript: string): void {
+export async function noteToolUse(toolUseId: string, transcript: string): Promise<void> {
+  const model = await waitForModel(transcript, toolUseId, TRANSCRIPT_WAIT_MS);
   const dir = path.join(boardHome(), "tool-uses");
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${safe(toolUseId)}.json`), JSON.stringify({ transcript }), { mode: 0o600 });
+  fs.writeFileSync(path.join(dir, `${safe(toolUseId)}.json`), JSON.stringify({ transcript, model }), { mode: 0o600 });
   // Each note is read once, within seconds. Older ones are only clutter.
   const stale = Date.now() - 86_400_000;
   for (const name of fs.readdirSync(dir)) {
@@ -76,15 +82,18 @@ export function noteToolUse(toolUseId: string, transcript: string): void {
 }
 
 /** The model of the Claude Code message that made the tool call `toolUseId`. */
-function claudeModel(toolUseId: string): string | null {
+async function claudeModel(toolUseId: string): Promise<string | null> {
   const note = path.join(boardHome(), "tool-uses", `${safe(toolUseId)}.json`);
   const transcripts: string[] = [];
   try {
-    const { transcript } = JSON.parse(fs.readFileSync(note, "utf8")) as { transcript?: unknown };
+    const { transcript, model } = JSON.parse(fs.readFileSync(note, "utf8")) as { transcript?: unknown; model?: unknown };
+    fs.rmSync(note, { force: true });
+    if (typeof model === "string") {
+      return model;
+    }
     if (typeof transcript === "string") {
       transcripts.push(transcript);
     }
-    fs.rmSync(note, { force: true });
   } catch {
     // No note: the hook did not run, or is older than this server.
   }
@@ -92,10 +101,25 @@ function claudeModel(toolUseId: string): string | null {
   if (transcripts.length === 0 && session) {
     const projects = path.join(process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), ".claude"), "projects");
     for (const project of safeList(projects)) {
-      transcripts.push(path.join(projects, project, `${safe(session)}.jsonl`));
+      const transcript = path.join(projects, project, `${safe(session)}.jsonl`);
+      if (fs.existsSync(transcript)) {
+        transcripts.push(transcript);
+      }
     }
   }
   for (const transcript of transcripts) {
+    const model = await waitForModel(transcript, toolUseId, TRANSCRIPT_WAIT_MS);
+    if (model) {
+      return model;
+    }
+  }
+  return null;
+}
+
+/** Looks for the tool call in the transcript and its subagents' until it is written, at most `ms` long. */
+async function waitForModel(transcript: string, toolUseId: string, ms: number): Promise<string | null> {
+  const until = Date.now() + ms;
+  for (;;) {
     // A subagent's tool calls are in transcripts of their own, next to the session's.
     const subagents = path.join(transcript.replace(/\.jsonl$/, ""), "subagents");
     for (const file of [transcript, ...safeList(subagents).map((name) => path.join(subagents, name))]) {
@@ -104,8 +128,11 @@ function claudeModel(toolUseId: string): string | null {
         return model;
       }
     }
+    if (Date.now() >= until) {
+      return null;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  return null;
 }
 
 /** Finds the assistant message that holds the tool call and returns its model. */

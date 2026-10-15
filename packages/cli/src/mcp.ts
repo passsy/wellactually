@@ -241,7 +241,7 @@ export async function serveMcp(): Promise<void> {
     },
     async ({ id, rating }, extra) => {
       try {
-        return text(await ratePrinciple(id, rating, raterOf(server.server.getClientVersion()?.name, extra._meta)));
+        return text(await ratePrinciple(id, rating, await raterOf(server.server.getClientVersion()?.name, extra._meta)));
       } catch (error) {
         if (error instanceof RegistryError) {
           // A rating is a courtesy. Failing to send one must not derail the agent's task.

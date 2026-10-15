@@ -39,7 +39,7 @@ export async function runHook(stdin: string): Promise<string> {
   }
   if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
     if (payload.tool_use_id && payload.transcript_path) {
-      noteToolUse(payload.tool_use_id, payload.transcript_path);
+      await noteToolUse(payload.tool_use_id, payload.transcript_path);
     }
     return "";
   }
