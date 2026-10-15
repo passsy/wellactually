@@ -234,7 +234,7 @@ async function main(): Promise<number> {
     case "list": {
       const lockfile = readLockfile();
       if (lockfile.entries.length === 0) {
-        console.log("Your advisory board is empty. Add experts on the website and run `wellactually sync`, or `wellactually add <dir>`.");
+        console.log("Your advisory board is empty. Follow experts on the website and run `wellactually sync`, or `wellactually add <dir>`.");
         return 0;
       }
       const off = switchedOff(process.cwd());

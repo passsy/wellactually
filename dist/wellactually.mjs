@@ -14731,7 +14731,7 @@ function renderSync(result) {
     return `  ${name}, ${expert.principles} ${expert.principles === 1 ? "principle" : "principles"}${tips}
     ${expert.url}`;
   });
-  return [summary, "", "Your advisory board is empty. Experts you can add:", ...experts, "", "Add the ones you like on their page, then sync again."].join("\n");
+  return [summary, "", "Your advisory board is empty. Experts you can follow:", ...experts, "", "Follow the ones you like on their page, then sync again."].join("\n");
 }
 
 // packages/cli/src/hook.ts
@@ -44551,7 +44551,7 @@ and confirm the code ${start.user_code}`);
     case "list": {
       const lockfile = readLockfile();
       if (lockfile.entries.length === 0) {
-        console.log("Your advisory board is empty. Add experts on the website and run `wellactually sync`, or `wellactually add <dir>`.");
+        console.log("Your advisory board is empty. Follow experts on the website and run `wellactually sync`, or `wellactually add <dir>`.");
         return 0;
       }
       const off = switchedOff(process.cwd());

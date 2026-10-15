@@ -72,8 +72,8 @@ So they are contained.
   A detector cannot compose text for your agent at runtime.
 - Each download is checked against its content hash before it is stored.
 - Updates are automatic.
-  What an expert on your advisory board releases runs from your next sync, so add the experts you trust.
-  You can switch off any single principle, or remove the expert.
+  What an expert on your advisory board releases runs from your next sync, so follow the experts you trust.
+  You can switch off any single principle, or unfollow the expert.
 
 The code that does this is in `packages/core`: `sandbox.ts` is the isolate, `board.ts` runs an advisory board.
 

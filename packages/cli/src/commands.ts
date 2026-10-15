@@ -451,7 +451,7 @@ export function renderTry(result: TryResult): string {
   return lines.join("\n");
 }
 
-/** What `wellactually sync` prints, with the experts to add when the advisory board is empty. */
+/** What `wellactually sync` prints, with experts to follow when the advisory board is empty. */
 export function renderSync(result: SyncResult): string {
   const enabled = result.entries.filter((entry) => entry.enabled).length;
   const summary = `${result.entries.length} principles on your advisory board, ${enabled} enabled. Downloaded ${result.downloaded.length}, removed ${result.removed.length}.${result.reported > 0 ? ` Reported ${result.reported} detections.` : ""}`;
@@ -463,5 +463,5 @@ export function renderSync(result: SyncResult): string {
     const tips = expert.tips.length > 0 ? `: ${expert.tips.join("; ")}` : "";
     return `  ${name}, ${expert.principles} ${expert.principles === 1 ? "principle" : "principles"}${tips}\n    ${expert.url}`;
   });
-  return [summary, "", "Your advisory board is empty. Experts you can add:", ...experts, "", "Add the ones you like on their page, then sync again."].join("\n");
+  return [summary, "", "Your advisory board is empty. Experts you can follow:", ...experts, "", "Follow the ones you like on their page, then sync again."].join("\n");
 }

@@ -59,11 +59,11 @@ test("a sync of an empty advisory board lists the experts to add, with their pag
     [
       "0 principles on your advisory board, 0 enabled. Downloaded 0, removed 0.",
       "",
-      "Your advisory board is empty. Experts you can add:",
+      "Your advisory board is empty. Experts you can follow:",
       "  Pascal Welsch (@passsy), 12 principles: Avoid Conventional Commits; Good Commit Messages",
       "    https://wellactually.dev/e/passsy",
       "",
-      "Add the ones you like on their page, then sync again.",
+      "Follow the ones you like on their page, then sync again.",
     ].join("\n"),
   );
 });

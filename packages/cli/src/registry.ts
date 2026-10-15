@@ -206,7 +206,7 @@ export interface SyncResult {
   removed: string[];
   /** Detections reported to the registry with this sync. */
   reported: number;
-  /** Experts to add, when the advisory board on the registry is empty. */
+  /** Experts to follow, when the advisory board on the registry is empty. */
   suggestions: SuggestedExpert[];
 }
 
