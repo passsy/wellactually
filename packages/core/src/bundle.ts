@@ -118,7 +118,7 @@ export async function vendorPackages(files: FileMap, source: PackageSource): Pro
   } catch (error) {
     throw new BundleError((error as Error).message);
   }
-  if (Object.keys(pins).length === 0) {
+  if (Object.keys(pins).length === 0 || detectorEntry(files) === null) {
     return files;
   }
   const fetched: FileMap = {};

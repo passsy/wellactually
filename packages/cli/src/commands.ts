@@ -283,7 +283,7 @@ export function renderRepositorySync(result: RepositorySync): string {
     }
   }
   if (result.principles.length === 0) {
-    lines.push("  No folder with a principle.md and a detector.ts was found.");
+    lines.push("  No folder with a principle.md was found.");
   }
   return lines.join("\n");
 }

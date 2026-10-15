@@ -123,6 +123,11 @@ export async function buildPrinciple(files: FileMap, approved: string[] = []): P
   const tags = parseTags(files["package.json"]);
   // Not part of the version, but a mistake in them is told now, not at the next sync.
   parseSettings(files["package.json"]);
+  if (detectorEntry(files) === null) {
+    // Advice without a detector never runs. It is there to be read, and nothing decides when.
+    const manifest: Manifest = { title, summary, tags, events: [], globs: [], handlers: [], api: API_VERSION };
+    return { manifest, advice, bundle: "", hash: await hashPrinciple(manifest, advice, "") };
+  }
   const { bundle: code, builtIns, inlined } = await buildDetector(files);
   // The version the principle is written against is the one its files import the SDK from.
   // From now on every host hands its detector the event of that version.
@@ -199,6 +204,14 @@ export async function checkPrinciple(files: FileMap, approved: string[] = []): P
 
   report.warnings.push(...scanAdvice(built.advice));
   report.unapproved = (built.manifest.packages ?? []).filter(needsApproval);
+
+  if (!hasDetector(built.manifest)) {
+    if (tests !== null) {
+      report.problems.push("there are tests but no detector.ts for them to test. Add the detector, or remove the tests to keep the advice without one.");
+    }
+    report.ok = report.problems.length === 0;
+    return { built, report };
+  }
 
   if (tests === null) {
     const hint = Object.keys(files).some((name) => name.startsWith("cases/"))
@@ -379,7 +392,16 @@ function eventCtx(raw: unknown): Ctx | null {
   return fileCtx(event.event, relativePath, event.file.content, written, { isNew: event.file.isNew === true });
 }
 
-/** Whether a principle directory has the two files that make it one. */
+/** Whether a principle directory has the file that makes it one. The detector is optional. */
 export function looksLikePrinciple(files: FileMap): boolean {
-  return "principle.md" in files && detectorEntry(files) !== null;
+  return "principle.md" in files;
+}
+
+/**
+ * Whether a principle has a detector. One without is advice to read: it never
+ * runs, so it is off for everyone and cannot be switched on.
+ */
+export function hasDetector(manifest: Partial<Pick<Manifest, "handlers">>): boolean {
+  // A manifest from before handlers were recorded has none, and it always had a detector.
+  return !Array.isArray(manifest.handlers) || manifest.handlers.length > 0;
 }

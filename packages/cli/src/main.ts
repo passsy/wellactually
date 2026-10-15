@@ -221,7 +221,15 @@ async function main(): Promise<number> {
       const start = await startDeviceLogin();
       console.log(`Open ${start.verification_url}\nand confirm the code ${start.user_code}`);
       const handle = await finishDeviceLogin(start);
-      console.log(`Signed in as ${handle}. Run \`wellactually sync\` to download your advisory board.`);
+      console.log(`Signed in as ${handle}.`);
+      // The advisory board comes down right away, so the next session does not have to wait for its own sync.
+      try {
+        const result = await sync();
+        print(result, renderSync(result));
+      } catch (error) {
+        console.log(`Could not download your advisory board yet: ${error instanceof Error ? error.message : String(error)}`);
+        console.log("Run `wellactually sync` to try again. The next session also syncs on its own.");
+      }
       return 0;
     }
     case "logout":

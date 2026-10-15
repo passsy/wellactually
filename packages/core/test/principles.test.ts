@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { buildPrinciple, checkPrinciple, cleanTags, matchesGlob, parseSettings, parseTags, tagsOf, withoutSettings, withTags, matchesGlobs, parsePrinciple, readPrincipleDir, scanAdvice } from "../src/node.ts";
+import { buildPrinciple, checkPrinciple, hasDetector, cleanTags, matchesGlob, parseSettings, parseTags, tagsOf, withoutSettings, withTags, matchesGlobs, parsePrinciple, readPrincipleDir, scanAdvice } from "../src/node.ts";
 
 const root = path.resolve(import.meta.dirname, "../../../principles");
 
@@ -52,6 +52,26 @@ describe("the tests of a principle", () => {
     const { report } = await check({ "fires.test.ts": [header, fires].join("\n"), "more/quiet.test.ts": [header, quiet].join("\n") });
     expect(report.ok).toBe(true);
     expect(report.tests.map((result) => result.file)).toEqual(["fires.test.ts", "more/quiet.test.ts"]);
+  });
+
+  test("advice without a detector needs no tests, and never runs", async () => {
+    const { built, report } = await checkPrinciple({ "principle.md": principle });
+    expect(report.problems).toEqual([]);
+    expect(report.ok).toBe(true);
+    expect(built?.manifest).toMatchObject({ title: "No TODO", events: [], globs: [], handlers: [] });
+    expect(built?.bundle).toBe("");
+    expect(hasDetector(built!.manifest)).toBe(false);
+  });
+
+  test("tests without a detector are refused", async () => {
+    const { report } = await checkPrinciple({ "principle.md": principle, "detector.test.ts": [header, quiet].join("\n") });
+    expect(report.problems).toEqual(["there are tests but no detector.ts for them to test. Add the detector, or remove the tests to keep the advice without one."]);
+  });
+
+  test("a manifest from before handlers were recorded counts as having a detector", () => {
+    expect(hasDetector({})).toBe(true);
+    expect(hasDetector({ handlers: [{ event: "write", globs: [] }] })).toBe(true);
+    expect(hasDetector({ handlers: [] })).toBe(false);
   });
 
   test("a principle without test files is refused", async () => {
