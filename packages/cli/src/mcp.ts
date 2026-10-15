@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { scaffold, switchPrinciple } from "@wellactually/core/node";
 import { z } from "zod";
+import { raterOf } from "./rater.ts";
 import { ratePrinciple, RegistryError, type DraftResult } from "./registry.ts";
 import {
   ApprovalError,
@@ -232,15 +233,15 @@ export async function serveMcp(): Promise<void> {
     "rate_principle",
     {
       description:
-        "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle and the rating, nothing about the code or the conversation.",
+        "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle, the rating, and which agent and model you are, as your agent reports them. Nothing about the code or the conversation.",
       inputSchema: {
         id: z.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
         rating: z.enum(["up", "down", "not_applicable"]).describe("up, down or not_applicable"),
       },
     },
-    async ({ id, rating }) => {
+    async ({ id, rating }, extra) => {
       try {
-        return text(await ratePrinciple(id, rating));
+        return text(await ratePrinciple(id, rating, raterOf(server.server.getClientVersion()?.name, extra._meta)));
       } catch (error) {
         if (error instanceof RegistryError) {
           // A rating is a courtesy. Failing to send one must not derail the agent's task.

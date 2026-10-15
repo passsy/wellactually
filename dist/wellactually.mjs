@@ -164,7 +164,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs9 = require2("node:fs");
+    var fs10 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -6936,8 +6936,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path11) {
-      let input2 = path11;
+    function removeDotSegments(path12) {
+      let input2 = path12;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -7346,8 +7346,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path11 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path11 && path11 !== "/" ? path11 : void 0;
+        const path12 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path12 && path12 !== "/" ? path12 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -10860,12 +10860,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs9, exportName) {
+    function addFormats(ajv, list, fs10, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs9[f]);
+        ajv.addFormat(f, fs10[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10933,21 +10933,21 @@ function loadSandbox() {
 
 // packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path11, pattern) {
+function matchesGlob(path12, pattern) {
   let regex = cache.get(pattern);
   if (!regex) {
     regex = globToRegExp(pattern);
     cache.set(pattern, regex);
   }
-  return regex.test(path11);
+  return regex.test(path12);
 }
-function matchesGlobs(path11, globs) {
+function matchesGlobs(path12, globs) {
   const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
-  if (excluded.some((glob) => matchesGlob(path11, glob))) {
+  if (excluded.some((glob) => matchesGlob(path12, glob))) {
     return false;
   }
   const included = globs.filter((glob) => !glob.startsWith("!"));
-  return included.length === 0 || included.some((glob) => matchesGlob(path11, glob));
+  return included.length === 0 || included.some((glob) => matchesGlob(path12, glob));
 }
 function globToRegExp(pattern) {
   const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
@@ -11046,15 +11046,15 @@ var TEST_ROOT = "/project";
 function fileCtx(event, relativePath, content, written, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === void 0 ? TEST_ROOT : where.root;
-  const path11 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
-  const name = path11.slice(path11.lastIndexOf("/") + 1);
+  const path12 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
+  const name = path12.slice(path12.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
   const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
   return {
     event,
     file: {
-      path: path11,
+      path: path12,
       relativePath: relative,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
@@ -11112,9 +11112,9 @@ function locateWritten(content, fragments) {
 // packages/core/src/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path11) {
+function normalizeAbsolute(path12) {
   const out = [];
-  for (const part of path11.split("/")) {
+  for (const part of path12.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -11127,15 +11127,15 @@ function normalizeAbsolute(path11) {
   return `/${out.join("/")}`;
 }
 function mapProject(root, files) {
-  const relative = (path11) => path11 === root ? "" : path11.startsWith(`${root}/`) ? path11.slice(root.length + 1) : null;
+  const relative = (path12) => path12 === root ? "" : path12.startsWith(`${root}/`) ? path12.slice(root.length + 1) : null;
   const isDir = (inside) => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));
   return {
-    read: (path11) => {
-      const inside = relative(path11);
+    read: (path12) => {
+      const inside = relative(path12);
       return inside === null ? null : files[inside] ?? null;
     },
-    stat: (path11) => {
-      const inside = relative(path11);
+    stat: (path12) => {
+      const inside = relative(path12);
       if (inside === null) {
         return null;
       }
@@ -11145,8 +11145,8 @@ function mapProject(root, files) {
       }
       return isDir(inside) ? { kind: "dir", size: 0 } : null;
     },
-    list: (path11) => {
-      const inside = relative(path11);
+    list: (path12) => {
+      const inside = relative(path12);
       if (inside === null || inside in files || !isDir(inside)) {
         return null;
       }
@@ -11183,24 +11183,24 @@ function fsHost(cwd, project) {
     if (++calls > MAX_FS_CALLS) {
       return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
     }
-    const path11 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    const path12 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
     if (op === "stat") {
-      const stat = project.stat(path11);
+      const stat = project.stat(path12);
       return stat ? { stat } : missing;
     }
     if (op === "list") {
-      const entries = project.list(path11);
+      const entries = project.list(path12);
       if (entries) {
         return { entries };
       }
-      return project.stat(path11) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      return project.stat(path12) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
     }
-    const text2 = project.read(path11);
+    const text2 = project.read(path12);
     if (text2 === null) {
-      return project.stat(path11)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+      return project.stat(path12)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
     }
     bytes += text2.length;
     if (bytes > MAX_FS_BYTES) {
@@ -11658,8 +11658,8 @@ function isExactVersion(version2) {
   return EXACT_VERSION.test(version2);
 }
 var PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
-function isPackageFile(path11) {
-  return path11.startsWith(PACKAGE_DIR);
+function isPackageFile(path12) {
+  return path12.startsWith(PACKAGE_DIR);
 }
 function readPins(files) {
   const source = files["package.json"];
@@ -11697,11 +11697,11 @@ function splitSpecifier(specifier) {
   }
   return { name, subpath: parts.slice(count2).join("/") };
 }
-function packageOf(path11) {
-  if (!isPackageFile(path11)) {
+function packageOf(path12) {
+  if (!isPackageFile(path12)) {
     return null;
   }
-  return splitSpecifier(path11.slice(PACKAGE_DIR.length))?.name ?? null;
+  return splitSpecifier(path12.slice(PACKAGE_DIR.length))?.name ?? null;
 }
 async function readPackageJson(read2, name) {
   const source = await read2(`${PACKAGE_DIR}${name}/package.json`);
@@ -11809,9 +11809,9 @@ async function resolveInPackage(read2, importer, relative) {
   return probe(read2, joined);
 }
 var SUFFIXES = ["", ".js", ".mjs", ".cjs", ".ts", ".json", "/index.js", "/index.mjs", "/index.cjs", "/index.ts"];
-async function probe(read2, path11) {
+async function probe(read2, path12) {
   for (const suffix of SUFFIXES) {
-    const candidate = `${path11}${suffix}`;
+    const candidate = `${path12}${suffix}`;
     if (suffix === "" && !/\.[a-z]+$/.test(candidate)) {
       continue;
     }
@@ -11930,14 +11930,14 @@ function declaredLicense(json2) {
 }
 function carriedPackages(files) {
   const packages = [];
-  for (const path11 of Object.keys(files).sort()) {
-    const name = packageOf(path11);
-    if (name === null || path11 !== `${PACKAGE_DIR}${name}/package.json`) {
+  for (const path12 of Object.keys(files).sort()) {
+    const name = packageOf(path12);
+    if (name === null || path12 !== `${PACKAGE_DIR}${name}/package.json`) {
       continue;
     }
     let json2;
     try {
-      json2 = JSON.parse(files[path11] ?? "");
+      json2 = JSON.parse(files[path12] ?? "");
     } catch {
       throw new PackageError(`the package.json of ${name} is not valid JSON`);
     }
@@ -12022,9 +12022,9 @@ function testFiles(files) {
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
 }
-function normalize(path11) {
+function normalize(path12) {
   const out = [];
-  for (const part of path11.split("/")) {
+  for (const part of path12.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -12036,9 +12036,9 @@ function normalize(path11) {
   }
   return out.join("/");
 }
-function dirname(path11) {
-  const slash = path11.lastIndexOf("/");
-  return slash === -1 ? "" : path11.slice(0, slash);
+function dirname(path12) {
+  const slash = path12.lastIndexOf("/");
+  return slash === -1 ? "" : path12.slice(0, slash);
 }
 async function vendorPackages(files, source) {
   let pins;
@@ -12054,8 +12054,8 @@ async function vendorPackages(files, source) {
   await buildDetector(files, source, fetched);
   await buildTestBundle(files, source, fetched);
   const names = /* @__PURE__ */ new Set();
-  for (const path11 of Object.keys(fetched)) {
-    const name = packageOf(path11);
+  for (const path12 of Object.keys(fetched)) {
+    const name = packageOf(path12);
     if (name !== null) {
       names.add(name);
     }
@@ -12105,21 +12105,21 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
     throw new BundleError(error62.message);
   }
   const missing = /* @__PURE__ */ new Set();
-  const read2 = async (path11) => {
-    const own2 = files[path11] ?? fetched[path11];
+  const read2 = async (path12) => {
+    const own2 = files[path12] ?? fetched[path12];
     if (own2 !== void 0) {
       return own2;
     }
-    const name = packageOf(path11);
-    if (name === null || source === void 0 || missing.has(path11)) {
+    const name = packageOf(path12);
+    if (name === null || source === void 0 || missing.has(path12)) {
       return null;
     }
-    const text2 = await source(name, pins[name] ?? null, path11.slice(PACKAGE_DIR.length + name.length + 1));
+    const text2 = await source(name, pins[name] ?? null, path12.slice(PACKAGE_DIR.length + name.length + 1));
     if (text2 === null) {
-      missing.add(path11);
+      missing.add(path12);
       return null;
     }
-    fetched[path11] = text2;
+    fetched[path12] = text2;
     return text2;
   };
   const virtual = {
@@ -14418,7 +14418,7 @@ async function fetchHistory(id) {
   }
   return await response.json();
 }
-async function ratePrinciple(id, rating) {
+async function ratePrinciple(id, rating, rater = { agent: null, model: null }) {
   if (id.startsWith("local/")) {
     return `${id} is a local principle. It belongs to no registry, so there is nobody to send a rating to.`;
   }
@@ -14430,7 +14430,7 @@ async function ratePrinciple(id, rating) {
     return `${id} is not on this advisory board. Use the id from the <principle id="..."> tag you were shown.`;
   }
   requireToken();
-  const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, rating } });
+  const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, rating, ...rater.agent && { agent: rater.agent }, ...rater.model && { model: rater.model } } });
   if (!response.ok) {
     throw await failure(response);
   }
@@ -14764,14 +14764,142 @@ function renderSync(result) {
 
 // packages/cli/src/hook.ts
 import { spawn } from "node:child_process";
+import fs8 from "node:fs";
+import path10 from "node:path";
+
+// packages/cli/src/rater.ts
 import fs7 from "node:fs";
+import os5 from "node:os";
 import path9 from "node:path";
+var NAME = /^[A-Za-z0-9][A-Za-z0-9._:/@[\]-]{0,79}$/;
+var TRANSCRIPT_TAIL = 8 * 1024 * 1024;
+function raterOf(clientName, meta3) {
+  const agent = agentOf(clientName);
+  let model = null;
+  const turn = meta3?.["x-codex-turn-metadata"];
+  if (turn && typeof turn === "object" && typeof turn.model === "string") {
+    model = turn.model;
+  }
+  const toolUseId = meta3?.["claudecode/toolUseId"];
+  if (!model && typeof toolUseId === "string") {
+    model = claudeModel(toolUseId);
+  }
+  return { agent: agent && NAME.test(agent) ? agent : null, model: model && NAME.test(model) ? model : null };
+}
+function agentOf(clientName) {
+  if (!clientName) {
+    return null;
+  }
+  if (clientName === "claude-code") {
+    return "claude-code";
+  }
+  if (clientName.startsWith("codex")) {
+    return "codex";
+  }
+  return clientName;
+}
+function noteToolUse(toolUseId, transcript) {
+  const dir = path9.join(boardHome(), "tool-uses");
+  fs7.mkdirSync(dir, { recursive: true });
+  fs7.writeFileSync(path9.join(dir, `${safe(toolUseId)}.json`), JSON.stringify({ transcript }), { mode: 384 });
+  const stale = Date.now() - 864e5;
+  for (const name of fs7.readdirSync(dir)) {
+    const file2 = path9.join(dir, name);
+    try {
+      if (fs7.statSync(file2).mtimeMs < stale) {
+        fs7.rmSync(file2, { force: true });
+      }
+    } catch {
+    }
+  }
+}
+function claudeModel(toolUseId) {
+  const note = path9.join(boardHome(), "tool-uses", `${safe(toolUseId)}.json`);
+  const transcripts = [];
+  try {
+    const { transcript } = JSON.parse(fs7.readFileSync(note, "utf8"));
+    if (typeof transcript === "string") {
+      transcripts.push(transcript);
+    }
+    fs7.rmSync(note, { force: true });
+  } catch {
+  }
+  const session = process.env.CLAUDE_CODE_SESSION_ID;
+  if (transcripts.length === 0 && session) {
+    const projects = path9.join(process.env.CLAUDE_CONFIG_DIR ?? path9.join(os5.homedir(), ".claude"), "projects");
+    for (const project of safeList(projects)) {
+      transcripts.push(path9.join(projects, project, `${safe(session)}.jsonl`));
+    }
+  }
+  for (const transcript of transcripts) {
+    const subagents = path9.join(transcript.replace(/\.jsonl$/, ""), "subagents");
+    for (const file2 of [transcript, ...safeList(subagents).map((name) => path9.join(subagents, name))]) {
+      const model = modelInTranscript(file2, toolUseId);
+      if (model) {
+        return model;
+      }
+    }
+  }
+  return null;
+}
+function modelInTranscript(file2, toolUseId) {
+  let text2;
+  try {
+    const size = fs7.statSync(file2).size;
+    const start = Math.max(0, size - TRANSCRIPT_TAIL);
+    const handle = fs7.openSync(file2, "r");
+    try {
+      const buffer = Buffer.alloc(size - start);
+      fs7.readSync(handle, buffer, 0, buffer.length, start);
+      text2 = buffer.toString("utf8");
+    } finally {
+      fs7.closeSync(handle);
+    }
+  } catch {
+    return null;
+  }
+  const lines = text2.split("\n");
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const line = lines[index];
+    if (!line.includes(toolUseId)) {
+      continue;
+    }
+    try {
+      const entry = JSON.parse(line);
+      const content = Array.isArray(entry.message?.content) ? entry.message.content : [];
+      const model = entry.message?.model;
+      if (entry.type === "assistant" && content.some((part) => part.type === "tool_use" && part.id === toolUseId) && typeof model === "string" && !model.startsWith("<")) {
+        return model;
+      }
+    } catch {
+    }
+  }
+  return null;
+}
+function safe(name) {
+  return name.replace(/[^A-Za-z0-9_-]/g, "_");
+}
+function safeList(dir) {
+  try {
+    return fs7.readdirSync(dir);
+  } catch {
+    return [];
+  }
+}
+
+// packages/cli/src/hook.ts
 var MAX_FILE_BYTES2 = 512 * 1024;
 async function runHook(stdin) {
   const payload = JSON.parse(stdin);
   const event = payload.hook_event_name ?? "";
   if (event === "SessionStart") {
     startBackgroundSync();
+    return "";
+  }
+  if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
+    if (payload.tool_use_id && payload.transcript_path) {
+      noteToolUse(payload.tool_use_id, payload.transcript_path);
+    }
     return "";
   }
   const events = eventsOf(payload, readText2);
@@ -14799,7 +14927,7 @@ async function runEvents(payload, events, lockfile, pool) {
   const cwd = payload.cwd ?? process.cwd();
   const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
   for (const ctx of events) {
-    const off = new Set(switchedOff(ctx.file ? path9.dirname(ctx.file.path) : cwd).keys());
+    const off = new Set(switchedOff(ctx.file ? path10.dirname(ctx.file.path) : cwd).keys());
     const run = await runBoard(ctx, lockfile, off, pool, parallelFrom);
     if (readConfig().stats) {
       recordDetections(run.firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
@@ -14841,20 +14969,20 @@ async function runEvents(payload, events, lockfile, pool) {
 }
 function workerFile() {
   const main2 = process.argv[1];
-  const beside = [path9.join(path9.dirname(main2), "wellactually-worker.mjs"), path9.join(path9.dirname(main2), "worker.ts")];
-  return beside.find((file2) => fs7.existsSync(file2)) ?? main2;
+  const beside = [path10.join(path10.dirname(main2), "wellactually-worker.mjs"), path10.join(path10.dirname(main2), "worker.ts")];
+  return beside.find((file2) => fs8.existsSync(file2)) ?? main2;
 }
 function readText2(file2) {
   let stat;
   try {
-    stat = fs7.statSync(file2);
+    stat = fs8.statSync(file2);
   } catch {
     return null;
   }
   if (!stat.isFile() || stat.size > MAX_FILE_BYTES2) {
     return null;
   }
-  const content = fs7.readFileSync(file2, "utf8");
+  const content = fs8.readFileSync(file2, "utf8");
   return content.includes("\0") ? null : content;
 }
 function startBackgroundSync() {
@@ -14862,24 +14990,24 @@ function startBackgroundSync() {
     return;
   }
   const main2 = process.argv[1];
-  const log = fs7.openSync(path9.join(ensureHome(), "sync.log"), "a");
+  const log = fs8.openSync(path10.join(ensureHome(), "sync.log"), "a");
   const child = spawn(process.execPath, [main2, "sync"], { detached: true, stdio: ["ignore", log, log] });
   child.unref();
 }
 function ensureHome() {
   const home = boardHome();
-  fs7.mkdirSync(home, { recursive: true });
+  fs8.mkdirSync(home, { recursive: true });
   return home;
 }
 function logHookFailure(error62) {
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${error62 instanceof Error ? error62.stack ?? error62.message : String(error62)}
 `;
-  fs7.appendFileSync(path9.join(ensureHome(), "hook.log"), line);
+  fs8.appendFileSync(path10.join(ensureHome(), "hook.log"), line);
 }
 
 // packages/cli/src/mcp.ts
-import fs8 from "node:fs";
-import path10 from "node:path";
+import fs9 from "node:fs";
+import path11 from "node:path";
 
 // node_modules/zod/v3/helpers/util.js
 var util;
@@ -15255,8 +15383,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path11, errorMaps, issueData } = params;
-  const fullPath = [...path11, ...issueData.path || []];
+  const { data, path: path12, errorMaps, issueData } = params;
+  const fullPath = [...path12, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -15371,11 +15499,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path11, key) {
+  constructor(parent, value, path12, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path11;
+    this._path = path12;
     this._key = key;
   }
   get path() {
@@ -19329,10 +19457,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path11) {
-  if (!path11)
+function getElementAtPath(obj, path12) {
+  if (!path12)
     return obj;
-  return path11.reduce((acc, key) => acc?.[key], obj);
+  return path12.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -19672,11 +19800,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path11, issues) {
+function prefixIssues(path12, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path11);
+    iss.path.unshift(path12);
     return iss;
   });
 }
@@ -20126,16 +20254,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path11 = []) => {
+  const processError = (error63, path12 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else {
-        const fullpath = [...path11, ...issue2.path];
+        const fullpath = [...path12, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -20174,17 +20302,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path11 = []) => {
+  const processError = (error63, path12 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else {
-        const fullpath = [...path11, ...issue2.path];
+        const fullpath = [...path12, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -20223,8 +20351,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path11 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path11) {
+  const path12 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path12) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -35739,11 +35867,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path11) {
-  if (path11.length === 0) {
+function getDotPath(path12) {
+  if (path12.length === 0) {
     return "object root";
   }
-  return path11.reduce((acc, seg, index) => {
+  return path12.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -37970,13 +38098,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path11 = ref.slice(1).split("/").filter(Boolean);
-  if (path11.length === 0) {
+  const path12 = ref.slice(1).split("/").filter(Boolean);
+  if (path12.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path11[0] === defsKey) {
-    const key = path11[1] === void 0 ? void 0 : decodeJSONPointerSegment(path11[1]);
+  if (path12[0] === defsKey) {
+    const key = path12[1] === void 0 ? void 0 : decodeJSONPointerSegment(path12[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -44348,15 +44476,15 @@ ${report}`);
   server.registerTool(
     "rate_principle",
     {
-      description: "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle and the rating, nothing about the code or the conversation.",
+      description: "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle, the rating, and which agent and model you are, as your agent reports them. Nothing about the code or the conversation.",
       inputSchema: {
         id: external_exports.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
         rating: external_exports.enum(["up", "down", "not_applicable"]).describe("up, down or not_applicable")
       }
     },
-    async ({ id, rating }) => {
+    async ({ id, rating }, extra) => {
       try {
-        return text(await ratePrinciple(id, rating));
+        return text(await ratePrinciple(id, rating, raterOf(server.server.getClientVersion()?.name, extra._meta)));
       } catch (error62) {
         if (error62 instanceof RegistryError) {
           return text(`The rating was not recorded: ${error62.message} Carry on with your task.`);
@@ -44371,7 +44499,7 @@ ${report}`);
     dir: external_exports.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started; required in Codex.")
   };
   const switchTool = (on) => async ({ id, scope, dir }) => {
-    if (scope === "project" && dir === void 0 && fs8.existsSync(path10.join(process.cwd(), "dist", "wellactually.mjs"))) {
+    if (scope === "project" && dir === void 0 && fs9.existsSync(path11.join(process.cwd(), "dist", "wellactually.mjs"))) {
       return text("Pass dir, a directory inside the project: this server does not run in the project, so it cannot tell which one is meant.");
     }
     try {

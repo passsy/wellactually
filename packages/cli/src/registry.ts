@@ -12,6 +12,7 @@ import {
   type CheckReport,
   type FileMap,
 } from "@wellactually/core/node";
+import type { Rater } from "./rater.ts";
 
 export class RegistryError extends Error {}
 
@@ -387,9 +388,10 @@ export type Rating = "up" | "down" | "not_applicable";
  *
  * The verdict is about the revision the agent was shown, so the id is resolved
  * through the local advisory board, not through the registry's newest release.
+ * The rater says which agent and model gave it, as the agent reported them.
  * Returns what to tell the agent.
  */
-export async function ratePrinciple(id: string, rating: Rating): Promise<string> {
+export async function ratePrinciple(id: string, rating: Rating, rater: Rater = { agent: null, model: null }): Promise<string> {
   if (id.startsWith("local/")) {
     return `${id} is a local principle. It belongs to no registry, so there is nobody to send a rating to.`;
   }
@@ -401,7 +403,7 @@ export async function ratePrinciple(id: string, rating: Rating): Promise<string>
     return `${id} is not on this advisory board. Use the id from the <principle id="..."> tag you were shown.`;
   }
   requireToken();
-  const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, rating } });
+  const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, rating, ...(rater.agent && { agent: rater.agent }), ...(rater.model && { model: rater.model }) } });
   if (!response.ok) {
     throw await failure(response);
   }

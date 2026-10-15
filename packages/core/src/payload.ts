@@ -9,6 +9,10 @@ export interface HookPayload {
   hook_event_name?: string;
   tool_name?: string;
   session_id?: string;
+  /** Claude Code's record of the session, with the model of every message. */
+  transcript_path?: string;
+  /** Claude Code's id of the tool call, which an MCP server is told too. */
+  tool_use_id?: string;
   cwd?: string;
   prompt?: string;
   tool_input?: {

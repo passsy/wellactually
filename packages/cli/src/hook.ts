@@ -18,6 +18,7 @@ import {
   switchedOff,
   writeShown,
 } from "@wellactually/core/node";
+import { noteToolUse } from "./rater.ts";
 
 const MAX_FILE_BYTES = 512 * 1024;
 
@@ -34,6 +35,12 @@ export async function runHook(stdin: string): Promise<string> {
 
   if (event === "SessionStart") {
     startBackgroundSync();
+    return "";
+  }
+  if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
+    if (payload.tool_use_id && payload.transcript_path) {
+      noteToolUse(payload.tool_use_id, payload.transcript_path);
+    }
     return "";
   }
 

@@ -25,7 +25,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|exec_command|Task|Agent",
+        "matcher": "Bash|exec_command|Task|Agent|mcp__.*rate_principle",
         "hooks": [
           {
             "type": "command",
