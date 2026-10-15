@@ -171,17 +171,26 @@ export interface DraftResult {
   released?: boolean;
   /** Why it stays a draft, when it does, for instance a package licence that holds it back. */
   held?: string | null;
+  /** Who can see it after the upload. A registry from before uploads took a visibility leaves it out. */
+  visibility?: Visibility | null;
+  /** Whether it becomes public with its first release, because public was asked for before it had one. */
+  publicOnRelease?: boolean;
+  /** Why the visibility the upload asked for was not applied, for instance a package.json that sets it. */
+  visibilityRefused?: string | null;
 }
+
+export type Visibility = "public" | "private";
 
 /**
  * Uploads a principle as the next revision of `slug` and releases it. The registry rebuilds it and reruns the tests.
  *
  * `approved` names the packages the expert approved. The registry works out
  * itself which packages need that, and refuses the draft when one is missing.
+ * `visibility`, when given, sets who can see it, as the website's switch does.
  */
-export async function publishDraft(slug: string, files: FileMap, approved: string[] = []): Promise<DraftResult> {
+export async function publishDraft(slug: string, files: FileMap, approved: string[] = [], visibility?: Visibility): Promise<DraftResult> {
   requireToken();
-  const response = await call("/api/drafts", { method: "POST", body: { slug, files, approved } });
+  const response = await call("/api/drafts", { method: "POST", body: { slug, files, approved, visibility } });
   if (response.status !== 201 && response.status !== 422) {
     throw await failure(response);
   }
@@ -341,6 +350,25 @@ export async function releaseDraft(id: string): Promise<ReleaseResult> {
     throw await failure(response);
   }
   return (await response.json()) as ReleaseResult;
+}
+
+export interface VisibilityResult {
+  id: string;
+  visibility: Visibility;
+  /** Whether it becomes public with its first release, because it has none yet. */
+  publicOnRelease: boolean;
+  url: string;
+}
+
+/** Sets who can see one of the user's own principles. A package.json that sets its visibility wins, and the registry refuses then. */
+export async function setVisibility(id: string, visibility: Visibility): Promise<VisibilityResult> {
+  requireToken();
+  const { handle, slug } = parseId(id);
+  const response = await call(`/api/principles/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}/visibility`, { method: "POST", body: { visibility } });
+  if (!response.ok) {
+    throw await failure(response);
+  }
+  return (await response.json()) as VisibilityResult;
 }
 
 export async function fetchHistory(id: string): Promise<History> {

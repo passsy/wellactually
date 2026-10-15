@@ -5,6 +5,7 @@ import { z } from "zod";
 import { ratePrinciple, RegistryError, type DraftResult } from "./registry.ts";
 import {
   ApprovalError,
+  changeVisibility,
   principleHistory,
   probePrinciple,
   publishPrinciple,
@@ -15,6 +16,7 @@ import {
   renderPublished,
   renderPull,
   renderRelease,
+  renderVisibility,
   renderReport,
   renderSwitch,
   renderTry,
@@ -62,6 +64,7 @@ The registry runs the tests again on upload, and its result is the one that coun
 Loop: scaffold, edit, run_tests until green, probe against a real repository, add a quiet test for every false positive, publish_draft.
 To change an existing principle: pull it, edit, run_tests, publish_draft. That releases its next revision.
 publish_draft releases what passes. A package licence that needs the human's approval keeps it a draft, and release releases a draft that is waiting.
+A principle is private until it is made public: publish_draft takes visibility public or private, and set_visibility changes it later.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
 It is feedback to the author, not part of your task, and it never needs the user's attention.`;
@@ -134,13 +137,17 @@ export async function serveMcp(): Promise<void> {
         "Upload a principle to the registry and release it as its next revision. The registry rebuilds it and reruns the tests, and releases it when they pass. A package licence that needs the human's approval keeps it a draft. Needs `wellactually login` to have been run once.",
       inputSchema: {
         dir: z.string().describe("Absolute path of the principle directory"),
+        visibility: z
+          .enum(["public", "private"])
+          .optional()
+          .describe("Who can see it: public for anyone, private for the user and private collections they share it with. Leave it out to keep it as it is; a new principle is private."),
       },
     },
-    async ({ dir }) => {
+    async ({ dir, visibility }) => {
       let result: DraftResult;
       try {
         // No approvals from here: a licence is approved by the human, at their terminal or on the website.
-        result = await publishPrinciple(dir);
+        result = await publishPrinciple(dir, { visibility });
       } catch (error) {
         if (error instanceof ApprovalError) {
           return text(`${error.message}\n\nThis is the human's decision. Show them the list and let them run the command. Do not approve a licence for them.`);
@@ -152,6 +159,28 @@ export async function serveMcp(): Promise<void> {
         return text(`The registry refused the upload.\n\n${report}`);
       }
       return text(`${renderPublished(result)}\n\n${report}`);
+    },
+  );
+
+  server.registerTool(
+    "set_visibility",
+    {
+      description:
+        "Make one of the user's own principles public or private. Public: anyone can read it and put it on their advisory board. Private: only the user, and private collections they share it with. A principle without a release becomes public with its first release. A visibility set in its package.json wins, and then this is refused.",
+      inputSchema: {
+        id: z.string().describe("expert/principle, or just the principle id for one of the user's own"),
+        visibility: z.enum(["public", "private"]).describe("public or private"),
+      },
+    },
+    async ({ id, visibility }) => {
+      try {
+        return text(renderVisibility(await changeVisibility(id, visibility)));
+      } catch (error) {
+        if (error instanceof RegistryError) {
+          return text(`Visibility not changed: ${error.message}`);
+        }
+        throw error;
+      }
     },
   );
 

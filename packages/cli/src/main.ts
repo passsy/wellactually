@@ -6,6 +6,7 @@ import { approvalKey, describeReview, readConfig, readCached, readLockfile, scaf
 import {
   addLocal,
   ApprovalError,
+  changeVisibility,
   principleHistory,
   probePrinciple,
   publishPrinciple,
@@ -17,6 +18,7 @@ import {
   renderPublished,
   renderPull,
   renderRelease,
+  renderVisibility,
   renderReport,
   renderRepositorySync,
   renderSwitch,
@@ -43,7 +45,9 @@ Authoring
   wellactually probe <repo> [dir]       Run the detector over a repository and report the fire rate
   wellactually publish [dir]            Upload and release the principle's next revision
         --approve <name@version> ... with a package whose licence needs your approval. Repeat it for each
+        --visibility <public|private> ... and set who can see it
   wellactually release <id>             Release a principle's waiting draft
+  wellactually visibility <id> <public|private> Set who can see one of your principles
   wellactually pull <id>[@revision] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's revisions and the files each changed
@@ -78,6 +82,7 @@ async function main(): Promise<number> {
       draft: { type: "boolean", default: false },
       force: { type: "boolean", default: false },
       approve: { type: "string", multiple: true },
+      visibility: { type: "string" },
       prompt: { type: "string" },
       command: { type: "string" },
       output: { type: "string" },
@@ -136,9 +141,14 @@ async function main(): Promise<number> {
           return /^y(es)?$/i.test(answer.trim());
         };
       }
+      const visibility = values.visibility;
+      if (visibility !== undefined && visibility !== "public" && visibility !== "private") {
+        console.error("--visibility is public or private.");
+        return 2;
+      }
       let result: DraftResult;
       try {
-        result = await publishPrinciple(positionals[0] ?? ".", { approved: values.approve ?? [], confirm });
+        result = await publishPrinciple(positionals[0] ?? ".", { approved: values.approve ?? [], confirm, visibility });
       } catch (error) {
         if (error instanceof ApprovalError) {
           console.error(error.message);
@@ -152,6 +162,16 @@ async function main(): Promise<number> {
         return 1;
       }
       print(result, `${rendered}\n${renderPublished(result)}`);
+      return 0;
+    }
+    case "visibility": {
+      const [id, visibility] = positionals;
+      if (!id || !visibility) {
+        console.error("usage: wellactually visibility <id> <public|private>");
+        return 2;
+      }
+      const result = await changeVisibility(id, visibility);
+      print(result, renderVisibility(result));
       return 0;
     }
     case "release": {

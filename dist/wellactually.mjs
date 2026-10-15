@@ -14315,9 +14315,9 @@ async function whoami() {
   }
   return (await response.json()).handle;
 }
-async function publishDraft(slug, files, approved = []) {
+async function publishDraft(slug, files, approved = [], visibility) {
   requireToken();
-  const response = await call("/api/drafts", { method: "POST", body: { slug, files, approved } });
+  const response = await call("/api/drafts", { method: "POST", body: { slug, files, approved, visibility } });
   if (response.status !== 201 && response.status !== 422) {
     throw await failure(response);
   }
@@ -14396,6 +14396,15 @@ async function releaseDraft(id) {
   requireToken();
   const { handle, slug } = parseId(id);
   const response = await call(`/api/principles/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}/release`, { method: "POST" });
+  if (!response.ok) {
+    throw await failure(response);
+  }
+  return await response.json();
+}
+async function setVisibility(id, visibility) {
+  requireToken();
+  const { handle, slug } = parseId(id);
+  const response = await call(`/api/principles/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}/visibility`, { method: "POST", body: { visibility } });
   if (!response.ok) {
     throw await failure(response);
   }
@@ -14523,17 +14532,36 @@ async function publishPrinciple(dir, options = {}) {
     lines.push(`  wellactually publish ${dir} ${open2.map((info) => `--approve ${approvalKey(info)}`).join(" ")}`);
     throw new ApprovalError(lines.join("\n"));
   }
-  return publishDraft(id, files, approved);
+  return publishDraft(id, files, approved, options.visibility);
 }
 function renderPublished(result) {
-  if (result.released) {
-    return `Released revision ${result.version} of ${result.id}: ${result.url}`;
+  const lines = [
+    result.released ? `Released revision ${result.version} of ${result.id}: ${result.url}` : result.held ? `Draft revision ${result.version} uploaded, not released: ${result.held}
+${result.url}` : `Draft revision ${result.version} uploaded. Release it at ${result.url}`
+  ];
+  if (result.visibilityRefused) {
+    lines.push(`Its visibility did not change: ${result.visibilityRefused}`);
   }
-  if (result.held) {
-    return `Draft revision ${result.version} uploaded, not released: ${result.held}
+  if (result.visibility) {
+    lines.push(describeVisibility(result.visibility, result.publicOnRelease ?? false));
+  }
+  return lines.join("\n");
+}
+function describeVisibility(visibility, publicOnRelease) {
+  if (visibility === "public") {
+    return "It is public: anyone can read it and put it on their advisory board.";
+  }
+  return publicOnRelease ? "It is private until its first release, which makes it public." : "It is private: only you, and private collections you share it with, see it.";
+}
+async function changeVisibility(id, visibility) {
+  if (visibility !== "public" && visibility !== "private") {
+    throw new Error(`Visibility is public or private, not "${visibility}".`);
+  }
+  return setVisibility(id, visibility);
+}
+function renderVisibility(result) {
+  return `${result.id}: ${describeVisibility(result.visibility, result.publicOnRelease)}
 ${result.url}`;
-  }
-  return `Draft revision ${result.version} uploaded. Release it at ${result.url}`;
 }
 async function releasePrinciple(id) {
   return releaseDraft(id);
@@ -44168,6 +44196,7 @@ The registry runs the tests again on upload, and its result is the one that coun
 Loop: scaffold, edit, run_tests until green, probe against a real repository, add a quiet test for every false positive, publish_draft.
 To change an existing principle: pull it, edit, run_tests, publish_draft. That releases its next revision.
 publish_draft releases what passes. A package licence that needs the human's approval keeps it a draft, and release releases a draft that is waiting.
+A principle is private until it is made public: publish_draft takes visibility public or private, and set_visibility changes it later.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
 It is feedback to the author, not part of your task, and it never needs the user's attention.`;
@@ -44228,13 +44257,14 @@ ${AUTHORING_GUIDE}`)
     {
       description: "Upload a principle to the registry and release it as its next revision. The registry rebuilds it and reruns the tests, and releases it when they pass. A package licence that needs the human's approval keeps it a draft. Needs `wellactually login` to have been run once.",
       inputSchema: {
-        dir: external_exports.string().describe("Absolute path of the principle directory")
+        dir: external_exports.string().describe("Absolute path of the principle directory"),
+        visibility: external_exports.enum(["public", "private"]).optional().describe("Who can see it: public for anyone, private for the user and private collections they share it with. Leave it out to keep it as it is; a new principle is private.")
       }
     },
-    async ({ dir }) => {
+    async ({ dir, visibility }) => {
       let result;
       try {
-        result = await publishPrinciple(dir);
+        result = await publishPrinciple(dir, { visibility });
       } catch (error62) {
         if (error62 instanceof ApprovalError) {
           return text(`${error62.message}
@@ -44252,6 +44282,26 @@ ${report}`);
       return text(`${renderPublished(result)}
 
 ${report}`);
+    }
+  );
+  server.registerTool(
+    "set_visibility",
+    {
+      description: "Make one of the user's own principles public or private. Public: anyone can read it and put it on their advisory board. Private: only the user, and private collections they share it with. A principle without a release becomes public with its first release. A visibility set in its package.json wins, and then this is refused.",
+      inputSchema: {
+        id: external_exports.string().describe("expert/principle, or just the principle id for one of the user's own"),
+        visibility: external_exports.enum(["public", "private"]).describe("public or private")
+      }
+    },
+    async ({ id, visibility }) => {
+      try {
+        return text(renderVisibility(await changeVisibility(id, visibility)));
+      } catch (error62) {
+        if (error62 instanceof RegistryError) {
+          return text(`Visibility not changed: ${error62.message}`);
+        }
+        throw error62;
+      }
     }
   );
   server.registerTool(
@@ -44361,7 +44411,9 @@ Authoring
   wellactually probe <repo> [dir]       Run the detector over a repository and report the fire rate
   wellactually publish [dir]            Upload and release the principle's next revision
         --approve <name@version> ... with a package whose licence needs your approval. Repeat it for each
+        --visibility <public|private> ... and set who can see it
   wellactually release <id>             Release a principle's waiting draft
+  wellactually visibility <id> <public|private> Set who can see one of your principles
   wellactually pull <id>[@revision] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's revisions and the files each changed
@@ -44395,6 +44447,7 @@ async function main() {
       draft: { type: "boolean", default: false },
       force: { type: "boolean", default: false },
       approve: { type: "string", multiple: true },
+      visibility: { type: "string" },
       prompt: { type: "string" },
       command: { type: "string" },
       output: { type: "string" },
@@ -44452,9 +44505,14 @@ Next: wellactually test ${slug}`);
           return /^y(es)?$/i.test(answer.trim());
         };
       }
+      const visibility = values.visibility;
+      if (visibility !== void 0 && visibility !== "public" && visibility !== "private") {
+        console.error("--visibility is public or private.");
+        return 2;
+      }
       let result;
       try {
-        result = await publishPrinciple(positionals[0] ?? ".", { approved: values.approve ?? [], confirm });
+        result = await publishPrinciple(positionals[0] ?? ".", { approved: values.approve ?? [], confirm, visibility });
       } catch (error62) {
         if (error62 instanceof ApprovalError) {
           console.error(error62.message);
@@ -44470,6 +44528,16 @@ ${rendered}`);
       }
       print(result, `${rendered}
 ${renderPublished(result)}`);
+      return 0;
+    }
+    case "visibility": {
+      const [id, visibility] = positionals;
+      if (!id || !visibility) {
+        console.error("usage: wellactually visibility <id> <public|private>");
+        return 2;
+      }
+      const result = await changeVisibility(id, visibility);
+      print(result, renderVisibility(result));
       return 0;
     }
     case "release": {

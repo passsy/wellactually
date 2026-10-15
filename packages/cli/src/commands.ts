@@ -42,12 +42,15 @@ import {
   publishDraft,
   pullSource,
   releaseDraft,
+  setVisibility,
   syncRepository,
   type DraftResult,
   type History,
   type ReleaseResult,
   type RepositorySync,
   type SyncResult,
+  type Visibility,
+  type VisibilityResult,
 } from "./registry.ts";
 
 /**
@@ -152,6 +155,8 @@ export interface PublishOptions {
    * package that was not approved beforehand stops the publish.
    */
   confirm?: (info: PackageInfo) => Promise<boolean>;
+  /** Who can see it after the upload. Left out, it stays as it is, and a new principle is private. */
+  visibility?: Visibility;
 }
 
 /** One line about a package whose licence the expert has to approve. */
@@ -210,18 +215,45 @@ export async function publishPrinciple(dir: string, options: PublishOptions = {}
     lines.push(`  wellactually publish ${dir} ${open.map((info) => `--approve ${approvalKey(info)}`).join(" ")}`);
     throw new ApprovalError(lines.join("\n"));
   }
-  return publishDraft(id, files, approved);
+  return publishDraft(id, files, approved, options.visibility);
 }
 
 /** What an accepted upload ended in: released, or a draft and why. */
 export function renderPublished(result: DraftResult): string {
-  if (result.released) {
-    return `Released revision ${result.version} of ${result.id}: ${result.url}`;
+  const lines = [
+    result.released
+      ? `Released revision ${result.version} of ${result.id}: ${result.url}`
+      : result.held
+        ? `Draft revision ${result.version} uploaded, not released: ${result.held}\n${result.url}`
+        : `Draft revision ${result.version} uploaded. Release it at ${result.url}`,
+  ];
+  if (result.visibilityRefused) {
+    lines.push(`Its visibility did not change: ${result.visibilityRefused}`);
   }
-  if (result.held) {
-    return `Draft revision ${result.version} uploaded, not released: ${result.held}\n${result.url}`;
+  if (result.visibility) {
+    lines.push(describeVisibility(result.visibility, result.publicOnRelease ?? false));
   }
-  return `Draft revision ${result.version} uploaded. Release it at ${result.url}`;
+  return lines.join("\n");
+}
+
+/** Who can see a principle, in a sentence. */
+function describeVisibility(visibility: Visibility, publicOnRelease: boolean): string {
+  if (visibility === "public") {
+    return "It is public: anyone can read it and put it on their advisory board.";
+  }
+  return publicOnRelease ? "It is private until its first release, which makes it public." : "It is private: only you, and private collections you share it with, see it.";
+}
+
+/** Sets who can see one of the user's own principles. */
+export async function changeVisibility(id: string, visibility: string): Promise<VisibilityResult> {
+  if (visibility !== "public" && visibility !== "private") {
+    throw new Error(`Visibility is public or private, not "${visibility}".`);
+  }
+  return setVisibility(id, visibility);
+}
+
+export function renderVisibility(result: VisibilityResult): string {
+  return `${result.id}: ${describeVisibility(result.visibility, result.publicOnRelease)}\n${result.url}`;
 }
 
 /** Releases the waiting draft of one of the user's own principles. */
