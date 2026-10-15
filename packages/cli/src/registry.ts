@@ -175,14 +175,25 @@ export interface DraftResult {
  * `approved` names the packages the expert approved. The registry works out
  * itself which packages need that, and refuses the draft when one is missing.
  */
-export async function publishDraft(slug: string, files: FileMap, note = "", approved: string[] = []): Promise<DraftResult> {
+export async function publishDraft(slug: string, files: FileMap, approved: string[] = []): Promise<DraftResult> {
   requireToken();
-  const response = await call("/api/drafts", { method: "POST", body: { slug, files, note, approved } });
+  const response = await call("/api/drafts", { method: "POST", body: { slug, files, approved } });
   if (response.status !== 201 && response.status !== 422) {
     throw await failure(response);
   }
   const body = (await response.json()) as Omit<DraftResult, "accepted">;
   return { ...body, accepted: response.status === 201 };
+}
+
+/** An expert the registry suggests while the advisory board is empty. */
+export interface SuggestedExpert {
+  handle: string;
+  name: string;
+  principles: number;
+  /** The titles of a few of their principles. */
+  tips: string[];
+  /** Their page on the website, where the user adds them. */
+  url: string;
 }
 
 export interface SyncResult {
@@ -191,6 +202,8 @@ export interface SyncResult {
   removed: string[];
   /** Detections reported to the registry with this sync. */
   reported: number;
+  /** Experts to add, when the advisory board on the registry is empty. */
+  suggestions: SuggestedExpert[];
 }
 
 /**
@@ -207,7 +220,10 @@ export async function sync(): Promise<SyncResult> {
   if (!response.ok) {
     throw await failure(response);
   }
-  const remote = ((await response.json()) as { entries: BoardEntry[] }).entries;
+  const body = (await response.json()) as { entries: BoardEntry[]; suggestions?: Omit<SuggestedExpert, "url">[] };
+  const remote = body.entries;
+  const registry = readConfig().registry;
+  const suggestions = (body.suggestions ?? []).map((expert) => ({ ...expert, url: new URL(`/e/${encodeURIComponent(expert.handle)}`, registry).toString() }));
 
   const downloaded: string[] = [];
   for (const entry of remote) {
@@ -234,7 +250,7 @@ export async function sync(): Promise<SyncResult> {
     .filter((entry) => !entry.id.startsWith("local/") && !remoteIds.has(entry.id))
     .map((entry) => entry.id);
   writeLockfile({ syncedAt: new Date().toISOString(), entries: [...remote, ...local] });
-  return { entries: remote, downloaded, removed, reported: await reportDetections() };
+  return { entries: remote, downloaded, removed, reported: await reportDetections(), suggestions };
 }
 
 /**
@@ -264,6 +280,8 @@ export interface PulledSource {
   version: number;
   status: "draft" | "released";
   files: FileMap;
+  /** Who it is by: the expert of the original first, then each who forked it. Absent from registries before forks were credited. */
+  credits?: string[];
 }
 
 /** Splits `expert/principle@3` into its parts. A bare principle id means one of the user's own. */
@@ -273,12 +291,12 @@ function parseId(id: string): { handle: string; slug: string; version: number | 
   const [handle, slug, ...rest] = full.split("/");
   const version = versionText === undefined ? null : Number(versionText.replace(/^v/, ""));
   if (!handle || !slug || rest.length > 0 || (version !== null && (!Number.isInteger(version) || version < 1))) {
-    throw new RegistryError(`"${id}" is not a principle id. Use expert/principle, optionally with @version, or just the principle for one of your own.`);
+    throw new RegistryError(`"${id}" is not a principle id. Use expert/principle, optionally with @revision, or just the principle for one of your own.`);
   }
   return { handle, slug, version };
 }
 
-/** Downloads a principle's files: a given version, else your own draft when one is waiting, else the newest release. */
+/** Downloads a principle's files: a given revision, else your own draft when one is waiting, else the newest release. */
 export async function pullSource(id: string): Promise<PulledSource> {
   const { handle, slug, version } = parseId(id);
   const query = version === null ? "" : `?version=${version}`;
@@ -294,7 +312,6 @@ export interface HistoryEntry {
   hash: string;
   status: "draft" | "released";
   date: string;
-  note: string;
   changed: { path: string; change: "added" | "modified" | "removed" }[];
 }
 
@@ -319,7 +336,7 @@ export type Rating = "up" | "down" | "not_applicable";
 /**
  * Sends an agent's verdict on a principle on this machine's advisory board.
  *
- * The verdict is about the version the agent was shown, so the id is resolved
+ * The verdict is about the revision the agent was shown, so the id is resolved
  * through the local advisory board, not through the registry's newest release.
  * Returns what to tell the agent.
  */

@@ -17,6 +17,7 @@ import {
   renderReport,
   renderRepositorySync,
   renderSwitch,
+  renderSync,
   renderTry,
   syncRepo,
   testPrinciple,
@@ -38,11 +39,10 @@ Authoring
         --output <text>          ... or what a command printed, with --command naming it
   wellactually probe <repo> [dir]       Run the detector over a repository and report the fire rate
   wellactually publish [dir]            Upload a private draft; a human releases it on the website
-        -m, --message <text>     ... with a note on what changed, shown in the history
         --approve <name@version> ... with a package whose licence needs your approval. Repeat it for each
-  wellactually pull <id>[@version] [dir] Download a principle's files to keep working on it
+  wellactually pull <id>[@revision] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
-  wellactually log <id>                 Show a principle's versions, what each changed and why
+  wellactually log <id>                 Show a principle's revisions and the files each changed
   wellactually sync-repo <owner/repo>   Have the registry read a connected GitHub repository now
 
 Your advisory board
@@ -73,7 +73,6 @@ async function main(): Promise<number> {
       read: { type: "boolean", default: false },
       draft: { type: "boolean", default: false },
       force: { type: "boolean", default: false },
-      message: { type: "string", short: "m" },
       approve: { type: "string", multiple: true },
       prompt: { type: "string" },
       command: { type: "string" },
@@ -135,7 +134,7 @@ async function main(): Promise<number> {
       }
       let result: DraftResult;
       try {
-        result = await publishPrinciple(positionals[0] ?? ".", { note: values.message ?? "", approved: values.approve ?? [], confirm });
+        result = await publishPrinciple(positionals[0] ?? ".", { approved: values.approve ?? [], confirm });
       } catch (error) {
         if (error instanceof ApprovalError) {
           console.error(error.message);
@@ -148,7 +147,7 @@ async function main(): Promise<number> {
         print(result, `The registry refused the draft.\n${rendered}`);
         return 1;
       }
-      print(result, `${rendered}\nDraft version ${result.version} uploaded. Review and release it at ${result.url}`);
+      print(result, `${rendered}\nDraft revision ${result.version} uploaded. Review and release it at ${result.url}`);
       return 0;
     }
     case "sync-repo": {
@@ -174,7 +173,7 @@ async function main(): Promise<number> {
     case "pull": {
       const id = positionals[0];
       if (!id) {
-        console.error("usage: wellactually pull <expert/principle>[@version] [dir]");
+        console.error("usage: wellactually pull <expert/principle>[@revision] [dir]");
         return 2;
       }
       const result = await pullPrinciple(id, positionals[1], values.force);
@@ -200,11 +199,7 @@ async function main(): Promise<number> {
       return 0;
     case "sync": {
       const result = await sync();
-      const enabled = result.entries.filter((entry) => entry.enabled).length;
-      print(
-        result,
-        `${result.entries.length} principles on your advisory board, ${enabled} enabled. Downloaded ${result.downloaded.length}, removed ${result.removed.length}.${result.reported > 0 ? ` Reported ${result.reported} detections.` : ""}`,
-      );
+      print(result, renderSync(result));
       return 0;
     }
     case "stats": {

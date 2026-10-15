@@ -66,7 +66,7 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
   const cwd = payload.cwd ?? process.cwd();
   const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
 
-  // Most payloads are one event. A Codex patch is one per file it changes.
+  // Most payloads are one event. A Codex patch is one per file it changes, a shell command one per file it wrote.
   for (const ctx of events) {
     // What is switched off belongs to the project the file is in, which need not be the one the session started in.
     const off = new Set(switchedOff(ctx.file ? path.dirname(ctx.file.path) : cwd).keys());

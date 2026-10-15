@@ -43,7 +43,7 @@ codex plugin marketplace add passsy/wellactually
 codex plugin add wellactually@wellactually
 ```
 
-Then open Codex, approve the plugin's hooks with `/hooks`, and ask it to run the `login` skill of the wellactually plugin.
+Then open Codex, approve the plugin's hooks with `/hooks`, and type `$wellactually:login`.
 Codex does not run a new plugin's hooks until you approve them, so no principle reaches the agent before that.
 
 The plugin needs Node 20 or newer and nothing else.
@@ -110,7 +110,7 @@ wellactually test avoid-late
 ```
 
 ```bash
-wellactually publish avoid-late -m "First version"
+wellactually publish avoid-late
 ```
 
 `publish` uploads a private draft, and you release it on the website.

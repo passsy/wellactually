@@ -57,7 +57,7 @@ The tests must pass, make the detector fire at least once, and run it at least o
 The registry runs the tests again on upload, and its result is the one that counts.
 
 Loop: scaffold, edit, run_tests until green, probe against a real repository, add a quiet test for every false positive, publish_draft.
-To change an existing principle: pull it, edit, run_tests, publish_draft. That creates the draft of its next version.
+To change an existing principle: pull it, edit, run_tests, publish_draft. That creates the draft of its next revision.
 A draft is private. Releasing it is a click by the human on the website, where the same files can also be edited.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
@@ -131,14 +131,13 @@ export async function serveMcp(): Promise<void> {
         "Upload a principle to the registry as a private draft. The registry rebuilds it and reruns the tests. Returns the URL where the human reviews and releases it. Needs `wellactually login` to have been run once.",
       inputSchema: {
         dir: z.string().describe("Absolute path of the principle directory"),
-        note: z.string().optional().describe("One line on what changed and why, like a commit subject. Shown in the principle's history."),
       },
     },
-    async ({ dir, note }) => {
+    async ({ dir }) => {
       let result: DraftResult;
       try {
         // No approvals from here: a licence is approved by the human, at their terminal or on the website.
-        result = await publishPrinciple(dir, { note: note ?? "" });
+        result = await publishPrinciple(dir);
       } catch (error) {
         if (error instanceof ApprovalError) {
           return text(`${error.message}\n\nThis is the human's decision. Show them the list and let them run the command. Do not approve a licence for them.`);
@@ -149,7 +148,7 @@ export async function serveMcp(): Promise<void> {
       if (!result.accepted) {
         return text(`The registry refused the draft.\n\n${report}`);
       }
-      return text(`Draft ${result.id} version ${result.version} uploaded.\nA human releases it at ${result.url}\n\n${report}`);
+      return text(`Draft ${result.id} revision ${result.version} uploaded.\nA human releases it at ${result.url}\n\n${report}`);
     },
   );
 
@@ -159,7 +158,7 @@ export async function serveMcp(): Promise<void> {
       description:
         "Download an existing principle's files from the registry into a directory, to update it. Returns the user's own draft when one is waiting, including edits made in the browser, otherwise the newest release. Then edit, run_tests and publish_draft.",
       inputSchema: {
-        id: z.string().describe("expert/principle, or just the principle id for one of the user's own. Append @3 for a specific version."),
+        id: z.string().describe("expert/principle, or just the principle id for one of the user's own. Append @3 for a specific revision."),
         dir: z.string().describe("Absolute path of the directory to write the files to"),
         force: z.boolean().optional().describe("Replace the files of a directory that already has some. Discards local edits."),
       },
@@ -171,7 +170,7 @@ export async function serveMcp(): Promise<void> {
     "history",
     {
       description:
-        "Show a principle's versions, newest first, like a commit log: version, hash, date, the author's note and which files changed. Includes the user's own unreleased draft.",
+        "Show a principle's revisions, newest first, like a commit log: revision, hash, date and which files changed. Includes the user's own unreleased draft.",
       inputSchema: { id: z.string().describe("expert/principle, or just the principle id for one of the user's own") },
     },
     async ({ id }) => text(renderHistory(await principleHistory(id))),

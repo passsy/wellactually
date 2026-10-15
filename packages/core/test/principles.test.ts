@@ -324,17 +324,19 @@ describe("visibility and retired in package.json", () => {
   test("are read when they are there, and absent otherwise", () => {
     expect(parseSettings('{"visibility": "public", "retired": "  Superseded by avoid-late "}')).toEqual({ visibility: "public", retired: "Superseded by avoid-late" });
     expect(parseSettings('{"tags": ["dart"]}')).toEqual({});
+    expect(parseSettings('{"forkable": false}')).toEqual({ forkable: false });
     expect(parseSettings(undefined)).toEqual({});
   });
 
   test("tell the author what is wrong", () => {
     expect(() => parseSettings('{"visibility": "secret"}')).toThrow('the visibility in package.json is "public" or "private"');
     expect(() => parseSettings('{"retired": true}')).toThrow(/retired in package.json is the reason/);
+    expect(() => parseSettings('{"forkable": "no"}')).toThrow("forkable in package.json is true or false");
     expect(() => parseSettings(`{"retired": "${"x".repeat(501)}"}`)).toThrow(/at most 500 characters/);
   });
 
   test("are left out of what a sync compares, whatever the formatting", () => {
-    expect(withoutSettings('{"name": "a", "visibility": "public", "retired": "Gone"}')).toBe('{"name":"a"}');
+    expect(withoutSettings('{"name": "a", "visibility": "public", "retired": "Gone", "forkable": false}')).toBe('{"name":"a"}');
     expect(withoutSettings('{\n  "name": "a"\n}\n')).toBe('{"name":"a"}');
     expect(withoutSettings("not json")).toBe("not json");
     expect(withoutSettings(undefined)).toBeUndefined();

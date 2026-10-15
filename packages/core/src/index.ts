@@ -9,6 +9,7 @@
 export * from "./api.ts";
 export * from "./bundle.ts";
 export * from "./cdn.ts";
+export * from "./credits.ts";
 export * from "./ctx.ts";
 export * from "./engines.ts";
 export * from "./finding.ts";

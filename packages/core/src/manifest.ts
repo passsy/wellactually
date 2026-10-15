@@ -232,18 +232,20 @@ export interface PrincipleSettings {
   visibility?: "public" | "private";
   /** Why it was retired. Retired while it is set, running again once it is gone. */
   retired?: string;
+  /** Whether others may fork it. The website decides while it is not set. */
+  forkable?: boolean;
 }
 
 const MAX_RETIRED_LENGTH = 500;
 
-/** Reads `visibility` and `retired` from a principle's `package.json`. Throws a `ManifestError` naming what is wrong. */
+/** Reads `visibility`, `retired` and `forkable` from a principle's `package.json`. Throws a `ManifestError` naming what is wrong. */
 export function parseSettings(packageJson: string | undefined): PrincipleSettings {
   if (packageJson === undefined) {
     return {};
   }
-  let parsed: { visibility?: unknown; retired?: unknown } | null;
+  let parsed: { visibility?: unknown; retired?: unknown; forkable?: unknown } | null;
   try {
-    parsed = JSON.parse(packageJson) as { visibility?: unknown; retired?: unknown } | null;
+    parsed = JSON.parse(packageJson) as { visibility?: unknown; retired?: unknown; forkable?: unknown } | null;
   } catch {
     throw new ManifestError("package.json is not valid JSON");
   }
@@ -264,13 +266,19 @@ export function parseSettings(packageJson: string | undefined): PrincipleSetting
     }
     settings.retired = reason;
   }
+  if (parsed?.forkable !== undefined) {
+    if (typeof parsed.forkable !== "boolean") {
+      throw new ManifestError("forkable in package.json is true or false");
+    }
+    settings.forkable = parsed.forkable;
+  }
   return settings;
 }
 
 /**
- * `package.json` without `visibility` and `retired`, which are not part of a
- * version, in one form whatever its formatting. Two files that differ only in
- * those two give the same text. A file that is no JSON object stays as it is.
+ * `package.json` without `visibility`, `retired` and `forkable`, which are not
+ * part of a version, in one form whatever its formatting. Two files that
+ * differ only in those give the same text. A file that is no JSON object stays as it is.
  */
 export function withoutSettings(packageJson: string | undefined): string | undefined {
   if (packageJson === undefined) {
@@ -281,7 +289,7 @@ export function withoutSettings(packageJson: string | undefined): string | undef
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
       return packageJson;
     }
-    const { visibility: _visibility, retired: _retired, ...rest } = parsed as Record<string, unknown>;
+    const { visibility: _visibility, retired: _retired, forkable: _forkable, ...rest } = parsed as Record<string, unknown>;
     return JSON.stringify(rest);
   } catch {
     return packageJson;

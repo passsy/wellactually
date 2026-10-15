@@ -1,6 +1,6 @@
 {
   "name": "wellactually",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "Runs the principles on your Well Actually advisory board while your agent works, and lets it author and rate them.",
   "author": {
     "name": "Pascal Welsch"

@@ -1,6 +1,8 @@
+import os from "node:os";
 import path from "node:path";
 import { fileCtx, locateWritten, textCtx, type Ctx, type Where, type Written } from "@wellactually/sdk";
 import { projectRootOf, toPosix } from "./fs.ts";
+import { shellWrites } from "./shell.ts";
 
 /** The fields of a Claude Code or Codex hook payload this host reads. */
 export interface HookPayload {
@@ -51,7 +53,8 @@ function printed(response: HookPayload["tool_response"]): string {
  * This is the one place that knows how Claude Code and Codex describe a
  * session. A detector, and a principle's tests, only ever deal with the
  * result. Most payloads are one event; a Codex patch is one per file it
- * changes; a payload that is none of a detector's business is none.
+ * changes; a shell command that ran is one per file it wrote, and one for
+ * what it printed; a payload that is none of a detector's business is none.
  *
  * `readFile` gets an absolute path and returns the file as it is after the
  * tool ran, or null when it cannot be read as text.
@@ -89,8 +92,15 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
   }
 
   if (SHELL_TOOLS.has(tool)) {
+    const command = input.command ?? input.cmd ?? "";
+    // A file the command wrote, like `cat > lib/a.dart <<'EOF'`, is written like one from Write.
+    const writes = shellWrites(command, cwd, os.homedir()).flatMap(({ file: absolute, fragments }) => {
+      const content = readFile(absolute);
+      const written = content === null || fragments === null ? undefined : locateWritten(content, fragments);
+      return content === null || written?.length === 0 ? [] : [file("write", absolute, content, written)];
+    });
     const text = printed(payload.tool_response).slice(0, MAX_OUTPUT_LENGTH);
-    return text.trim() === "" ? [] : [textCtx("output", text, sessionRoot(), input.command ?? input.cmd ?? "", toPosix(cwd))];
+    return text.trim() === "" ? writes : [...writes, textCtx("output", text, sessionRoot(), command, toPosix(cwd))];
   }
 
   if (tool === "apply_patch") {

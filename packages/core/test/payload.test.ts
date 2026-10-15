@@ -41,6 +41,23 @@ describe("Claude Code payloads", () => {
     expect(summary({ ...payload, tool_response: { stdout: "", stderr: "" } })).toEqual([]);
   });
 
+  test("a file a Bash call wrote is a write event, like one from Write", () => {
+    const command = "cd lib && cat > a.dart <<'EOF'\nlate User user;\nint retries = 3;\nEOF";
+    const payload = { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command } };
+    expect(summary(payload, { "/repo/lib/a.dart": legacy })).toEqual([{ event: "write", path: "lib/a.dart", text: legacy, written: [1, 2, 3] }]);
+    // What the command printed is still an output event, after the files.
+    expect(summary({ ...payload, tool_response: { stdout: "done" } }, { "/repo/lib/a.dart": legacy }).map((ctx) => ctx.event)).toEqual(["write", "output"]);
+  });
+
+  test("a Bash append counts only what it appended as written", () => {
+    const payload = { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "cat >> lib/a.dart <<EOF\nint retries = 3;\nEOF" } };
+    expect(summary(payload, { "/repo/lib/a.dart": legacy })).toEqual([{ event: "write", path: "lib/a.dart", text: legacy, written: [2] }]);
+  });
+
+  test("a file a Bash call wrote but that cannot be read is no event", () => {
+    expect(summary({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "echo x > lib/gone.dart" } })).toEqual([]);
+  });
+
   test("what the agent hands to a subagent is a prompt event", () => {
     for (const tool_name of ["Task", "Agent"]) {
       const payload = { hook_event_name: "PreToolUse", tool_name, tool_input: { prompt: "Add a late field to Session" } };
@@ -85,6 +102,11 @@ describe("Codex payloads", () => {
     expect(summary({ hook_event_name: "PreToolUse", tool_name: "exec_command", tool_input: { cmd: "git status" } })).toEqual([
       { event: "command", path: null, text: "git status", written: null },
     ]);
+  });
+
+  test("a file exec_command wrote is a write event", () => {
+    const payload = { hook_event_name: "PostToolUse", tool_name: "exec_command", tool_input: { cmd: "cat > lib/a.dart <<'EOF'\nint retries = 3;\nEOF" } };
+    expect(summary(payload, { "/repo/lib/a.dart": "int retries = 3;\n" })).toEqual([{ event: "write", path: "lib/a.dart", text: "int retries = 3;\n", written: [1, 2] }]);
   });
 
   test("a patch counts only its added lines as written", () => {

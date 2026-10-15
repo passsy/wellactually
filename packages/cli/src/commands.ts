@@ -11,6 +11,7 @@ import {
   projectRootOf,
   toPosix,
   checkPrinciple,
+  describeCredits,
   isPrincipleId,
   PRINCIPLE_ID_RULE,
   fileCtx,
@@ -36,7 +37,7 @@ import {
   type SwitchResult,
 } from "@wellactually/core/node";
 import type { Ctx } from "@wellactually/sdk";
-import { fetchHistory, publishDraft, pullSource, syncRepository, type DraftResult, type History, type RepositorySync } from "./registry.ts";
+import { fetchHistory, publishDraft, pullSource, syncRepository, type DraftResult, type History, type RepositorySync, type SyncResult } from "./registry.ts";
 
 /**
  * The verbs behind both the command line and the MCP server.
@@ -133,8 +134,6 @@ export async function probePrinciple(dir: string, repo: string): Promise<ProbeRe
 export class ApprovalError extends Error {}
 
 export interface PublishOptions {
-  /** What changed, for the history. */
-  note?: string;
   /** The packages the expert approved beforehand, each as `name@version`. */
   approved?: string[];
   /**
@@ -200,7 +199,7 @@ export async function publishPrinciple(dir: string, options: PublishOptions = {}
     lines.push(`  wellactually publish ${dir} ${open.map((info) => `--approve ${approvalKey(info)}`).join(" ")}`);
     throw new ApprovalError(lines.join("\n"));
   }
-  return publishDraft(id, files, options.note ?? "", approved);
+  return publishDraft(id, files, approved);
 }
 
 /** Has the registry read a repository that is connected on the website, without waiting for a push. */
@@ -213,7 +212,7 @@ export function renderRepositorySync(result: RepositorySync): string {
   for (const item of result.principles) {
     let version = "";
     if (item.version !== null) {
-      version = ` v${item.version}`;
+      version = ` r${item.version}`;
     }
     lines.push(`  ${item.status.padEnd(9)} ${result.handle}/${item.slug}${version}  ${item.path}`);
     for (const problem of item.problems) {
@@ -237,19 +236,19 @@ export function renderHistory(result: History): string {
   const lines: string[] = [];
   for (const entry of result.history) {
     const label = entry.status === "draft" ? " (draft, not released)" : "";
-    lines.push(`version ${entry.version}${label}  ${entry.hash.slice(0, 12)}`);
+    lines.push(`revision ${entry.version}${label}  ${entry.hash.slice(0, 12)}`);
     lines.push(`Date:   ${entry.date.slice(0, 16).replace("T", " ")}`);
     lines.push("");
-    lines.push(`    ${entry.note || (entry.changed.length === 0 ? "First release" : "(no note)")}`);
-    if (entry.changed.length > 0) {
-      lines.push("");
+    if (entry.changed.length === 0) {
+      lines.push(entry.version === 1 ? "    First revision" : "    Package code only");
+    } else {
       for (const file of entry.changed) {
         lines.push(`${CHANGE_MARKS[file.change]}       ${file.path}`);
       }
     }
     lines.push("");
   }
-  lines.push(`${result.id} is ${result.visibility}. Get a version with: wellactually pull ${result.id}@<version>`);
+  lines.push(`${result.id} is ${result.visibility}. Get a revision with: wellactually pull ${result.id}@<revision>`);
   return lines.join("\n");
 }
 
@@ -259,6 +258,8 @@ export interface PullResult {
   status: "draft" | "released";
   dir: string;
   files: string[];
+  /** Who it is by: the expert of the original first, then each who forked it. */
+  credits: string[];
 }
 
 /**
@@ -287,16 +288,18 @@ export async function pullPrinciple(id: string, dir: string | undefined, force: 
     }
   }
   writeFileMap(target, own);
-  return { id: source.id, version: source.version, status: source.status, dir: target, files: Object.keys(own).sort() };
+  return { id: source.id, version: source.version, status: source.status, dir: target, files: Object.keys(own).sort(), credits: source.credits ?? [] };
 }
 
 export function renderPull(result: PullResult): string {
-  const what = result.status === "draft" ? `the draft of version ${result.version}` : `version ${result.version}`;
+  const what = result.status === "draft" ? `the draft of revision ${result.version}` : `revision ${result.version}`;
   let install = "";
   if (result.files.includes("package.json")) {
     install = `\nIt uses packages. Install them first: npm install --prefix ${result.dir}`;
   }
-  return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).${install}\nEdit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
+  const described = describeCredits(result.credits);
+  const credits = described === null ? "" : `\n${described}.`;
+  return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).${credits}${install}\nEdit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
 }
 
 function asLocal(built: BuiltPrinciple, id: string) {
@@ -415,4 +418,19 @@ export function renderTry(result: TryResult): string {
     lines.push("", "The agent would be shown:", "", result.injected);
   }
   return lines.join("\n");
+}
+
+/** What `wellactually sync` prints, with the experts to add when the advisory board is empty. */
+export function renderSync(result: SyncResult): string {
+  const enabled = result.entries.filter((entry) => entry.enabled).length;
+  const summary = `${result.entries.length} principles on your advisory board, ${enabled} enabled. Downloaded ${result.downloaded.length}, removed ${result.removed.length}.${result.reported > 0 ? ` Reported ${result.reported} detections.` : ""}`;
+  if (result.suggestions.length === 0) {
+    return summary;
+  }
+  const experts = result.suggestions.map((expert) => {
+    const name = expert.name && expert.name !== expert.handle ? `${expert.name} (@${expert.handle})` : `@${expert.handle}`;
+    const tips = expert.tips.length > 0 ? `: ${expert.tips.join("; ")}` : "";
+    return `  ${name}, ${expert.principles} ${expert.principles === 1 ? "principle" : "principles"}${tips}\n    ${expert.url}`;
+  });
+  return [summary, "", "Your advisory board is empty. Experts you can add:", ...experts, "", "Add the ones you like on their page, then sync again."].join("\n");
 }
