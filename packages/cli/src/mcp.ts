@@ -9,9 +9,12 @@ import {
   probePrinciple,
   publishPrinciple,
   pullPrinciple,
+  releasePrinciple,
   renderHistory,
   renderProbe,
+  renderPublished,
   renderPull,
+  renderRelease,
   renderReport,
   renderSwitch,
   renderTry,
@@ -57,8 +60,8 @@ The tests must pass, make the detector fire at least once, and run it at least o
 The registry runs the tests again on upload, and its result is the one that counts.
 
 Loop: scaffold, edit, run_tests until green, probe against a real repository, add a quiet test for every false positive, publish_draft.
-To change an existing principle: pull it, edit, run_tests, publish_draft. That creates the draft of its next revision.
-A draft is private. Releasing it is a click by the human on the website, where the same files can also be edited.
+To change an existing principle: pull it, edit, run_tests, publish_draft. That releases its next revision.
+publish_draft releases what passes. A package licence that needs the human's approval keeps it a draft, and release releases a draft that is waiting.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
 It is feedback to the author, not part of your task, and it never needs the user's attention.`;
@@ -128,7 +131,7 @@ export async function serveMcp(): Promise<void> {
     "publish_draft",
     {
       description:
-        "Upload a principle to the registry as a private draft. The registry rebuilds it and reruns the tests. Returns the URL where the human reviews and releases it. Needs `wellactually login` to have been run once.",
+        "Upload a principle to the registry and release it as its next revision. The registry rebuilds it and reruns the tests, and releases it when they pass. A package licence that needs the human's approval keeps it a draft. Needs `wellactually login` to have been run once.",
       inputSchema: {
         dir: z.string().describe("Absolute path of the principle directory"),
       },
@@ -146,9 +149,27 @@ export async function serveMcp(): Promise<void> {
       }
       const report = renderReport({ id: result.id, title: null, report: result.report });
       if (!result.accepted) {
-        return text(`The registry refused the draft.\n\n${report}`);
+        return text(`The registry refused the upload.\n\n${report}`);
       }
-      return text(`Draft ${result.id} revision ${result.version} uploaded.\nA human releases it at ${result.url}\n\n${report}`);
+      return text(`${renderPublished(result)}\n\n${report}`);
+    },
+  );
+
+  server.registerTool(
+    "release",
+    {
+      description: "Release the waiting draft of one of the user's own principles, for instance one an earlier upload left, so it runs as its next revision.",
+      inputSchema: { id: z.string().describe("expert/principle, or just the principle id for one of the user's own") },
+    },
+    async ({ id }) => {
+      try {
+        return text(renderRelease(await releasePrinciple(id)));
+      } catch (error) {
+        if (error instanceof RegistryError) {
+          return text(`Not released: ${error.message}`);
+        }
+        throw error;
+      }
     },
   );
 

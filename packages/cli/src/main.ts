@@ -10,10 +10,13 @@ import {
   probePrinciple,
   publishPrinciple,
   pullPrinciple,
+  releasePrinciple,
   removeLocal,
   renderHistory,
   renderProbe,
+  renderPublished,
   renderPull,
+  renderRelease,
   renderReport,
   renderRepositorySync,
   renderSwitch,
@@ -38,8 +41,9 @@ Authoring
         --command <text>         ... or a shell command
         --output <text>          ... or what a command printed, with --command naming it
   wellactually probe <repo> [dir]       Run the detector over a repository and report the fire rate
-  wellactually publish [dir]            Upload a private draft; a human releases it on the website
+  wellactually publish [dir]            Upload and release the principle's next revision
         --approve <name@version> ... with a package whose licence needs your approval. Repeat it for each
+  wellactually release <id>             Release a principle's waiting draft
   wellactually pull <id>[@revision] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's revisions and the files each changed
@@ -144,10 +148,20 @@ async function main(): Promise<number> {
       }
       const rendered = renderReport({ id: result.id, title: null, report: result.report });
       if (!result.accepted) {
-        print(result, `The registry refused the draft.\n${rendered}`);
+        print(result, `The registry refused the upload.\n${rendered}`);
         return 1;
       }
-      print(result, `${rendered}\nDraft revision ${result.version} uploaded. Review and release it at ${result.url}`);
+      print(result, `${rendered}\n${renderPublished(result)}`);
+      return 0;
+    }
+    case "release": {
+      const id = positionals[0];
+      if (!id) {
+        console.error("usage: wellactually release <id>");
+        return 2;
+      }
+      const result = await releasePrinciple(id);
+      print(result, renderRelease(result));
       return 0;
     }
     case "sync-repo": {

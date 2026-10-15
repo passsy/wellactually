@@ -37,7 +37,18 @@ import {
   type SwitchResult,
 } from "@wellactually/core/node";
 import type { Ctx } from "@wellactually/sdk";
-import { fetchHistory, publishDraft, pullSource, syncRepository, type DraftResult, type History, type RepositorySync, type SyncResult } from "./registry.ts";
+import {
+  fetchHistory,
+  publishDraft,
+  pullSource,
+  releaseDraft,
+  syncRepository,
+  type DraftResult,
+  type History,
+  type ReleaseResult,
+  type RepositorySync,
+  type SyncResult,
+} from "./registry.ts";
 
 /**
  * The verbs behind both the command line and the MCP server.
@@ -164,7 +175,7 @@ async function packagesToApprove(files: FileMap): Promise<PackageInfo[]> {
 }
 
 /**
- * Uploads a principle as a draft.
+ * Uploads a principle, which the registry releases when it passes.
  *
  * A package whose licence does not pass by itself goes into the bundle only
  * when the expert approved it: named in `approved`, or answered with yes when
@@ -200,6 +211,26 @@ export async function publishPrinciple(dir: string, options: PublishOptions = {}
     throw new ApprovalError(lines.join("\n"));
   }
   return publishDraft(id, files, approved);
+}
+
+/** What an accepted upload ended in: released, or a draft and why. */
+export function renderPublished(result: DraftResult): string {
+  if (result.released) {
+    return `Released revision ${result.version} of ${result.id}: ${result.url}`;
+  }
+  if (result.held) {
+    return `Draft revision ${result.version} uploaded, not released: ${result.held}\n${result.url}`;
+  }
+  return `Draft revision ${result.version} uploaded. Release it at ${result.url}`;
+}
+
+/** Releases the waiting draft of one of the user's own principles. */
+export async function releasePrinciple(id: string): Promise<ReleaseResult> {
+  return releaseDraft(id);
+}
+
+export function renderRelease(result: ReleaseResult): string {
+  return `Released revision ${result.version} of ${result.id}: ${result.url}`;
 }
 
 /** Has the registry read a repository that is connected on the website, without waiting for a push. */

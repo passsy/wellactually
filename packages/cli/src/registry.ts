@@ -164,13 +164,17 @@ export interface DraftResult {
   accepted: boolean;
   id: string | null;
   version: number | null;
-  /** Where the human reviews and releases the draft. */
+  /** The principle's page. */
   url: string | null;
   report: CheckReport;
+  /** Whether the registry released it. A registry from before uploads released leaves it out. */
+  released?: boolean;
+  /** Why it stays a draft, when it does, for instance a package licence that holds it back. */
+  held?: string | null;
 }
 
 /**
- * Uploads a principle as a private draft of `slug`. The registry rebuilds it and reruns the tests.
+ * Uploads a principle as the next revision of `slug` and releases it. The registry rebuilds it and reruns the tests.
  *
  * `approved` names the packages the expert approved. The registry works out
  * itself which packages need that, and refuses the draft when one is missing.
@@ -322,6 +326,23 @@ export interface History {
 }
 
 /** A principle's versions, newest first. */
+export interface ReleaseResult {
+  id: string;
+  version: number;
+  url: string;
+}
+
+/** Releases the waiting draft of one of the user's own principles, such as one an earlier upload or the website left. */
+export async function releaseDraft(id: string): Promise<ReleaseResult> {
+  requireToken();
+  const { handle, slug } = parseId(id);
+  const response = await call(`/api/principles/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}/release`, { method: "POST" });
+  if (!response.ok) {
+    throw await failure(response);
+  }
+  return (await response.json()) as ReleaseResult;
+}
+
 export async function fetchHistory(id: string): Promise<History> {
   const { handle, slug } = parseId(id);
   const response = await call(`/api/principles/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}/history`);

@@ -14392,6 +14392,15 @@ async function pullSource(id) {
   }
   return await response.json();
 }
+async function releaseDraft(id) {
+  requireToken();
+  const { handle, slug } = parseId(id);
+  const response = await call(`/api/principles/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}/release`, { method: "POST" });
+  if (!response.ok) {
+    throw await failure(response);
+  }
+  return await response.json();
+}
 async function fetchHistory(id) {
   const { handle, slug } = parseId(id);
   const response = await call(`/api/principles/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}/history`);
@@ -14515,6 +14524,22 @@ async function publishPrinciple(dir, options = {}) {
     throw new ApprovalError(lines.join("\n"));
   }
   return publishDraft(id, files, approved);
+}
+function renderPublished(result) {
+  if (result.released) {
+    return `Released revision ${result.version} of ${result.id}: ${result.url}`;
+  }
+  if (result.held) {
+    return `Draft revision ${result.version} uploaded, not released: ${result.held}
+${result.url}`;
+  }
+  return `Draft revision ${result.version} uploaded. Release it at ${result.url}`;
+}
+async function releasePrinciple(id) {
+  return releaseDraft(id);
+}
+function renderRelease(result) {
+  return `Released revision ${result.version} of ${result.id}: ${result.url}`;
 }
 async function syncRepo(name) {
   return syncRepository(name);
@@ -44141,8 +44166,8 @@ The tests must pass, make the detector fire at least once, and run it at least o
 The registry runs the tests again on upload, and its result is the one that counts.
 
 Loop: scaffold, edit, run_tests until green, probe against a real repository, add a quiet test for every false positive, publish_draft.
-To change an existing principle: pull it, edit, run_tests, publish_draft. That creates the draft of its next revision.
-A draft is private. Releasing it is a click by the human on the website, where the same files can also be edited.
+To change an existing principle: pull it, edit, run_tests, publish_draft. That releases its next revision.
+publish_draft releases what passes. A package licence that needs the human's approval keeps it a draft, and release releases a draft that is waiting.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
 It is feedback to the author, not part of your task, and it never needs the user's attention.`;
@@ -44201,7 +44226,7 @@ ${AUTHORING_GUIDE}`)
   server.registerTool(
     "publish_draft",
     {
-      description: "Upload a principle to the registry as a private draft. The registry rebuilds it and reruns the tests. Returns the URL where the human reviews and releases it. Needs `wellactually login` to have been run once.",
+      description: "Upload a principle to the registry and release it as its next revision. The registry rebuilds it and reruns the tests, and releases it when they pass. A package licence that needs the human's approval keeps it a draft. Needs `wellactually login` to have been run once.",
       inputSchema: {
         dir: external_exports.string().describe("Absolute path of the principle directory")
       }
@@ -44220,14 +44245,30 @@ This is the human's decision. Show them the list and let them run the command. D
       }
       const report = renderReport({ id: result.id, title: null, report: result.report });
       if (!result.accepted) {
-        return text(`The registry refused the draft.
+        return text(`The registry refused the upload.
 
 ${report}`);
       }
-      return text(`Draft ${result.id} revision ${result.version} uploaded.
-A human releases it at ${result.url}
+      return text(`${renderPublished(result)}
 
 ${report}`);
+    }
+  );
+  server.registerTool(
+    "release",
+    {
+      description: "Release the waiting draft of one of the user's own principles, for instance one an earlier upload left, so it runs as its next revision.",
+      inputSchema: { id: external_exports.string().describe("expert/principle, or just the principle id for one of the user's own") }
+    },
+    async ({ id }) => {
+      try {
+        return text(renderRelease(await releasePrinciple(id)));
+      } catch (error62) {
+        if (error62 instanceof RegistryError) {
+          return text(`Not released: ${error62.message}`);
+        }
+        throw error62;
+      }
     }
   );
   server.registerTool(
@@ -44318,8 +44359,9 @@ Authoring
         --command <text>         ... or a shell command
         --output <text>          ... or what a command printed, with --command naming it
   wellactually probe <repo> [dir]       Run the detector over a repository and report the fire rate
-  wellactually publish [dir]            Upload a private draft; a human releases it on the website
+  wellactually publish [dir]            Upload and release the principle's next revision
         --approve <name@version> ... with a package whose licence needs your approval. Repeat it for each
+  wellactually release <id>             Release a principle's waiting draft
   wellactually pull <id>[@revision] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's revisions and the files each changed
@@ -44422,12 +44464,22 @@ Next: wellactually test ${slug}`);
       }
       const rendered = renderReport({ id: result.id, title: null, report: result.report });
       if (!result.accepted) {
-        print(result, `The registry refused the draft.
+        print(result, `The registry refused the upload.
 ${rendered}`);
         return 1;
       }
       print(result, `${rendered}
-Draft revision ${result.version} uploaded. Review and release it at ${result.url}`);
+${renderPublished(result)}`);
+      return 0;
+    }
+    case "release": {
+      const id = positionals[0];
+      if (!id) {
+        console.error("usage: wellactually release <id>");
+        return 2;
+      }
+      const result = await releasePrinciple(id);
+      print(result, renderRelease(result));
       return 0;
     }
     case "sync-repo": {
