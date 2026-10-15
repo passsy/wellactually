@@ -4949,6 +4949,12 @@ function parseSettings(packageJson) {
     }
     settings.retired = reason;
   }
+  if (parsed?.forkable !== void 0) {
+    if (typeof parsed.forkable !== "boolean") {
+      throw new ManifestError("forkable in package.json is true or false");
+    }
+    settings.forkable = parsed.forkable;
+  }
   return settings;
 }
 
