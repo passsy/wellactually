@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "wellactually": {
+      "command": "node",
+      "args": [
+        "./dist/wellactually.mjs",
+        "mcp"
+      ],
+      "cwd": "."
+    }
+  }
+}

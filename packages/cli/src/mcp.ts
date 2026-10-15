@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { scaffold, switchPrinciple } from "@wellactually/core/node";
@@ -254,9 +256,13 @@ export async function serveMcp(): Promise<void> {
     scope: z
       .enum(["project", "global"])
       .describe("project: only in the project being worked on, recorded in .wellactually.json at its root. global: everywhere on this machine."),
-    dir: z.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started."),
+    dir: z.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started; required in Codex."),
   };
   const switchTool = (on: boolean) => async ({ id, scope, dir }: { id: string; scope: "project" | "global"; dir?: string }) => {
+    // Codex starts this server in the plugin's own folder, which is no project of the user's.
+    if (scope === "project" && dir === undefined && fs.existsSync(path.join(process.cwd(), "dist", "wellactually.mjs"))) {
+      return text("Pass dir, a directory inside the project: this server does not run in the project, so it cannot tell which one is meant.");
+    }
     try {
       return text(renderSwitch(switchPrinciple(id, on, scope, dir ?? process.cwd()), on));
     } catch (error) {

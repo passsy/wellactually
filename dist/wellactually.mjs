@@ -164,7 +164,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs8 = require2("node:fs");
+    var fs9 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -6936,8 +6936,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path10) {
-      let input2 = path10;
+    function removeDotSegments(path11) {
+      let input2 = path11;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -7346,8 +7346,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path10 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path10 && path10 !== "/" ? path10 : void 0;
+        const path11 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path11 && path11 !== "/" ? path11 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -10860,12 +10860,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs8, exportName) {
+    function addFormats(ajv, list, fs9, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs8[f]);
+        ajv.addFormat(f, fs9[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10933,21 +10933,21 @@ function loadSandbox() {
 
 // packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path10, pattern) {
+function matchesGlob(path11, pattern) {
   let regex = cache.get(pattern);
   if (!regex) {
     regex = globToRegExp(pattern);
     cache.set(pattern, regex);
   }
-  return regex.test(path10);
+  return regex.test(path11);
 }
-function matchesGlobs(path10, globs) {
+function matchesGlobs(path11, globs) {
   const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
-  if (excluded.some((glob) => matchesGlob(path10, glob))) {
+  if (excluded.some((glob) => matchesGlob(path11, glob))) {
     return false;
   }
   const included = globs.filter((glob) => !glob.startsWith("!"));
-  return included.length === 0 || included.some((glob) => matchesGlob(path10, glob));
+  return included.length === 0 || included.some((glob) => matchesGlob(path11, glob));
 }
 function globToRegExp(pattern) {
   const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
@@ -11046,15 +11046,15 @@ var TEST_ROOT = "/project";
 function fileCtx(event, relativePath, content, written, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === void 0 ? TEST_ROOT : where.root;
-  const path10 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
-  const name = path10.slice(path10.lastIndexOf("/") + 1);
+  const path11 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
+  const name = path11.slice(path11.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
   const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
   return {
     event,
     file: {
-      path: path10,
+      path: path11,
       relativePath: relative,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
@@ -11112,9 +11112,9 @@ function locateWritten(content, fragments) {
 // packages/core/src/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path10) {
+function normalizeAbsolute(path11) {
   const out = [];
-  for (const part of path10.split("/")) {
+  for (const part of path11.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -11127,15 +11127,15 @@ function normalizeAbsolute(path10) {
   return `/${out.join("/")}`;
 }
 function mapProject(root, files) {
-  const relative = (path10) => path10 === root ? "" : path10.startsWith(`${root}/`) ? path10.slice(root.length + 1) : null;
+  const relative = (path11) => path11 === root ? "" : path11.startsWith(`${root}/`) ? path11.slice(root.length + 1) : null;
   const isDir = (inside) => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));
   return {
-    read: (path10) => {
-      const inside = relative(path10);
+    read: (path11) => {
+      const inside = relative(path11);
       return inside === null ? null : files[inside] ?? null;
     },
-    stat: (path10) => {
-      const inside = relative(path10);
+    stat: (path11) => {
+      const inside = relative(path11);
       if (inside === null) {
         return null;
       }
@@ -11145,8 +11145,8 @@ function mapProject(root, files) {
       }
       return isDir(inside) ? { kind: "dir", size: 0 } : null;
     },
-    list: (path10) => {
-      const inside = relative(path10);
+    list: (path11) => {
+      const inside = relative(path11);
       if (inside === null || inside in files || !isDir(inside)) {
         return null;
       }
@@ -11183,24 +11183,24 @@ function fsHost(cwd, project) {
     if (++calls > MAX_FS_CALLS) {
       return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
     }
-    const path10 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    const path11 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
     if (op === "stat") {
-      const stat = project.stat(path10);
+      const stat = project.stat(path11);
       return stat ? { stat } : missing;
     }
     if (op === "list") {
-      const entries = project.list(path10);
+      const entries = project.list(path11);
       if (entries) {
         return { entries };
       }
-      return project.stat(path10) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      return project.stat(path11) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
     }
-    const text2 = project.read(path10);
+    const text2 = project.read(path11);
     if (text2 === null) {
-      return project.stat(path10)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+      return project.stat(path11)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
     }
     bytes += text2.length;
     if (bytes > MAX_FS_BYTES) {
@@ -11658,8 +11658,8 @@ function isExactVersion(version2) {
   return EXACT_VERSION.test(version2);
 }
 var PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
-function isPackageFile(path10) {
-  return path10.startsWith(PACKAGE_DIR);
+function isPackageFile(path11) {
+  return path11.startsWith(PACKAGE_DIR);
 }
 function readPins(files) {
   const source = files["package.json"];
@@ -11697,11 +11697,11 @@ function splitSpecifier(specifier) {
   }
   return { name, subpath: parts.slice(count2).join("/") };
 }
-function packageOf(path10) {
-  if (!isPackageFile(path10)) {
+function packageOf(path11) {
+  if (!isPackageFile(path11)) {
     return null;
   }
-  return splitSpecifier(path10.slice(PACKAGE_DIR.length))?.name ?? null;
+  return splitSpecifier(path11.slice(PACKAGE_DIR.length))?.name ?? null;
 }
 async function readPackageJson(read2, name) {
   const source = await read2(`${PACKAGE_DIR}${name}/package.json`);
@@ -11809,9 +11809,9 @@ async function resolveInPackage(read2, importer, relative) {
   return probe(read2, joined);
 }
 var SUFFIXES = ["", ".js", ".mjs", ".cjs", ".ts", ".json", "/index.js", "/index.mjs", "/index.cjs", "/index.ts"];
-async function probe(read2, path10) {
+async function probe(read2, path11) {
   for (const suffix of SUFFIXES) {
-    const candidate = `${path10}${suffix}`;
+    const candidate = `${path11}${suffix}`;
     if (suffix === "" && !/\.[a-z]+$/.test(candidate)) {
       continue;
     }
@@ -11930,14 +11930,14 @@ function declaredLicense(json2) {
 }
 function carriedPackages(files) {
   const packages = [];
-  for (const path10 of Object.keys(files).sort()) {
-    const name = packageOf(path10);
-    if (name === null || path10 !== `${PACKAGE_DIR}${name}/package.json`) {
+  for (const path11 of Object.keys(files).sort()) {
+    const name = packageOf(path11);
+    if (name === null || path11 !== `${PACKAGE_DIR}${name}/package.json`) {
       continue;
     }
     let json2;
     try {
-      json2 = JSON.parse(files[path10] ?? "");
+      json2 = JSON.parse(files[path11] ?? "");
     } catch {
       throw new PackageError(`the package.json of ${name} is not valid JSON`);
     }
@@ -12022,9 +12022,9 @@ function testFiles(files) {
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
 }
-function normalize(path10) {
+function normalize(path11) {
   const out = [];
-  for (const part of path10.split("/")) {
+  for (const part of path11.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -12036,9 +12036,9 @@ function normalize(path10) {
   }
   return out.join("/");
 }
-function dirname(path10) {
-  const slash = path10.lastIndexOf("/");
-  return slash === -1 ? "" : path10.slice(0, slash);
+function dirname(path11) {
+  const slash = path11.lastIndexOf("/");
+  return slash === -1 ? "" : path11.slice(0, slash);
 }
 async function vendorPackages(files, source) {
   let pins;
@@ -12054,8 +12054,8 @@ async function vendorPackages(files, source) {
   await buildDetector(files, source, fetched);
   await buildTestBundle(files, source, fetched);
   const names = /* @__PURE__ */ new Set();
-  for (const path10 of Object.keys(fetched)) {
-    const name = packageOf(path10);
+  for (const path11 of Object.keys(fetched)) {
+    const name = packageOf(path11);
     if (name !== null) {
       names.add(name);
     }
@@ -12105,21 +12105,21 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
     throw new BundleError(error62.message);
   }
   const missing = /* @__PURE__ */ new Set();
-  const read2 = async (path10) => {
-    const own2 = files[path10] ?? fetched[path10];
+  const read2 = async (path11) => {
+    const own2 = files[path11] ?? fetched[path11];
     if (own2 !== void 0) {
       return own2;
     }
-    const name = packageOf(path10);
-    if (name === null || source === void 0 || missing.has(path10)) {
+    const name = packageOf(path11);
+    if (name === null || source === void 0 || missing.has(path11)) {
       return null;
     }
-    const text2 = await source(name, pins[name] ?? null, path10.slice(PACKAGE_DIR.length + name.length + 1));
+    const text2 = await source(name, pins[name] ?? null, path11.slice(PACKAGE_DIR.length + name.length + 1));
     if (text2 === null) {
-      missing.add(path10);
+      missing.add(path11);
       return null;
     }
-    fetched[path10] = text2;
+    fetched[path11] = text2;
     return text2;
   };
   const virtual = {
@@ -14877,6 +14877,10 @@ function logHookFailure(error62) {
   fs7.appendFileSync(path9.join(ensureHome(), "hook.log"), line);
 }
 
+// packages/cli/src/mcp.ts
+import fs8 from "node:fs";
+import path10 from "node:path";
+
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
@@ -15251,8 +15255,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path10, errorMaps, issueData } = params;
-  const fullPath = [...path10, ...issueData.path || []];
+  const { data, path: path11, errorMaps, issueData } = params;
+  const fullPath = [...path11, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -15367,11 +15371,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path10, key) {
+  constructor(parent, value, path11, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path10;
+    this._path = path11;
     this._key = key;
   }
   get path() {
@@ -19325,10 +19329,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path10) {
-  if (!path10)
+function getElementAtPath(obj, path11) {
+  if (!path11)
     return obj;
-  return path10.reduce((acc, key) => acc?.[key], obj);
+  return path11.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -19668,11 +19672,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path10, issues) {
+function prefixIssues(path11, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path10);
+    iss.path.unshift(path11);
     return iss;
   });
 }
@@ -20122,16 +20126,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path10 = []) => {
+  const processError = (error63, path11 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path10, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else {
-        const fullpath = [...path10, ...issue2.path];
+        const fullpath = [...path11, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -20170,17 +20174,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path10 = []) => {
+  const processError = (error63, path11 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path10, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else {
-        const fullpath = [...path10, ...issue2.path];
+        const fullpath = [...path11, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -20219,8 +20223,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path10 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path10) {
+  const path11 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path11) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -35735,11 +35739,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path10) {
-  if (path10.length === 0) {
+function getDotPath(path11) {
+  if (path11.length === 0) {
     return "object root";
   }
-  return path10.reduce((acc, seg, index) => {
+  return path11.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -37966,13 +37970,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path10 = ref.slice(1).split("/").filter(Boolean);
-  if (path10.length === 0) {
+  const path11 = ref.slice(1).split("/").filter(Boolean);
+  if (path11.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path10[0] === defsKey) {
-    const key = path10[1] === void 0 ? void 0 : decodeJSONPointerSegment(path10[1]);
+  if (path11[0] === defsKey) {
+    const key = path11[1] === void 0 ? void 0 : decodeJSONPointerSegment(path11[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -44364,9 +44368,12 @@ ${report}`);
   const switchInput = {
     id: external_exports.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
     scope: external_exports.enum(["project", "global"]).describe("project: only in the project being worked on, recorded in .wellactually.json at its root. global: everywhere on this machine."),
-    dir: external_exports.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started.")
+    dir: external_exports.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started; required in Codex.")
   };
   const switchTool = (on) => async ({ id, scope, dir }) => {
+    if (scope === "project" && dir === void 0 && fs8.existsSync(path10.join(process.cwd(), "dist", "wellactually.mjs"))) {
+      return text("Pass dir, a directory inside the project: this server does not run in the project, so it cannot tell which one is meant.");
+    }
     try {
       return text(renderSwitch(switchPrinciple(id, on, scope, dir ?? process.cwd()), on));
     } catch (error62) {
