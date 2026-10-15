@@ -14,11 +14,13 @@ import {
   publishPrinciple,
   pullPrinciple,
   releasePrinciple,
+  showPrinciple,
   renderHistory,
   renderProbe,
   renderPublished,
   renderPull,
   renderRelease,
+  renderShow,
   renderVisibility,
   renderReport,
   renderSwitch,
@@ -68,6 +70,8 @@ Loop: scaffold, edit, run_tests until green, probe against a real repository, ad
 To change an existing principle: pull it, edit, run_tests, publish_draft. That releases its next revision.
 publish_draft releases what passes. A package licence that needs the human's approval keeps it a draft, and release releases a draft that is waiting.
 A principle is private until it is made public: publish_draft takes visibility public or private, and set_visibility changes it later.
+
+Reading: show reads a principle by id, bare name or link. Use it to follow a link from one principle's advice to another.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
 It is feedback to the author, not part of your task, and it never needs the user's attention.`;
@@ -217,6 +221,29 @@ export async function serveMcp(): Promise<void> {
       },
     },
     async ({ id, dir, force }) => text(renderPull(await pullPrinciple(id, dir, force ?? false))),
+  );
+
+  server.registerTool(
+    "show",
+    {
+      description:
+        "Read a principle: its advice as an agent is shown it, with author, tags, visibility and link. Use it to follow a link to another principle that advice mentions, or to look one up by name. A private principle reads only for those it is shared with.",
+      inputSchema: {
+        principle: z
+          .string()
+          .describe("expert/principle such as passsy/avoid-late, optionally with @revision; a bare principle id; or its link, e.g. https://wellactually.dev/p/passsy/avoid-late"),
+      },
+    },
+    async ({ principle }) => {
+      try {
+        return text(renderShow(await showPrinciple(principle)));
+      } catch (error) {
+        if (error instanceof RegistryError) {
+          return text(`Not shown: ${error.message}`);
+        }
+        throw error;
+      }
+    },
   );
 
   server.registerTool(

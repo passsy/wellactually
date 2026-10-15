@@ -14,7 +14,15 @@ import {
 } from "@wellactually/core/node";
 import type { Rater } from "./rater.ts";
 
-export class RegistryError extends Error {}
+export class RegistryError extends Error {
+  /** The HTTP status the registry answered with, or null when it was not asked or did not answer. */
+  readonly status: number | null;
+
+  constructor(message: string, status: number | null = null) {
+    super(message);
+    this.status = status;
+  }
+}
 
 async function call(pathname: string, init: { method?: string; body?: unknown; token?: string | null } = {}): Promise<Response> {
   const config = readConfig();
@@ -62,7 +70,7 @@ async function failure(response: Response): Promise<RegistryError> {
     return new RegistryError("not signed in, or the token was revoked. Run `wellactually login`.");
   }
   const body = (await response.json().catch(() => null)) as { error?: string } | null;
-  return new RegistryError(body?.error ?? `the registry answered ${response.status}`);
+  return new RegistryError(body?.error ?? `the registry answered ${response.status}`, response.status);
 }
 
 function requireToken(): void {
@@ -296,6 +304,8 @@ export interface PulledSource {
   files: FileMap;
   /** Who it is by: the expert of the original first, then each who forked it. Absent from registries before forks were credited. */
   credits?: string[];
+  /** Who can read it. Absent from registries before the show tool. */
+  visibility?: Visibility;
 }
 
 /** Splits `expert/principle@3` into its parts. A bare principle id means one of the user's own. */

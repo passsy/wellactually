@@ -11,6 +11,8 @@ import {
   probePrinciple,
   publishPrinciple,
   pullPrinciple,
+  showPrinciple,
+  renderShow,
   releasePrinciple,
   removeLocal,
   renderHistory,
@@ -51,6 +53,7 @@ Authoring
   wellactually pull <id>[@revision] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's revisions and the files each changed
+  wellactually show <id|link>           Print a principle's advice, author, tags and visibility
   wellactually sync-repo <owner/repo>   Have the registry read a connected GitHub repository now
 
 Your advisory board
@@ -202,6 +205,16 @@ async function main(): Promise<number> {
       }
       const result = await principleHistory(id);
       print(result, renderHistory(result));
+      return 0;
+    }
+    case "show": {
+      const reference = positionals[0];
+      if (!reference) {
+        console.error("usage: wellactually show <expert/principle[@revision] | principle | link>");
+        return 2;
+      }
+      const result = await showPrinciple(reference);
+      print(result, renderShow(result));
       return 0;
     }
     case "pull": {

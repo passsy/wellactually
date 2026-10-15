@@ -19,7 +19,10 @@ import {
   probeRepo,
   isPackageFile,
   ManifestError,
+  DEFAULT_REGISTRY,
+  parseTags,
   needsApproval,
+  readConfig,
   readLockfile,
   readPrinciple,
   readPrincipleDir,
@@ -41,6 +44,7 @@ import {
   fetchHistory,
   publishDraft,
   pullSource,
+  RegistryError,
   releaseDraft,
   setVisibility,
   syncRepository,
@@ -363,6 +367,116 @@ export function renderPull(result: PullResult): string {
   const described = describeCredits(result.credits);
   const credits = described === null ? "" : `\n${described}.`;
   return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).${credits}${install}\nEdit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
+}
+
+/** Hosts whose principle links name a principle of the registry, besides the one this machine is signed in to. */
+const REGISTRY_HOSTS = [new URL(DEFAULT_REGISTRY).host, "www.wellactually.dev", "web-production-a1cda.up.railway.app"];
+
+/**
+ * Turns what an agent has in hand into the id the registry knows: `expert/principle`
+ * with an optional `@revision`, a bare principle id, or a link to its page such as
+ * https://wellactually.dev/p/passsy/avoid-late?v=3. A bare id is returned as it is.
+ */
+export function principleIdOf(reference: string): string {
+  const trimmed = reference.trim();
+  const link = /^(https?:\/\/)?([^/\s]+)(\/p\/[^\s]*)$/i.exec(trimmed);
+  if (!link) {
+    return trimmed.replace(/^@/, "");
+  }
+  const url = new URL(`${link[1] ?? "https://"}${link[2]}${link[3]}`);
+  const hosts = [...REGISTRY_HOSTS, new URL(readConfig().registry).host];
+  if (!hosts.includes(url.host)) {
+    throw new RegistryError(`${reference} is not a link to a principle on ${hosts[0]}.`);
+  }
+  const [handle, slug] = url.pathname.split("/").slice(2).map(decodeURIComponent);
+  if (!handle || !slug) {
+    throw new RegistryError(`${reference} does not name a principle. A principle's link looks like https://${hosts[0]}/p/expert/principle.`);
+  }
+  const version = url.searchParams.get("v");
+  return `${handle}/${slug}${version ? `@${version}` : ""}`;
+}
+
+export interface ShownPrinciple {
+  id: string;
+  version: number;
+  status: "draft" | "released";
+  /** Who it is by: the expert of the original first, then each who forked it. */
+  credits: string[];
+  visibility: Visibility | null;
+  tags: string[];
+  link: string;
+  /** The whole of principle.md. */
+  advice: string;
+}
+
+/**
+ * Fetches a principle's advice to read, by id, bare name or link.
+ *
+ * A bare name is one of the user's own first, then one on their advisory board.
+ * The registry answers only what the user may see, so a private principle of
+ * someone else reads as not found.
+ */
+export async function showPrinciple(reference: string): Promise<ShownPrinciple> {
+  const id = principleIdOf(reference);
+  const [name = ""] = id.split("@");
+  const source = name.includes("/") ? await pullSource(id) : await pullByName(id);
+  let tags: string[] = [];
+  try {
+    tags = parseTags(source.files["package.json"]);
+  } catch {
+    // A broken package.json is the author's to fix. The advice still reads.
+  }
+  const [handle = "", slug = ""] = source.id.split("/");
+  const link = new URL(`/p/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}`, readConfig().registry).href;
+  return {
+    id: source.id,
+    version: source.version,
+    status: source.status,
+    credits: source.credits ?? [handle],
+    visibility: source.visibility ?? null,
+    tags,
+    link,
+    advice: (source.files["principle.md"] ?? "").trim(),
+  };
+}
+
+/** A bare principle id: the user's own when they have one by that name, else the one on their advisory board. */
+async function pullByName(id: string) {
+  const [slug = "", version] = id.split("@");
+  const suffix = version === undefined ? "" : `@${version}`;
+  const own = readConfig().handle;
+  if (own) {
+    try {
+      return await pullSource(`${own}/${id}`);
+    } catch (error) {
+      if (!(error instanceof RegistryError && error.status === 404)) {
+        throw error;
+      }
+    }
+  }
+  const onBoard = readLockfile()
+    .entries.map((entry) => entry.id)
+    .filter((entryId) => entryId.split("/")[1] === slug && !entryId.startsWith("local/") && entryId !== `${own}/${slug}`);
+  const unique = [...new Set(onBoard)];
+  if (unique.length > 1) {
+    throw new RegistryError(`Several principles are named ${slug}: ${unique.join(", ")}. Pass the one you mean as expert/principle.`);
+  }
+  if (unique[0] === undefined) {
+    const whose = own ? `You have no principle named ${slug}, and none on your advisory board is.` : `No principle on your advisory board is named ${slug}.`;
+    throw new RegistryError(`${whose} Pass it as expert/principle, or as its link.`);
+  }
+  return pullSource(`${unique[0]}${suffix}`);
+}
+
+export function renderShow(result: ShownPrinciple): string {
+  const revision = result.status === "draft" ? `draft of revision ${result.version}, not released` : `revision ${result.version}`;
+  const [original = "", ...editors] = result.credits;
+  const lines = [`${result.id} (${revision})`, `Author: @${original}${editors.length > 0 ? `, edited by ${editors.map((handle) => `@${handle}`).join(", ")}` : ""}`];
+  if (result.visibility) {
+    lines.push(`Visibility: ${result.visibility}`);
+  }
+  lines.push(`Tags: ${result.tags.length > 0 ? result.tags.join(", ") : "none"}`, `Link: ${result.link}`, "", result.advice);
+  return lines.join("\n");
 }
 
 function asLocal(built: BuiltPrinciple, id: string) {

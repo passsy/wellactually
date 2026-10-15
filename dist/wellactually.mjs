@@ -14228,6 +14228,12 @@ import path8 from "node:path";
 
 // wt/packages/cli/src/registry.ts
 var RegistryError = class extends Error {
+  /** The HTTP status the registry answered with, or null when it was not asked or did not answer. */
+  status;
+  constructor(message, status = null) {
+    super(message);
+    this.status = status;
+  }
 };
 async function call(pathname, init = {}) {
   const config2 = readConfig();
@@ -14267,7 +14273,7 @@ async function failure(response) {
     return new RegistryError("not signed in, or the token was revoked. Run `wellactually login`.");
   }
   const body = await response.json().catch(() => null);
-  return new RegistryError(body?.error ?? `the registry answered ${response.status}`);
+  return new RegistryError(body?.error ?? `the registry answered ${response.status}`, response.status);
 }
 function requireToken() {
   if (!readConfig().token) {
@@ -14658,6 +14664,81 @@ It uses packages. Install them first: npm install --prefix ${result.dir}`;
 ${described}.`;
   return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).${credits}${install}
 Edit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
+}
+var REGISTRY_HOSTS = [new URL(DEFAULT_REGISTRY).host, "www.wellactually.dev", "web-production-a1cda.up.railway.app"];
+function principleIdOf(reference) {
+  const trimmed = reference.trim();
+  const link = /^(https?:\/\/)?([^/\s]+)(\/p\/[^\s]*)$/i.exec(trimmed);
+  if (!link) {
+    return trimmed.replace(/^@/, "");
+  }
+  const url2 = new URL(`${link[1] ?? "https://"}${link[2]}${link[3]}`);
+  const hosts = [...REGISTRY_HOSTS, new URL(readConfig().registry).host];
+  if (!hosts.includes(url2.host)) {
+    throw new RegistryError(`${reference} is not a link to a principle on ${hosts[0]}.`);
+  }
+  const [handle, slug] = url2.pathname.split("/").slice(2).map(decodeURIComponent);
+  if (!handle || !slug) {
+    throw new RegistryError(`${reference} does not name a principle. A principle's link looks like https://${hosts[0]}/p/expert/principle.`);
+  }
+  const version2 = url2.searchParams.get("v");
+  return `${handle}/${slug}${version2 ? `@${version2}` : ""}`;
+}
+async function showPrinciple(reference) {
+  const id = principleIdOf(reference);
+  const [name = ""] = id.split("@");
+  const source = name.includes("/") ? await pullSource(id) : await pullByName(id);
+  let tags = [];
+  try {
+    tags = parseTags(source.files["package.json"]);
+  } catch {
+  }
+  const [handle = "", slug = ""] = source.id.split("/");
+  const link = new URL(`/p/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}`, readConfig().registry).href;
+  return {
+    id: source.id,
+    version: source.version,
+    status: source.status,
+    credits: source.credits ?? [handle],
+    visibility: source.visibility ?? null,
+    tags,
+    link,
+    advice: (source.files["principle.md"] ?? "").trim()
+  };
+}
+async function pullByName(id) {
+  const [slug = "", version2] = id.split("@");
+  const suffix = version2 === void 0 ? "" : `@${version2}`;
+  const own2 = readConfig().handle;
+  if (own2) {
+    try {
+      return await pullSource(`${own2}/${id}`);
+    } catch (error62) {
+      if (!(error62 instanceof RegistryError && error62.status === 404)) {
+        throw error62;
+      }
+    }
+  }
+  const onBoard = readLockfile().entries.map((entry) => entry.id).filter((entryId) => entryId.split("/")[1] === slug && !entryId.startsWith("local/") && entryId !== `${own2}/${slug}`);
+  const unique = [...new Set(onBoard)];
+  if (unique.length > 1) {
+    throw new RegistryError(`Several principles are named ${slug}: ${unique.join(", ")}. Pass the one you mean as expert/principle.`);
+  }
+  if (unique[0] === void 0) {
+    const whose = own2 ? `You have no principle named ${slug}, and none on your advisory board is.` : `No principle on your advisory board is named ${slug}.`;
+    throw new RegistryError(`${whose} Pass it as expert/principle, or as its link.`);
+  }
+  return pullSource(`${unique[0]}${suffix}`);
+}
+function renderShow(result) {
+  const revision = result.status === "draft" ? `draft of revision ${result.version}, not released` : `revision ${result.version}`;
+  const [original = "", ...editors] = result.credits;
+  const lines = [`${result.id} (${revision})`, `Author: @${original}${editors.length > 0 ? `, edited by ${editors.map((handle) => `@${handle}`).join(", ")}` : ""}`];
+  if (result.visibility) {
+    lines.push(`Visibility: ${result.visibility}`);
+  }
+  lines.push(`Tags: ${result.tags.length > 0 ? result.tags.join(", ") : "none"}`, `Link: ${result.link}`, "", result.advice);
+  return lines.join("\n");
 }
 function asLocal(built, id) {
   return { ...built, id: `local/${id}`, version: 0 };
@@ -44365,6 +44446,8 @@ To change an existing principle: pull it, edit, run_tests, publish_draft. That r
 publish_draft releases what passes. A package licence that needs the human's approval keeps it a draft, and release releases a draft that is waiting.
 A principle is private until it is made public: publish_draft takes visibility public or private, and set_visibility changes it later.
 
+Reading: show reads a principle by id, bare name or link. Use it to follow a link from one principle's advice to another.
+
 Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
 It is feedback to the author, not part of your task, and it never needs the user's attention.`;
 function text(value) {
@@ -44501,6 +44584,25 @@ ${report}`);
     async ({ id, dir, force }) => text(renderPull(await pullPrinciple(id, dir, force ?? false)))
   );
   server.registerTool(
+    "show",
+    {
+      description: "Read a principle: its advice as an agent is shown it, with author, tags, visibility and link. Use it to follow a link to another principle that advice mentions, or to look one up by name. A private principle reads only for those it is shared with.",
+      inputSchema: {
+        principle: external_exports.string().describe("expert/principle such as passsy/avoid-late, optionally with @revision; a bare principle id; or its link, e.g. https://wellactually.dev/p/passsy/avoid-late")
+      }
+    },
+    async ({ principle }) => {
+      try {
+        return text(renderShow(await showPrinciple(principle)));
+      } catch (error62) {
+        if (error62 instanceof RegistryError) {
+          return text(`Not shown: ${error62.message}`);
+        }
+        throw error62;
+      }
+    }
+  );
+  server.registerTool(
     "history",
     {
       description: "Show a principle's revisions, newest first, like a commit log: revision, hash, date and which files changed. Includes the user's own unreleased draft.",
@@ -44587,6 +44689,7 @@ Authoring
   wellactually pull <id>[@revision] [dir] Download a principle's files to keep working on it
         --force                  ... replacing the files of an existing directory
   wellactually log <id>                 Show a principle's revisions and the files each changed
+  wellactually show <id|link>           Print a principle's advice, author, tags and visibility
   wellactually sync-repo <owner/repo>   Have the registry read a connected GitHub repository now
 
 Your advisory board
@@ -44738,6 +44841,16 @@ ${renderPublished(result)}`);
       }
       const result = await principleHistory(id);
       print(result, renderHistory(result));
+      return 0;
+    }
+    case "show": {
+      const reference = positionals[0];
+      if (!reference) {
+        console.error("usage: wellactually show <expert/principle[@revision] | principle | link>");
+        return 2;
+      }
+      const result = await showPrinciple(reference);
+      print(result, renderShow(result));
       return 0;
     }
     case "pull": {
