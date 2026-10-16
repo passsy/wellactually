@@ -43,24 +43,24 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/chunk-FGV2HSCH.mjs
+// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/chunk-FGV2HSCH.mjs
 var __defProp2, __defNormalProp, __publicField;
 var init_chunk_FGV2HSCH = __esm({
-  "wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/chunk-FGV2HSCH.mjs"() {
+  "node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/chunk-FGV2HSCH.mjs"() {
     __defProp2 = Object.defineProperty;
     __defNormalProp = (obj, key, value) => key in obj ? __defProp2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
     __publicField = (obj, key, value) => (__defNormalProp(obj, typeof key != "symbol" ? key + "" : key, value), value);
   }
 });
 
-// wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/ffi.mjs
+// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/ffi.mjs
 var ffi_exports = {};
 __export(ffi_exports, {
   QuickJSFFI: () => QuickJSFFI
 });
 var QuickJSFFI;
 var init_ffi = __esm({
-  "wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/ffi.mjs"() {
+  "node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/ffi.mjs"() {
     QuickJSFFI = class {
       constructor(module) {
         this.module = module;
@@ -138,7 +138,7 @@ var init_ffi = __esm({
   }
 });
 
-// wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/emscripten-module-Q67P5WYC.mjs
+// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/emscripten-module-Q67P5WYC.mjs
 var emscripten_module_Q67P5WYC_exports = {};
 __export(emscripten_module_Q67P5WYC_exports, {
   default: () => emscripten_module_default
@@ -164,7 +164,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs10 = require2("node:fs");
+    var fs11 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -2558,16 +2558,16 @@ Z\x8B\0mm\0\xCF~6\0	\xCB'\0FO\xB7\0\x9Ef?\0-\xEA_\0\xBA'u\0\xE5\xEB\xC7\0={\xF1
 }
 var emscripten_module_default;
 var init_emscripten_module_Q67P5WYC = __esm({
-  "wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/emscripten-module-Q67P5WYC.mjs"() {
+  "node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/emscripten-module-Q67P5WYC.mjs"() {
     init_chunk_FGV2HSCH();
     emscripten_module_default = QuickJSRaw;
   }
 });
 
-// wt/node_modules/@jitl/quickjs-ffi-types/dist/index.mjs
+// node_modules/@jitl/quickjs-ffi-types/dist/index.mjs
 var EvalFlags, IntrinsicsFlags, JSPromiseStateEnum, GetOwnPropertyNamesFlags, IsEqualOp;
 var init_dist = __esm({
-  "wt/node_modules/@jitl/quickjs-ffi-types/dist/index.mjs"() {
+  "node_modules/@jitl/quickjs-ffi-types/dist/index.mjs"() {
     EvalFlags = { JS_EVAL_TYPE_GLOBAL: 0, JS_EVAL_TYPE_MODULE: 1, JS_EVAL_TYPE_DIRECT: 2, JS_EVAL_TYPE_INDIRECT: 3, JS_EVAL_TYPE_MASK: 3, JS_EVAL_FLAG_STRICT: 8, JS_EVAL_FLAG_STRIP: 16, JS_EVAL_FLAG_COMPILE_ONLY: 32, JS_EVAL_FLAG_BACKTRACE_BARRIER: 64 };
     IntrinsicsFlags = { BaseObjects: 1, Date: 2, Eval: 4, StringNormalize: 8, RegExp: 16, RegExpCompiler: 32, JSON: 64, Proxy: 128, MapSet: 256, TypedArrays: 512, Promise: 1024, BigInt: 2048, BigFloat: 4096, BigDecimal: 8192, OperatorOverloading: 16384, BignumExt: 32768 };
     JSPromiseStateEnum = { Pending: 0, Fulfilled: 1, Rejected: 2 };
@@ -2576,7 +2576,7 @@ var init_dist = __esm({
   }
 });
 
-// wt/node_modules/quickjs-emscripten-core/dist/chunk-V2S4ZYJR.mjs
+// node_modules/quickjs-emscripten-core/dist/chunk-V2S4ZYJR.mjs
 function debugLog(...args) {
   QTS_DEBUG && console.log("quickjs-emscripten:", ...args);
 }
@@ -2663,7 +2663,7 @@ function applyModuleEvalRuntimeOptions(runtime, options) {
 }
 var __defProp3, __export2, QTS_DEBUG, errors_exports, QuickJSUnwrapError, QuickJSWrongOwner, QuickJSUseAfterFree, QuickJSNotImplemented, QuickJSAsyncifyError, QuickJSAsyncifySuspended, QuickJSMemoryLeakDetected, QuickJSEmscriptenModuleError, QuickJSUnknownIntrinsic, QuickJSPromisePending, QuickJSEmptyGetOwnPropertyNames, QuickJSHostRefRangeExceeded, QuickJSHostRefInvalid, AwaitYield, UsingDisposable, SymbolDispose, prototypeAsAny, Lifetime, StaticLifetime, WeakLifetime, Scope, AbstractDisposableResult, DisposableSuccess, DisposableFail, DisposableResult, QuickJSDeferredPromise, ModuleMemory, DefaultIntrinsics, QuickJSIterator, INT32_MIN, INT32_MAX, INVALID_HOST_REF_ID, HostRefMap, HostRef, ContextMemory, QuickJSContext, QuickJSRuntime, QuickJSEmscriptenModuleCallbacks, QuickJSModuleCallbacks, QuickJSWASMModule;
 var init_chunk_V2S4ZYJR = __esm({
-  "wt/node_modules/quickjs-emscripten-core/dist/chunk-V2S4ZYJR.mjs"() {
+  "node_modules/quickjs-emscripten-core/dist/chunk-V2S4ZYJR.mjs"() {
     init_dist();
     init_dist();
     __defProp3 = Object.defineProperty;
@@ -3693,7 +3693,7 @@ Attempted to suspend at:`);
   }
 });
 
-// wt/node_modules/quickjs-emscripten-core/dist/module-ES6BEMUI.mjs
+// node_modules/quickjs-emscripten-core/dist/module-ES6BEMUI.mjs
 var module_ES6BEMUI_exports = {};
 __export(module_ES6BEMUI_exports, {
   QuickJSModuleCallbacks: () => QuickJSModuleCallbacks,
@@ -3702,14 +3702,14 @@ __export(module_ES6BEMUI_exports, {
   applyModuleEvalRuntimeOptions: () => applyModuleEvalRuntimeOptions
 });
 var init_module_ES6BEMUI = __esm({
-  "wt/node_modules/quickjs-emscripten-core/dist/module-ES6BEMUI.mjs"() {
+  "node_modules/quickjs-emscripten-core/dist/module-ES6BEMUI.mjs"() {
     init_chunk_V2S4ZYJR();
   }
 });
 
-// wt/node_modules/ajv/dist/compile/codegen/code.js
+// node_modules/ajv/dist/compile/codegen/code.js
 var require_code = __commonJS({
-  "wt/node_modules/ajv/dist/compile/codegen/code.js"(exports) {
+  "node_modules/ajv/dist/compile/codegen/code.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.regexpCode = exports.getEsmExportName = exports.getProperty = exports.safeStringify = exports.stringify = exports.strConcat = exports.addCodeArg = exports.str = exports._ = exports.nil = exports._Code = exports.Name = exports.IDENTIFIER = exports._CodeOrName = void 0;
@@ -3861,9 +3861,9 @@ var require_code = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/codegen/scope.js
+// node_modules/ajv/dist/compile/codegen/scope.js
 var require_scope = __commonJS({
-  "wt/node_modules/ajv/dist/compile/codegen/scope.js"(exports) {
+  "node_modules/ajv/dist/compile/codegen/scope.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ValueScope = exports.ValueScopeName = exports.Scope = exports.varKinds = exports.UsedValueState = void 0;
@@ -4006,9 +4006,9 @@ var require_scope = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/codegen/index.js
+// node_modules/ajv/dist/compile/codegen/index.js
 var require_codegen = __commonJS({
-  "wt/node_modules/ajv/dist/compile/codegen/index.js"(exports) {
+  "node_modules/ajv/dist/compile/codegen/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.or = exports.and = exports.not = exports.CodeGen = exports.operators = exports.varKinds = exports.ValueScopeName = exports.ValueScope = exports.Scope = exports.Name = exports.regexpCode = exports.stringify = exports.getProperty = exports.nil = exports.strConcat = exports.str = exports._ = void 0;
@@ -4726,9 +4726,9 @@ var require_codegen = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/util.js
+// node_modules/ajv/dist/compile/util.js
 var require_util = __commonJS({
-  "wt/node_modules/ajv/dist/compile/util.js"(exports) {
+  "node_modules/ajv/dist/compile/util.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.checkStrictMode = exports.getErrorPath = exports.Type = exports.useFunc = exports.setEvaluated = exports.evaluatedPropsToName = exports.mergeEvaluated = exports.eachItem = exports.unescapeJsonPointer = exports.escapeJsonPointer = exports.escapeFragment = exports.unescapeFragment = exports.schemaRefOrVal = exports.schemaHasRulesButRef = exports.schemaHasRules = exports.checkUnknownRules = exports.alwaysValidSchema = exports.toHash = void 0;
@@ -4893,9 +4893,9 @@ var require_util = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/names.js
+// node_modules/ajv/dist/compile/names.js
 var require_names = __commonJS({
-  "wt/node_modules/ajv/dist/compile/names.js"(exports) {
+  "node_modules/ajv/dist/compile/names.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -4932,9 +4932,9 @@ var require_names = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/errors.js
+// node_modules/ajv/dist/compile/errors.js
 var require_errors = __commonJS({
-  "wt/node_modules/ajv/dist/compile/errors.js"(exports) {
+  "node_modules/ajv/dist/compile/errors.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.extendErrors = exports.resetErrorsCount = exports.reportExtraError = exports.reportError = exports.keyword$DataError = exports.keywordError = void 0;
@@ -5054,9 +5054,9 @@ var require_errors = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/validate/boolSchema.js
+// node_modules/ajv/dist/compile/validate/boolSchema.js
 var require_boolSchema = __commonJS({
-  "wt/node_modules/ajv/dist/compile/validate/boolSchema.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/boolSchema.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.boolOrEmptySchema = exports.topBoolOrEmptySchema = void 0;
@@ -5105,9 +5105,9 @@ var require_boolSchema = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/rules.js
+// node_modules/ajv/dist/compile/rules.js
 var require_rules = __commonJS({
-  "wt/node_modules/ajv/dist/compile/rules.js"(exports) {
+  "node_modules/ajv/dist/compile/rules.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getRules = exports.isJSONType = void 0;
@@ -5136,9 +5136,9 @@ var require_rules = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/validate/applicability.js
+// node_modules/ajv/dist/compile/validate/applicability.js
 var require_applicability = __commonJS({
-  "wt/node_modules/ajv/dist/compile/validate/applicability.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/applicability.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.shouldUseRule = exports.shouldUseGroup = exports.schemaHasRulesForType = void 0;
@@ -5159,9 +5159,9 @@ var require_applicability = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/validate/dataType.js
+// node_modules/ajv/dist/compile/validate/dataType.js
 var require_dataType = __commonJS({
-  "wt/node_modules/ajv/dist/compile/validate/dataType.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/dataType.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.reportTypeError = exports.checkDataTypes = exports.checkDataType = exports.coerceAndCheckDataType = exports.getJSONTypes = exports.getSchemaTypes = exports.DataType = void 0;
@@ -5343,9 +5343,9 @@ var require_dataType = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/validate/defaults.js
+// node_modules/ajv/dist/compile/validate/defaults.js
 var require_defaults = __commonJS({
-  "wt/node_modules/ajv/dist/compile/validate/defaults.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/defaults.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.assignDefaults = void 0;
@@ -5380,9 +5380,9 @@ var require_defaults = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/code.js
+// node_modules/ajv/dist/vocabularies/code.js
 var require_code2 = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/code.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/code.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateUnion = exports.validateArray = exports.usePattern = exports.callValidateCode = exports.schemaProperties = exports.allSchemaProperties = exports.noPropertyInData = exports.propertyInData = exports.isOwnProperty = exports.hasPropFunc = exports.reportMissingProp = exports.checkMissingProp = exports.checkReportMissingProp = void 0;
@@ -5513,9 +5513,9 @@ var require_code2 = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/validate/keyword.js
+// node_modules/ajv/dist/compile/validate/keyword.js
 var require_keyword = __commonJS({
-  "wt/node_modules/ajv/dist/compile/validate/keyword.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/keyword.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateKeywordUsage = exports.validSchemaType = exports.funcKeywordCode = exports.macroKeywordCode = void 0;
@@ -5631,9 +5631,9 @@ var require_keyword = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/validate/subschema.js
+// node_modules/ajv/dist/compile/validate/subschema.js
 var require_subschema = __commonJS({
-  "wt/node_modules/ajv/dist/compile/validate/subschema.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/subschema.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.extendSubschemaMode = exports.extendSubschemaData = exports.getSubschema = void 0;
@@ -5714,9 +5714,9 @@ var require_subschema = __commonJS({
   }
 });
 
-// wt/node_modules/fast-deep-equal/index.js
+// node_modules/fast-deep-equal/index.js
 var require_fast_deep_equal = __commonJS({
-  "wt/node_modules/fast-deep-equal/index.js"(exports, module) {
+  "node_modules/fast-deep-equal/index.js"(exports, module) {
     "use strict";
     module.exports = function equal(a, b) {
       if (a === b) return true;
@@ -5749,9 +5749,9 @@ var require_fast_deep_equal = __commonJS({
   }
 });
 
-// wt/node_modules/json-schema-traverse/index.js
+// node_modules/json-schema-traverse/index.js
 var require_json_schema_traverse = __commonJS({
-  "wt/node_modules/json-schema-traverse/index.js"(exports, module) {
+  "node_modules/json-schema-traverse/index.js"(exports, module) {
     "use strict";
     var traverse = module.exports = function(schema, opts, cb) {
       if (typeof opts == "function") {
@@ -5837,9 +5837,9 @@ var require_json_schema_traverse = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/resolve.js
+// node_modules/ajv/dist/compile/resolve.js
 var require_resolve = __commonJS({
-  "wt/node_modules/ajv/dist/compile/resolve.js"(exports) {
+  "node_modules/ajv/dist/compile/resolve.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getSchemaRefs = exports.resolveUrl = exports.normalizeId = exports._getFullPath = exports.getFullPath = exports.inlineRef = void 0;
@@ -5993,9 +5993,9 @@ var require_resolve = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/validate/index.js
+// node_modules/ajv/dist/compile/validate/index.js
 var require_validate = __commonJS({
-  "wt/node_modules/ajv/dist/compile/validate/index.js"(exports) {
+  "node_modules/ajv/dist/compile/validate/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getData = exports.KeywordCxt = exports.validateFunctionCode = void 0;
@@ -6501,9 +6501,9 @@ var require_validate = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/runtime/validation_error.js
+// node_modules/ajv/dist/runtime/validation_error.js
 var require_validation_error = __commonJS({
-  "wt/node_modules/ajv/dist/runtime/validation_error.js"(exports) {
+  "node_modules/ajv/dist/runtime/validation_error.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var ValidationError = class extends Error {
@@ -6517,9 +6517,9 @@ var require_validation_error = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/ref_error.js
+// node_modules/ajv/dist/compile/ref_error.js
 var require_ref_error = __commonJS({
-  "wt/node_modules/ajv/dist/compile/ref_error.js"(exports) {
+  "node_modules/ajv/dist/compile/ref_error.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var resolve_1 = require_resolve();
@@ -6534,9 +6534,9 @@ var require_ref_error = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/compile/index.js
+// node_modules/ajv/dist/compile/index.js
 var require_compile = __commonJS({
-  "wt/node_modules/ajv/dist/compile/index.js"(exports) {
+  "node_modules/ajv/dist/compile/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.resolveSchema = exports.getCompilingSchema = exports.resolveRef = exports.compileSchema = exports.SchemaEnv = void 0;
@@ -6758,9 +6758,9 @@ var require_compile = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/refs/data.json
+// node_modules/ajv/dist/refs/data.json
 var require_data = __commonJS({
-  "wt/node_modules/ajv/dist/refs/data.json"(exports, module) {
+  "node_modules/ajv/dist/refs/data.json"(exports, module) {
     module.exports = {
       $id: "https://raw.githubusercontent.com/ajv-validator/ajv/master/lib/refs/data.json#",
       description: "Meta-schema for $data reference (JSON AnySchema extension proposal)",
@@ -6777,9 +6777,9 @@ var require_data = __commonJS({
   }
 });
 
-// wt/node_modules/fast-uri/lib/utils.js
+// node_modules/fast-uri/lib/utils.js
 var require_utils = __commonJS({
-  "wt/node_modules/fast-uri/lib/utils.js"(exports, module) {
+  "node_modules/fast-uri/lib/utils.js"(exports, module) {
     "use strict";
     var isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu);
     var isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u);
@@ -6936,8 +6936,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path12) {
-      let input2 = path12;
+    function removeDotSegments(path14) {
+      let input2 = path14;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -7279,9 +7279,9 @@ var require_utils = __commonJS({
   }
 });
 
-// wt/node_modules/fast-uri/lib/schemes.js
+// node_modules/fast-uri/lib/schemes.js
 var require_schemes = __commonJS({
-  "wt/node_modules/fast-uri/lib/schemes.js"(exports, module) {
+  "node_modules/fast-uri/lib/schemes.js"(exports, module) {
     "use strict";
     var { isUUID } = require_utils();
     var URN_REG = /^([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-./:;=@]|%[\da-f]{2})+)$/iu;
@@ -7346,8 +7346,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path12 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path12 && path12 !== "/" ? path12 : void 0;
+        const path14 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path14 && path14 !== "/" ? path14 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7490,9 +7490,9 @@ var require_schemes = __commonJS({
   }
 });
 
-// wt/node_modules/fast-uri/index.js
+// node_modules/fast-uri/index.js
 var require_fast_uri = __commonJS({
-  "wt/node_modules/fast-uri/index.js"(exports, module) {
+  "node_modules/fast-uri/index.js"(exports, module) {
     "use strict";
     var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, serializePathEncoding, normalizeQueryFragmentEncoding, encodeQuery, encodeFragment, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
@@ -7896,9 +7896,9 @@ var require_fast_uri = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/runtime/uri.js
+// node_modules/ajv/dist/runtime/uri.js
 var require_uri = __commonJS({
-  "wt/node_modules/ajv/dist/runtime/uri.js"(exports) {
+  "node_modules/ajv/dist/runtime/uri.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var uri = require_fast_uri();
@@ -7907,9 +7907,9 @@ var require_uri = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/core.js
+// node_modules/ajv/dist/core.js
 var require_core = __commonJS({
-  "wt/node_modules/ajv/dist/core.js"(exports) {
+  "node_modules/ajv/dist/core.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
@@ -8518,9 +8518,9 @@ var require_core = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/core/id.js
+// node_modules/ajv/dist/vocabularies/core/id.js
 var require_id = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/core/id.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/core/id.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var def = {
@@ -8533,9 +8533,9 @@ var require_id = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/core/ref.js
+// node_modules/ajv/dist/vocabularies/core/ref.js
 var require_ref = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/core/ref.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/core/ref.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.callRef = exports.getValidate = void 0;
@@ -8655,9 +8655,9 @@ var require_ref = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/core/index.js
+// node_modules/ajv/dist/vocabularies/core/index.js
 var require_core2 = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/core/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/core/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var id_1 = require_id();
@@ -8676,9 +8676,9 @@ var require_core2 = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/limitNumber.js
+// node_modules/ajv/dist/vocabularies/validation/limitNumber.js
 var require_limitNumber = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/limitNumber.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/limitNumber.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -8708,9 +8708,9 @@ var require_limitNumber = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/multipleOf.js
+// node_modules/ajv/dist/vocabularies/validation/multipleOf.js
 var require_multipleOf = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/multipleOf.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/multipleOf.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -8736,9 +8736,9 @@ var require_multipleOf = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/runtime/ucs2length.js
+// node_modules/ajv/dist/runtime/ucs2length.js
 var require_ucs2length = __commonJS({
-  "wt/node_modules/ajv/dist/runtime/ucs2length.js"(exports) {
+  "node_modules/ajv/dist/runtime/ucs2length.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     function ucs2length(str) {
@@ -8762,9 +8762,9 @@ var require_ucs2length = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/limitLength.js
+// node_modules/ajv/dist/vocabularies/validation/limitLength.js
 var require_limitLength = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/limitLength.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/limitLength.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -8794,9 +8794,9 @@ var require_limitLength = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/pattern.js
+// node_modules/ajv/dist/vocabularies/validation/pattern.js
 var require_pattern = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/pattern.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/pattern.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -8831,9 +8831,9 @@ var require_pattern = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/limitProperties.js
+// node_modules/ajv/dist/vocabularies/validation/limitProperties.js
 var require_limitProperties = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/limitProperties.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/limitProperties.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -8860,9 +8860,9 @@ var require_limitProperties = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/required.js
+// node_modules/ajv/dist/vocabularies/validation/required.js
 var require_required = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/required.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/required.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -8942,9 +8942,9 @@ var require_required = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/limitItems.js
+// node_modules/ajv/dist/vocabularies/validation/limitItems.js
 var require_limitItems = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/limitItems.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/limitItems.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -8971,9 +8971,9 @@ var require_limitItems = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/runtime/equal.js
+// node_modules/ajv/dist/runtime/equal.js
 var require_equal = __commonJS({
-  "wt/node_modules/ajv/dist/runtime/equal.js"(exports) {
+  "node_modules/ajv/dist/runtime/equal.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var equal = require_fast_deep_equal();
@@ -8982,9 +8982,9 @@ var require_equal = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
+// node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
 var require_uniqueItems = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/uniqueItems.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/uniqueItems.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var dataType_1 = require_dataType();
@@ -9049,9 +9049,9 @@ var require_uniqueItems = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/const.js
+// node_modules/ajv/dist/vocabularies/validation/const.js
 var require_const = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/const.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/const.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -9078,9 +9078,9 @@ var require_const = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/enum.js
+// node_modules/ajv/dist/vocabularies/validation/enum.js
 var require_enum = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/enum.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/enum.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -9127,9 +9127,9 @@ var require_enum = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/validation/index.js
+// node_modules/ajv/dist/vocabularies/validation/index.js
 var require_validation = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/validation/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/validation/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var limitNumber_1 = require_limitNumber();
@@ -9165,9 +9165,9 @@ var require_validation = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
+// node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
 var require_additionalItems = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/additionalItems.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/additionalItems.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateAdditionalItems = void 0;
@@ -9218,9 +9218,9 @@ var require_additionalItems = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/items.js
+// node_modules/ajv/dist/vocabularies/applicator/items.js
 var require_items = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/items.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/items.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateTuple = void 0;
@@ -9275,9 +9275,9 @@ var require_items = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
+// node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
 var require_prefixItems = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/prefixItems.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/prefixItems.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var items_1 = require_items();
@@ -9292,9 +9292,9 @@ var require_prefixItems = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/items2020.js
+// node_modules/ajv/dist/vocabularies/applicator/items2020.js
 var require_items2020 = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/items2020.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/items2020.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -9327,9 +9327,9 @@ var require_items2020 = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/contains.js
+// node_modules/ajv/dist/vocabularies/applicator/contains.js
 var require_contains = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/contains.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/contains.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -9421,9 +9421,9 @@ var require_contains = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/dependencies.js
+// node_modules/ajv/dist/vocabularies/applicator/dependencies.js
 var require_dependencies = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/dependencies.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/dependencies.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.validateSchemaDeps = exports.validatePropertyDeps = exports.error = void 0;
@@ -9515,9 +9515,9 @@ var require_dependencies = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
+// node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
 var require_propertyNames = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/propertyNames.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/propertyNames.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -9558,9 +9558,9 @@ var require_propertyNames = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
+// node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
 var require_additionalProperties = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -9664,9 +9664,9 @@ var require_additionalProperties = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/properties.js
+// node_modules/ajv/dist/vocabularies/applicator/properties.js
 var require_properties = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/properties.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/properties.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var validate_1 = require_validate();
@@ -9722,9 +9722,9 @@ var require_properties = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
+// node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
 var require_patternProperties = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/patternProperties.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/patternProperties.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -9796,9 +9796,9 @@ var require_patternProperties = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/not.js
+// node_modules/ajv/dist/vocabularies/applicator/not.js
 var require_not = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/not.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/not.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var util_1 = require_util();
@@ -9827,9 +9827,9 @@ var require_not = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/anyOf.js
+// node_modules/ajv/dist/vocabularies/applicator/anyOf.js
 var require_anyOf = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/anyOf.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/anyOf.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var code_1 = require_code2();
@@ -9844,9 +9844,9 @@ var require_anyOf = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/oneOf.js
+// node_modules/ajv/dist/vocabularies/applicator/oneOf.js
 var require_oneOf = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/oneOf.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/oneOf.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -9902,9 +9902,9 @@ var require_oneOf = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/allOf.js
+// node_modules/ajv/dist/vocabularies/applicator/allOf.js
 var require_allOf = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/allOf.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/allOf.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var util_1 = require_util();
@@ -9929,9 +9929,9 @@ var require_allOf = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/if.js
+// node_modules/ajv/dist/vocabularies/applicator/if.js
 var require_if = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/if.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/if.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -9998,9 +9998,9 @@ var require_if = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/thenElse.js
+// node_modules/ajv/dist/vocabularies/applicator/thenElse.js
 var require_thenElse = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/thenElse.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/thenElse.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var util_1 = require_util();
@@ -10016,9 +10016,9 @@ var require_thenElse = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/applicator/index.js
+// node_modules/ajv/dist/vocabularies/applicator/index.js
 var require_applicator = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/applicator/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/applicator/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var additionalItems_1 = require_additionalItems();
@@ -10064,9 +10064,9 @@ var require_applicator = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/format/format.js
+// node_modules/ajv/dist/vocabularies/format/format.js
 var require_format = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/format/format.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/format/format.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -10154,9 +10154,9 @@ var require_format = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/format/index.js
+// node_modules/ajv/dist/vocabularies/format/index.js
 var require_format2 = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/format/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/format/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var format_1 = require_format();
@@ -10165,9 +10165,9 @@ var require_format2 = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/metadata.js
+// node_modules/ajv/dist/vocabularies/metadata.js
 var require_metadata = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/metadata.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/metadata.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.contentVocabulary = exports.metadataVocabulary = void 0;
@@ -10188,9 +10188,9 @@ var require_metadata = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/draft7.js
+// node_modules/ajv/dist/vocabularies/draft7.js
 var require_draft7 = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/draft7.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/draft7.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var core_1 = require_core2();
@@ -10210,9 +10210,9 @@ var require_draft7 = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/discriminator/types.js
+// node_modules/ajv/dist/vocabularies/discriminator/types.js
 var require_types = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/discriminator/types.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/discriminator/types.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DiscrError = void 0;
@@ -10224,9 +10224,9 @@ var require_types = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/vocabularies/discriminator/index.js
+// node_modules/ajv/dist/vocabularies/discriminator/index.js
 var require_discriminator = __commonJS({
-  "wt/node_modules/ajv/dist/vocabularies/discriminator/index.js"(exports) {
+  "node_modules/ajv/dist/vocabularies/discriminator/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var codegen_1 = require_codegen();
@@ -10329,9 +10329,9 @@ var require_discriminator = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/refs/json-schema-draft-07.json
+// node_modules/ajv/dist/refs/json-schema-draft-07.json
 var require_json_schema_draft_07 = __commonJS({
-  "wt/node_modules/ajv/dist/refs/json-schema-draft-07.json"(exports, module) {
+  "node_modules/ajv/dist/refs/json-schema-draft-07.json"(exports, module) {
     module.exports = {
       $schema: "http://json-schema.org/draft-07/schema#",
       $id: "http://json-schema.org/draft-07/schema#",
@@ -10486,9 +10486,9 @@ var require_json_schema_draft_07 = __commonJS({
   }
 });
 
-// wt/node_modules/ajv/dist/ajv.js
+// node_modules/ajv/dist/ajv.js
 var require_ajv = __commonJS({
-  "wt/node_modules/ajv/dist/ajv.js"(exports, module) {
+  "node_modules/ajv/dist/ajv.js"(exports, module) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv = void 0;
@@ -10556,9 +10556,9 @@ var require_ajv = __commonJS({
   }
 });
 
-// wt/node_modules/ajv-formats/dist/formats.js
+// node_modules/ajv-formats/dist/formats.js
 var require_formats = __commonJS({
-  "wt/node_modules/ajv-formats/dist/formats.js"(exports) {
+  "node_modules/ajv-formats/dist/formats.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.formatNames = exports.fastFormats = exports.fullFormats = void 0;
@@ -10759,9 +10759,9 @@ var require_formats = __commonJS({
   }
 });
 
-// wt/node_modules/ajv-formats/dist/limit.js
+// node_modules/ajv-formats/dist/limit.js
 var require_limit = __commonJS({
-  "wt/node_modules/ajv-formats/dist/limit.js"(exports) {
+  "node_modules/ajv-formats/dist/limit.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.formatLimitDefinition = void 0;
@@ -10831,9 +10831,9 @@ var require_limit = __commonJS({
   }
 });
 
-// wt/node_modules/ajv-formats/dist/index.js
+// node_modules/ajv-formats/dist/index.js
 var require_dist = __commonJS({
-  "wt/node_modules/ajv-formats/dist/index.js"(exports, module) {
+  "node_modules/ajv-formats/dist/index.js"(exports, module) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var formats_1 = require_formats();
@@ -10860,12 +10860,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs10, exportName) {
+    function addFormats(ajv, list, fs11, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs10[f]);
+        ajv.addFormat(f, fs11[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10873,16 +10873,17 @@ var require_dist = __commonJS({
   }
 });
 
-// wt/packages/cli/src/main.ts
+// packages/cli/src/main.ts
+import path13 from "node:path";
 import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
 
-// wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
+// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
 var variant = { type: "sync", importFFI: () => Promise.resolve().then(() => (init_ffi(), ffi_exports)).then((mod) => mod.QuickJSFFI), importModuleLoader: () => Promise.resolve().then(() => (init_emscripten_module_Q67P5WYC(), emscripten_module_Q67P5WYC_exports)).then((mod) => mod.default) };
 var src_default = variant;
 
-// wt/node_modules/quickjs-emscripten-core/dist/index.mjs
+// node_modules/quickjs-emscripten-core/dist/index.mjs
 init_dist();
 async function newQuickJSWASMModuleFromVariant(variantOrPromise) {
   let variant2 = smartUnwrap(await variantOrPromise), [wasmModuleLoader, QuickJSFFI2, { QuickJSWASMModule: QuickJSWASMModule2 }] = await Promise.all([variant2.importModuleLoader().then(smartUnwrap), variant2.importFFI(), Promise.resolve().then(() => (init_module_ES6BEMUI(), module_ES6BEMUI_exports)).then(smartUnwrap)]), wasmModule = await wasmModuleLoader();
@@ -10900,7 +10901,7 @@ function shouldInterruptAfterDeadline(deadline) {
   };
 }
 
-// wt/packages/core/src/engines.ts
+// packages/core/src/engines.ts
 var engines = null;
 var quickjs = null;
 function setEngines(next) {
@@ -10931,23 +10932,23 @@ function loadSandbox() {
   return quickjs;
 }
 
-// wt/packages/sdk/src/glob.ts
+// packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path12, pattern) {
+function matchesGlob(path14, pattern) {
   let regex = cache.get(pattern);
   if (!regex) {
     regex = globToRegExp(pattern);
     cache.set(pattern, regex);
   }
-  return regex.test(path12);
+  return regex.test(path14);
 }
-function matchesGlobs(path12, globs) {
+function matchesGlobs(path14, globs) {
   const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
-  if (excluded.some((glob) => matchesGlob(path12, glob))) {
+  if (excluded.some((glob) => matchesGlob(path14, glob))) {
     return false;
   }
   const included = globs.filter((glob) => !glob.startsWith("!"));
-  return included.length === 0 || included.some((glob) => matchesGlob(path12, glob));
+  return included.length === 0 || included.some((glob) => matchesGlob(path14, glob));
 }
 function globToRegExp(pattern) {
   const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
@@ -10990,7 +10991,7 @@ function globToRegExp(pattern) {
   return new RegExp(`^${source}$`);
 }
 
-// wt/packages/sdk/src/index.ts
+// packages/sdk/src/index.ts
 var API_VERSION = 3;
 var EVENTS = ["write", "read", "prompt", "command", "output"];
 var FILE_EVENTS = ["write", "read"];
@@ -11046,15 +11047,15 @@ var TEST_ROOT = "/project";
 function fileCtx(event, relativePath, content, written, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === void 0 ? TEST_ROOT : where.root;
-  const path12 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
-  const name = path12.slice(path12.lastIndexOf("/") + 1);
+  const path14 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
+  const name = path14.slice(path14.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
   const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
   return {
     event,
     file: {
-      path: path12,
+      path: path14,
       relativePath: relative,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
@@ -11109,12 +11110,12 @@ function locateWritten(content, fragments) {
   return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text2]) => ({ line, text: text2 }));
 }
 
-// wt/packages/core/src/project.ts
+// packages/core/src/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path12) {
+function normalizeAbsolute(path14) {
   const out = [];
-  for (const part of path12.split("/")) {
+  for (const part of path14.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -11127,15 +11128,15 @@ function normalizeAbsolute(path12) {
   return `/${out.join("/")}`;
 }
 function mapProject(root, files) {
-  const relative = (path12) => path12 === root ? "" : path12.startsWith(`${root}/`) ? path12.slice(root.length + 1) : null;
+  const relative = (path14) => path14 === root ? "" : path14.startsWith(`${root}/`) ? path14.slice(root.length + 1) : null;
   const isDir = (inside) => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));
   return {
-    read: (path12) => {
-      const inside = relative(path12);
+    read: (path14) => {
+      const inside = relative(path14);
       return inside === null ? null : files[inside] ?? null;
     },
-    stat: (path12) => {
-      const inside = relative(path12);
+    stat: (path14) => {
+      const inside = relative(path14);
       if (inside === null) {
         return null;
       }
@@ -11145,8 +11146,8 @@ function mapProject(root, files) {
       }
       return isDir(inside) ? { kind: "dir", size: 0 } : null;
     },
-    list: (path12) => {
-      const inside = relative(path12);
+    list: (path14) => {
+      const inside = relative(path14);
       if (inside === null || inside in files || !isDir(inside)) {
         return null;
       }
@@ -11183,24 +11184,24 @@ function fsHost(cwd, project) {
     if (++calls > MAX_FS_CALLS) {
       return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
     }
-    const path12 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    const path14 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
     if (op === "stat") {
-      const stat = project.stat(path12);
+      const stat = project.stat(path14);
       return stat ? { stat } : missing;
     }
     if (op === "list") {
-      const entries = project.list(path12);
+      const entries = project.list(path14);
       if (entries) {
         return { entries };
       }
-      return project.stat(path12) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      return project.stat(path14) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
     }
-    const text2 = project.read(path12);
+    const text2 = project.read(path14);
     if (text2 === null) {
-      return project.stat(path12)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+      return project.stat(path14)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
     }
     bytes += text2.length;
     if (bytes > MAX_FS_BYTES) {
@@ -11211,7 +11212,7 @@ function fsHost(cwd, project) {
   return (request) => JSON.stringify(answer(request));
 }
 
-// wt/packages/core/src/api.ts
+// packages/core/src/api.ts
 var MIN_API_VERSION = 3;
 function apiOf(manifest) {
   return manifest.api ?? 1;
@@ -11292,7 +11293,7 @@ function importedApi(sources) {
 }
 var BUILT_IN_SINCE = {};
 
-// wt/packages/core/src/licenses.ts
+// packages/core/src/licenses.ts
 var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
 var LICENSE_FILE = /^(?:licen[sc]e|copying|unlicense)(?:[.-][\w.-]*)?$/i;
 var NOTICE_FILE = /^notice(?:[.-][\w.-]*)?$/i;
@@ -11590,7 +11591,7 @@ ${NOTICES_CLOSE}
 `;
 }
 
-// wt/packages/core/src/packages.ts
+// packages/core/src/packages.ts
 var PACKAGE_DIR = "node_modules/";
 function approvalKey(info) {
   if (info.from !== void 0) {
@@ -11658,8 +11659,8 @@ function isExactVersion(version2) {
   return EXACT_VERSION.test(version2);
 }
 var PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
-function isPackageFile(path12) {
-  return path12.startsWith(PACKAGE_DIR);
+function isPackageFile(path14) {
+  return path14.startsWith(PACKAGE_DIR);
 }
 function readPins(files) {
   const source = files["package.json"];
@@ -11697,11 +11698,11 @@ function splitSpecifier(specifier) {
   }
   return { name, subpath: parts.slice(count2).join("/") };
 }
-function packageOf(path12) {
-  if (!isPackageFile(path12)) {
+function packageOf(path14) {
+  if (!isPackageFile(path14)) {
     return null;
   }
-  return splitSpecifier(path12.slice(PACKAGE_DIR.length))?.name ?? null;
+  return splitSpecifier(path14.slice(PACKAGE_DIR.length))?.name ?? null;
 }
 async function readPackageJson(read2, name) {
   const source = await read2(`${PACKAGE_DIR}${name}/package.json`);
@@ -11809,9 +11810,9 @@ async function resolveInPackage(read2, importer, relative) {
   return probe(read2, joined);
 }
 var SUFFIXES = ["", ".js", ".mjs", ".cjs", ".ts", ".json", "/index.js", "/index.mjs", "/index.cjs", "/index.ts"];
-async function probe(read2, path12) {
+async function probe(read2, path14) {
   for (const suffix of SUFFIXES) {
-    const candidate = `${path12}${suffix}`;
+    const candidate = `${path14}${suffix}`;
     if (suffix === "" && !/\.[a-z]+$/.test(candidate)) {
       continue;
     }
@@ -11930,14 +11931,14 @@ function declaredLicense(json2) {
 }
 function carriedPackages(files) {
   const packages = [];
-  for (const path12 of Object.keys(files).sort()) {
-    const name = packageOf(path12);
-    if (name === null || path12 !== `${PACKAGE_DIR}${name}/package.json`) {
+  for (const path14 of Object.keys(files).sort()) {
+    const name = packageOf(path14);
+    if (name === null || path14 !== `${PACKAGE_DIR}${name}/package.json`) {
       continue;
     }
     let json2;
     try {
-      json2 = JSON.parse(files[path12] ?? "");
+      json2 = JSON.parse(files[path14] ?? "");
     } catch {
       throw new PackageError(`the package.json of ${name} is not valid JSON`);
     }
@@ -11978,7 +11979,7 @@ function noticeOf(carried) {
   return { name: carried.info.name, version: carried.info.version, source: sourceOf(carried.info), licensing: carried.licensing };
 }
 
-// wt/packages/core/src/sdk-source.generated.ts
+// packages/core/src/sdk-source.generated.ts
 var SDK_SOURCES = {
   "events.ts": '/**\n * The events a test shows to a detector.\n *\n * They are the same in every runner: vitest on the author\'s machine,\n * `wellactually test`, the browser editor and the registry. A path is relative\n * to a made-up project root, and the detector sees it below that root.\n */\nimport { fileCtx, locateWritten, textCtx, type Ctx } from "./index.ts";\n\n/** What `detect` takes besides the event. */\nexport interface DetectOptions {\n  /**\n   * A folder of the principle, e.g. "fixtures/flutter_app", that is the\n   * project the event happens in. The detector reads its files with `node:fs`.\n   * Without it the only file there is, anywhere, is the file of the event.\n   */\n  project?: string;\n}\n\n/**\n * The agent wrote this file in full. Every line counts as written.\n * Pass `{ isNew: true }` when the write created the file.\n */\nexport function write(path: string, content: string, options: { isNew?: boolean } = {}): Ctx {\n  return fileCtx("write", path, content, undefined, { isNew: options.isNew === true });\n}\n\n/**\n * The agent edited a file. `content` is the file after the edit and\n * `change.written` is the text the agent put in, as one piece or several.\n */\nexport function edit(path: string, content: string, change: { written: string | readonly string[] }): Ctx {\n  const fragments = typeof change.written === "string" ? [change.written] : change.written;\n  const written = locateWritten(content, fragments);\n  if (written.length === 0) {\n    throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);\n  }\n  return fileCtx("write", path, content, written);\n}\n\n/** The agent read this file. It wrote none of it. */\nexport function read(path: string, content: string): Ctx {\n  return fileCtx("read", path, content);\n}\n\n/** The user typed this, or the agent handed it to a subagent. */\nexport function prompt(text: string): Ctx {\n  return textCtx("prompt", text);\n}\n\n/** The agent is about to run this shell command. */\nexport function command(text: string): Ctx {\n  return textCtx("command", text);\n}\n\n/** `command` ran, and this is what it printed. */\nexport function output(command: string, text: string): Ctx {\n  return textCtx("output", text, undefined, command);\n}\n\n/**\n * A multi-line string without the indentation of the test around it.\n *\n * `${` and a backtick inside it need a backslash, as in any template string.\n */\nexport function source(strings: TemplateStringsArray, ...values: unknown[]): string {\n  const text = strings.raw.reduce((out, part, index) => out + part.replace(/\\\\([`$\\\\])/g, "$1") + (index < values.length ? String(values[index]) : ""), "");\n  const lines = text.split("\\n");\n  if (lines[0]?.trim() === "") {\n    lines.shift();\n  }\n  if (lines.at(-1)?.trim() === "") {\n    lines.pop();\n  }\n  const indent = Math.min(...lines.filter((line) => line.trim() !== "").map((line) => /^[ \\t]*/.exec(line)?.[0].length ?? 0));\n  return lines.map((line) => line.slice(Number.isFinite(indent) ? indent : 0)).join("\\n");\n}\n',
   "find.ts": '/**\n * Looking around the project from where an event happened.\n *\n * A detector reads files with `node:fs`, and may read any text file. What it\n * usually wants to know first is what kind of project it is in, and the\n * answer lies in a file somewhere above: a `pubspec.yaml`, a `package.json`.\n */\nimport { existsSync } from "./fs.ts";\nimport { dirname, join } from "./path.ts";\n\n/**\n * The nearest file called `name`, looking in `from` and then in every folder\n * above it, as an absolute path. Null when there is none.\n *\n *     findUp("pubspec.yaml", event.cwd)                  // for a prompt\n *     findUp("pubspec.yaml", path.dirname(event.file.path)) // for a file\n */\nexport function findUp(name: string, from: string): string | null {\n  for (let dir = from; ; dir = dirname(dir)) {\n    const candidate = join(dir, name);\n    if (existsSync(candidate)) {\n      return candidate;\n    }\n    if (dir === dirname(dir)) {\n      return null;\n    }\n  }\n}\n',
@@ -11992,7 +11993,7 @@ var SDK_SOURCES = {
   "vitest.ts": "/**\n * What `vitest` resolves to when a principle's tests run inside the isolate.\n *\n * An author runs the tests with vitest itself. The registry cannot: it runs\n * code from strangers, and only inside the isolate. So it gives the tests the\n * part of vitest's API a detector test needs. An import of anything else\n * fails the build with the name that is missing.\n */\nexport { describe, expect, it, test } from \"./test.ts\";\n"
 };
 
-// wt/packages/core/src/bundle.ts
+// packages/core/src/bundle.ts
 var BundleError = class extends Error {
 };
 var BUNDLE_GLOBAL = "__principle";
@@ -12022,9 +12023,9 @@ function testFiles(files) {
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
 }
-function normalize(path12) {
+function normalize(path14) {
   const out = [];
-  for (const part of path12.split("/")) {
+  for (const part of path14.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -12036,9 +12037,9 @@ function normalize(path12) {
   }
   return out.join("/");
 }
-function dirname(path12) {
-  const slash = path12.lastIndexOf("/");
-  return slash === -1 ? "" : path12.slice(0, slash);
+function dirname(path14) {
+  const slash = path14.lastIndexOf("/");
+  return slash === -1 ? "" : path14.slice(0, slash);
 }
 async function vendorPackages(files, source) {
   let pins;
@@ -12054,8 +12055,8 @@ async function vendorPackages(files, source) {
   await buildDetector(files, source, fetched);
   await buildTestBundle(files, source, fetched);
   const names = /* @__PURE__ */ new Set();
-  for (const path12 of Object.keys(fetched)) {
-    const name = packageOf(path12);
+  for (const path14 of Object.keys(fetched)) {
+    const name = packageOf(path14);
     if (name !== null) {
       names.add(name);
     }
@@ -12105,21 +12106,21 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
     throw new BundleError(error62.message);
   }
   const missing = /* @__PURE__ */ new Set();
-  const read2 = async (path12) => {
-    const own2 = files[path12] ?? fetched[path12];
+  const read2 = async (path14) => {
+    const own2 = files[path14] ?? fetched[path14];
     if (own2 !== void 0) {
       return own2;
     }
-    const name = packageOf(path12);
-    if (name === null || source === void 0 || missing.has(path12)) {
+    const name = packageOf(path14);
+    if (name === null || source === void 0 || missing.has(path14)) {
       return null;
     }
-    const text2 = await source(name, pins[name] ?? null, path12.slice(PACKAGE_DIR.length + name.length + 1));
+    const text2 = await source(name, pins[name] ?? null, path14.slice(PACKAGE_DIR.length + name.length + 1));
     if (text2 === null) {
-      missing.add(path12);
+      missing.add(path14);
       return null;
     }
-    fetched[path12] = text2;
+    fetched[path14] = text2;
     return text2;
   };
   const virtual = {
@@ -12280,7 +12281,7 @@ function formatMessage(message) {
   return `${where}${message.text}`;
 }
 
-// wt/packages/core/src/credits.ts
+// packages/core/src/credits.ts
 function describeCredits(handles) {
   const [original, ...editors] = handles;
   if (original === void 0 || editors.length === 0) {
@@ -12291,13 +12292,13 @@ function describeCredits(handles) {
   return `Original by @${original}, edited by ${named.length > 0 ? `${named.join(", ")} and ${last}` : last}`;
 }
 
-// wt/packages/core/src/ctx.ts
+// packages/core/src/ctx.ts
 function applies(manifest, ctx) {
   const file2 = ctx.file;
   return (manifest.handlers ?? []).some((handler) => handler.event === ctx.event && (!file2 || matchesGlobs(file2.relativePath, handler.globs)));
 }
 
-// wt/packages/core/src/finding.ts
+// packages/core/src/finding.ts
 var MAX_QUOTED_LENGTH = 300;
 function describeFinding(ctx, finding) {
   const place = describePlace(ctx, finding);
@@ -12322,7 +12323,7 @@ function describePlace(ctx, finding) {
   return quoted === "" ? named : `${named}: ${quoted}`;
 }
 
-// wt/packages/core/src/manifest.ts
+// packages/core/src/manifest.ts
 var ManifestError = class extends Error {
 };
 var PRINCIPLE_ID = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
@@ -12482,7 +12483,7 @@ function parseSettings(packageJson) {
   return settings;
 }
 
-// wt/packages/core/src/sandbox.ts
+// packages/core/src/sandbox.ts
 var DEFAULT_LIMITS = {
   ms: 100,
   memoryBytes: 32 * 1024 * 1024
@@ -12703,7 +12704,7 @@ function validateFindings(json2, ctx, project = null) {
   return { findings, dropped };
 }
 
-// wt/packages/core/src/scan.ts
+// packages/core/src/scan.ts
 var SIGNALS = [
   {
     pattern: /\b(ignore|disregard|forget)\b[^.\n]{0,40}\b(previous|prior|above|earlier|system)\b[^.\n]{0,20}\b(instructions?|rules?|prompts?)\b/i,
@@ -12741,8 +12742,8 @@ function scanAdvice(advice) {
     if (!match) {
       continue;
     }
-    const excerpt = match[0].replace(/\s+/g, " ").trim().slice(0, 80);
-    warnings.push(`The advice ${signal.warning}: "${excerpt}"`);
+    const excerpt2 = match[0].replace(/\s+/g, " ").trim().slice(0, 80);
+    warnings.push(`The advice ${signal.warning}: "${excerpt2}"`);
   }
   const hosts = /* @__PURE__ */ new Set();
   for (const url2 of advice.matchAll(/https?:\/\/([a-z0-9.-]+)/gi)) {
@@ -12754,7 +12755,7 @@ function scanAdvice(advice) {
   return warnings;
 }
 
-// wt/packages/core/src/principle.ts
+// packages/core/src/principle.ts
 var MAX_FILES = 60;
 var MAX_TOTAL_BYTES = 512 * 1024;
 var MAX_PACKAGE_FILES = 500;
@@ -13005,7 +13006,7 @@ function hasDetector(manifest) {
   return !Array.isArray(manifest.handlers) || manifest.handlers.length > 0;
 }
 
-// wt/packages/core/src/scaffold.ts
+// packages/core/src/scaffold.ts
 function scaffoldFiles(slug) {
   if (!isPrincipleId(slug)) {
     throw new Error(`"${slug}" must be ${PRINCIPLE_ID_RULE}`);
@@ -13098,12 +13099,12 @@ test("stays quiet in other languages", () => {
   };
 }
 
-// wt/packages/core/src/board.ts
+// packages/core/src/board.ts
 import fs2 from "node:fs";
 import os2 from "node:os";
 import path2 from "node:path";
 
-// wt/packages/core/src/fs.ts
+// packages/core/src/fs.ts
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13287,7 +13288,7 @@ function diskFiles() {
   };
 }
 
-// wt/packages/core/src/board.ts
+// packages/core/src/board.ts
 var DEFAULT_REGISTRY = "https://wellactually.dev";
 var RAILWAY_REGISTRY = "https://web-production-a1cda.up.railway.app";
 function boardHome() {
@@ -13348,21 +13349,25 @@ var PARALLEL_FROM = 14;
 async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ new Set(), pool = null, parallelFrom = PARALLEL_FROM) {
   const disk = diskFiles();
   const started = performance.now();
-  const run = { firings: [], failures: [], ms: 0 };
+  const run = { firings: [], failures: [], detectors: [], skipped: [], ms: 0 };
   const applying = [];
   const skipped = `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it`;
   for (const entry of lockfile.entries) {
     if (!entry.enabled || off.has(entry.id)) {
+      run.skipped.push({ id: entry.id, reason: "off" });
       continue;
     }
     const cached2 = readCached(entry.hash);
     const principle = cached2 && { ...cached2, id: entry.id, version: entry.version };
     if (!principle) {
       run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; run `wellactually sync`" });
+      run.skipped.push({ id: entry.id, reason: "not cached" });
       continue;
     }
     if (applies(principle.manifest, ctx)) {
       applying.push(principle);
+    } else {
+      run.skipped.push({ id: entry.id, reason: "globs" });
     }
   }
   let results;
@@ -13379,6 +13384,7 @@ async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ ne
   }
   applying.forEach((principle, index) => {
     const result = results[index];
+    run.detectors.push({ id: principle.id, version: principle.version, findings: result.findings, dropped: result.dropped, error: result.error, ms: result.ms });
     if (result.error) {
       run.failures.push({ id: principle.id, error: result.error });
     } else if (result.findings.length > 0) {
@@ -13438,7 +13444,7 @@ function sessionPath(sessionId) {
   return path2.join(boardHome(), "sessions", `${sessionId.replace(/[^A-Za-z0-9_-]/g, "_")}.json`);
 }
 
-// wt/packages/core/src/detections.ts
+// packages/core/src/detections.ts
 import { randomBytes } from "node:crypto";
 import fs3 from "node:fs";
 import path3 from "node:path";
@@ -13478,11 +13484,11 @@ async function drainDetections(send) {
   return counts.reduce((sum, entry) => sum + entry.count, 0);
 }
 
-// wt/packages/core/src/payload.ts
+// packages/core/src/payload.ts
 import os3 from "node:os";
 import path5 from "node:path";
 
-// wt/packages/core/src/shell.ts
+// packages/core/src/shell.ts
 import path4 from "node:path";
 function shellWrites(command, cwd, home) {
   const writes = /* @__PURE__ */ new Map();
@@ -13777,7 +13783,7 @@ function expansionEnd(command, start) {
   return start + 1 + (name?.[0].length ?? 0);
 }
 
-// wt/packages/core/src/payload.ts
+// packages/core/src/payload.ts
 var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "MultiEdit"]);
 var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "exec_command"]);
 var SUBAGENT_TOOLS = /* @__PURE__ */ new Set(["Task", "Agent"]);
@@ -13897,7 +13903,7 @@ function patchedFiles(patch) {
   return files;
 }
 
-// wt/packages/core/src/pool.ts
+// packages/core/src/pool.ts
 import os4 from "node:os";
 import { parentPort, Worker } from "node:worker_threads";
 var MAX_WORKERS = 8;
@@ -14014,7 +14020,7 @@ var DetectorPool = class {
   }
 };
 
-// wt/packages/core/src/switches.ts
+// packages/core/src/switches.ts
 import fs4 from "node:fs";
 import path6 from "node:path";
 var PROJECT_FILE = ".wellactually.json";
@@ -14081,7 +14087,7 @@ function switchPrinciple(wanted, on, scope, cwd) {
   return { id, scope, file: file2, stillOff: switchedOff(cwd).get(id) ?? [] };
 }
 
-// wt/packages/core/src/probe.ts
+// packages/core/src/probe.ts
 import { execFileSync } from "node:child_process";
 import fs5 from "node:fs";
 import path7 from "node:path";
@@ -14202,7 +14208,7 @@ function readText(file2) {
   return content;
 }
 
-// wt/packages/core/src/node.ts
+// packages/core/src/node.ts
 var sandbox = null;
 setEngines({
   // Loaded on first use. The hook only runs detectors and never builds one,
@@ -14222,11 +14228,11 @@ setEngines({
   quickjs: () => sandbox ??= newQuickJSWASMModuleFromVariant(src_default)
 });
 
-// wt/packages/cli/src/commands.ts
+// packages/cli/src/commands.ts
 import fs6 from "node:fs";
 import path8 from "node:path";
 
-// wt/packages/cli/src/registry.ts
+// packages/cli/src/registry.ts
 var RegistryError = class extends Error {
   /** The HTTP status the registry answered with, or null when it was not asked or did not answer. */
   status;
@@ -14457,7 +14463,7 @@ async function ratePrinciple(id, rating, rater = { agent: null, model: null }) {
   return `Recorded ${rating} for ${id}@${entry.version}. Thank you.`;
 }
 
-// wt/packages/cli/src/commands.ts
+// packages/cli/src/commands.ts
 function idOf(dir) {
   return path8.basename(path8.resolve(dir));
 }
@@ -14857,15 +14863,86 @@ function renderSync(result) {
   return [summary, "", "Your advisory board is empty. Experts you can follow:", ...experts, "", "Follow the ones you like on their page, then sync again."].join("\n");
 }
 
-// wt/packages/cli/src/hook.ts
-import { spawn } from "node:child_process";
-import fs8 from "node:fs";
-import path10 from "node:path";
+// packages/cli/src/hook.ts
+import { spawn as spawn2 } from "node:child_process";
+import fs9 from "node:fs";
+import path11 from "node:path";
 
-// wt/packages/cli/src/rater.ts
+// packages/cli/src/hook-log.ts
+import { spawn } from "node:child_process";
 import fs7 from "node:fs";
-import os5 from "node:os";
 import path9 from "node:path";
+var LOG_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
+var LOG_MAX_FILE_BYTES = 2 * 1024 * 1024;
+var EXCERPT = 300;
+var MAX_FINDINGS2 = 20;
+function excerpt(text2) {
+  if (!text2) {
+    return void 0;
+  }
+  return text2.length > EXCERPT ? `${text2.slice(0, EXCERPT)}\u2026 (${text2.length} characters)` : text2;
+}
+function someFindings(findings) {
+  return findings.length > MAX_FINDINGS2 ? [...findings.slice(0, MAX_FINDINGS2), `and ${findings.length - MAX_FINDINGS2} more`] : findings;
+}
+function scheduleHookLog(dir, entry) {
+  try {
+    const main2 = process.argv[1];
+    const writer = [path9.join(path9.dirname(main2), "wellactually-log.mjs"), path9.join(path9.dirname(main2), "log-writer.ts")].find((file2) => fs7.existsSync(file2));
+    const args = writer ? [writer, dir] : [main2, "hook-log", dir];
+    const child = spawn(process.execPath, args, { detached: true, stdio: ["pipe", "ignore", "ignore"] });
+    child.on("error", () => {
+    });
+    child.stdin.on("error", () => {
+    });
+    child.stdin.end(`${JSON.stringify(entry)}
+`);
+    child.unref();
+  } catch {
+  }
+}
+function writeHookLog(dir, line, now = /* @__PURE__ */ new Date()) {
+  fs7.mkdirSync(dir, { recursive: true });
+  for (const name of fs7.readdirSync(dir)) {
+    if (!/^hooks-.*\.jsonl$/.test(name)) {
+      continue;
+    }
+    const file3 = path9.join(dir, name);
+    try {
+      if (now.getTime() - fs7.statSync(file3).mtimeMs > LOG_MAX_AGE_MS) {
+        fs7.rmSync(file3, { force: true });
+      }
+    } catch {
+    }
+  }
+  const file2 = path9.join(dir, `hooks-${now.toISOString().slice(0, 13)}.jsonl`);
+  let size = 0;
+  try {
+    size = fs7.statSync(file2).size;
+  } catch {
+  }
+  const text2 = line.endsWith("\n") ? line : `${line}
+`;
+  if (size + Buffer.byteLength(text2) > LOG_MAX_FILE_BYTES) {
+    return;
+  }
+  fs7.appendFileSync(file2, text2);
+}
+async function writeHookLogFromStdin(dir) {
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  const line = Buffer.concat(chunks).toString("utf8").trim();
+  if (line) {
+    writeHookLog(dir, line);
+  }
+}
+
+// packages/cli/src/rater.ts
+import fs8 from "node:fs";
+import os5 from "node:os";
+import path10 from "node:path";
 var NAME = /^[A-Za-z0-9][A-Za-z0-9._:/@[\]-]{0,79}$/;
 var TRANSCRIPT_TAIL = 8 * 1024 * 1024;
 async function raterOf(clientName, meta3) {
@@ -14896,26 +14973,26 @@ function agentOf(clientName) {
 var TRANSCRIPT_WAIT_MS = 3e3;
 async function noteToolUse(toolUseId, transcript) {
   const model = await waitForModel(transcript, toolUseId, TRANSCRIPT_WAIT_MS);
-  const dir = path9.join(boardHome(), "tool-uses");
-  fs7.mkdirSync(dir, { recursive: true });
-  fs7.writeFileSync(path9.join(dir, `${safe(toolUseId)}.json`), JSON.stringify({ transcript, model }), { mode: 384 });
+  const dir = path10.join(boardHome(), "tool-uses");
+  fs8.mkdirSync(dir, { recursive: true });
+  fs8.writeFileSync(path10.join(dir, `${safe(toolUseId)}.json`), JSON.stringify({ transcript, model }), { mode: 384 });
   const stale = Date.now() - 864e5;
-  for (const name of fs7.readdirSync(dir)) {
-    const file2 = path9.join(dir, name);
+  for (const name of fs8.readdirSync(dir)) {
+    const file2 = path10.join(dir, name);
     try {
-      if (fs7.statSync(file2).mtimeMs < stale) {
-        fs7.rmSync(file2, { force: true });
+      if (fs8.statSync(file2).mtimeMs < stale) {
+        fs8.rmSync(file2, { force: true });
       }
     } catch {
     }
   }
 }
 async function claudeModel(toolUseId) {
-  const note = path9.join(boardHome(), "tool-uses", `${safe(toolUseId)}.json`);
+  const note = path10.join(boardHome(), "tool-uses", `${safe(toolUseId)}.json`);
   const transcripts = [];
   try {
-    const { transcript, model } = JSON.parse(fs7.readFileSync(note, "utf8"));
-    fs7.rmSync(note, { force: true });
+    const { transcript, model } = JSON.parse(fs8.readFileSync(note, "utf8"));
+    fs8.rmSync(note, { force: true });
     if (typeof model === "string") {
       return model;
     }
@@ -14926,10 +15003,10 @@ async function claudeModel(toolUseId) {
   }
   const session = process.env.CLAUDE_CODE_SESSION_ID;
   if (transcripts.length === 0 && session) {
-    const projects = path9.join(process.env.CLAUDE_CONFIG_DIR ?? path9.join(os5.homedir(), ".claude"), "projects");
+    const projects = path10.join(process.env.CLAUDE_CONFIG_DIR ?? path10.join(os5.homedir(), ".claude"), "projects");
     for (const project of safeList(projects)) {
-      const transcript = path9.join(projects, project, `${safe(session)}.jsonl`);
-      if (fs7.existsSync(transcript)) {
+      const transcript = path10.join(projects, project, `${safe(session)}.jsonl`);
+      if (fs8.existsSync(transcript)) {
         transcripts.push(transcript);
       }
     }
@@ -14945,8 +15022,8 @@ async function claudeModel(toolUseId) {
 async function waitForModel(transcript, toolUseId, ms) {
   const until = Date.now() + ms;
   for (; ; ) {
-    const subagents = path9.join(transcript.replace(/\.jsonl$/, ""), "subagents");
-    for (const file2 of [transcript, ...safeList(subagents).map((name) => path9.join(subagents, name))]) {
+    const subagents = path10.join(transcript.replace(/\.jsonl$/, ""), "subagents");
+    for (const file2 of [transcript, ...safeList(subagents).map((name) => path10.join(subagents, name))]) {
       const model = modelInTranscript(file2, toolUseId);
       if (model) {
         return model;
@@ -14961,15 +15038,15 @@ async function waitForModel(transcript, toolUseId, ms) {
 function modelInTranscript(file2, toolUseId) {
   let text2;
   try {
-    const size = fs7.statSync(file2).size;
+    const size = fs8.statSync(file2).size;
     const start = Math.max(0, size - TRANSCRIPT_TAIL);
-    const handle = fs7.openSync(file2, "r");
+    const handle = fs8.openSync(file2, "r");
     try {
       const buffer = Buffer.alloc(size - start);
-      fs7.readSync(handle, buffer, 0, buffer.length, start);
+      fs8.readSync(handle, buffer, 0, buffer.length, start);
       text2 = buffer.toString("utf8");
     } finally {
-      fs7.closeSync(handle);
+      fs8.closeSync(handle);
     }
   } catch {
     return null;
@@ -14997,44 +15074,53 @@ function safe(name) {
 }
 function safeList(dir) {
   try {
-    return fs7.readdirSync(dir);
+    return fs8.readdirSync(dir);
   } catch {
     return [];
   }
 }
 
-// wt/packages/cli/src/hook.ts
+// packages/cli/src/hook.ts
 var MAX_FILE_BYTES2 = 512 * 1024;
-async function runHook(stdin) {
+async function runHook(stdin, log) {
   const payload = JSON.parse(stdin);
   const event = payload.hook_event_name ?? "";
+  if (log) {
+    Object.assign(log, { hook: event, tool: payload.tool_name, session: payload.session_id, transcript: payload.transcript_path, cwd: payload.cwd });
+  }
+  const note = (text2) => {
+    if (log) {
+      log.note = text2;
+    }
+    return "";
+  };
   if (event === "SessionStart") {
     startBackgroundSync();
-    return "";
+    return note("started the background sync");
   }
   if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
     if (payload.tool_use_id && payload.transcript_path) {
       await noteToolUse(payload.tool_use_id, payload.transcript_path);
     }
-    return "";
+    return note("noted the model for a rating");
   }
   const events = eventsOf(payload, readText2);
   if (events.length === 0) {
-    return "";
+    return note("nothing in this call is an event detectors see");
   }
   const lockfile = readLockfile();
   if (lockfile.entries.length === 0) {
-    return "";
+    return note("the advisory board on this machine is empty; run `wellactually sync`");
   }
   const setting = process.env.WELLACTUALLY_WORKERS;
   const pool = setting === "0" ? null : new DetectorPool(workerFile(), Number(setting) > 0 ? Number(setting) : void 0);
   try {
-    return await runEvents(payload, events, lockfile, pool);
+    return await runEvents(payload, events, lockfile, pool, log);
   } finally {
     await pool?.close();
   }
 }
-async function runEvents(payload, events, lockfile, pool) {
+async function runEvents(payload, events, lockfile, pool, log) {
   const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
   const shown = readShown(sessionId);
@@ -15043,8 +15129,25 @@ async function runEvents(payload, events, lockfile, pool) {
   const cwd = payload.cwd ?? process.cwd();
   const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
   for (const ctx of events) {
-    const off = new Set(switchedOff(ctx.file ? path10.dirname(ctx.file.path) : cwd).keys());
+    const off = new Set(switchedOff(ctx.file ? path11.dirname(ctx.file.path) : cwd).keys());
     const run = await runBoard(ctx, lockfile, off, pool, parallelFrom);
+    log?.events.push({
+      event: ctx.event,
+      file: ctx.file?.path,
+      written: ctx.event === "write" ? ctx.file?.written.map((written) => written.line) : void 0,
+      command: excerpt(ctx.command),
+      text: ctx.file ? void 0 : excerpt(ctx.event === "command" ? null : ctx.text),
+      detectors: run.detectors.map((detector) => ({
+        id: detector.id,
+        version: detector.version,
+        ms: Math.round(detector.ms),
+        findings: someFindings(detector.findings),
+        dropped: detector.dropped.length > 0 ? detector.dropped : void 0,
+        error: detector.error ?? void 0
+      })),
+      skipped: run.skipped.filter((skipped) => skipped.reason !== "globs"),
+      unmatched: run.skipped.filter((skipped) => skipped.reason === "globs").length
+    });
     if (readConfig().stats) {
       recordDetections(run.firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
     }
@@ -15085,20 +15188,20 @@ async function runEvents(payload, events, lockfile, pool) {
 }
 function workerFile() {
   const main2 = process.argv[1];
-  const beside = [path10.join(path10.dirname(main2), "wellactually-worker.mjs"), path10.join(path10.dirname(main2), "worker.ts")];
-  return beside.find((file2) => fs8.existsSync(file2)) ?? main2;
+  const beside = [path11.join(path11.dirname(main2), "wellactually-worker.mjs"), path11.join(path11.dirname(main2), "worker.ts")];
+  return beside.find((file2) => fs9.existsSync(file2)) ?? main2;
 }
 function readText2(file2) {
   let stat;
   try {
-    stat = fs8.statSync(file2);
+    stat = fs9.statSync(file2);
   } catch {
     return null;
   }
   if (!stat.isFile() || stat.size > MAX_FILE_BYTES2) {
     return null;
   }
-  const content = fs8.readFileSync(file2, "utf8");
+  const content = fs9.readFileSync(file2, "utf8");
   return content.includes("\0") ? null : content;
 }
 function startBackgroundSync() {
@@ -15106,26 +15209,26 @@ function startBackgroundSync() {
     return;
   }
   const main2 = process.argv[1];
-  const log = fs8.openSync(path10.join(ensureHome(), "sync.log"), "a");
-  const child = spawn(process.execPath, [main2, "sync"], { detached: true, stdio: ["ignore", log, log] });
+  const log = fs9.openSync(path11.join(ensureHome(), "sync.log"), "a");
+  const child = spawn2(process.execPath, [main2, "sync"], { detached: true, stdio: ["ignore", log, log] });
   child.unref();
 }
 function ensureHome() {
   const home = boardHome();
-  fs8.mkdirSync(home, { recursive: true });
+  fs9.mkdirSync(home, { recursive: true });
   return home;
 }
 function logHookFailure(error62) {
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${error62 instanceof Error ? error62.stack ?? error62.message : String(error62)}
 `;
-  fs8.appendFileSync(path10.join(ensureHome(), "hook.log"), line);
+  fs9.appendFileSync(path11.join(ensureHome(), "hook.log"), line);
 }
 
-// wt/packages/cli/src/mcp.ts
-import fs9 from "node:fs";
-import path11 from "node:path";
+// packages/cli/src/mcp.ts
+import fs10 from "node:fs";
+import path12 from "node:path";
 
-// wt/node_modules/zod/v3/helpers/util.js
+// node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
   util2.assertEqual = (_) => {
@@ -15259,7 +15362,7 @@ var getParsedType = (data) => {
   }
 };
 
-// wt/node_modules/zod/v3/ZodError.js
+// node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -15388,7 +15491,7 @@ ZodError.create = (issues) => {
   return error62;
 };
 
-// wt/node_modules/zod/v3/locales/en.js
+// node_modules/zod/v3/locales/en.js
 var errorMap = (issue2, _ctx) => {
   let message;
   switch (issue2.code) {
@@ -15491,16 +15594,16 @@ var errorMap = (issue2, _ctx) => {
 };
 var en_default = errorMap;
 
-// wt/node_modules/zod/v3/errors.js
+// node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default;
 function getErrorMap() {
   return overrideErrorMap;
 }
 
-// wt/node_modules/zod/v3/helpers/parseUtil.js
+// node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path12, errorMaps, issueData } = params;
-  const fullPath = [...path12, ...issueData.path || []];
+  const { data, path: path14, errorMaps, issueData } = params;
+  const fullPath = [...path14, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -15606,20 +15709,20 @@ var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
-// wt/node_modules/zod/v3/helpers/errorUtil.js
+// node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
 
-// wt/node_modules/zod/v3/types.js
+// node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path12, key) {
+  constructor(parent, value, path14, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path12;
+    this._path = path14;
     this._key = key;
   }
   get path() {
@@ -19020,7 +19123,7 @@ var nullableType = ZodNullable.create;
 var preprocessType = ZodEffects.createWithPreprocess;
 var pipelineType = ZodPipeline.create;
 
-// wt/node_modules/zod/v4/core/index.js
+// node_modules/zod/v4/core/index.js
 var core_exports2 = {};
 __export(core_exports2, {
   $ZodAny: () => $ZodAny,
@@ -19337,7 +19440,7 @@ __export(core_exports2, {
   withParser: () => withParser
 });
 
-// wt/node_modules/zod/v4/core/util.js
+// node_modules/zod/v4/core/util.js
 var util_exports = {};
 __export(util_exports, {
   BIGINT_FORMAT_RANGES: () => BIGINT_FORMAT_RANGES,
@@ -19573,10 +19676,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path12) {
-  if (!path12)
+function getElementAtPath(obj, path14) {
+  if (!path14)
     return obj;
-  return path12.reduce((acc, key) => acc?.[key], obj);
+  return path14.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -19916,11 +20019,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path12, issues) {
+function prefixIssues(path14, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path12);
+    iss.path.unshift(path14);
     return iss;
   });
 }
@@ -20180,7 +20283,7 @@ function constantCatch(value) {
   return fn;
 }
 
-// wt/node_modules/zod/v4/core/core.js
+// node_modules/zod/v4/core/core.js
 var _a;
 var NEVER = /* @__PURE__ */ Object.freeze({
   status: "aborted"
@@ -20302,7 +20405,7 @@ function config(newConfig) {
   return globalConfig;
 }
 
-// wt/node_modules/zod/v4/core/errors.js
+// node_modules/zod/v4/core/errors.js
 function _getMessage() {
   const internals = this._zod;
   internals.message ?? (internals.message = JSON.stringify(internals.def, jsonStringifyReplacer, 2));
@@ -20370,16 +20473,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path12 = []) => {
+  const processError = (error63, path14 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else {
-        const fullpath = [...path12, ...issue2.path];
+        const fullpath = [...path14, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -20418,17 +20521,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path12 = []) => {
+  const processError = (error63, path14 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
       } else {
-        const fullpath = [...path12, ...issue2.path];
+        const fullpath = [...path14, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -20467,8 +20570,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path12 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path12) {
+  const path14 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path14) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -20494,7 +20597,7 @@ function prettifyError(error62) {
   return lines.join("\n");
 }
 
-// wt/node_modules/zod/v4/core/parse.js
+// node_modules/zod/v4/core/parse.js
 function finalizeParams(callee, params) {
   return { callee: params?.callee ?? callee, Err: params?.Err };
 }
@@ -20654,7 +20757,7 @@ var _safeDecodeAsync = (_Err) => async (schema, value, _ctx) => {
 };
 var safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync($ZodRealError);
 
-// wt/node_modules/zod/v4/core/regexes.js
+// node_modules/zod/v4/core/regexes.js
 var regexes_exports = {};
 __export(regexes_exports, {
   anyString: () => anyString,
@@ -20826,7 +20929,7 @@ var sha512_hex = /^[0-9a-fA-F]{128}$/;
 var sha512_base64 = /* @__PURE__ */ fixedBase64(86, "==");
 var sha512_base64url = /* @__PURE__ */ fixedBase64url(86);
 
-// wt/node_modules/zod/v4/core/checks.js
+// node_modules/zod/v4/core/checks.js
 var $ZodCheck = /* @__PURE__ */ $constructor("$ZodCheck", (inst, def) => {
   var _a3;
   inst._zod ?? (inst._zod = {});
@@ -21302,7 +21405,7 @@ var $ZodCheckOverwrite = /* @__PURE__ */ $constructor("$ZodCheckOverwrite", (ins
   };
 });
 
-// wt/node_modules/zod/v4/core/doc.js
+// node_modules/zod/v4/core/doc.js
 var Doc = class {
   constructor(args = [], closed = {}) {
     this.content = [];
@@ -21343,14 +21446,14 @@ ${content.join("\n")}
   }
 };
 
-// wt/node_modules/zod/v4/core/versions.js
+// node_modules/zod/v4/core/versions.js
 var version = {
   major: 4,
   minor: 6,
   patch: 5
 };
 
-// wt/node_modules/zod/v4/core/schemas.js
+// node_modules/zod/v4/core/schemas.js
 var $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
   var _a3;
   inst ?? (inst = {});
@@ -23764,7 +23867,7 @@ function handleRefineResult(result, payload, input2, inst) {
   }
 }
 
-// wt/node_modules/zod/v4/core/memoizer.js
+// node_modules/zod/v4/core/memoizer.js
 var $ZodCyclicError = class extends Error {
   constructor() {
     super(`Cannot parse a reference cycle that closes through a transform`);
@@ -24041,7 +24144,7 @@ function isBackEdge(ctx, value) {
   return backEdges !== void 0 && isRef(value) && backEdges.has(value);
 }
 
-// wt/node_modules/zod/v4/locales/index.js
+// node_modules/zod/v4/locales/index.js
 var locales_exports = {};
 __export(locales_exports, {
   ar: () => ar_default,
@@ -24109,7 +24212,7 @@ __export(locales_exports, {
   zhTW: () => zh_TW_default
 });
 
-// wt/node_modules/zod/v4/locales/ar.js
+// node_modules/zod/v4/locales/ar.js
 var error = () => {
   const Sizable = {
     string: { unit: "\u062D\u0631\u0641", verb: "\u0623\u0646 \u064A\u062D\u0648\u064A" },
@@ -24221,7 +24324,7 @@ function ar_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/az.js
+// node_modules/zod/v4/locales/az.js
 var error2 = () => {
   const Sizable = {
     string: { unit: "simvol", verb: "olmal\u0131d\u0131r" },
@@ -24332,7 +24435,7 @@ function az_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/be.js
+// node_modules/zod/v4/locales/be.js
 function getBelarusianPlural(count2, one, few, many) {
   const absCount = Math.abs(count2);
   const lastDigit = absCount % 10;
@@ -24501,7 +24604,7 @@ function be_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/bg.js
+// node_modules/zod/v4/locales/bg.js
 var error4 = () => {
   const Sizable = {
     string: { unit: "\u0441\u0438\u043C\u0432\u043E\u043B\u0430", verb: "\u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430" },
@@ -24627,7 +24730,7 @@ function bg_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/bn.js
+// node_modules/zod/v4/locales/bn.js
 var error5 = () => {
   const Sizable = {
     string: { unit: "\u0985\u0995\u09CD\u09B7\u09B0", verb: "\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7" },
@@ -24741,7 +24844,7 @@ function bn_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ca.js
+// node_modules/zod/v4/locales/ca.js
 var error6 = () => {
   const Sizable = {
     string: { unit: "car\xE0cters", verb: "contenir" },
@@ -24855,7 +24958,7 @@ function ca_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ckb.js
+// node_modules/zod/v4/locales/ckb.js
 var error7 = () => {
   const Sizable = {
     string: { unit: "\u067E\u06CC\u062A", verb: "\u0628\u06CE\u062A" },
@@ -24988,7 +25091,7 @@ function ckb_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/cs.js
+// node_modules/zod/v4/locales/cs.js
 var error8 = () => {
   const Sizable = {
     string: { unit: "znak\u016F", verb: "m\xEDt" },
@@ -25105,7 +25208,7 @@ function cs_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/da.js
+// node_modules/zod/v4/locales/da.js
 var error9 = () => {
   const Sizable = {
     string: { unit: "tegn", verb: "havde" },
@@ -25226,7 +25329,7 @@ function da_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/de.js
+// node_modules/zod/v4/locales/de.js
 var error10 = () => {
   const Sizable = {
     string: { unit: "Zeichen", verb: "zu haben" },
@@ -25340,7 +25443,7 @@ function de_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/el.js
+// node_modules/zod/v4/locales/el.js
 var error11 = () => {
   const Sizable = {
     string: { unit: "\u03C7\u03B1\u03C1\u03B1\u03BA\u03C4\u03AE\u03C1\u03B5\u03C2", verb: "\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9" },
@@ -25453,7 +25556,7 @@ function el_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/en.js
+// node_modules/zod/v4/locales/en.js
 var error12 = () => {
   const Sizable = {
     string: { unit: "characters", verb: "to have" },
@@ -25578,7 +25681,7 @@ function en_default2() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/eo.js
+// node_modules/zod/v4/locales/eo.js
 var error13 = () => {
   const Sizable = {
     string: { unit: "karaktrojn", verb: "havi" },
@@ -25693,7 +25796,7 @@ function eo_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/es.js
+// node_modules/zod/v4/locales/es.js
 var error14 = () => {
   const Sizable = {
     string: { unit: "caracteres", verb: "tener" },
@@ -25830,7 +25933,7 @@ function es_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/fa.js
+// node_modules/zod/v4/locales/fa.js
 var error15 = () => {
   const Sizable = {
     string: { unit: "\u06A9\u0627\u0631\u0627\u06A9\u062A\u0631", verb: "\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F" },
@@ -25950,7 +26053,7 @@ function fa_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/fi.js
+// node_modules/zod/v4/locales/fi.js
 var error16 = () => {
   const Sizable = {
     string: { unit: "merkki\xE4", subject: "merkkijonon" },
@@ -26068,7 +26171,7 @@ function fi_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/fr.js
+// node_modules/zod/v4/locales/fr.js
 var error17 = () => {
   const Sizable = {
     string: { unit: "caract\xE8res", verb: "avoir" },
@@ -26198,7 +26301,7 @@ function fr_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/fr-CA.js
+// node_modules/zod/v4/locales/fr-CA.js
 var error18 = () => {
   const Sizable = {
     string: { unit: "caract\xE8res", verb: "avoir" },
@@ -26311,7 +26414,7 @@ function fr_CA_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/gu.js
+// node_modules/zod/v4/locales/gu.js
 var error19 = () => {
   const Sizable = {
     string: { unit: "\u0A85\u0A95\u0ACD\u0AB7\u0AB0", verb: "\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F" },
@@ -26425,7 +26528,7 @@ function gu_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/he.js
+// node_modules/zod/v4/locales/he.js
 var error20 = () => {
   const TypeNames = {
     string: { label: "\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA", gender: "f" },
@@ -26627,7 +26730,7 @@ function he_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/hi.js
+// node_modules/zod/v4/locales/hi.js
 var error21 = () => {
   const Sizable = {
     string: { unit: "\u0905\u0915\u094D\u0937\u0930", verb: "\u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F" },
@@ -26739,7 +26842,7 @@ function hi_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/hr.js
+// node_modules/zod/v4/locales/hr.js
 var error22 = () => {
   const Sizable = {
     string: { unit: "znakova", verb: "imati" },
@@ -26866,7 +26969,7 @@ function hr_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/hu.js
+// node_modules/zod/v4/locales/hu.js
 var error23 = () => {
   const Sizable = {
     string: { unit: "karakter", verb: "legyen" },
@@ -26980,7 +27083,7 @@ function hu_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/hy.js
+// node_modules/zod/v4/locales/hy.js
 function getArmenianPlural(count2, one, many) {
   return Math.abs(count2) === 1 ? one : many;
 }
@@ -27139,7 +27242,7 @@ function hy_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/id.js
+// node_modules/zod/v4/locales/id.js
 var error25 = () => {
   const Sizable = {
     string: { unit: "karakter", verb: "memiliki" },
@@ -27251,7 +27354,7 @@ function id_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/is.js
+// node_modules/zod/v4/locales/is.js
 var error26 = () => {
   const Sizable = {
     string: { unit: "stafi", verb: "a\xF0 hafa" },
@@ -27366,7 +27469,7 @@ function is_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/it.js
+// node_modules/zod/v4/locales/it.js
 var error27 = () => {
   const Sizable = {
     string: { unit: "caratteri", verb: "avere" },
@@ -27480,7 +27583,7 @@ function it_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ja.js
+// node_modules/zod/v4/locales/ja.js
 var error28 = () => {
   const Sizable = {
     string: { unit: "\u6587\u5B57", verb: "\u3067\u3042\u308B" },
@@ -27593,7 +27696,7 @@ function ja_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ka.js
+// node_modules/zod/v4/locales/ka.js
 var error29 = () => {
   const Sizable = {
     string: { unit: "\u10E1\u10D8\u10DB\u10D1\u10DD\u10DA\u10DD", verb: "\u10E3\u10DC\u10D3\u10D0 \u10E8\u10D4\u10D8\u10EA\u10D0\u10D5\u10D3\u10D4\u10E1" },
@@ -27711,7 +27814,7 @@ function ka_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/km.js
+// node_modules/zod/v4/locales/km.js
 var error30 = () => {
   const Sizable = {
     string: { unit: "\u178F\u17BD\u17A2\u1780\u17D2\u179F\u179A", verb: "\u1782\u17BD\u179A\u1798\u17B6\u1793" },
@@ -27827,12 +27930,12 @@ function km_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/kh.js
+// node_modules/zod/v4/locales/kh.js
 function kh_default() {
   return km_default();
 }
 
-// wt/node_modules/zod/v4/locales/kn.js
+// node_modules/zod/v4/locales/kn.js
 var error31 = () => {
   const Sizable = {
     string: { unit: "\u0C85\u0C95\u0CCD\u0CB7\u0CB0\u0C97\u0CB3\u0CC1", verb: "\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1" },
@@ -27948,7 +28051,7 @@ function kn_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ko.js
+// node_modules/zod/v4/locales/ko.js
 var error32 = () => {
   const Sizable = {
     string: { unit: "\uBB38\uC790", verb: "to have" },
@@ -28065,7 +28168,7 @@ function ko_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/lt.js
+// node_modules/zod/v4/locales/lt.js
 var capitalizeFirstCharacter = (text2) => {
   return text2.charAt(0).toUpperCase() + text2.slice(1);
 };
@@ -28273,7 +28376,7 @@ function lt_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/mk.js
+// node_modules/zod/v4/locales/mk.js
 var error34 = () => {
   const Sizable = {
     string: { unit: "\u0437\u043D\u0430\u0446\u0438", verb: "\u0434\u0430 \u0438\u043C\u0430\u0430\u0442" },
@@ -28388,7 +28491,7 @@ function mk_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ms.js
+// node_modules/zod/v4/locales/ms.js
 var error35 = () => {
   const Sizable = {
     string: { unit: "aksara", verb: "mempunyai" },
@@ -28501,7 +28604,7 @@ function ms_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ne.js
+// node_modules/zod/v4/locales/ne.js
 var error36 = () => {
   const Sizable = {
     string: { unit: "\u0905\u0915\u094D\u0937\u0930", verb: "\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B" },
@@ -28613,7 +28716,7 @@ function ne_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/nl.js
+// node_modules/zod/v4/locales/nl.js
 var error37 = () => {
   const Sizable = {
     string: { unit: "tekens", verb: "heeft" },
@@ -28729,7 +28832,7 @@ function nl_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/nn.js
+// node_modules/zod/v4/locales/nn.js
 var error38 = () => {
   const Sizable = {
     string: { unit: "teikn", verb: "\xE5 ha" },
@@ -28843,7 +28946,7 @@ function nn_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/no.js
+// node_modules/zod/v4/locales/no.js
 var error39 = () => {
   const Sizable = {
     string: { unit: "tegn", verb: "\xE5 ha" },
@@ -28957,7 +29060,7 @@ function no_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ota.js
+// node_modules/zod/v4/locales/ota.js
 var error40 = () => {
   const Sizable = {
     string: { unit: "harf", verb: "olmal\u0131d\u0131r" },
@@ -29072,7 +29175,7 @@ function ota_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ps.js
+// node_modules/zod/v4/locales/ps.js
 var error41 = () => {
   const Sizable = {
     string: { unit: "\u062A\u0648\u06A9\u064A", verb: "\u0648\u0644\u0631\u064A" },
@@ -29192,7 +29295,7 @@ function ps_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/pl.js
+// node_modules/zod/v4/locales/pl.js
 var error42 = () => {
   const Sizable = {
     string: { unit: "znak\xF3w", verb: "mie\u0107" },
@@ -29307,7 +29410,7 @@ function pl_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/pt.js
+// node_modules/zod/v4/locales/pt.js
 var error43 = () => {
   const Sizable = {
     string: { unit: "caracteres" },
@@ -29451,7 +29554,7 @@ function pt_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/pt-BR.js
+// node_modules/zod/v4/locales/pt-BR.js
 var error44 = () => {
   const Sizable = {
     string: { unit: "caracteres" },
@@ -29596,7 +29699,7 @@ function pt_BR_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ro.js
+// node_modules/zod/v4/locales/ro.js
 var error45 = () => {
   const Sizable = {
     string: { unit: "caractere", verb: "s\u0103 aib\u0103" },
@@ -29719,7 +29822,7 @@ function ro_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ru.js
+// node_modules/zod/v4/locales/ru.js
 function getRussianPlural(count2, one, few, many) {
   const absCount = Math.abs(count2);
   const lastDigit = absCount % 10;
@@ -29888,7 +29991,7 @@ function ru_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/sk.js
+// node_modules/zod/v4/locales/sk.js
 var error47 = () => {
   const Sizable = {
     string: { unit: "znakov", verb: "ma\u0165" },
@@ -30005,7 +30108,7 @@ function sk_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/sl.js
+// node_modules/zod/v4/locales/sl.js
 var error48 = () => {
   const Sizable = {
     string: { unit: "znakov", verb: "imeti" },
@@ -30120,7 +30223,7 @@ function sl_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/sv.js
+// node_modules/zod/v4/locales/sv.js
 var error49 = () => {
   const Sizable = {
     string: { unit: "tecken", verb: "att ha" },
@@ -30236,7 +30339,7 @@ function sv_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ta.js
+// node_modules/zod/v4/locales/ta.js
 var error50 = () => {
   const Sizable = {
     string: { unit: "\u0B8E\u0BB4\u0BC1\u0BA4\u0BCD\u0BA4\u0BC1\u0B95\u0BCD\u0B95\u0BB3\u0BCD", verb: "\u0B95\u0BCA\u0BA3\u0BCD\u0B9F\u0BBF\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD" },
@@ -30352,7 +30455,7 @@ function ta_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/tg.js
+// node_modules/zod/v4/locales/tg.js
 var error51 = () => {
   const Sizable = {
     string: { unit: "\u0430\u043B\u043E\u043C\u0430\u0442", verb: "\u0434\u043E\u0448\u0442\u0430 \u0431\u043E\u0448\u0430\u0434" },
@@ -30469,7 +30572,7 @@ function tg_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/th.js
+// node_modules/zod/v4/locales/th.js
 var error52 = () => {
   const Sizable = {
     string: { unit: "\u0E15\u0E31\u0E27\u0E2D\u0E31\u0E01\u0E29\u0E23", verb: "\u0E04\u0E27\u0E23\u0E21\u0E35" },
@@ -30585,7 +30688,7 @@ function th_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/tk.js
+// node_modules/zod/v4/locales/tk.js
 var error53 = () => {
   const Sizable = {
     string: { unit: "simwol", verb: "bolmaly" },
@@ -30693,7 +30796,7 @@ function tk_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/tr.js
+// node_modules/zod/v4/locales/tr.js
 var error54 = () => {
   const Sizable = {
     string: { unit: "karakter", verb: "olmal\u0131" },
@@ -30804,7 +30907,7 @@ function tr_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/uk.js
+// node_modules/zod/v4/locales/uk.js
 var error55 = () => {
   const Sizable = {
     string: { unit: "\u0441\u0438\u043C\u0432\u043E\u043B\u0456\u0432", verb: "\u043C\u0430\u0442\u0438\u043C\u0435" },
@@ -30918,12 +31021,12 @@ function uk_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/ua.js
+// node_modules/zod/v4/locales/ua.js
 function ua_default() {
   return uk_default();
 }
 
-// wt/node_modules/zod/v4/locales/ur.js
+// node_modules/zod/v4/locales/ur.js
 var error56 = () => {
   const Sizable = {
     string: { unit: "\u062D\u0631\u0648\u0641", verb: "\u06C1\u0648\u0646\u0627" },
@@ -31039,7 +31142,7 @@ function ur_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/uz.js
+// node_modules/zod/v4/locales/uz.js
 var error57 = () => {
   const Sizable = {
     string: { unit: "belgi", verb: "bo\u2018lishi kerak" },
@@ -31153,7 +31256,7 @@ function uz_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/vi.js
+// node_modules/zod/v4/locales/vi.js
 var error58 = () => {
   const Sizable = {
     string: { unit: "k\xFD t\u1EF1", verb: "c\xF3" },
@@ -31267,7 +31370,7 @@ function vi_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/zh-CN.js
+// node_modules/zod/v4/locales/zh-CN.js
 var error59 = () => {
   const Sizable = {
     string: { unit: "\u5B57\u7B26", verb: "\u5305\u542B" },
@@ -31382,7 +31485,7 @@ function zh_CN_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/zh-TW.js
+// node_modules/zod/v4/locales/zh-TW.js
 var error60 = () => {
   const Sizable = {
     string: { unit: "\u5B57\u5143", verb: "\u64C1\u6709" },
@@ -31495,7 +31598,7 @@ function zh_TW_default() {
   };
 }
 
-// wt/node_modules/zod/v4/locales/yo.js
+// node_modules/zod/v4/locales/yo.js
 var error61 = () => {
   const Sizable = {
     string: { unit: "\xE0mi", verb: "n\xED" },
@@ -31608,7 +31711,7 @@ function yo_default() {
   };
 }
 
-// wt/node_modules/zod/v4/core/registries.js
+// node_modules/zod/v4/core/registries.js
 var _a2;
 var $output = /* @__PURE__ */ Symbol("ZodOutput");
 var $input = /* @__PURE__ */ Symbol("ZodInput");
@@ -31658,7 +31761,7 @@ function registry() {
 (_a2 = globalThis).__zod_globalRegistry ?? (_a2.__zod_globalRegistry = registry());
 var globalRegistry = globalThis.__zod_globalRegistry;
 
-// wt/node_modules/zod/v4/core/compile.js
+// node_modules/zod/v4/core/compile.js
 var INVALID2 = /* @__PURE__ */ Symbol.for("zod.compile.invalid");
 var FALLBACK_FLAG = /* @__PURE__ */ Symbol.for("zod.compile.fallback");
 var ZodCompileAsyncError = class extends Error {
@@ -33260,7 +33363,7 @@ function generateTransformCheck(doc, ctx, schema, accessor) {
   return accessor;
 }
 
-// wt/node_modules/zod/v4/core/api.js
+// node_modules/zod/v4/core/api.js
 function snapshotChecks(def) {
   if (def.checks)
     def.checks = [...def.checks];
@@ -34319,7 +34422,7 @@ function _stringFormat(Class2, format, fnOrRegex, _params = {}) {
   return inst;
 }
 
-// wt/node_modules/zod/v4/core/to-json-schema.js
+// node_modules/zod/v4/core/to-json-schema.js
 function assignProps(target, ...sources) {
   for (const source of sources) {
     for (const key of Reflect.ownKeys(source)) {
@@ -34849,7 +34952,7 @@ var createStandardJSONSchemaMethod = (schema, io, processors = {}) => (params) =
   return finalize(ctx, schema);
 };
 
-// wt/node_modules/zod/v4/core/json-schema-processors.js
+// node_modules/zod/v4/core/json-schema-processors.js
 var narrowMin = (agg, key, value) => {
   if (agg[key] === void 0 || value > agg[key])
     agg[key] = value;
@@ -35597,7 +35700,7 @@ function toJSONSchema(input2, params) {
   return finalize(ctx, input2);
 }
 
-// wt/node_modules/zod/v4/core/json-schema-generator.js
+// node_modules/zod/v4/core/json-schema-generator.js
 var JSONSchemaGenerator = class {
   /** @deprecated Access via ctx instead */
   get metadataRegistry() {
@@ -35675,10 +35778,10 @@ var JSONSchemaGenerator = class {
   }
 };
 
-// wt/node_modules/zod/v4/core/json-schema.js
+// node_modules/zod/v4/core/json-schema.js
 var json_schema_exports = {};
 
-// wt/node_modules/zod/v4/mini/schemas.js
+// node_modules/zod/v4/mini/schemas.js
 var ZodMiniType = /* @__PURE__ */ $constructor("ZodMiniType", (inst, def) => {
   if (!inst._zod)
     throw new Error("Uninitialized schema in ZodMiniType.");
@@ -35744,7 +35847,7 @@ function object(shape, params) {
   return new ZodMiniObject(def);
 }
 
-// wt/node_modules/zod/v4/core/visit.js
+// node_modules/zod/v4/core/visit.js
 var RESOLVING = /* @__PURE__ */ Symbol("z.visit/resolving");
 function visit(schema, fnOrHandlers) {
   const fn = typeof fnOrHandlers === "function" ? fnOrHandlers : (node2, rewritten) => {
@@ -35899,7 +36002,7 @@ function visit(schema, fnOrHandlers) {
   return run(schema);
 }
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
 function isZ4Schema(s) {
   const schema = s;
   return !!schema._zod;
@@ -35983,11 +36086,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path12) {
-  if (path12.length === 0) {
+function getDotPath(path14) {
+  if (path14.length === 0) {
     return "object root";
   }
-  return path12.reduce((acc, seg, index) => {
+  return path14.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -36059,7 +36162,7 @@ function getLiteralValue(schema) {
   return void 0;
 }
 
-// wt/node_modules/zod/v4/classic/external.js
+// node_modules/zod/v4/classic/external.js
 var external_exports = {};
 __export(external_exports, {
   $brand: () => $brand,
@@ -36322,7 +36425,7 @@ __export(external_exports, {
   xor: () => xor
 });
 
-// wt/node_modules/zod/v4/classic/schemas.js
+// node_modules/zod/v4/classic/schemas.js
 var schemas_exports2 = {};
 __export(schemas_exports2, {
   ZodAny: () => ZodAny2,
@@ -36503,7 +36606,7 @@ __export(schemas_exports2, {
   xor: () => xor
 });
 
-// wt/node_modules/zod/v4/classic/checks.js
+// node_modules/zod/v4/classic/checks.js
 var checks_exports2 = {};
 __export(checks_exports2, {
   endsWith: () => _endsWith,
@@ -36538,7 +36641,7 @@ __export(checks_exports2, {
   uppercase: () => _uppercase
 });
 
-// wt/node_modules/zod/v4/classic/errors.js
+// node_modules/zod/v4/classic/errors.js
 var _installedErrorProtos = /* @__PURE__ */ new WeakSet([Object.prototype, Error.prototype]);
 function _lazyMethod(proto, key, make) {
   Object.defineProperty(proto, key, {
@@ -36584,7 +36687,7 @@ var ZodRealError = /* @__PURE__ */ $constructor("ZodError", initializer2, void 0
   Parent: Error
 });
 
-// wt/node_modules/zod/v4/classic/parse.js
+// node_modules/zod/v4/classic/parse.js
 var parse3 = /* @__PURE__ */ _parse(ZodRealError);
 var parseAsync2 = /* @__PURE__ */ _parseAsync(ZodRealError);
 var safeParse3 = /* @__PURE__ */ _safeParse(ZodRealError);
@@ -36598,7 +36701,7 @@ var safeDecode2 = /* @__PURE__ */ _safeDecode(ZodRealError);
 var safeEncodeAsync2 = /* @__PURE__ */ _safeEncodeAsync(ZodRealError);
 var safeDecodeAsync2 = /* @__PURE__ */ _safeDecodeAsync(ZodRealError);
 
-// wt/node_modules/zod/v4/classic/schemas.js
+// node_modules/zod/v4/classic/schemas.js
 function _ensureDefaultLocale() {
   if (!globalConfig.localeError)
     config(en_default2());
@@ -38063,7 +38166,7 @@ function preprocess(fn, schema) {
   });
 }
 
-// wt/node_modules/zod/v4/classic/compat.js
+// node_modules/zod/v4/classic/compat.js
 var ZodIssueCode2 = {
   invalid_type: "invalid_type",
   too_big: "too_big",
@@ -38089,7 +38192,7 @@ var ZodFirstPartyTypeKind2;
 /* @__PURE__ */ (function(ZodFirstPartyTypeKind3) {
 })(ZodFirstPartyTypeKind2 || (ZodFirstPartyTypeKind2 = {}));
 
-// wt/node_modules/zod/v4/classic/iso.js
+// node_modules/zod/v4/classic/iso.js
 var iso_exports2 = {};
 __export(iso_exports2, {
   ZodISODate: () => ZodISODate,
@@ -38114,7 +38217,7 @@ function duration2(params) {
   return _isoDuration(ZodISODuration, params);
 }
 
-// wt/node_modules/zod/v4/classic/from-json-schema.js
+// node_modules/zod/v4/classic/from-json-schema.js
 var z = {
   ...schemas_exports2,
   ...checks_exports2,
@@ -38214,13 +38317,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path12 = ref.slice(1).split("/").filter(Boolean);
-  if (path12.length === 0) {
+  const path14 = ref.slice(1).split("/").filter(Boolean);
+  if (path14.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path12[0] === defsKey) {
-    const key = path12[1] === void 0 ? void 0 : decodeJSONPointerSegment(path12[1]);
+  if (path14[0] === defsKey) {
+    const key = path14[1] === void 0 ? void 0 : decodeJSONPointerSegment(path14[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -38847,7 +38950,7 @@ function fromJSONSchema(schema, params) {
   return convertSchema(normalized, ctx);
 }
 
-// wt/node_modules/zod/v4/classic/deep-partial.js
+// node_modules/zod/v4/classic/deep-partial.js
 function deepPartial(schema) {
   return visit(schema, {
     object: (s) => s.partial(),
@@ -38859,7 +38962,7 @@ function deepPartial(schema) {
   });
 }
 
-// wt/node_modules/zod/v4/classic/in-out.js
+// node_modules/zod/v4/classic/in-out.js
 function withChecks(side, checks) {
   if (!checks?.length)
     return side;
@@ -38889,7 +38992,7 @@ function output(schema) {
   });
 }
 
-// wt/node_modules/zod/v4/classic/coerce.js
+// node_modules/zod/v4/classic/coerce.js
 var coerce_exports2 = {};
 __export(coerce_exports2, {
   bigint: () => bigint3,
@@ -38914,7 +39017,7 @@ function date4(params) {
   return _coercedDate(ZodDate2, params);
 }
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
 var LATEST_PROTOCOL_VERSION = "2025-11-25";
 var SUPPORTED_PROTOCOL_VERSIONS = [LATEST_PROTOCOL_VERSION, "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"];
 var RELATED_TASK_META_KEY = "io.modelcontextprotocol/related-task";
@@ -40445,12 +40548,12 @@ var UrlElicitationRequiredError = class extends McpError {
   }
 };
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
 function isTerminal(status) {
   return status === "completed" || status === "failed" || status === "cancelled";
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/Options.js
+// node_modules/zod-to-json-schema/dist/esm/Options.js
 var ignoreOverride = /* @__PURE__ */ Symbol("Let zodToJsonSchema decide on which parser to use");
 var defaultOptions = {
   name: void 0,
@@ -40484,7 +40587,7 @@ var getDefaultOptions = (options) => typeof options === "string" ? {
   ...options
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/Refs.js
+// node_modules/zod-to-json-schema/dist/esm/Refs.js
 var getRefs = (options) => {
   const _options = getDefaultOptions(options);
   const currentPath = _options.name !== void 0 ? [..._options.basePath, _options.definitionPath, _options.name] : _options.basePath;
@@ -40505,7 +40608,7 @@ var getRefs = (options) => {
   };
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/errorMessages.js
+// node_modules/zod-to-json-schema/dist/esm/errorMessages.js
 function addErrorMessage(res, key, errorMessage, refs) {
   if (!refs?.errorMessages)
     return;
@@ -40521,7 +40624,7 @@ function setResponseValueAndErrors(res, key, value, errorMessage, refs) {
   addErrorMessage(res, key, errorMessage, refs);
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
+// node_modules/zod-to-json-schema/dist/esm/getRelativePath.js
 var getRelativePath = (pathA, pathB) => {
   let i = 0;
   for (; i < pathA.length && i < pathB.length; i++) {
@@ -40531,7 +40634,7 @@ var getRelativePath = (pathA, pathB) => {
   return [(pathA.length - i).toString(), ...pathB.slice(i)].join("/");
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/any.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/any.js
 function parseAnyDef(refs) {
   if (refs.target !== "openAi") {
     return {};
@@ -40547,7 +40650,7 @@ function parseAnyDef(refs) {
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/array.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/array.js
 function parseArrayDef(def, refs) {
   const res = {
     type: "array"
@@ -40571,7 +40674,7 @@ function parseArrayDef(def, refs) {
   return res;
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/bigint.js
 function parseBigintDef(def, refs) {
   const res = {
     type: "integer",
@@ -40617,24 +40720,24 @@ function parseBigintDef(def, refs) {
   return res;
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/boolean.js
 function parseBooleanDef() {
   return {
     type: "boolean"
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/branded.js
 function parseBrandedDef(_def, refs) {
   return parseDef(_def.type._def, refs);
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/catch.js
 var parseCatchDef = (def, refs) => {
   return parseDef(def.innerType._def, refs);
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/date.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/date.js
 function parseDateDef(def, refs, overrideDateStrategy) {
   const strategy = overrideDateStrategy ?? refs.dateStrategy;
   if (Array.isArray(strategy)) {
@@ -40693,7 +40796,7 @@ var integerDateParser = (def, refs) => {
   return res;
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/default.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/default.js
 function parseDefaultDef(_def, refs) {
   return {
     ...parseDef(_def.innerType._def, refs),
@@ -40701,12 +40804,12 @@ function parseDefaultDef(_def, refs) {
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/effects.js
 function parseEffectsDef(_def, refs) {
   return refs.effectStrategy === "input" ? parseDef(_def.schema._def, refs) : parseAnyDef(refs);
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/enum.js
 function parseEnumDef(def) {
   return {
     type: "string",
@@ -40714,7 +40817,7 @@ function parseEnumDef(def) {
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/intersection.js
 var isJsonSchema7AllOfType = (type) => {
   if ("type" in type && type.type === "string")
     return false;
@@ -40756,7 +40859,7 @@ function parseIntersectionDef(def, refs) {
   } : void 0;
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/literal.js
 function parseLiteralDef(def, refs) {
   const parsedType2 = typeof def.value;
   if (parsedType2 !== "bigint" && parsedType2 !== "number" && parsedType2 !== "boolean" && parsedType2 !== "string") {
@@ -40776,7 +40879,7 @@ function parseLiteralDef(def, refs) {
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/string.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/string.js
 var emojiRegex2 = void 0;
 var zodPatterns = {
   /**
@@ -41101,7 +41204,7 @@ function stringifyRegExpWithFlags(regex, refs) {
   return pattern;
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/record.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/record.js
 function parseRecordDef(def, refs) {
   if (refs.target === "openAi") {
     console.warn("Warning: OpenAI may not support records in schemas! Try an array of key-value pairs instead.");
@@ -41153,7 +41256,7 @@ function parseRecordDef(def, refs) {
   return schema;
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/map.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/map.js
 function parseMapDef(def, refs) {
   if (refs.mapStrategy === "record") {
     return parseRecordDef(def, refs);
@@ -41178,7 +41281,7 @@ function parseMapDef(def, refs) {
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/nativeEnum.js
 function parseNativeEnumDef(def) {
   const object3 = def.values;
   const actualKeys = Object.keys(def.values).filter((key) => {
@@ -41192,7 +41295,7 @@ function parseNativeEnumDef(def) {
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/never.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/never.js
 function parseNeverDef(refs) {
   return refs.target === "openAi" ? void 0 : {
     not: parseAnyDef({
@@ -41202,7 +41305,7 @@ function parseNeverDef(refs) {
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/null.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/null.js
 function parseNullDef(refs) {
   return refs.target === "openApi3" ? {
     enum: ["null"],
@@ -41212,7 +41315,7 @@ function parseNullDef(refs) {
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/union.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/union.js
 var primitiveMappings = {
   ZodString: "string",
   ZodNumber: "number",
@@ -41280,7 +41383,7 @@ var asAnyOf = (def, refs) => {
   return anyOf.length ? { anyOf } : void 0;
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/nullable.js
 function parseNullableDef(def, refs) {
   if (["ZodString", "ZodNumber", "ZodBigInt", "ZodBoolean", "ZodNull"].includes(def.innerType._def.typeName) && (!def.innerType._def.checks || !def.innerType._def.checks.length)) {
     if (refs.target === "openApi3") {
@@ -41312,7 +41415,7 @@ function parseNullableDef(def, refs) {
   return base && { anyOf: [base, { type: "null" }] };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/number.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/number.js
 function parseNumberDef(def, refs) {
   const res = {
     type: "number"
@@ -41361,7 +41464,7 @@ function parseNumberDef(def, refs) {
   return res;
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/object.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/object.js
 function parseObjectDef(def, refs) {
   const forceOptionalIntoNullable = refs.target === "openAi";
   const result = {
@@ -41431,7 +41534,7 @@ function safeIsOptional(schema) {
   }
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/optional.js
 var parseOptionalDef = (def, refs) => {
   if (refs.currentPath.toString() === refs.propertyPath?.toString()) {
     return parseDef(def.innerType._def, refs);
@@ -41450,7 +41553,7 @@ var parseOptionalDef = (def, refs) => {
   } : parseAnyDef(refs);
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/pipeline.js
 var parsePipelineDef = (def, refs) => {
   if (refs.pipeStrategy === "input") {
     return parseDef(def.in._def, refs);
@@ -41470,12 +41573,12 @@ var parsePipelineDef = (def, refs) => {
   };
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/promise.js
 function parsePromiseDef(def, refs) {
   return parseDef(def.type._def, refs);
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/set.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/set.js
 function parseSetDef(def, refs) {
   const items = parseDef(def.valueType._def, {
     ...refs,
@@ -41495,7 +41598,7 @@ function parseSetDef(def, refs) {
   return schema;
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/tuple.js
 function parseTupleDef(def, refs) {
   if (def.rest) {
     return {
@@ -41523,24 +41626,24 @@ function parseTupleDef(def, refs) {
   }
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/undefined.js
 function parseUndefinedDef(refs) {
   return {
     not: parseAnyDef(refs)
   };
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/unknown.js
 function parseUnknownDef(refs) {
   return parseAnyDef(refs);
 }
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
+// node_modules/zod-to-json-schema/dist/esm/parsers/readonly.js
 var parseReadonlyDef = (def, refs) => {
   return parseDef(def.innerType._def, refs);
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/selectParser.js
+// node_modules/zod-to-json-schema/dist/esm/selectParser.js
 var selectParser = (def, typeName, refs) => {
   switch (typeName) {
     case ZodFirstPartyTypeKind.ZodString:
@@ -41616,7 +41719,7 @@ var selectParser = (def, typeName, refs) => {
   }
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/parseDef.js
+// node_modules/zod-to-json-schema/dist/esm/parseDef.js
 function parseDef(def, refs, forceResolution = false) {
   const seenItem = refs.seen.get(def);
   if (refs.override) {
@@ -41672,7 +41775,7 @@ var addMeta = (def, refs, jsonSchema) => {
   return jsonSchema;
 };
 
-// wt/node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
+// node_modules/zod-to-json-schema/dist/esm/zodToJsonSchema.js
 var zodToJsonSchema = (schema, options) => {
   const refs = getRefs(options);
   let definitions = typeof options === "object" && options.definitions ? Object.entries(options.definitions).reduce((acc, [name2, schema2]) => ({
@@ -41734,7 +41837,7 @@ var zodToJsonSchema = (schema, options) => {
   return combined;
 };
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
 function mapMiniTarget(t) {
   if (!t)
     return "draft-7";
@@ -41776,7 +41879,7 @@ function parseWithCompat(schema, data) {
   return result.data;
 }
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
 var DEFAULT_REQUEST_TIMEOUT_MSEC = 6e4;
 var Protocol = class {
   constructor(_options) {
@@ -42730,7 +42833,7 @@ function mergeCapabilities(base, additional) {
   return result;
 }
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
 var import_ajv = __toESM(require_ajv(), 1);
 var import_ajv_formats = __toESM(require_dist(), 1);
 function createDefaultAjvInstance() {
@@ -42798,7 +42901,7 @@ var AjvJsonSchemaValidator = class {
   }
 };
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/server.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/server.js
 var ExperimentalServerTasks = class {
   constructor(_server) {
     this._server = _server;
@@ -43011,7 +43114,7 @@ var ExperimentalServerTasks = class {
   }
 };
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
 function assertToolsCallTaskCapability(requests, method, entityName) {
   if (!requests) {
     throw new Error(`${entityName} does not support task creation (required for ${method})`);
@@ -43046,7 +43149,7 @@ function assertClientRequestTaskCapability(requests, method, entityName) {
   }
 }
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/server/index.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/index.js
 var Server = class extends Protocol {
   /**
    * Initializes this server with the given name and version information.
@@ -43417,7 +43520,7 @@ var Server = class extends Protocol {
   }
 };
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/server/completable.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/completable.js
 var COMPLETABLE_SYMBOL = /* @__PURE__ */ Symbol.for("mcp.completable");
 function isCompletable(schema) {
   return !!schema && typeof schema === "object" && COMPLETABLE_SYMBOL in schema;
@@ -43431,7 +43534,7 @@ var McpZodTypeKind;
   McpZodTypeKind2["Completable"] = "McpCompletable";
 })(McpZodTypeKind || (McpZodTypeKind = {}));
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
 var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
 function validateToolName(name) {
   const warnings = [];
@@ -43489,7 +43592,7 @@ function validateAndWarnToolName(name) {
   return result.isValid;
 }
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js
 var ExperimentalMcpServerTasks = class {
   constructor(_mcpServer) {
     this._mcpServer = _mcpServer;
@@ -43504,7 +43607,7 @@ var ExperimentalMcpServerTasks = class {
   }
 };
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
 var McpServer = class {
   constructor(serverInfo, options) {
     this._registeredResources = {};
@@ -44296,10 +44399,10 @@ var EMPTY_COMPLETION_RESULT = {
   }
 };
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 import process2 from "node:process";
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
 var STDIO_DEFAULT_MAX_BUFFER_SIZE = 10 * 1024 * 1024;
 var ReadBuffer = class {
   constructor(options) {
@@ -44336,7 +44439,7 @@ function serializeMessage(message) {
   return JSON.stringify(message) + "\n";
 }
 
-// wt/node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
+// node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 var StdioServerTransport = class {
   constructor(_stdin = process2.stdin, _stdout = process2.stdout, options) {
     this._stdin = _stdin;
@@ -44403,7 +44506,7 @@ var StdioServerTransport = class {
   }
 };
 
-// wt/packages/cli/src/mcp.ts
+// packages/cli/src/mcp.ts
 var AUTHORING_GUIDE = `A principle is a directory with three parts:
 
 The name of the directory is the principle's id.
@@ -44636,7 +44739,7 @@ ${report}`);
     dir: external_exports.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started; required in Codex.")
   };
   const switchTool = (on) => async ({ id, scope, dir }) => {
-    if (scope === "project" && dir === void 0 && fs9.existsSync(path11.join(process.cwd(), "dist", "wellactually.mjs"))) {
+    if (scope === "project" && dir === void 0 && fs10.existsSync(path12.join(process.cwd(), "dist", "wellactually.mjs"))) {
       return text("Pass dir, a directory inside the project: this server does not run in the project, so it cannot tell which one is meant.");
     }
     try {
@@ -44669,7 +44772,7 @@ ${report}`);
   });
 }
 
-// wt/packages/cli/src/main.ts
+// packages/cli/src/main.ts
 var HELP = `wellactually: author principles and run your advisory board
 
 Authoring
@@ -44957,15 +45060,27 @@ Added ${result.id} to this machine's advisory board.` : renderReport(result));
       return 0;
     }
     case "hook": {
+      const started = performance.now();
+      const log = { time: (/* @__PURE__ */ new Date()).toISOString(), hook: "", events: [], shown: 0, ms: 0 };
       try {
-        const out = await runHook(await readStdin());
+        const out = await runHook(await readStdin(), log);
         if (out) {
           console.log(out);
         }
+        log.shown = out.length;
       } catch (error62) {
         logHookFailure(error62);
+        log.note = `failed: ${error62.message}`;
         console.error(`wellactually hook failed, see ~/.wellactually/hook.log: ${error62.message}`);
       }
+      log.ms = Math.round(performance.now() - started);
+      if (process.env.WELLACTUALLY_HOOK_LOG !== "0") {
+        scheduleHookLog(path13.join(boardHome(), "logs"), log);
+      }
+      return 0;
+    }
+    case "hook-log": {
+      await writeHookLogFromStdin(positionals[0]);
       return 0;
     }
     case "mcp":

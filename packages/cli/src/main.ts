@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+import path from "node:path";
 import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
-import { approvalKey, describeReview, readConfig, readCached, readLockfile, scaffold, serveDetectors, switchedOff, switchPrinciple, writeConfig, type PackageInfo } from "@wellactually/core/node";
+import { approvalKey, boardHome, describeReview, readConfig, readCached, readLockfile, scaffold, serveDetectors, switchedOff, switchPrinciple, writeConfig, type PackageInfo } from "@wellactually/core/node";
 import {
   addLocal,
   ApprovalError,
@@ -31,6 +32,7 @@ import {
   tryPrinciple,
 } from "./commands.ts";
 import { logHookFailure, runHook } from "./hook.ts";
+import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook-log.ts";
 import { serveMcp } from "./mcp.ts";
 import { finishDeviceLogin, logout, RegistryError, startDeviceLogin, sync, whoami, type DraftResult } from "./registry.ts";
 
@@ -323,15 +325,29 @@ async function main(): Promise<number> {
     }
     case "hook": {
       // A hook that crashes or hangs breaks the user's session, so it logs and exits clean instead.
+      const started = performance.now();
+      const log: HookLogEntry = { time: new Date().toISOString(), hook: "", events: [], shown: 0, ms: 0 };
       try {
-        const out = await runHook(await readStdin());
+        const out = await runHook(await readStdin(), log);
         if (out) {
           console.log(out);
         }
+        log.shown = out.length;
       } catch (error) {
         logHookFailure(error);
+        log.note = `failed: ${(error as Error).message}`;
         console.error(`wellactually hook failed, see ~/.wellactually/hook.log: ${(error as Error).message}`);
       }
+      log.ms = Math.round(performance.now() - started);
+      // Written by another process once this one has answered, so the agent never waits for it.
+      if (process.env.WELLACTUALLY_HOOK_LOG !== "0") {
+        scheduleHookLog(path.join(boardHome(), "logs"), log);
+      }
+      return 0;
+    }
+    case "hook-log": {
+      // What the hook starts when the small writer script is not beside it, as in a checkout.
+      await writeHookLogFromStdin(positionals[0] as string);
       return 0;
     }
     case "mcp":

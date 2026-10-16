@@ -15,24 +15,24 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/chunk-FGV2HSCH.mjs
+// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/chunk-FGV2HSCH.mjs
 var __defProp2, __defNormalProp, __publicField;
 var init_chunk_FGV2HSCH = __esm({
-  "wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/chunk-FGV2HSCH.mjs"() {
+  "node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/chunk-FGV2HSCH.mjs"() {
     __defProp2 = Object.defineProperty;
     __defNormalProp = (obj, key, value) => key in obj ? __defProp2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
     __publicField = (obj, key, value) => (__defNormalProp(obj, typeof key != "symbol" ? key + "" : key, value), value);
   }
 });
 
-// wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/ffi.mjs
+// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/ffi.mjs
 var ffi_exports = {};
 __export(ffi_exports, {
   QuickJSFFI: () => QuickJSFFI
 });
 var QuickJSFFI;
 var init_ffi = __esm({
-  "wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/ffi.mjs"() {
+  "node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/ffi.mjs"() {
     QuickJSFFI = class {
       constructor(module) {
         this.module = module;
@@ -110,7 +110,7 @@ var init_ffi = __esm({
   }
 });
 
-// wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/emscripten-module-Q67P5WYC.mjs
+// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/emscripten-module-Q67P5WYC.mjs
 var emscripten_module_Q67P5WYC_exports = {};
 __export(emscripten_module_Q67P5WYC_exports, {
   default: () => emscripten_module_default
@@ -2530,16 +2530,16 @@ Z\x8B\0mm\0\xCF~6\0	\xCB'\0FO\xB7\0\x9Ef?\0-\xEA_\0\xBA'u\0\xE5\xEB\xC7\0={\xF1
 }
 var emscripten_module_default;
 var init_emscripten_module_Q67P5WYC = __esm({
-  "wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/emscripten-module-Q67P5WYC.mjs"() {
+  "node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/emscripten-module-Q67P5WYC.mjs"() {
     init_chunk_FGV2HSCH();
     emscripten_module_default = QuickJSRaw;
   }
 });
 
-// wt/node_modules/@jitl/quickjs-ffi-types/dist/index.mjs
+// node_modules/@jitl/quickjs-ffi-types/dist/index.mjs
 var EvalFlags, IntrinsicsFlags, JSPromiseStateEnum, GetOwnPropertyNamesFlags, IsEqualOp;
 var init_dist = __esm({
-  "wt/node_modules/@jitl/quickjs-ffi-types/dist/index.mjs"() {
+  "node_modules/@jitl/quickjs-ffi-types/dist/index.mjs"() {
     EvalFlags = { JS_EVAL_TYPE_GLOBAL: 0, JS_EVAL_TYPE_MODULE: 1, JS_EVAL_TYPE_DIRECT: 2, JS_EVAL_TYPE_INDIRECT: 3, JS_EVAL_TYPE_MASK: 3, JS_EVAL_FLAG_STRICT: 8, JS_EVAL_FLAG_STRIP: 16, JS_EVAL_FLAG_COMPILE_ONLY: 32, JS_EVAL_FLAG_BACKTRACE_BARRIER: 64 };
     IntrinsicsFlags = { BaseObjects: 1, Date: 2, Eval: 4, StringNormalize: 8, RegExp: 16, RegExpCompiler: 32, JSON: 64, Proxy: 128, MapSet: 256, TypedArrays: 512, Promise: 1024, BigInt: 2048, BigFloat: 4096, BigDecimal: 8192, OperatorOverloading: 16384, BignumExt: 32768 };
     JSPromiseStateEnum = { Pending: 0, Fulfilled: 1, Rejected: 2 };
@@ -2548,7 +2548,7 @@ var init_dist = __esm({
   }
 });
 
-// wt/node_modules/quickjs-emscripten-core/dist/chunk-V2S4ZYJR.mjs
+// node_modules/quickjs-emscripten-core/dist/chunk-V2S4ZYJR.mjs
 function debugLog(...args) {
   QTS_DEBUG && console.log("quickjs-emscripten:", ...args);
 }
@@ -2635,7 +2635,7 @@ function applyModuleEvalRuntimeOptions(runtime, options) {
 }
 var __defProp3, __export2, QTS_DEBUG, errors_exports, QuickJSUnwrapError, QuickJSWrongOwner, QuickJSUseAfterFree, QuickJSNotImplemented, QuickJSAsyncifyError, QuickJSAsyncifySuspended, QuickJSMemoryLeakDetected, QuickJSEmscriptenModuleError, QuickJSUnknownIntrinsic, QuickJSPromisePending, QuickJSEmptyGetOwnPropertyNames, QuickJSHostRefRangeExceeded, QuickJSHostRefInvalid, AwaitYield, UsingDisposable, SymbolDispose, prototypeAsAny, Lifetime, StaticLifetime, WeakLifetime, Scope, AbstractDisposableResult, DisposableSuccess, DisposableFail, DisposableResult, QuickJSDeferredPromise, ModuleMemory, DefaultIntrinsics, QuickJSIterator, INT32_MIN, INT32_MAX, INVALID_HOST_REF_ID, HostRefMap, HostRef, ContextMemory, QuickJSContext, QuickJSRuntime, QuickJSEmscriptenModuleCallbacks, QuickJSModuleCallbacks, QuickJSWASMModule;
 var init_chunk_V2S4ZYJR = __esm({
-  "wt/node_modules/quickjs-emscripten-core/dist/chunk-V2S4ZYJR.mjs"() {
+  "node_modules/quickjs-emscripten-core/dist/chunk-V2S4ZYJR.mjs"() {
     init_dist();
     init_dist();
     __defProp3 = Object.defineProperty;
@@ -3665,7 +3665,7 @@ Attempted to suspend at:`);
   }
 });
 
-// wt/node_modules/quickjs-emscripten-core/dist/module-ES6BEMUI.mjs
+// node_modules/quickjs-emscripten-core/dist/module-ES6BEMUI.mjs
 var module_ES6BEMUI_exports = {};
 __export(module_ES6BEMUI_exports, {
   QuickJSModuleCallbacks: () => QuickJSModuleCallbacks,
@@ -3674,16 +3674,16 @@ __export(module_ES6BEMUI_exports, {
   applyModuleEvalRuntimeOptions: () => applyModuleEvalRuntimeOptions
 });
 var init_module_ES6BEMUI = __esm({
-  "wt/node_modules/quickjs-emscripten-core/dist/module-ES6BEMUI.mjs"() {
+  "node_modules/quickjs-emscripten-core/dist/module-ES6BEMUI.mjs"() {
     init_chunk_V2S4ZYJR();
   }
 });
 
-// wt/node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
+// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
 var variant = { type: "sync", importFFI: () => Promise.resolve().then(() => (init_ffi(), ffi_exports)).then((mod) => mod.QuickJSFFI), importModuleLoader: () => Promise.resolve().then(() => (init_emscripten_module_Q67P5WYC(), emscripten_module_Q67P5WYC_exports)).then((mod) => mod.default) };
 var src_default = variant;
 
-// wt/node_modules/quickjs-emscripten-core/dist/index.mjs
+// node_modules/quickjs-emscripten-core/dist/index.mjs
 init_dist();
 async function newQuickJSWASMModuleFromVariant(variantOrPromise) {
   let variant2 = smartUnwrap(await variantOrPromise), [wasmModuleLoader, QuickJSFFI2, { QuickJSWASMModule: QuickJSWASMModule2 }] = await Promise.all([variant2.importModuleLoader().then(smartUnwrap), variant2.importFFI(), Promise.resolve().then(() => (init_module_ES6BEMUI(), module_ES6BEMUI_exports)).then(smartUnwrap)]), wasmModule = await wasmModuleLoader();
@@ -3701,7 +3701,7 @@ function shouldInterruptAfterDeadline(deadline) {
   };
 }
 
-// wt/packages/core/src/engines.ts
+// packages/core/src/engines.ts
 var engines = null;
 var quickjs = null;
 function setEngines(next) {
@@ -3732,10 +3732,10 @@ function loadSandbox() {
   return quickjs;
 }
 
-// wt/packages/sdk/src/index.ts
+// packages/sdk/src/index.ts
 var API_VERSION = 3;
 
-// wt/packages/core/src/project.ts
+// packages/core/src/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
 function normalizeAbsolute(path2) {
@@ -3799,7 +3799,7 @@ function fsHost(cwd, project) {
   return (request) => JSON.stringify(answer(request));
 }
 
-// wt/packages/core/src/api.ts
+// packages/core/src/api.ts
 var MIN_API_VERSION = 3;
 function unsupported(api) {
   if (!Number.isInteger(api) || api < 1) {
@@ -3835,18 +3835,18 @@ function environmentFor(api, ctx, project) {
 var SDK = "@wellactually/sdk";
 var current = `"${SDK}/v${API_VERSION}"`;
 
-// wt/packages/core/src/licenses.ts
+// packages/core/src/licenses.ts
 var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
 var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
 var RULE = "-".repeat(72);
 
-// wt/packages/core/src/bundle.ts
+// packages/core/src/bundle.ts
 var BUNDLE_GLOBAL = "__principle";
 var MAX_BUNDLE_BYTES = 1024 * 1024;
 var SDK2 = "@wellactually/sdk";
 var SDK_NOW = `${SDK2}/v${API_VERSION}`;
 
-// wt/packages/core/src/sandbox.ts
+// packages/core/src/sandbox.ts
 var DEFAULT_LIMITS = {
   ms: 100,
   memoryBytes: 32 * 1024 * 1024
@@ -4030,11 +4030,11 @@ function validateFindings(json, ctx, project = null) {
   return { findings, dropped };
 }
 
-// wt/packages/core/src/principle.ts
+// packages/core/src/principle.ts
 var MAX_TOTAL_BYTES = 512 * 1024;
 var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 
-// wt/packages/core/src/fs.ts
+// packages/core/src/fs.ts
 import fs from "node:fs";
 import path from "node:path";
 var MAX_READ_BYTES = 512 * 1024;
@@ -4088,7 +4088,7 @@ function diskFiles() {
   };
 }
 
-// wt/packages/core/src/pool.ts
+// packages/core/src/pool.ts
 import { parentPort, Worker } from "node:worker_threads";
 function failed(error) {
   return { findings: [], error, dropped: [], ms: 0 };
@@ -4112,10 +4112,10 @@ async function serveDetectors() {
   port.postMessage({ ready: true });
 }
 
-// wt/packages/core/src/probe.ts
+// packages/core/src/probe.ts
 var MAX_FILE_BYTES = 512 * 1024;
 
-// wt/packages/core/src/node.ts
+// packages/core/src/node.ts
 var sandbox = null;
 setEngines({
   // Loaded on first use. The hook only runs detectors and never builds one,
@@ -4135,5 +4135,5 @@ setEngines({
   quickjs: () => sandbox ??= newQuickJSWASMModuleFromVariant(src_default)
 });
 
-// wt/packages/cli/src/worker.ts
+// packages/cli/src/worker.ts
 void serveDetectors();

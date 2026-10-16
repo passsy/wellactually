@@ -29,4 +29,7 @@ await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/main.ts
 // A worker loads its script from scratch, so it gets only the isolate. The hook looks for it beside the command.
 const worker = path.join(path.dirname(outfile), "wellactually-worker.mjs");
 await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/worker.ts")], outfile: worker });
-console.log(`built ${path.relative(process.cwd(), outfile)} and ${path.basename(worker)}`);
+// The hook starts this one after it has answered, to write its log line without loading the whole command.
+const logWriter = path.join(path.dirname(outfile), "wellactually-log.mjs");
+await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/log-writer.ts")], outfile: logWriter });
+console.log(`built ${path.relative(process.cwd(), outfile)}, ${path.basename(worker)} and ${path.basename(logWriter)}`);

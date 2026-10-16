@@ -18,6 +18,7 @@ import {
   switchedOff,
   writeShown,
 } from "@wellactually/core/node";
+import { excerpt, type HookLogEntry, someFindings } from "./hook-log.ts";
 import { noteToolUse } from "./rater.ts";
 
 const MAX_FILE_BYTES = 512 * 1024;
@@ -28,29 +29,40 @@ const MAX_FILE_BYTES = 512 * 1024;
  *
  * It never touches the network. Syncing is a separate process started at
  * session start, so a slow registry cannot slow down an edit.
+ *
+ * What it did goes into `log`, when one is given, for the hook log.
  */
-export async function runHook(stdin: string): Promise<string> {
+export async function runHook(stdin: string, log?: HookLogEntry): Promise<string> {
   const payload = JSON.parse(stdin) as HookPayload;
   const event = payload.hook_event_name ?? "";
+  if (log) {
+    Object.assign(log, { hook: event, tool: payload.tool_name, session: payload.session_id, transcript: payload.transcript_path, cwd: payload.cwd });
+  }
+  const note = (text: string): string => {
+    if (log) {
+      log.note = text;
+    }
+    return "";
+  };
 
   if (event === "SessionStart") {
     startBackgroundSync();
-    return "";
+    return note("started the background sync");
   }
   if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
     if (payload.tool_use_id && payload.transcript_path) {
       await noteToolUse(payload.tool_use_id, payload.transcript_path);
     }
-    return "";
+    return note("noted the model for a rating");
   }
 
   const events = eventsOf(payload, readText);
   if (events.length === 0) {
-    return "";
+    return note("nothing in this call is an event detectors see");
   }
   const lockfile = readLockfile();
   if (lockfile.entries.length === 0) {
-    return "";
+    return note("the advisory board on this machine is empty; run `wellactually sync`");
   }
 
   // Worker threads are only started when an event concerns enough detectors to need them.
@@ -58,13 +70,13 @@ export async function runHook(stdin: string): Promise<string> {
   const setting = process.env.WELLACTUALLY_WORKERS;
   const pool = setting === "0" ? null : new DetectorPool(workerFile(), Number(setting) > 0 ? Number(setting) : undefined);
   try {
-    return await runEvents(payload, events, lockfile, pool);
+    return await runEvents(payload, events, lockfile, pool, log);
   } finally {
     await pool?.close();
   }
 }
 
-async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile, pool: DetectorPool | null): Promise<string> {
+async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile, pool: DetectorPool | null, log?: HookLogEntry): Promise<string> {
   const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
   const shown = readShown(sessionId);
@@ -78,6 +90,23 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
     // What is switched off belongs to the project the file is in, which need not be the one the session started in.
     const off = new Set(switchedOff(ctx.file ? path.dirname(ctx.file.path) : cwd).keys());
     const run = await runBoard(ctx, lockfile, off, pool, parallelFrom);
+    log?.events.push({
+      event: ctx.event,
+      file: ctx.file?.path,
+      written: ctx.event === "write" ? ctx.file?.written.map((written) => written.line) : undefined,
+      command: excerpt(ctx.command),
+      text: ctx.file ? undefined : excerpt(ctx.event === "command" ? null : ctx.text),
+      detectors: run.detectors.map((detector) => ({
+        id: detector.id,
+        version: detector.version,
+        ms: Math.round(detector.ms),
+        findings: someFindings(detector.findings),
+        dropped: detector.dropped.length > 0 ? detector.dropped : undefined,
+        error: detector.error ?? undefined,
+      })),
+      skipped: run.skipped.filter((skipped) => skipped.reason !== "globs"),
+      unmatched: run.skipped.filter((skipped) => skipped.reason === "globs").length,
+    });
 
     // Counted per event a principle fired in, whether or not its advice is shown again.
     // Principles added from a local directory belong to no registry and are not counted.

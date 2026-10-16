@@ -20,6 +20,28 @@ describe("running the advisory board", () => {
     expect(run.failures).toEqual([]);
     expect(run.firings.map((firing) => [firing.principle.id, firing.principle.version])).toEqual([["me/grid", 1]]);
   });
+
+  test("reports every detector that ran, and why the others did not", async () => {
+    process.env.WELLACTUALLY_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-board-"));
+    const fires = await buildBundle({ "detector.ts": `${sdk} onPrompt({ detect: () => [{ match: "hello" }] });` });
+    const quiet = await buildBundle({ "detector.ts": `${sdk} onPrompt({ detect: () => [] });` });
+    const prompt = { title: "T", summary: "", tags: [], events: ["prompt" as const], globs: [], handlers, api: API_VERSION };
+    const write = { ...prompt, events: ["write" as const], handlers: [{ event: "write" as const, globs: ["**/*.ts"] }] };
+    writeCached({ id: "a/fires", version: 2, hash: "1".repeat(64), manifest: prompt, advice: "A", bundle: fires });
+    writeCached({ id: "a/quiet", version: 1, hash: "2".repeat(64), manifest: prompt, advice: "A", bundle: quiet });
+    writeCached({ id: "a/writes", version: 1, hash: "3".repeat(64), manifest: write, advice: "A", bundle: quiet });
+    const entries = ["fires", "quiet", "writes", "off"].map((name, index) => ({ id: `a/${name}`, version: 1, hash: String(index + 1).repeat(64), enabled: true }));
+
+    const run = await runBoard(textCtx("prompt", "hello"), { syncedAt: null, entries }, new Set(["a/off"]));
+    expect(run.detectors.map(({ id, findings, error }) => ({ id, findings, error }))).toEqual([
+      { id: "a/fires", findings: [{ match: "hello" }], error: null },
+      { id: "a/quiet", findings: [], error: null },
+    ]);
+    expect(run.skipped).toEqual([
+      { id: "a/writes", reason: "globs" },
+      { id: "a/off", reason: "off" },
+    ]);
+  });
 });
 
 describe("running the advisory board on worker threads", () => {

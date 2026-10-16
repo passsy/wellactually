@@ -100,6 +100,21 @@ export interface BoardRun {
   firings: Firing[];
   /** Principles that could not run, with the reason. Shown once, never silently skipped. */
   failures: { id: string; error: string }[];
+  /** What every detector that applied reported, firing or not, for the hook log. */
+  detectors: DetectorReport[];
+  /** Principles that did not run: switched off, missing from the cache, or not about this event. */
+  skipped: { id: string; reason: "off" | "not cached" | "globs" }[];
+  ms: number;
+}
+
+/** One detector's run on one event, as the hook log records it. */
+export interface DetectorReport {
+  id: string;
+  version: number;
+  findings: Finding[];
+  /** What the host left out of the findings, with the reason. */
+  dropped: string[];
+  error: string | null;
   ms: number;
 }
 
@@ -131,13 +146,14 @@ export async function runBoard(
 ): Promise<BoardRun> {
   const disk = diskFiles();
   const started = performance.now();
-  const run: BoardRun = { firings: [], failures: [], ms: 0 };
+  const run: BoardRun = { firings: [], failures: [], detectors: [], skipped: [], ms: 0 };
   const applying: CachedPrinciple[] = [];
   const skipped = `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it`;
 
   for (const entry of lockfile.entries) {
     // Off on the website, or switched off on this machine for this project or everywhere.
     if (!entry.enabled || off.has(entry.id)) {
+      run.skipped.push({ id: entry.id, reason: "off" });
       continue;
     }
     const cached = readCached(entry.hash);
@@ -146,10 +162,13 @@ export async function runBoard(
     const principle = cached && { ...cached, id: entry.id, version: entry.version };
     if (!principle) {
       run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; run `wellactually sync`" });
+      run.skipped.push({ id: entry.id, reason: "not cached" });
       continue;
     }
     if (applies(principle.manifest, ctx)) {
       applying.push(principle);
+    } else {
+      run.skipped.push({ id: entry.id, reason: "globs" });
     }
   }
 
@@ -170,6 +189,7 @@ export async function runBoard(
 
   applying.forEach((principle, index) => {
     const result = results[index] as DetectorRun;
+    run.detectors.push({ id: principle.id, version: principle.version, findings: result.findings, dropped: result.dropped, error: result.error, ms: result.ms });
     if (result.error) {
       run.failures.push({ id: principle.id, error: result.error });
     } else if (result.findings.length > 0) {
