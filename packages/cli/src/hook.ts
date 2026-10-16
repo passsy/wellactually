@@ -9,12 +9,14 @@ import {
   PARALLEL_FROM,
   boardHome,
   eventsOf,
+  forgetShown,
   frame,
   readConfig,
   readLockfile,
   readShown,
   recordDetections,
   runBoard,
+  sweepShown,
   switchedOff,
   writeShown,
 } from "@wellactually/core/node";
@@ -47,7 +49,14 @@ export async function runHook(stdin: string, log?: HookLogEntry): Promise<string
 
   if (event === "SessionStart") {
     startBackgroundSync();
-    return note("started the background sync");
+    // A session that crashed never reaches SessionEnd, so one starting tidies up after it.
+    const swept = sweepShown();
+    return note(swept > 0 ? `started the background sync and swept ${swept} old sessions` : "started the background sync");
+  }
+  if (event === "PostCompact" || event === "SessionEnd") {
+    // A compaction drops the advice from the context, so it may arrive in full again.
+    forgetShown(payload.session_id ?? "unknown");
+    return note("forgot what this session was shown");
   }
   if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
     if (payload.tool_use_id && payload.transcript_path) {
@@ -79,7 +88,8 @@ export async function runHook(stdin: string, log?: HookLogEntry): Promise<string
 async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile, pool: DetectorPool | null, log?: HookLogEntry): Promise<string> {
   const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
-  const shown = readShown(sessionId);
+  const agentId = payload.agent_id;
+  const shown = readShown(sessionId, agentId);
   const parts: string[] = [];
   const failures = new Map<string, string>();
   const cwd = payload.cwd ?? process.cwd();
@@ -146,7 +156,7 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
   for (const [id] of newFailures) {
     shown.add(`failure:${id}`);
   }
-  writeShown(sessionId, shown);
+  writeShown(sessionId, shown, agentId);
 
   return JSON.stringify({
     hookSpecificOutput: { hookEventName: event, additionalContext: parts.join("\n\n") },

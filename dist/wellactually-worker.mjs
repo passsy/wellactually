@@ -4088,6 +4088,9 @@ function diskFiles() {
   };
 }
 
+// packages/core/src/board.ts
+var SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // packages/core/src/pool.ts
 import { parentPort, Worker } from "node:worker_threads";
 function failed(error) {

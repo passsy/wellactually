@@ -13434,14 +13434,58 @@ function frame(ctx, firings, alreadyShown = /* @__PURE__ */ new Set()) {
   lines.push("</wellactually>");
   return lines.join("\n");
 }
-function readShown(sessionId) {
-  return new Set(readJson(sessionPath(sessionId)) ?? []);
+function readShown(sessionId, agentId) {
+  return new Set(readJson(sessionPath(sessionId, agentId)) ?? []);
 }
-function writeShown(sessionId, shown) {
-  writeJson(sessionPath(sessionId), [...shown]);
+function writeShown(sessionId, shown, agentId) {
+  writeJson(sessionPath(sessionId, agentId), [...shown]);
 }
-function sessionPath(sessionId) {
-  return path2.join(boardHome(), "sessions", `${sessionId.replace(/[^A-Za-z0-9_-]/g, "_")}.json`);
+function forgetShown(sessionId) {
+  const dir = sessionsDir();
+  const id = safeId(sessionId);
+  let names;
+  try {
+    names = fs2.readdirSync(dir);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    if (name === `${id}.json` || name.startsWith(`${id}.`)) {
+      fs2.rmSync(path2.join(dir, name), { force: true });
+    }
+  }
+}
+var SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+function sweepShown(now = Date.now()) {
+  const dir = sessionsDir();
+  let names;
+  try {
+    names = fs2.readdirSync(dir);
+  } catch {
+    return 0;
+  }
+  let removed = 0;
+  for (const name of names) {
+    const file2 = path2.join(dir, name);
+    try {
+      if (now - fs2.statSync(file2).mtimeMs > SESSION_MAX_AGE_MS) {
+        fs2.rmSync(file2, { force: true });
+        removed++;
+      }
+    } catch {
+    }
+  }
+  return removed;
+}
+function sessionsDir() {
+  return path2.join(boardHome(), "sessions");
+}
+function safeId(id) {
+  return id.replace(/[^A-Za-z0-9_-]/g, "_");
+}
+function sessionPath(sessionId, agentId) {
+  const agent = agentId ? `.${safeId(agentId)}` : "";
+  return path2.join(sessionsDir(), `${safeId(sessionId)}${agent}.json`);
 }
 
 // packages/core/src/detections.ts
@@ -15096,7 +15140,12 @@ async function runHook(stdin, log) {
   };
   if (event === "SessionStart") {
     startBackgroundSync();
-    return note("started the background sync");
+    const swept = sweepShown();
+    return note(swept > 0 ? `started the background sync and swept ${swept} old sessions` : "started the background sync");
+  }
+  if (event === "PostCompact" || event === "SessionEnd") {
+    forgetShown(payload.session_id ?? "unknown");
+    return note("forgot what this session was shown");
   }
   if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
     if (payload.tool_use_id && payload.transcript_path) {
@@ -15123,7 +15172,8 @@ async function runHook(stdin, log) {
 async function runEvents(payload, events, lockfile, pool, log) {
   const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
-  const shown = readShown(sessionId);
+  const agentId = payload.agent_id;
+  const shown = readShown(sessionId, agentId);
   const parts = [];
   const failures = /* @__PURE__ */ new Map();
   const cwd = payload.cwd ?? process.cwd();
@@ -15181,7 +15231,7 @@ async function runEvents(payload, events, lockfile, pool, log) {
   for (const [id] of newFailures) {
     shown.add(`failure:${id}`);
   }
-  writeShown(sessionId, shown);
+  writeShown(sessionId, shown, agentId);
   return JSON.stringify({
     hookSpecificOutput: { hookEventName: event, additionalContext: parts.join("\n\n") }
   });

@@ -254,15 +254,83 @@ export function frame(ctx: Ctx, firings: Firing[], alreadyShown: ReadonlySet<str
   return lines.join("\n");
 }
 
-/** Hashes whose full advice a session has already been shown. */
-export function readShown(sessionId: string): Set<string> {
-  return new Set(readJson<string[]>(sessionPath(sessionId)) ?? []);
+/**
+ * Hashes whose full advice a context has already been shown.
+ *
+ * A subagent has a context window of its own, so advice the main thread saw is
+ * not in it. Each agent of a session keeps its own list, and the main thread's
+ * keeps the name it always had.
+ */
+export function readShown(sessionId: string, agentId?: string): Set<string> {
+  return new Set(readJson<string[]>(sessionPath(sessionId, agentId)) ?? []);
 }
 
-export function writeShown(sessionId: string, shown: ReadonlySet<string>): void {
-  writeJson(sessionPath(sessionId), [...shown]);
+export function writeShown(sessionId: string, shown: ReadonlySet<string>, agentId?: string): void {
+  writeJson(sessionPath(sessionId, agentId), [...shown]);
 }
 
-function sessionPath(sessionId: string): string {
-  return path.join(boardHome(), "sessions", `${sessionId.replace(/[^A-Za-z0-9_-]/g, "_")}.json`);
+/**
+ * Forgets what every agent of a session was shown.
+ *
+ * After a compaction the advice is no longer in the context, so it has to
+ * arrive in full again. Only the main thread is told about a compaction, which
+ * is why the lists of its subagents go too.
+ */
+export function forgetShown(sessionId: string): void {
+  const dir = sessionsDir();
+  const id = safeId(sessionId);
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    if (name === `${id}.json` || name.startsWith(`${id}.`)) {
+      fs.rmSync(path.join(dir, name), { force: true });
+    }
+  }
+}
+
+/** A session not heard from in this long is over, even when it never said so. */
+export const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Removes the lists of sessions that ended without saying so, by a crash or a
+ * reboot. Pruning one that is somehow still alive only shows its advice in full once more.
+ */
+export function sweepShown(now: number = Date.now()): number {
+  const dir = sessionsDir();
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return 0;
+  }
+  let removed = 0;
+  for (const name of names) {
+    const file = path.join(dir, name);
+    try {
+      if (now - fs.statSync(file).mtimeMs > SESSION_MAX_AGE_MS) {
+        fs.rmSync(file, { force: true });
+        removed++;
+      }
+    } catch {
+      // Another hook removed it first.
+    }
+  }
+  return removed;
+}
+
+function sessionsDir(): string {
+  return path.join(boardHome(), "sessions");
+}
+
+function safeId(id: string): string {
+  return id.replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+function sessionPath(sessionId: string, agentId?: string): string {
+  const agent = agentId ? `.${safeId(agentId)}` : "";
+  return path.join(sessionsDir(), `${safeId(sessionId)}${agent}.json`);
 }

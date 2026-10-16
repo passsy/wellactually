@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { API_VERSION } from "@wellactually/sdk";
-import { buildBundle, DetectorPool, describeFinding, fileCtx, frame, readConfig, runBoard, textCtx, writeCached, writeConfig } from "../src/node.ts";
+import { buildBundle, DetectorPool, describeFinding, fileCtx, forgetShown, frame, readConfig, readShown, runBoard, SESSION_MAX_AGE_MS, sweepShown, textCtx, writeCached, writeConfig, writeShown } from "../src/node.ts";
 
 const sdk = `import { onPrompt } from "@wellactually/sdk/v3";`;
 const handlers = [{ event: "prompt" as const, globs: [] }];
@@ -132,5 +132,43 @@ describe("the stored login", () => {
 
     writeConfig({ ...login, registry: "http://localhost:3211" });
     expect(readConfig().registry).toBe("http://localhost:3211");
+  });
+});
+
+describe("remembering what a session was shown", () => {
+  test("a subagent keeps its own list, because the main thread's advice is not in its context", () => {
+    process.env.WELLACTUALLY_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-shown-"));
+    writeShown("s1", new Set(["a"]));
+
+    expect([...readShown("s1", "agent-7")]).toEqual([]);
+    writeShown("s1", new Set(["b"]), "agent-7");
+    expect([...readShown("s1")]).toEqual(["a"]);
+    expect([...readShown("s1", "agent-7")]).toEqual(["b"]);
+  });
+
+  test("a compaction forgets every agent of that session and no other session", () => {
+    process.env.WELLACTUALLY_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-shown-"));
+    writeShown("s1", new Set(["a"]));
+    writeShown("s1", new Set(["b"]), "agent-7");
+    writeShown("s10", new Set(["c"]));
+
+    forgetShown("s1");
+
+    expect(readShown("s1").size).toBe(0);
+    expect(readShown("s1", "agent-7").size).toBe(0);
+    expect([...readShown("s10")]).toEqual(["c"]);
+  });
+
+  test("the list of a session nobody heard from in a week is swept away", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-shown-"));
+    process.env.WELLACTUALLY_HOME = home;
+    writeShown("crashed", new Set(["a"]));
+    writeShown("running", new Set(["b"]));
+    const old = (Date.now() - SESSION_MAX_AGE_MS - 60_000) / 1000;
+    fs.utimesSync(path.join(home, "sessions", "crashed.json"), old, old);
+
+    expect(sweepShown()).toBe(1);
+    expect(readShown("crashed").size).toBe(0);
+    expect([...readShown("running")]).toEqual(["b"]);
   });
 });
