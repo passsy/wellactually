@@ -14996,6 +14996,10 @@ async function raterOf(clientName, meta3) {
   if (turn && typeof turn === "object" && typeof turn.model === "string") {
     model = turn.model;
   }
+  const named = meta3?.["wellactually/model"];
+  if (!model && typeof named === "string") {
+    model = named;
+  }
   const toolUseId = meta3?.["claudecode/toolUseId"];
   if (!model && typeof toolUseId === "string") {
     model = await claudeModel(toolUseId);
@@ -44858,7 +44862,7 @@ Your advisory board
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
 
 Integration
-  wellactually hook                     Handle one Claude Code or Codex hook payload from stdin
+  wellactually hook                     Handle one agent hook payload from stdin
   wellactually mcp                      Serve the authoring commands as an MCP server
 
 Every authoring command takes --json.`;

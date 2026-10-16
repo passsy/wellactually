@@ -22,6 +22,10 @@ describe("who rates", () => {
     expect(await raterOf("codex-mcp-client", meta)).toEqual({ agent: "codex", model: "gpt-6.1-sol" });
   });
 
+  test("the pi plugin names the model it knows", async () => {
+    expect(await raterOf("pi", { "wellactually/model": "qwen3-coder-next" })).toEqual({ agent: "pi", model: "qwen3-coder-next" });
+  });
+
   test("Claude Code's model comes from the transcript the hook noted", async () => {
     const file = transcript([call("toolu_1", "claude-sonnet-5-5"), { type: "user", message: { content: [{ type: "tool_result", tool_use_id: "toolu_2" }] } }, call("toolu_2", "claude-opus-5-5")]);
     await noteToolUse("toolu_1", file);

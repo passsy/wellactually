@@ -71,7 +71,7 @@ Your advisory board
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
 
 Integration
-  wellactually hook                     Handle one Claude Code or Codex hook payload from stdin
+  wellactually hook                     Handle one agent hook payload from stdin
   wellactually mcp                      Serve the authoring commands as an MCP server
 
 Every authoring command takes --json.`;

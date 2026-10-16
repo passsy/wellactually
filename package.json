@@ -4,9 +4,20 @@
   "private": true,
   "type": "module",
   "description": "The Well Actually plugin, command and sandbox",
+  "keywords": [
+    "pi-package"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=22.18.0"
+  },
+  "pi": {
+    "extensions": [
+      "./dist/pi.mjs"
+    ],
+    "skills": [
+      "./opencode/skills"
+    ]
   },
   "workspaces": [
     "packages/*"

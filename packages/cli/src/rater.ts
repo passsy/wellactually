@@ -21,9 +21,10 @@ const TRANSCRIPT_TAIL = 8 * 1024 * 1024;
  * Works out who is rating from what the agent itself tells the MCP server,
  * never from what the model says about itself.
  *
- * Codex puts the model of the turn into every tool call. Claude Code only
- * names the tool call, and the model that made it is in the session's
- * transcript: the hook notes where that is before the call reaches the server.
+ * Codex puts the model of the turn into every tool call, and the pi plugin
+ * the model it knows. Claude Code only names the tool call, and the model
+ * that made it is in the session's transcript: the hook notes where that is
+ * before the call reaches the server.
  */
 export async function raterOf(clientName: string | undefined, meta: Record<string, unknown> | undefined): Promise<Rater> {
   const agent = agentOf(clientName);
@@ -31,6 +32,11 @@ export async function raterOf(clientName: string | undefined, meta: Record<strin
   const turn = meta?.["x-codex-turn-metadata"];
   if (turn && typeof turn === "object" && typeof (turn as { model?: unknown }).model === "string") {
     model = (turn as { model: string }).model;
+  }
+  // An agent without MCP of its own, like pi, names the model itself when its plugin calls the server.
+  const named = meta?.["wellactually/model"];
+  if (!model && typeof named === "string") {
+    model = named;
   }
   const toolUseId = meta?.["claudecode/toolUseId"];
   if (!model && typeof toolUseId === "string") {

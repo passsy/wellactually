@@ -46,6 +46,22 @@ codex plugin add wellactually@wellactually
 Then open Codex, type `/hooks` and press `t` to trust the plugin's hooks, then type `$wellactually:login`.
 Codex does not run a new plugin's hooks until you trust them, so no principle reaches the agent before that.
 
+OpenCode:
+
+```bash
+opencode plugin add 'github:passsy/wellactually#path:opencode'
+```
+
+Then open OpenCode and type `/wellactually-login`.
+
+pi:
+
+```bash
+pi install git:github.com/passsy/wellactually
+```
+
+Then open pi and type `/skill:wellactually-login`.
+
 The plugin needs Node 20 or newer and nothing else.
 
 ## What it does on your machine
@@ -129,6 +145,7 @@ The `v3` is the detector API version it is written against.
 | ------------------- | ----------------------------------------------------------------------------- |
 | `hooks`, `commands` | The plugin: when the hook runs, and the `login` and `sync` commands.          |
 | `dist`              | The command as one file, built from `packages/cli`. The plugin runs it.       |
+| `opencode`          | The plugin for OpenCode, with its own copy of the command and the skills.     |
 | `packages/core`     | Builds, checks and runs principles: the isolate and the local advisory board. |
 | `packages/sdk`      | The types and helpers a detector may import.                                  |
 | `packages/cli`      | The `wellactually` command and its MCP server.                                |
@@ -150,7 +167,8 @@ npm test
 npm run build
 ```
 
-`npm run build` writes `dist/wellactually.mjs`, the file the plugin runs.
+`npm run build` writes `dist/wellactually.mjs`, the file the plugin runs, and next to it `opencode.mjs` and `pi.mjs`, the plugins of OpenCode and pi.
+The released `opencode` folder is a copy of these files that OpenCode installs on its own.
 
 ## License
 

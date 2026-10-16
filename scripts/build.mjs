@@ -32,4 +32,10 @@ await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/worker.
 // The hook starts this one after it has answered, to write its log line without loading the whole command.
 const logWriter = path.join(path.dirname(outfile), "wellactually-log.mjs");
 await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/log-writer.ts")], outfile: logWriter });
-console.log(`built ${path.relative(process.cwd(), outfile)}, ${path.basename(worker)} and ${path.basename(logWriter)}`);
+// The plugins of the agents that load a JavaScript module instead of running hooks: OpenCode and pi.
+// They start the command beside them, so they bundle none of it but the code that talks to it.
+const plugins = ["opencode", "pi"].map((agent) => path.join(path.dirname(outfile), `${agent}.mjs`));
+for (const plugin of plugins) {
+  await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/agents", `${path.basename(plugin, ".mjs")}.ts`)], outfile: plugin, banner: {} });
+}
+console.log(`built ${path.relative(process.cwd(), outfile)}, ${[worker, logWriter, ...plugins].map((file) => path.basename(file)).join(", ")}`);
