@@ -4118,6 +4118,9 @@ async function serveDetectors() {
 // packages/core/src/probe.ts
 var MAX_FILE_BYTES = 512 * 1024;
 
+// packages/core/src/turn.ts
+var SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // packages/core/src/node.ts
 var sandbox = null;
 setEngines({

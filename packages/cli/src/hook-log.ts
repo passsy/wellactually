@@ -19,6 +19,8 @@ export interface HookLogEntry {
   cwd?: string;
   /** Why no detector ran, when none did. */
   note?: string;
+  /** Git repositories of the session that could not be compared after a shell command, with the reason. */
+  repos?: { root: string; reason: string }[];
   events: HookLogEvent[];
   /** How many characters of advice the agent was shown. */
   shown: number;

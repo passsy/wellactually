@@ -5,10 +5,15 @@ import type { Ctx } from "@wellactually/sdk";
 import {
   type HookPayload,
   type Lockfile,
+  type TurnDiff,
   DetectorPool,
   PARALLEL_FROM,
+  absorbWrites,
   boardHome,
+  diffRepos,
+  ensureSnapshot,
   eventsOf,
+  forgetSnapshots,
   forgetShown,
   frame,
   readConfig,
@@ -16,7 +21,9 @@ import {
   readShown,
   recordDetections,
   runBoard,
+  snapshotRepos,
   sweepShown,
+  sweepSnapshots,
   switchedOff,
   writeShown,
 } from "@wellactually/core/node";
@@ -51,11 +58,15 @@ export async function runHook(stdin: string, log?: HookLogEntry): Promise<string
     startBackgroundSync();
     // A session that crashed never reaches SessionEnd, so one starting tidies up after it.
     const swept = sweepShown();
+    sweepSnapshots();
     return note(swept > 0 ? `started the background sync and swept ${swept} old sessions` : "started the background sync");
   }
   if (event === "PostCompact" || event === "SessionEnd") {
     // A compaction drops the advice from the context, so it may arrive in full again.
     forgetShown(payload.session_id ?? "unknown");
+    if (event === "SessionEnd" && payload.session_id) {
+      forgetSnapshots(payload.session_id);
+    }
     return note("forgot what this session was shown");
   }
   if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
@@ -65,13 +76,24 @@ export async function runHook(stdin: string, log?: HookLogEntry): Promise<string
     return note("noted the model for a rating");
   }
 
-  const events = eventsOf(payload, readText);
-  if (events.length === 0) {
-    return note("nothing in this call is an event detectors see");
-  }
   const lockfile = readLockfile();
   if (lockfile.entries.length === 0) {
     return note("the advisory board on this machine is empty; run `wellactually sync`");
+  }
+  const turn = followRepos(payload);
+  if (log && turn && turn.failures.length > 0) {
+    log.repos = turn.failures;
+  }
+  const events = eventsOf(payload, readText, turn);
+  if (event === "PostToolUse" && payload.session_id && !SHELL_TOOLS.has(payload.tool_name ?? "")) {
+    // A file tool reported its file already, so the next look after a shell command must not report it again.
+    const written = events.flatMap((ctx) => (ctx.event === "write" && ctx.file ? [ctx.file.path] : []));
+    if (written.length > 0) {
+      absorbWrites(payload.session_id, written);
+    }
+  }
+  if (events.length === 0) {
+    return note("nothing in this call is an event detectors see");
   }
 
   // Worker threads are only started when an event concerns enough detectors to need them.
@@ -161,6 +183,35 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
   return JSON.stringify({
     hookSpecificOutput: { hookEventName: event, additionalContext: parts.join("\n\n") },
   });
+}
+
+const SHELL_TOOLS = new Set(["Bash", "exec_command"]);
+
+/**
+ * Keeps track of the git repositories the session works in, so that what a
+ * shell command changed there reaches detectors as written files.
+ *
+ * A prompt starts a turn and snapshots them, so what a person changed
+ * between turns is not taken for the agent's. Before a shell command runs,
+ * a repository without a snapshot gets one. After it ran, the difference is
+ * what the command wrote.
+ */
+function followRepos(payload: HookPayload): TurnDiff | undefined {
+  const sessionId = payload.session_id;
+  const event = payload.hook_event_name ?? "";
+  const shell = SHELL_TOOLS.has(payload.tool_name ?? "");
+  if (!sessionId || process.env.WELLACTUALLY_GIT === "0") {
+    return undefined;
+  }
+  const cwd = payload.cwd ?? process.cwd();
+  if (event === "UserPromptSubmit") {
+    snapshotRepos(sessionId, [cwd]);
+  } else if (event === "PreToolUse" && shell) {
+    ensureSnapshot(sessionId, cwd);
+  } else if (event === "PostToolUse" && shell) {
+    return diffRepos(sessionId, cwd);
+  }
+  return undefined;
 }
 
 /**

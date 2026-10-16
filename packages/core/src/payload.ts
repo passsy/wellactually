@@ -1,8 +1,7 @@
-import os from "node:os";
 import path from "node:path";
 import { fileCtx, locateWritten, textCtx, type Ctx, type Where, type Written } from "@wellactually/sdk";
 import { projectRootOf, toPosix } from "./fs.ts";
-import { shellWrites } from "./shell.ts";
+import type { TurnDiff } from "./turn.ts";
 
 /** The fields of a Claude Code or Codex hook payload this host reads. */
 export interface HookPayload {
@@ -68,8 +67,13 @@ function printed(response: HookPayload["tool_response"]): string {
  * Where an event happened is worked out for each file, from the file. The
  * session's working directory only stands in when there is no file: for a
  * prompt and for a command.
+ *
+ * `turn` is what changed in the session's git repositories while a shell
+ * command ran. Each changed file is written like one from Write, whichever
+ * program wrote it. What a command writes outside a git repository is not
+ * seen.
  */
-export function eventsOf(payload: HookPayload, readFile: (absolute: string) => string | null): Ctx[] {
+export function eventsOf(payload: HookPayload, readFile: (absolute: string) => string | null, turn?: TurnDiff): Ctx[] {
   const event = payload.hook_event_name ?? "";
   const tool = payload.tool_name ?? "";
   const input = payload.tool_input ?? {};
@@ -99,11 +103,10 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
 
   if (SHELL_TOOLS.has(tool)) {
     const command = input.command ?? input.cmd ?? "";
-    // A file the command wrote, like `cat > lib/a.dart <<'EOF'`, is written like one from Write.
-    const writes = shellWrites(command, cwd, os.homedir()).flatMap(({ file: absolute, fragments }) => {
+    // A file the command changed, like `dart run build_runner build` does, is written like one from Write.
+    const writes = (turn?.writes ?? []).flatMap(({ file: absolute, written, isNew }) => {
       const content = readFile(absolute);
-      const written = content === null || fragments === null ? undefined : locateWritten(content, fragments);
-      return content === null || written?.length === 0 ? [] : [file("write", absolute, content, written)];
+      return content === null ? [] : [file("write", absolute, content, written, isNew)];
     });
     const text = printed(payload.tool_response).slice(0, MAX_OUTPUT_LENGTH);
     return text.trim() === "" ? writes : [...writes, textCtx("output", text, sessionRoot(), command, toPosix(cwd))];
