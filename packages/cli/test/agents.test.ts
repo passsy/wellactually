@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { eventsOf, type HookPayload } from "../src/payload.ts";
+import { eventsOf, type HookPayload } from "../src/hook/payload.ts";
 import { Pending, adviceOf } from "../src/agents/bridge.ts";
 import { opencodePayload } from "../src/agents/opencode.ts";
 import { piPayload } from "../src/agents/pi.ts";

@@ -5,8 +5,8 @@ import path from "node:path";
 import { describe, expect, test, vi } from "vitest";
 import { API_VERSION } from "@wellactually/sdk";
 import { buildBundle } from "@wellactually/core/node";
-import { writeCached, writeLockfile } from "../src/board.ts";
-import { LOG_MAX_AGE_MS, LOG_MAX_FILE_BYTES, writeHookLog } from "../src/hook-log.ts";
+import { writeCached, writeLockfile } from "../src/board/board.ts";
+import { LOG_MAX_AGE_MS, LOG_MAX_FILE_BYTES, writeHookLog } from "../src/hook/hook-log.ts";
 
 const main = path.resolve(import.meta.dirname, "../src/main.ts");
 

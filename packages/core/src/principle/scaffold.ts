@@ -1,5 +1,5 @@
 import { API_VERSION } from "@wellactually/sdk";
-import type { FileMap } from "./bundle.ts";
+import type { FileMap } from "../build/bundle.ts";
 import { isPrincipleId, PRINCIPLE_ID_RULE } from "./manifest.ts";
 
 /**

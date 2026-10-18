@@ -93,7 +93,7 @@ So they are contained.
   What an expert on your advisory board releases runs from your next sync, so follow the experts you trust.
   You can switch off any single principle, or unfollow the expert.
 
-The code that does this is in `packages/core`: `sandbox.ts` is the isolate, `board.ts` runs an advisory board.
+The code that does this is public: [`packages/core/src/detector/sandbox.ts`](packages/core/src/detector/sandbox.ts) is the isolate, and [`packages/cli/src/board/board.ts`](packages/cli/src/board/board.ts) runs an advisory board.
 
 ## What leaves your machine
 

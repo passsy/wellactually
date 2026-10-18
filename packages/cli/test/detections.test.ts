@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, test } from "vitest";
-import { drainDetections, recordDetections, type DetectionCount } from "../src/detections.ts";
+import { drainDetections, recordDetections, type DetectionCount } from "../src/board/detections.ts";
 
 const A = "a".repeat(64);
 const B = "b".repeat(64);

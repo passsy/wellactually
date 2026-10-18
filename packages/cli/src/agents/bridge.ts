@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { type HookPayload } from "../payload.ts";
+import { type HookPayload } from "../hook/payload.ts";
 
 /**
  * What OpenCode and pi plugins share: they have no hooks of their own that

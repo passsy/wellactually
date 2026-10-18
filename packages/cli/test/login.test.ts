@@ -2,9 +2,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { readConfig, writeConfig } from "../src/board.ts";
+import { readConfig, writeConfig } from "../src/board/board.ts";
 import { renderSync } from "../src/commands.ts";
-import { finishDeviceLogin, sync } from "../src/registry.ts";
+import { finishDeviceLogin, sync } from "../src/registry/client.ts";
 
 let home: string | undefined;
 beforeEach(() => {

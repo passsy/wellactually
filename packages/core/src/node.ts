@@ -8,8 +8,8 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import variant from "@jitl/quickjs-singlefile-mjs-release-sync";
 import { newQuickJSWASMModuleFromVariant, type QuickJSWASMModule } from "quickjs-emscripten-core";
-import { setEngines } from "./engines.ts";
-import { readFrom } from "./fs.ts";
+import { setEngines } from "./build/engines.ts";
+import { readFrom } from "./build/fs.ts";
 
 let sandbox: Promise<QuickJSWASMModule> | null = null;
 
@@ -40,4 +40,4 @@ async function loadEsbuild(): Promise<typeof import("esbuild")> {
 }
 
 export * from "./index.ts";
-export * from "./fs.ts";
+export * from "./build/fs.ts";

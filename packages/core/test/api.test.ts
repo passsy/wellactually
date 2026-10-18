@@ -61,8 +61,8 @@ describe("every version of the detector API", () => {
     expect(
       today,
       version === API_VERSION
-        ? `The event or the host functions changed. That is a new version of the detector API: raise API_VERSION in packages/sdk/src/index.ts, add the step back to version ${API_VERSION} in packages/core/src/api.ts, then run node scripts/freeze-api.mjs. Do not edit shape.json.`
-        : `Version ${version} is released and principles depend on it. Fix the step in packages/core/src/api.ts, not shape.json.`,
+        ? `The event or the host functions changed. That is a new version of the detector API: raise API_VERSION in packages/sdk/src/index.ts, add the step back to version ${API_VERSION} in packages/core/src/detector/api.ts, then run node scripts/freeze-api.mjs. Do not edit shape.json.`
+        : `Version ${version} is released and principles depend on it. Fix the step in packages/core/src/detector/api.ts, not shape.json.`,
     ).toEqual(shape(version));
   });
 });

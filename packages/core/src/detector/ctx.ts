@@ -1,6 +1,6 @@
 import { fileCtx, textCtx, type Ctx } from "@wellactually/sdk";
 import { matchesGlobs } from "./glob.ts";
-import type { Manifest } from "./manifest.ts";
+import type { Manifest } from "../principle/manifest.ts";
 
 // The events themselves are built by the SDK, so a test builds exactly what the hook builds.
 export { fileCtx, textCtx };

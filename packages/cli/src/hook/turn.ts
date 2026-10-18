@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Written } from "@wellactually/sdk";
-import { boardHome } from "./board.ts";
+import { boardHome } from "../board/board.ts";
 
 /** A file that changed in a git repository since the last look, with the lines that are new in it. */
 export interface TurnWrite {

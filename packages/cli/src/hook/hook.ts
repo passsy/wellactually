@@ -3,14 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Ctx } from "@wellactually/sdk";
 import { type Lockfile, ADVICE_BUDGET, adviceBytes } from "@wellactually/core/node";
-import { type EventFirings, PARALLEL_FROM, boardHome, forgetShown, frameEvents, readConfig, readLockfile, readShown, runBoard, sweepShown, writeShown } from "./board.ts";
-import { recordDetections } from "./detections.ts";
+import { type EventFirings, PARALLEL_FROM, boardHome, forgetShown, frameEvents, readConfig, readLockfile, readShown, runBoard, sweepShown, writeShown } from "../board/board.ts";
+import { recordDetections } from "../board/detections.ts";
 import { type HookPayload, eventsOf } from "./payload.ts";
-import { DetectorPool } from "./pool.ts";
-import { switchedOff } from "./switches.ts";
+import { DetectorPool } from "../board/pool.ts";
+import { switchedOff } from "../board/switches.ts";
 import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, snapshotRepos, sweepSnapshots } from "./turn.ts";
 import { excerpt, type HookLogEntry, someFindings } from "./hook-log.ts";
-import { noteToolUse } from "./rater.ts";
+import { noteToolUse } from "../registry/rater.ts";
 
 const MAX_FILE_BYTES = 512 * 1024;
 

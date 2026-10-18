@@ -2,8 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, test } from "vitest";
-import { writeLockfile } from "../src/board.ts";
-import { projectRoot, switchedOff, switchPrinciple } from "../src/switches.ts";
+import { writeLockfile } from "../src/board/board.ts";
+import { projectRoot, switchedOff, switchPrinciple } from "../src/board/switches.ts";
 
 describe("switching a principle off on this machine", () => {
   let project: string;

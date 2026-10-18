@@ -1,5 +1,5 @@
 import { EVENTS, FILE_EVENTS, type EventName } from "@wellactually/sdk";
-import type { PackageInfo } from "./packages.ts";
+import type { PackageInfo } from "../build/packages.ts";
 
 /**
  * What a host needs to know about a principle without running it.

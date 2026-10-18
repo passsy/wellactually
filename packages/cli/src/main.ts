@@ -4,10 +4,10 @@ import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
 import { approvalKey, describeReview, type PackageInfo } from "@wellactually/core/node";
-import { scaffold } from "./files.ts";
-import { boardHome, readConfig, readCached, readLockfile, writeConfig } from "./board.ts";
-import { serveDetectors } from "./pool.ts";
-import { switchedOff, switchPrinciple } from "./switches.ts";
+import { scaffold } from "./board/files.ts";
+import { boardHome, readConfig, readCached, readLockfile, writeConfig } from "./board/board.ts";
+import { serveDetectors } from "./board/pool.ts";
+import { switchedOff, switchPrinciple } from "./board/switches.ts";
 import {
   addLocal,
   ApprovalError,
@@ -35,10 +35,10 @@ import {
   testPrinciple,
   tryPrinciple,
 } from "./commands.ts";
-import { logHookFailure, runHook } from "./hook.ts";
-import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook-log.ts";
+import { logHookFailure, runHook } from "./hook/hook.ts";
+import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
-import { finishDeviceLogin, logout, RegistryError, startDeviceLogin, sync, whoami, type DraftResult } from "./registry.ts";
+import { finishDeviceLogin, logout, RegistryError, startDeviceLogin, sync, whoami, type DraftResult } from "./registry/client.ts";
 
 const HELP = `wellactually: author principles and run your advisory board
 

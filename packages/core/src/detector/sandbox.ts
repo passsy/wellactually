@@ -1,8 +1,8 @@
 import { shouldInterruptAfterDeadline, type QuickJSWASMModule } from "quickjs-emscripten-core";
 import { API_VERSION, type Ctx, type Finding } from "@wellactually/sdk";
 import { environmentFor, unsupported, type Environment } from "./api.ts";
-import { BUNDLE_GLOBAL, TESTS_GLOBAL } from "./bundle.ts";
-import { loadSandbox } from "./engines.ts";
+import { BUNDLE_GLOBAL, TESTS_GLOBAL } from "../build/bundle.ts";
+import { loadSandbox } from "../build/engines.ts";
 import { normalizeAbsolute, type ProjectFiles } from "./project.ts";
 
 export interface Limits {

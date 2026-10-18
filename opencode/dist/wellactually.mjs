@@ -10905,7 +10905,7 @@ function shouldInterruptAfterDeadline(deadline) {
   };
 }
 
-// packages/core/src/engines.ts
+// packages/core/src/build/engines.ts
 var engines = null;
 var quickjs = null;
 function setEngines(next) {
@@ -10936,7 +10936,7 @@ function loadSandbox() {
   return quickjs;
 }
 
-// packages/core/src/fs.ts
+// packages/core/src/build/fs.ts
 import fs from "node:fs";
 import path from "node:path";
 
@@ -11118,7 +11118,7 @@ function locateWritten(content, fragments) {
   return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text2]) => ({ line, text: text2 }));
 }
 
-// packages/core/src/licenses.ts
+// packages/core/src/build/licenses.ts
 var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
 var LICENSE_FILE = /^(?:licen[sc]e|copying|unlicense)(?:[.-][\w.-]*)?$/i;
 var NOTICE_FILE = /^notice(?:[.-][\w.-]*)?$/i;
@@ -11416,7 +11416,7 @@ ${NOTICES_CLOSE}
 `;
 }
 
-// packages/core/src/packages.ts
+// packages/core/src/build/packages.ts
 var PACKAGE_DIR = "node_modules/";
 function approvalKey(info) {
   if (info.from !== void 0) {
@@ -11804,7 +11804,7 @@ function noticeOf(carried) {
   return { name: carried.info.name, version: carried.info.version, source: sourceOf(carried.info), licensing: carried.licensing };
 }
 
-// packages/core/src/sdk-source.generated.ts
+// packages/core/src/build/sdk-source.generated.ts
 var SDK_SOURCES = {
   "events.ts": '/**\n * The events a test shows to a detector.\n *\n * They are the same in every runner: vitest on the author\'s machine,\n * `wellactually test`, the browser editor and the registry. A path is relative\n * to a made-up project root, and the detector sees it below that root.\n */\nimport { fileCtx, locateWritten, textCtx, type Ctx } from "./index.ts";\n\n/** What `detect` takes besides the event. */\nexport interface DetectOptions {\n  /**\n   * A folder of the principle, e.g. "fixtures/flutter_app", that is the\n   * project the event happens in. The detector reads its files with `node:fs`.\n   * Without it the only file there is, anywhere, is the file of the event.\n   */\n  project?: string;\n}\n\n/**\n * The agent wrote this file in full. Every line counts as written.\n * Pass `{ isNew: true }` when the write created the file.\n */\nexport function write(path: string, content: string, options: { isNew?: boolean } = {}): Ctx {\n  return fileCtx("write", path, content, undefined, { isNew: options.isNew === true });\n}\n\n/**\n * The agent edited a file. `content` is the file after the edit and\n * `change.written` is the text the agent put in, as one piece or several.\n */\nexport function edit(path: string, content: string, change: { written: string | readonly string[] }): Ctx {\n  const fragments = typeof change.written === "string" ? [change.written] : change.written;\n  const written = locateWritten(content, fragments);\n  if (written.length === 0) {\n    throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);\n  }\n  return fileCtx("write", path, content, written);\n}\n\n/** The agent read this file. It wrote none of it. */\nexport function read(path: string, content: string): Ctx {\n  return fileCtx("read", path, content);\n}\n\n/** The user typed this, or the agent handed it to a subagent. */\nexport function prompt(text: string): Ctx {\n  return textCtx("prompt", text);\n}\n\n/** The agent is about to run this shell command. */\nexport function command(text: string): Ctx {\n  return textCtx("command", text);\n}\n\n/** `command` ran, and this is what it printed. */\nexport function output(command: string, text: string): Ctx {\n  return textCtx("output", text, undefined, command);\n}\n\n/**\n * A multi-line string without the indentation of the test around it.\n *\n * `${` and a backtick inside it need a backslash, as in any template string.\n */\nexport function source(strings: TemplateStringsArray, ...values: unknown[]): string {\n  const text = strings.raw.reduce((out, part, index) => out + part.replace(/\\\\([`$\\\\])/g, "$1") + (index < values.length ? String(values[index]) : ""), "");\n  const lines = text.split("\\n");\n  if (lines[0]?.trim() === "") {\n    lines.shift();\n  }\n  if (lines.at(-1)?.trim() === "") {\n    lines.pop();\n  }\n  const indent = Math.min(...lines.filter((line) => line.trim() !== "").map((line) => /^[ \\t]*/.exec(line)?.[0].length ?? 0));\n  return lines.map((line) => line.slice(Number.isFinite(indent) ? indent : 0)).join("\\n");\n}\n',
   "find.ts": '/**\n * Looking around the project from where an event happened.\n *\n * A detector reads files with `node:fs`, and may read any text file. What it\n * usually wants to know first is what kind of project it is in, and the\n * answer lies in a file somewhere above: a `pubspec.yaml`, a `package.json`.\n */\nimport { existsSync } from "./fs.ts";\nimport { dirname, join } from "./path.ts";\n\n/**\n * The nearest file called `name`, looking in `from` and then in every folder\n * above it, as an absolute path. Null when there is none.\n *\n *     findUp("pubspec.yaml", event.cwd)                  // for a prompt\n *     findUp("pubspec.yaml", path.dirname(event.file.path)) // for a file\n */\nexport function findUp(name: string, from: string): string | null {\n  for (let dir = from; ; dir = dirname(dir)) {\n    const candidate = join(dir, name);\n    if (existsSync(candidate)) {\n      return candidate;\n    }\n    if (dir === dirname(dir)) {\n      return null;\n    }\n  }\n}\n',
@@ -11818,7 +11818,7 @@ var SDK_SOURCES = {
   "vitest.ts": "/**\n * What `vitest` resolves to when a principle's tests run inside the isolate.\n *\n * An author runs the tests with vitest itself. The registry cannot: it runs\n * code from strangers, and only inside the isolate. So it gives the tests the\n * part of vitest's API a detector test needs. An import of anything else\n * fails the build with the name that is missing.\n */\nexport { describe, expect, it, test } from \"./test.ts\";\n"
 };
 
-// packages/core/src/bundle.ts
+// packages/core/src/build/bundle.ts
 var BundleError = class extends Error {
 };
 var BUNDLE_GLOBAL = "__principle";
@@ -12106,7 +12106,7 @@ function formatMessage(message) {
   return `${where}${message.text}`;
 }
 
-// packages/core/src/project.ts
+// packages/core/src/detector/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
 function normalizeAbsolute(path16) {
@@ -12208,7 +12208,7 @@ function fsHost(cwd, project) {
   return (request) => JSON.stringify(answer(request));
 }
 
-// packages/core/src/api.ts
+// packages/core/src/detector/api.ts
 var MIN_API_VERSION = 3;
 function apiOf(manifest) {
   return manifest.api ?? 1;
@@ -12289,13 +12289,13 @@ function importedApi(sources) {
 }
 var BUILT_IN_SINCE = {};
 
-// packages/core/src/ctx.ts
+// packages/core/src/detector/ctx.ts
 function applies(manifest, ctx) {
   const file2 = ctx.file;
   return (manifest.handlers ?? []).some((handler) => handler.event === ctx.event && (!file2 || matchesGlobs(file2.relativePath, handler.globs)));
 }
 
-// packages/core/src/manifest.ts
+// packages/core/src/principle/manifest.ts
 var ManifestError = class extends Error {
 };
 var PRINCIPLE_ID = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
@@ -12455,7 +12455,7 @@ function parseSettings(packageJson) {
   return settings;
 }
 
-// packages/core/src/sandbox.ts
+// packages/core/src/detector/sandbox.ts
 var DEFAULT_LIMITS = {
   ms: 100,
   memoryBytes: 32 * 1024 * 1024
@@ -12676,7 +12676,7 @@ function validateFindings(json2, ctx, project = null) {
   return { findings, dropped };
 }
 
-// packages/core/src/scan.ts
+// packages/core/src/principle/scan.ts
 var SIGNALS = [
   {
     pattern: /\b(ignore|disregard|forget)\b[^.\n]{0,40}\b(previous|prior|above|earlier|system)\b[^.\n]{0,20}\b(instructions?|rules?|prompts?)\b/i,
@@ -12727,7 +12727,7 @@ function scanAdvice(advice) {
   return warnings;
 }
 
-// packages/core/src/advice-length.ts
+// packages/core/src/principle/advice-length.ts
 var ADVICE_BUDGET = 9e3;
 var ADVICE_MAX = 7500;
 var ADVICE_LONG = 4e3;
@@ -12750,7 +12750,7 @@ function adviceLengthWarnings(advice) {
   return [];
 }
 
-// packages/core/src/principle.ts
+// packages/core/src/principle/principle.ts
 var MAX_FILES = 60;
 var MAX_TOTAL_BYTES = 512 * 1024;
 var MAX_PACKAGE_FILES = 500;
@@ -13001,7 +13001,7 @@ function hasDetector(manifest) {
   return !Array.isArray(manifest.handlers) || manifest.handlers.length > 0;
 }
 
-// packages/core/src/fs.ts
+// packages/core/src/build/fs.ts
 var readFrom = /* @__PURE__ */ new Set();
 function readPrincipleDir(dir) {
   const files = {};
@@ -13090,7 +13090,7 @@ async function readPrinciple(dir) {
   return vendorPackages(readPrincipleDir(dir), diskPackages(dir));
 }
 
-// packages/core/src/scaffold.ts
+// packages/core/src/principle/scaffold.ts
 function scaffoldFiles(slug) {
   if (!isPrincipleId(slug)) {
     throw new Error(`"${slug}" must be ${PRINCIPLE_ID_RULE}`);
@@ -13208,7 +13208,7 @@ async function loadEsbuild() {
   }
 }
 
-// packages/cli/src/files.ts
+// packages/cli/src/board/files.ts
 import fs2 from "node:fs";
 import os from "node:os";
 import path3 from "node:path";
@@ -13307,12 +13307,12 @@ function diskFiles() {
   };
 }
 
-// packages/cli/src/board.ts
+// packages/cli/src/board/board.ts
 import fs3 from "node:fs";
 import os2 from "node:os";
 import path4 from "node:path";
 
-// packages/cli/src/finding.ts
+// packages/cli/src/hook/finding.ts
 var MAX_QUOTED_LENGTH = 300;
 function describeFinding(ctx, finding) {
   const place = describePlace(ctx, finding);
@@ -13337,7 +13337,7 @@ function describePlace(ctx, finding) {
   return quoted === "" ? named : `${named}: ${quoted}`;
 }
 
-// packages/cli/src/board.ts
+// packages/cli/src/board/board.ts
 var DEFAULT_REGISTRY = "https://wellactually.dev";
 function boardHome() {
   return process.env.WELLACTUALLY_HOME ?? path4.join(os2.homedir(), ".wellactually");
@@ -13580,7 +13580,7 @@ function sessionPath(sessionId, agentId) {
   return path4.join(sessionsDir(), `${safeId(sessionId)}${agent}.json`);
 }
 
-// packages/cli/src/pool.ts
+// packages/cli/src/board/pool.ts
 import os3 from "node:os";
 import { parentPort, Worker } from "node:worker_threads";
 var MAX_WORKERS = 8;
@@ -13697,7 +13697,7 @@ var DetectorPool = class {
   }
 };
 
-// packages/cli/src/switches.ts
+// packages/cli/src/board/switches.ts
 import fs4 from "node:fs";
 import path5 from "node:path";
 var PROJECT_FILE = ".wellactually.json";
@@ -13889,7 +13889,7 @@ function readText(file2) {
   return content;
 }
 
-// packages/cli/src/detections.ts
+// packages/cli/src/board/detections.ts
 import { randomBytes } from "node:crypto";
 import fs6 from "node:fs";
 import path7 from "node:path";
@@ -13929,7 +13929,7 @@ async function drainDetections(send) {
   return counts.reduce((sum, entry) => sum + entry.count, 0);
 }
 
-// packages/cli/src/registry.ts
+// packages/cli/src/registry/client.ts
 var RegistryError = class extends Error {
   /** The HTTP status the registry answered with, or null when it was not asked or did not answer. */
   status;
@@ -14569,12 +14569,12 @@ function renderSync(result) {
   return [summary, "", "Your advisory board is empty. Experts you can follow:", ...experts, "", "Follow the ones you like on their page, then sync again."].join("\n");
 }
 
-// packages/cli/src/hook.ts
+// packages/cli/src/hook/hook.ts
 import { spawn as spawn2 } from "node:child_process";
 import fs11 from "node:fs";
 import path13 from "node:path";
 
-// packages/cli/src/payload.ts
+// packages/cli/src/hook/payload.ts
 import path9 from "node:path";
 var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "MultiEdit"]);
 var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "exec_command"]);
@@ -14694,7 +14694,7 @@ function patchedFiles(patch) {
   return files;
 }
 
-// packages/cli/src/turn.ts
+// packages/cli/src/hook/turn.ts
 import { execFileSync as execFileSync2 } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs8 from "node:fs";
@@ -14999,7 +14999,7 @@ function repoDir(sessionId, root) {
   return path10.join(sessionDir(sessionId), createHash("sha256").update(root).digest("hex").slice(0, 16));
 }
 
-// packages/cli/src/hook-log.ts
+// packages/cli/src/hook/hook-log.ts
 import { spawn } from "node:child_process";
 import fs9 from "node:fs";
 import path11 from "node:path";
@@ -15070,7 +15070,7 @@ async function writeHookLogFromStdin(dir) {
   }
 }
 
-// packages/cli/src/rater.ts
+// packages/cli/src/registry/rater.ts
 import fs10 from "node:fs";
 import os5 from "node:os";
 import path12 from "node:path";
@@ -15215,7 +15215,7 @@ function safeList(dir) {
   }
 }
 
-// packages/cli/src/hook.ts
+// packages/cli/src/hook/hook.ts
 var MAX_FILE_BYTES2 = 512 * 1024;
 async function runHook(stdin, log, frame2 = frameEvents) {
   const payload = JSON.parse(stdin);

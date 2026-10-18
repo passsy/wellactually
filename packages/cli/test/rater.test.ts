@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 process.env.WELLACTUALLY_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "rater-test-"));
 delete process.env.CLAUDE_CODE_SESSION_ID;
 
-const { modelInTranscript, noteToolUse, raterOf } = await import("../src/rater.ts");
+const { modelInTranscript, noteToolUse, raterOf } = await import("../src/registry/rater.ts");
 
 function transcript(lines: unknown[]): string {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "transcript-")), "session.jsonl");

@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import type { Ctx, Finding } from "@wellactually/sdk";
 import { ADVICE_BUDGET, adviceBytes, apiOf, applies, type BoardEntry, type CachedPrinciple, DEFAULT_LIMITS, type DetectorRun, type Lockfile, runDetector } from "@wellactually/core/node";
-import { describeFinding } from "./finding.ts";
+import { describeFinding } from "../hook/finding.ts";
 import type { DetectorPool } from "./pool.ts";
 import { diskFiles } from "./files.ts";
 

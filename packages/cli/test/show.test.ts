@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { readConfig, writeConfig, writeLockfile } from "../src/board.ts";
+import { readConfig, writeConfig, writeLockfile } from "../src/board/board.ts";
 import { describeCredits, principleIdOf, renderShow, showPrinciple } from "../src/commands.ts";
 
 const ADVICE = "# Avoid late\n\nInitialize fields where they are declared instead of marking them late.\n\nSee [Prefer final](https://wellactually.dev/p/passsy/prefer-final).";

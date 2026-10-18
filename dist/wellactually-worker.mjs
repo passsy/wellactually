@@ -3679,7 +3679,7 @@ var init_module_ES6BEMUI = __esm({
   }
 });
 
-// packages/cli/src/pool.ts
+// packages/cli/src/board/pool.ts
 import { parentPort, Worker } from "node:worker_threads";
 
 // packages/core/src/node.ts
@@ -3708,7 +3708,7 @@ function shouldInterruptAfterDeadline(deadline) {
   };
 }
 
-// packages/core/src/engines.ts
+// packages/core/src/build/engines.ts
 var engines = null;
 var quickjs = null;
 function setEngines(next) {
@@ -3742,18 +3742,18 @@ function loadSandbox() {
 // packages/sdk/src/index.ts
 var API_VERSION = 3;
 
-// packages/core/src/licenses.ts
+// packages/core/src/build/licenses.ts
 var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
 var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
 var RULE = "-".repeat(72);
 
-// packages/core/src/bundle.ts
+// packages/core/src/build/bundle.ts
 var BUNDLE_GLOBAL = "__principle";
 var MAX_BUNDLE_BYTES = 1024 * 1024;
 var SDK = "@wellactually/sdk";
 var SDK_NOW = `${SDK}/v${API_VERSION}`;
 
-// packages/core/src/project.ts
+// packages/core/src/detector/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
 function normalizeAbsolute(path3) {
@@ -3817,7 +3817,7 @@ function fsHost(cwd, project) {
   return (request) => JSON.stringify(answer(request));
 }
 
-// packages/core/src/api.ts
+// packages/core/src/detector/api.ts
 var MIN_API_VERSION = 3;
 function unsupported(api) {
   if (!Number.isInteger(api) || api < 1) {
@@ -3853,7 +3853,7 @@ function environmentFor(api, ctx, project) {
 var SDK2 = "@wellactually/sdk";
 var current = `"${SDK2}/v${API_VERSION}"`;
 
-// packages/core/src/sandbox.ts
+// packages/core/src/detector/sandbox.ts
 var DEFAULT_LIMITS = {
   ms: 100,
   memoryBytes: 32 * 1024 * 1024
@@ -4037,14 +4037,14 @@ function validateFindings(json, ctx, project = null) {
   return { findings, dropped };
 }
 
-// packages/core/src/advice-length.ts
+// packages/core/src/principle/advice-length.ts
 var encoder = new TextEncoder();
 
-// packages/core/src/principle.ts
+// packages/core/src/principle/principle.ts
 var MAX_TOTAL_BYTES = 512 * 1024;
 var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 
-// packages/core/src/fs.ts
+// packages/core/src/build/fs.ts
 var readFrom = /* @__PURE__ */ new Set();
 
 // packages/core/src/node.ts
@@ -4072,7 +4072,7 @@ async function loadEsbuild() {
   }
 }
 
-// packages/cli/src/files.ts
+// packages/cli/src/board/files.ts
 import fs from "node:fs";
 import path2 from "node:path";
 var MAX_READ_BYTES = 512 * 1024;
@@ -4126,7 +4126,7 @@ function diskFiles() {
   };
 }
 
-// packages/cli/src/pool.ts
+// packages/cli/src/board/pool.ts
 function failed(error) {
   return { findings: [], error, dropped: [], ms: 0 };
 }

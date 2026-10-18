@@ -3704,7 +3704,7 @@ function smartUnwrap(val) {
   return val && "default" in val && val.default ? val.default && "default" in val.default && val.default.default ? val.default.default : val.default : val;
 }
 
-// packages/core/src/engines.ts
+// packages/core/src/build/engines.ts
 var engines = null;
 var quickjs = null;
 function setEngines(next) {
@@ -3712,25 +3712,25 @@ function setEngines(next) {
   quickjs = null;
 }
 
-// packages/core/src/licenses.ts
+// packages/core/src/build/licenses.ts
 var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
 var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
 var RULE = "-".repeat(72);
 
-// packages/core/src/bundle.ts
+// packages/core/src/build/bundle.ts
 var BUNDLE_GLOBAL = "__principle";
 var MAX_BUNDLE_BYTES = 1024 * 1024;
 var SDK = "@wellactually/sdk";
 var SDK_NOW = `${SDK}/v${API_VERSION}`;
 
-// packages/core/src/project.ts
+// packages/core/src/detector/project.ts
 var MAX_FS_BYTES = 4 * 1024 * 1024;
 
-// packages/core/src/api.ts
+// packages/core/src/detector/api.ts
 var SDK2 = "@wellactually/sdk";
 var current = `"${SDK2}/v${API_VERSION}"`;
 
-// packages/core/src/sandbox.ts
+// packages/core/src/detector/sandbox.ts
 var DEFAULT_LIMITS = {
   ms: 100,
   memoryBytes: 32 * 1024 * 1024
@@ -3744,14 +3744,14 @@ var TEST_LIMITS = {
   memoryBytes: 64 * 1024 * 1024
 };
 
-// packages/core/src/advice-length.ts
+// packages/core/src/principle/advice-length.ts
 var encoder = new TextEncoder();
 
-// packages/core/src/principle.ts
+// packages/core/src/principle/principle.ts
 var MAX_TOTAL_BYTES = 512 * 1024;
 var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 
-// packages/core/src/fs.ts
+// packages/core/src/build/fs.ts
 var readFrom = /* @__PURE__ */ new Set();
 
 // packages/core/src/node.ts
@@ -3779,7 +3779,7 @@ async function loadEsbuild() {
   }
 }
 
-// packages/cli/src/files.ts
+// packages/cli/src/board/files.ts
 var MAX_READ_BYTES = 512 * 1024;
 
 // packages/cli/src/agents/bridge.ts

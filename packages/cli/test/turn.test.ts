@@ -3,8 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, test } from "vitest";
-import { eventsOf } from "../src/payload.ts";
-import { absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, parsePatch, snapshotRepos } from "../src/turn.ts";
+import { eventsOf } from "../src/hook/payload.ts";
+import { absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, parsePatch, snapshotRepos } from "../src/hook/turn.ts";
 
 /**
  * Real repositories in a temporary folder, because what is checked is how

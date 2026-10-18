@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { buildBundle, fileCtx, runDetector } from "@wellactually/core/node";
-import { diskFiles, projectRootOf } from "../src/files.ts";
+import { diskFiles, projectRootOf } from "../src/board/files.ts";
 
 /**
  * Bundles a detector whose one function `detect(ctx)` handles every event.

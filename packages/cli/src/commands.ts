@@ -2,10 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { apiOf, applies, approvalKey, buildPrinciple, BundleError, describeReview, checkPrinciple, isPrincipleId, PRINCIPLE_ID_RULE, fileCtx, isPackageFile, ManifestError, parseTags, needsApproval, readPrinciple, readPrincipleDir, runDetector, textCtx, type BuiltPrinciple, type CheckReport, type DetectorRun, type FileMap, type PackageInfo } from "@wellactually/core/node";
 import type { Ctx } from "@wellactually/sdk";
-import { diskFiles, projectRootOf, toPosix, writeFileMap } from "./files.ts";
-import { frame, DEFAULT_REGISTRY, readConfig, readLockfile, writeCached, writeLockfile } from "./board.ts";
+import { diskFiles, projectRootOf, toPosix, writeFileMap } from "./board/files.ts";
+import { frame, DEFAULT_REGISTRY, readConfig, readLockfile, writeCached, writeLockfile } from "./board/board.ts";
 import { probeRepo, type ProbeReport } from "./probe.ts";
-import { type SwitchResult } from "./switches.ts";
+import { type SwitchResult } from "./board/switches.ts";
 import {
   fetchHistory,
   publishDraft,
@@ -21,7 +21,7 @@ import {
   type SyncResult,
   type Visibility,
   type VisibilityResult,
-} from "./registry.ts";
+} from "./registry/client.ts";
 
 /**
  * The verbs behind both the command line and the MCP server.

@@ -1,4 +1,4 @@
-import type { FileMap } from "./bundle.ts";
+import type { FileMap } from "../build/bundle.ts";
 
 /**
  * The files a detector may read.

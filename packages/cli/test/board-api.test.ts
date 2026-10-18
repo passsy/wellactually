@@ -4,8 +4,8 @@ import path from "node:path";
 import { describe, expect, test } from "vitest";
 import type { Finding } from "@wellactually/sdk";
 import { fileCtx, type Manifest } from "@wellactually/core/node";
-import { runBoard, writeCached } from "../src/board.ts";
-import { DetectorPool } from "../src/pool.ts";
+import { runBoard, writeCached } from "../src/board/board.ts";
+import { DetectorPool } from "../src/board/pool.ts";
 
 /** A detector bundle built by the toolchain of API 3, frozen in the core's tests. */
 const frozen = (version: number) =>

@@ -1,12 +1,12 @@
 import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
-import { apiOf, BUILT_IN_SINCE, importedApi } from "./api.ts";
-import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, withNotices, type FileMap } from "./bundle.ts";
-import { applies, fileCtx, textCtx } from "./ctx.ts";
+import { apiOf, BUILT_IN_SINCE, importedApi } from "../detector/api.ts";
+import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, withNotices, type FileMap } from "../build/bundle.ts";
+import { applies, fileCtx, textCtx } from "../detector/ctx.ts";
 import { ManifestError, parsePrinciple, parseSettings, parseTags, readHandlers, type Manifest } from "./manifest.ts";
-import { thirdPartyNotices } from "./licenses.ts";
-import { approvalKey, carriedPackages, isPackageFile, needsApproval, noticeOf, PackageError, type CarriedPackage, type PackageInfo } from "./packages.ts";
-import { mapProject, type ProjectFiles } from "./project.ts";
-import { readRegistered, runTestBundle, type DetectorRun } from "./sandbox.ts";
+import { thirdPartyNotices } from "../build/licenses.ts";
+import { approvalKey, carriedPackages, isPackageFile, needsApproval, noticeOf, PackageError, type CarriedPackage, type PackageInfo } from "../build/packages.ts";
+import { mapProject, type ProjectFiles } from "../detector/project.ts";
+import { readRegistered, runTestBundle, type DetectorRun } from "../detector/sandbox.ts";
 import { scanAdvice } from "./scan.ts";
 import { adviceLengthWarnings } from "./advice-length.ts";
 

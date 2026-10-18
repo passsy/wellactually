@@ -3,11 +3,11 @@ import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { scaffold } from "./files.ts";
-import { readConfig, writeConfig } from "./board.ts";
-import { switchPrinciple } from "./switches.ts";
-import { raterOf } from "./rater.ts";
-import { ratePrinciple, RegistryError, type DraftResult } from "./registry.ts";
+import { scaffold } from "./board/files.ts";
+import { readConfig, writeConfig } from "./board/board.ts";
+import { switchPrinciple } from "./board/switches.ts";
+import { raterOf } from "./registry/rater.ts";
+import { ratePrinciple, RegistryError, type DraftResult } from "./registry/client.ts";
 import {
   ApprovalError,
   changeVisibility,

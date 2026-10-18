@@ -1,7 +1,7 @@
 import { createRequire as __createRequire } from "node:module";
 const require = __createRequire(import.meta.url);
 
-// packages/cli/src/hook-log.ts
+// packages/cli/src/hook/hook-log.ts
 import fs from "node:fs";
 import path from "node:path";
 var LOG_MAX_AGE_MS = 24 * 60 * 60 * 1e3;

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { vendorPackages, type FileMap } from "./bundle.ts";
 import { isGitReference, parseGitHub, TAKEN_FROM, type PackageSource } from "./packages.ts";
-import { assertFileMapSize } from "./principle.ts";
+import { assertFileMapSize } from "../principle/principle.ts";
 
 /**
  * The principle directories read in this process, newest last. The installed

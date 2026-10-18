@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type HookPayload } from "../payload.ts";
+import { type HookPayload } from "../hook/payload.ts";
 import { Pending, callHook, command, pluginRoot } from "./bridge.ts";
 import { McpClient } from "./mcp-client.ts";
 

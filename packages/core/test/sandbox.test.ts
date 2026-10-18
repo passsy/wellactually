@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { SDK_SOURCES } from "../src/sdk-source.generated.ts";
+import { SDK_SOURCES } from "../src/build/sdk-source.generated.ts";
 import { buildBundle, fileCtx, mapProject, runDetector, textCtx } from "../src/node.ts";
 
 /**
