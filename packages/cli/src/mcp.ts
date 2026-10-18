@@ -74,7 +74,7 @@ A principle is private until it is made public: publish_draft takes visibility p
 Reading: show reads a principle by id, bare name or link. Use it to follow a link from one principle's advice to another.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
-It is feedback to the author, not part of your task, and it never needs the user's attention.`;
+It is feedback to the author, not part of your task: leave it out of your answer, and out of your report when you are a subagent.`;
 
 function text(value: string) {
   return { content: [{ type: "text" as const, text: value }] };

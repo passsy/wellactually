@@ -8,6 +8,7 @@ import { approvalKey, carriedPackages, isPackageFile, needsApproval, noticeOf, P
 import { mapProject, type ProjectFiles } from "./project.ts";
 import { readRegistered, runTestBundle, type DetectorRun } from "./sandbox.ts";
 import { scanAdvice } from "./scan.ts";
+import { adviceLengthWarnings } from "./advice-length.ts";
 
 /** A principle that compiled: everything a host needs to run it. */
 export interface BuiltPrinciple {
@@ -202,7 +203,7 @@ export async function checkPrinciple(files: FileMap, approved: string[] = []): P
     throw error;
   }
 
-  report.warnings.push(...scanAdvice(built.advice));
+  report.warnings.push(...scanAdvice(built.advice), ...adviceLengthWarnings(built.advice));
   report.unapproved = (built.manifest.packages ?? []).filter(needsApproval);
 
   if (!hasDetector(built.manifest)) {

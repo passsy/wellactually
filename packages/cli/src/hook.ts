@@ -5,7 +5,9 @@ import type { Ctx } from "@wellactually/sdk";
 import {
   type HookPayload,
   type Lockfile,
+  type EventFirings,
   type TurnDiff,
+  ADVICE_BUDGET,
   DetectorPool,
   PARALLEL_FROM,
   absorbWrites,
@@ -15,7 +17,7 @@ import {
   eventsOf,
   forgetSnapshots,
   forgetShown,
-  frame,
+  frameEvents,
   readConfig,
   readLockfile,
   readShown,
@@ -39,9 +41,11 @@ const MAX_FILE_BYTES = 512 * 1024;
  * It never touches the network. Syncing is a separate process started at
  * session start, so a slow registry cannot slow down an edit.
  *
- * What it did goes into `log`, when one is given, for the hook log.
+ * What it did goes into `log`, when one is given, for the hook log. `frame`
+ * turns the firings into what the agent reads; the evaluator passes a candidate
+ * wording here to measure it against the one that ships.
  */
-export async function runHook(stdin: string, log?: HookLogEntry): Promise<string> {
+export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof frameEvents = frameEvents): Promise<string> {
   const payload = JSON.parse(stdin) as HookPayload;
   const event = payload.hook_event_name ?? "";
   if (log) {
@@ -101,18 +105,19 @@ export async function runHook(stdin: string, log?: HookLogEntry): Promise<string
   const setting = process.env.WELLACTUALLY_WORKERS;
   const pool = setting === "0" ? null : new DetectorPool(workerFile(), Number(setting) > 0 ? Number(setting) : undefined);
   try {
-    return await runEvents(payload, events, lockfile, pool, log);
+    return await runEvents(payload, events, lockfile, pool, frame, log);
   } finally {
     await pool?.close();
   }
 }
 
-async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile, pool: DetectorPool | null, log?: HookLogEntry): Promise<string> {
+async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile, pool: DetectorPool | null, frame: typeof frameEvents, log?: HookLogEntry): Promise<string> {
   const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
   const agentId = payload.agent_id;
   const shown = readShown(sessionId, agentId);
   const parts: string[] = [];
+  const fired: EventFirings[] = [];
   const failures = new Map<string, string>();
   const cwd = payload.cwd ?? process.cwd();
   const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
@@ -140,21 +145,7 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
       unmatched: run.skipped.filter((skipped) => skipped.reason === "globs").length,
     });
 
-    // Counted per event a principle fired in, whether or not its advice is shown again.
-    // Principles added from a local directory belong to no registry and are not counted.
-    if (readConfig().stats) {
-      recordDetections(run.firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
-    }
-
-    const text = frame(ctx, run.firings, shown);
-    if (text) {
-      parts.push(text);
-    }
-    for (const firing of run.firings) {
-      if (firing.findings.some((finding) => finding.depth !== "pointer")) {
-        shown.add(firing.principle.hash);
-      }
-    }
+    fired.push({ ctx, firings: run.firings });
     for (const failure of run.failures) {
       failures.set(failure.id, failure.error);
     }
@@ -162,15 +153,36 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
 
   // A principle that cannot run says so once per session instead of failing silently on every edit.
   const newFailures = [...failures].filter(([id]) => !shown.has(`failure:${id}`));
-  if (newFailures.length > 0) {
-    parts.push(
-      [
-        "<wellactually-notice>",
-        "These principles on the user's advisory board could not run. Tell the user once; it does not affect your task.",
-        ...newFailures.map(([id, error]) => `- ${id}: ${error}`),
-        "</wellactually-notice>",
-      ].join("\n"),
-    );
+  const notice =
+    newFailures.length > 0
+      ? [
+          "<wellactually-notice>",
+          "These principles on the user's advisory board could not run. Tell the user once; it does not affect your task.",
+          ...newFailures.map(([id, error]) => `- ${id}: ${error}`),
+          "</wellactually-notice>",
+        ].join("\n")
+      : "";
+
+  // One block for the whole call, small enough that the host shows all of it.
+  const framed = frame(fired, shown, ADVICE_BUDGET - notice.length);
+  if (framed.text) {
+    parts.push(framed.text);
+  }
+  for (const hash of framed.full) {
+    shown.add(hash);
+  }
+  if (log && framed.shown.length < fired.filter((entry) => entry.firings.length > 0).length) {
+    log.note = `left out ${fired.filter((entry) => entry.firings.length > 0).length - framed.shown.length} events to stay within ${ADVICE_BUDGET} characters`;
+  }
+  // Counted per event a principle was shown in, whether in full or as its summary.
+  // What was left out never reached the agent. Principles added from a local directory belong to no registry.
+  if (readConfig().stats) {
+    for (const { firings } of framed.shown) {
+      recordDetections(firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
+    }
+  }
+  if (notice) {
+    parts.push(notice);
   }
   if (parts.length === 0) {
     return "";

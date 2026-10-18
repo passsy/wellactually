@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { API_VERSION } from "@wellactually/sdk";
-import { buildBundle, DetectorPool, describeFinding, fileCtx, forgetShown, frame, readConfig, readShown, runBoard, SESSION_MAX_AGE_MS, sweepShown, textCtx, writeCached, writeConfig, writeShown } from "../src/node.ts";
+import { ADVICE_BUDGET, ADVICE_MAX, adviceLengthWarnings, buildBundle, DetectorPool, describeFinding, fileCtx, forgetShown, frame, frameEvents, readConfig, readShown, runBoard, SESSION_MAX_AGE_MS, sweepShown, textCtx, writeCached, writeConfig, writeShown } from "../src/node.ts";
 
 const sdk = `import { onPrompt } from "@wellactually/sdk/v3";`;
 const handlers = [{ event: "prompt" as const, globs: [] }];
@@ -119,6 +119,55 @@ describe("what the agent is shown", () => {
   test("shows only the advice for a finding that names no place", () => {
     const text = frame(textCtx("prompt", "anything"), [{ principle, findings: [{ depth: "pointer" }] }]);
     expect(text).toContain('title="Avoid late">\nMake it nullable.\n</principle>');
+  });
+
+  test("puts the files of one change in one block, with the preamble and the rating said once", () => {
+    const other = fileCtx("write", "lib/user.dart", "class User {\n  late String name;\n}");
+    const { text, full, shown } = frameEvents([
+      { ctx: file, firings: [{ principle, findings: [{ line: 2 }] }] },
+      { ctx: textCtx("prompt", "quiet"), firings: [] },
+      { ctx: other, firings: [{ principle, findings: [{ line: 2 }] }] },
+    ]);
+    expect(text.match(/<wellactually>/g)).toHaveLength(1);
+    expect(text.match(/rate_principle/g)).toHaveLength(1);
+    expect(text).toContain("write lib/session.dart: ");
+    expect(text).toContain("write lib/user.dart: ");
+    // The full advice once, the summary after that.
+    expect(text.match(/The whole advice\./g)).toHaveLength(1);
+    expect(text).toContain("- line 2: late String name;\n\nMake it nullable.");
+    expect(full).toEqual(new Set([principle.hash]));
+    expect(shown.map((event) => event.ctx)).toEqual([file, other]);
+  });
+
+  test("the longest advice agents are shown in full does fit in full on its own", () => {
+    const ctx = fileCtx("write", `packages/${"deeply/nested/".repeat(6)}feature_screen_controller.dart`, `${"x".repeat(200)}\n`);
+    const longest = { ...principle, id: "someone-long/a-principle-with-a-long-name", manifest: { ...principle.manifest, title: "T".repeat(120), summary: "S".repeat(200) }, advice: "a".repeat(ADVICE_MAX) };
+    const { full, text } = frameEvents([{ ctx, firings: [{ principle: longest, findings: [{ line: 1, match: "x".repeat(80) }] }] }]);
+    expect(full).toEqual(new Set([longest.hash]));
+    expect(text.length).toBeLessThanOrEqual(ADVICE_BUDGET);
+    expect(adviceLengthWarnings(longest.advice).join()).not.toMatch(/only shown its summary/);
+  });
+
+  test("warns about advice on the long end, and about advice agents only see the summary of", () => {
+    expect(adviceLengthWarnings("a".repeat(4000))).toEqual([]);
+    expect(adviceLengthWarnings("a".repeat(4001)).join()).toMatch(/4,001 characters, on the long end/);
+    expect(adviceLengthWarnings("a".repeat(7501)).join()).toMatch(/Agents are only shown its summary/);
+  });
+
+  test("stays within the budget: full advice while it fits, then summaries, then fewer files", () => {
+    const long = { ...principle, advice: `# Avoid late\n\n${"x".repeat(3000)}` };
+    const files = Array.from({ length: 40 }, (_, index) => fileCtx("write", `lib/f${index}.dart`, "late int a;"));
+    const principles = [0, 1, 2, 3].map((index) => ({ ...long, id: `ana/p${index}`, hash: String(index).repeat(64) }));
+    const events = files.map((ctx) => ({ ctx, firings: principles.map((item) => ({ principle: item, findings: [{ line: 1 }] })) }));
+
+    const { text, full, shown } = frameEvents(events, new Set(), 9000);
+    expect(text.length).toBeLessThanOrEqual(9000);
+    // Two of four fit in full; the others explain themselves on a later event.
+    expect(full).toEqual(new Set([principles[0]?.hash, principles[1]?.hash]));
+    expect(shown.length).toBeGreaterThan(1);
+    expect(shown.length).toBeLessThan(files.length);
+    expect(text).toContain(`Principles also fired on ${files.length - shown.length} more files of this change.`);
+    expect(text.endsWith("</wellactually>")).toBe(true);
   });
 });
 

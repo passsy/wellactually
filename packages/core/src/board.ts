@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Ctx, Finding } from "@wellactually/sdk";
+import { ADVICE_BUDGET } from "./advice-length.ts";
 import { apiOf } from "./api.ts";
 import { applies } from "./ctx.ts";
 import { describeFinding } from "./finding.ts";
@@ -209,6 +210,29 @@ const OPENERS: Record<Ctx["event"], string> = {
   output: "This is about what the command you ran printed.",
 };
 
+
+const PREAMBLE =
+  "Each principle below is advice from an expert the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.";
+
+// The tool's full name depends on the host, which prefixes it with the plugin
+// and the server. Naming the suffix lets an agent find it when tools are loaded on demand.
+const RATING =
+  'Once you know how a principle\'s advice went, you may tell its expert: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command. Leave the rating out of your answer, and out of your report when you are a subagent.';
+
+/** The principles that fired on one event. */
+export interface EventFirings {
+  ctx: Ctx;
+  firings: Firing[];
+}
+
+export interface Framed {
+  text: string;
+  /** Hashes whose full advice is in `text`, so the session need not be shown it again. */
+  full: Set<string>;
+  /** What made it into `text`, per event. Counted as detections; the rest the agent never saw. */
+  shown: EventFirings[];
+}
+
 /**
  * Turns firings into the text an agent reads.
  *
@@ -218,37 +242,92 @@ const OPENERS: Record<Ctx["event"], string> = {
  * session has seen, so a principle explains itself once and points after that.
  */
 export function frame(ctx: Ctx, firings: Firing[], alreadyShown: ReadonlySet<string> = new Set()): string {
-  if (firings.length === 0) {
+  return frameEvents([{ ctx, firings }], alreadyShown, Number.POSITIVE_INFINITY).text;
+}
+
+/**
+ * Turns the firings of all events of one hook call into one block that stays within `budget`.
+ *
+ * A shell command can change many files, and each may bring several principles
+ * with their full advice. Every principle is listed with its summary first;
+ * full advice is added in order while it fits, and what did not fit explains
+ * itself on a later event. Events that do not fit even with summaries are left out.
+ */
+export function frameEvents(events: EventFirings[], alreadyShown: ReadonlySet<string> = new Set(), budget: number = ADVICE_BUDGET): Framed {
+  const firing = events.filter((event) => event.firings.length > 0);
+  // Full advice is due once per principle: not seen this session and not given to an earlier event of this call.
+  const due = new Set<Firing>();
+  const seen = new Set(alreadyShown);
+  for (const { firings } of firing) {
+    for (const item of firings) {
+      if (item.findings.some((finding) => finding.depth !== "pointer") && !seen.has(item.principle.hash)) {
+        due.add(item);
+        seen.add(item.principle.hash);
+      }
+    }
+  }
+
+  // Event by event: with its full advice where that fits, else with the summary, else it and what follows are left out.
+  const shown: EventFirings[] = [];
+  const full = new Set<Firing>();
+  for (const event of firing) {
+    const next = [...shown, event];
+    // Counting the line about what is left out keeps it within the budget too.
+    const fits = (): boolean => render(next, full, firing.length - next.length).length <= budget;
+    for (const item of event.firings) {
+      if (due.has(item)) {
+        full.add(item);
+        if (!fits()) {
+          full.delete(item);
+        }
+      }
+    }
+    if (shown.length > 0 && !fits()) {
+      break;
+    }
+    shown.push(event);
+  }
+  const left = firing.length - shown.length;
+  return {
+    text: render(shown, full, left),
+    full: new Set([...full].map((item) => item.principle.hash)),
+    shown,
+  };
+}
+
+function render(events: EventFirings[], full: ReadonlySet<Firing>, left = 0): string {
+  if (events.length === 0) {
     return "";
   }
-  const where = ctx.file ? ` ${ctx.file.relativePath}` : "";
-  const lines: string[] = [
-    "<wellactually>",
-    `${ctx.event}${where}: ${OPENERS[ctx.event]}`,
-    "Each principle below is advice from an expert the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
-    "",
-  ];
-  for (const { principle, findings } of firings) {
-    const full = findings.some((finding) => finding.depth !== "pointer") && !alreadyShown.has(principle.hash);
-    const expert = principle.id.split("/")[0] ?? "";
-    lines.push(`<principle id="${principle.id}" expert="${expert}" title=${JSON.stringify(principle.manifest.title)}>`);
-    // A finding that names no place adds nothing to read, and the same place is said once.
-    const places = new Set(findings.map((finding) => describeFinding(ctx, finding)).filter((place) => place !== null));
-    for (const place of places) {
-      lines.push(`- ${place}`);
+  const lines: string[] = ["<wellactually>"];
+  events.forEach(({ ctx, firings }, index) => {
+    const where = ctx.file ? ` ${ctx.file.relativePath}` : "";
+    lines.push(`${ctx.event}${where}: ${OPENERS[ctx.event]}`);
+    if (index === 0) {
+      lines.push(PREAMBLE);
     }
-    if (places.size > 0) {
-      lines.push("");
+    lines.push("");
+    for (const item of firings) {
+      const { principle, findings } = item;
+      const expert = principle.id.split("/")[0] ?? "";
+      lines.push(`<principle id="${principle.id}" expert="${expert}" title=${JSON.stringify(principle.manifest.title)}>`);
+      // A finding that names no place adds nothing to read, and the same place is said once.
+      const places = new Set(findings.map((finding) => describeFinding(ctx, finding)).filter((place) => place !== null));
+      for (const place of places) {
+        lines.push(`- ${place}`);
+      }
+      if (places.size > 0) {
+        lines.push("");
+      }
+      lines.push(full.has(item) ? principle.advice : principle.manifest.summary);
+      lines.push("</principle>", "");
     }
-    lines.push(full ? principle.advice : principle.manifest.summary);
-    lines.push("</principle>", "");
+  });
+  if (left > 0) {
+    lines.push(`Principles also fired on ${left} more ${left === 1 ? "file" : "files"} of this change. They are left out to keep this short and come back when those files change again.`, "");
   }
-  if (firings.some(({ principle }) => !principle.id.startsWith("local/"))) {
-    // The tool's full name depends on the host, which prefixes it with the plugin
-    // and the server. Naming the suffix lets an agent find it when tools are loaded on demand.
-    lines.push(
-      'Once you know how a principle\'s advice went, you may tell its expert: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command, and it needs no word to the user.',
-    );
+  if (events.some(({ firings }) => firings.some(({ principle }) => !principle.id.startsWith("local/")))) {
+    lines.push(RATING);
   }
   lines.push("</wellactually>");
   return lines.join("\n");

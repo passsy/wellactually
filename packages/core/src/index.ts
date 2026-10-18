@@ -6,6 +6,7 @@
  * on a developer's machine imports "@wellactually/core/node" instead, which
  * sets the native engines and adds the parts that need a disk.
  */
+export * from "./advice-length.ts";
 export * from "./api.ts";
 export * from "./bundle.ts";
 export * from "./cdn.ts";

@@ -10932,6 +10932,25 @@ function loadSandbox() {
   return quickjs;
 }
 
+// packages/core/src/advice-length.ts
+var ADVICE_BUDGET = 9e3;
+var ADVICE_MAX = 7500;
+var ADVICE_LONG = 4e3;
+function adviceLengthWarnings(advice) {
+  const length = advice.length;
+  if (length > ADVICE_MAX) {
+    return [
+      `The advice is ${length.toLocaleString("en")} characters, more than the ${ADVICE_MAX.toLocaleString("en")} that fit in full. Agents are only shown its summary. Shorten it or split it into several principles.`
+    ];
+  }
+  if (length > ADVICE_LONG) {
+    return [
+      `The advice is ${length.toLocaleString("en")} characters, on the long end. Above ${ADVICE_LONG.toLocaleString("en")} it leaves little room for other principles that fire on the same change, which then get only their summary.`
+    ];
+  }
+  return [];
+}
+
 // packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
 function matchesGlob(path14, pattern) {
@@ -12860,7 +12879,7 @@ async function checkPrinciple(files, approved = []) {
     }
     throw error63;
   }
-  report.warnings.push(...scanAdvice(built.advice));
+  report.warnings.push(...scanAdvice(built.advice), ...adviceLengthWarnings(built.advice));
   report.unapproved = (built.manifest.packages ?? []).filter(needsApproval);
   if (!hasDetector(built.manifest)) {
     if (tests !== null) {
@@ -13401,35 +13420,80 @@ var OPENERS = {
   command: "This is about the command you are about to run.",
   output: "This is about what the command you ran printed."
 };
+var PREAMBLE = "Each principle below is advice from an expert the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.";
+var RATING = `Once you know how a principle's advice went, you may tell its expert: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command. Leave the rating out of your answer, and out of your report when you are a subagent.`;
 function frame(ctx, firings, alreadyShown = /* @__PURE__ */ new Set()) {
-  if (firings.length === 0) {
+  return frameEvents([{ ctx, firings }], alreadyShown, Number.POSITIVE_INFINITY).text;
+}
+function frameEvents(events, alreadyShown = /* @__PURE__ */ new Set(), budget = ADVICE_BUDGET) {
+  const firing = events.filter((event) => event.firings.length > 0);
+  const due = /* @__PURE__ */ new Set();
+  const seen = new Set(alreadyShown);
+  for (const { firings } of firing) {
+    for (const item of firings) {
+      if (item.findings.some((finding) => finding.depth !== "pointer") && !seen.has(item.principle.hash)) {
+        due.add(item);
+        seen.add(item.principle.hash);
+      }
+    }
+  }
+  const shown = [];
+  const full = /* @__PURE__ */ new Set();
+  for (const event of firing) {
+    const next = [...shown, event];
+    const fits = () => render2(next, full, firing.length - next.length).length <= budget;
+    for (const item of event.firings) {
+      if (due.has(item)) {
+        full.add(item);
+        if (!fits()) {
+          full.delete(item);
+        }
+      }
+    }
+    if (shown.length > 0 && !fits()) {
+      break;
+    }
+    shown.push(event);
+  }
+  const left = firing.length - shown.length;
+  return {
+    text: render2(shown, full, left),
+    full: new Set([...full].map((item) => item.principle.hash)),
+    shown
+  };
+}
+function render2(events, full, left = 0) {
+  if (events.length === 0) {
     return "";
   }
-  const where = ctx.file ? ` ${ctx.file.relativePath}` : "";
-  const lines = [
-    "<wellactually>",
-    `${ctx.event}${where}: ${OPENERS[ctx.event]}`,
-    "Each principle below is advice from an expert the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.",
-    ""
-  ];
-  for (const { principle, findings } of firings) {
-    const full = findings.some((finding) => finding.depth !== "pointer") && !alreadyShown.has(principle.hash);
-    const expert = principle.id.split("/")[0] ?? "";
-    lines.push(`<principle id="${principle.id}" expert="${expert}" title=${JSON.stringify(principle.manifest.title)}>`);
-    const places = new Set(findings.map((finding) => describeFinding(ctx, finding)).filter((place) => place !== null));
-    for (const place of places) {
-      lines.push(`- ${place}`);
+  const lines = ["<wellactually>"];
+  events.forEach(({ ctx, firings }, index) => {
+    const where = ctx.file ? ` ${ctx.file.relativePath}` : "";
+    lines.push(`${ctx.event}${where}: ${OPENERS[ctx.event]}`);
+    if (index === 0) {
+      lines.push(PREAMBLE);
     }
-    if (places.size > 0) {
-      lines.push("");
+    lines.push("");
+    for (const item of firings) {
+      const { principle, findings } = item;
+      const expert = principle.id.split("/")[0] ?? "";
+      lines.push(`<principle id="${principle.id}" expert="${expert}" title=${JSON.stringify(principle.manifest.title)}>`);
+      const places = new Set(findings.map((finding) => describeFinding(ctx, finding)).filter((place) => place !== null));
+      for (const place of places) {
+        lines.push(`- ${place}`);
+      }
+      if (places.size > 0) {
+        lines.push("");
+      }
+      lines.push(full.has(item) ? principle.advice : principle.manifest.summary);
+      lines.push("</principle>", "");
     }
-    lines.push(full ? principle.advice : principle.manifest.summary);
-    lines.push("</principle>", "");
+  });
+  if (left > 0) {
+    lines.push(`Principles also fired on ${left} more ${left === 1 ? "file" : "files"} of this change. They are left out to keep this short and come back when those files change again.`, "");
   }
-  if (firings.some(({ principle }) => !principle.id.startsWith("local/"))) {
-    lines.push(
-      `Once you know how a principle's advice went, you may tell its expert: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command, and it needs no word to the user.`
-    );
+  if (events.some(({ firings }) => firings.some(({ principle }) => !principle.id.startsWith("local/")))) {
+    lines.push(RATING);
   }
   lines.push("</wellactually>");
   return lines.join("\n");
@@ -15136,7 +15200,7 @@ function safeList(dir) {
 
 // packages/cli/src/hook.ts
 var MAX_FILE_BYTES2 = 512 * 1024;
-async function runHook(stdin, log) {
+async function runHook(stdin, log, frame2 = frameEvents) {
   const payload = JSON.parse(stdin);
   const event = payload.hook_event_name ?? "";
   if (log) {
@@ -15188,17 +15252,18 @@ async function runHook(stdin, log) {
   const setting = process.env.WELLACTUALLY_WORKERS;
   const pool = setting === "0" ? null : new DetectorPool(workerFile(), Number(setting) > 0 ? Number(setting) : void 0);
   try {
-    return await runEvents(payload, events, lockfile, pool, log);
+    return await runEvents(payload, events, lockfile, pool, frame2, log);
   } finally {
     await pool?.close();
   }
 }
-async function runEvents(payload, events, lockfile, pool, log) {
+async function runEvents(payload, events, lockfile, pool, frame2, log) {
   const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
   const agentId = payload.agent_id;
   const shown = readShown(sessionId, agentId);
   const parts = [];
+  const fired = [];
   const failures = /* @__PURE__ */ new Map();
   const cwd = payload.cwd ?? process.cwd();
   const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
@@ -15222,32 +15287,35 @@ async function runEvents(payload, events, lockfile, pool, log) {
       skipped: run.skipped.filter((skipped) => skipped.reason !== "globs"),
       unmatched: run.skipped.filter((skipped) => skipped.reason === "globs").length
     });
-    if (readConfig().stats) {
-      recordDetections(run.firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
-    }
-    const text2 = frame(ctx, run.firings, shown);
-    if (text2) {
-      parts.push(text2);
-    }
-    for (const firing of run.firings) {
-      if (firing.findings.some((finding) => finding.depth !== "pointer")) {
-        shown.add(firing.principle.hash);
-      }
-    }
+    fired.push({ ctx, firings: run.firings });
     for (const failure3 of run.failures) {
       failures.set(failure3.id, failure3.error);
     }
   }
   const newFailures = [...failures].filter(([id]) => !shown.has(`failure:${id}`));
-  if (newFailures.length > 0) {
-    parts.push(
-      [
-        "<wellactually-notice>",
-        "These principles on the user's advisory board could not run. Tell the user once; it does not affect your task.",
-        ...newFailures.map(([id, error62]) => `- ${id}: ${error62}`),
-        "</wellactually-notice>"
-      ].join("\n")
-    );
+  const notice = newFailures.length > 0 ? [
+    "<wellactually-notice>",
+    "These principles on the user's advisory board could not run. Tell the user once; it does not affect your task.",
+    ...newFailures.map(([id, error62]) => `- ${id}: ${error62}`),
+    "</wellactually-notice>"
+  ].join("\n") : "";
+  const framed = frame2(fired, shown, ADVICE_BUDGET - notice.length);
+  if (framed.text) {
+    parts.push(framed.text);
+  }
+  for (const hash2 of framed.full) {
+    shown.add(hash2);
+  }
+  if (log && framed.shown.length < fired.filter((entry) => entry.firings.length > 0).length) {
+    log.note = `left out ${fired.filter((entry) => entry.firings.length > 0).length - framed.shown.length} events to stay within ${ADVICE_BUDGET} characters`;
+  }
+  if (readConfig().stats) {
+    for (const { firings } of framed.shown) {
+      recordDetections(firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
+    }
+  }
+  if (notice) {
+    parts.push(notice);
   }
   if (parts.length === 0) {
     return "";
@@ -44644,7 +44712,7 @@ A principle is private until it is made public: publish_draft takes visibility p
 Reading: show reads a principle by id, bare name or link. Use it to follow a link from one principle's advice to another.
 
 Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
-It is feedback to the author, not part of your task, and it never needs the user's attention.`;
+It is feedback to the author, not part of your task: leave it out of your answer, and out of your report when you are a subagent.`;
 function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
