@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="assets/illustration.png" width="420" alt="An experienced developer raises one finger over the shoulder of a coding robot">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/illustration-dark.png">
+    <img src="assets/illustration-light.png" width="420" alt="An experienced developer raises one finger over the shoulder of a coding robot">
+  </picture>
 </p>
 
 <h1 align="center">Well Actually</h1>
