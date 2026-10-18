@@ -3679,6 +3679,10 @@ var init_module_ES6BEMUI = __esm({
   }
 });
 
+// packages/core/src/node.ts
+import { createRequire } from "node:module";
+import path2 from "node:path";
+
 // node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
 var variant = { type: "sync", importFFI: () => Promise.resolve().then(() => (init_ffi(), ffi_exports)).then((mod) => mod.QuickJSFFI), importModuleLoader: () => Promise.resolve().then(() => (init_emscripten_module_Q67P5WYC(), emscripten_module_Q67P5WYC_exports)).then((mod) => mod.default) };
 var src_default = variant;
@@ -3732,15 +3736,30 @@ function loadSandbox() {
   return quickjs;
 }
 
+// packages/core/src/fs.ts
+import fs from "node:fs";
+import path from "node:path";
+
 // packages/sdk/src/index.ts
 var API_VERSION = 3;
+
+// packages/core/src/licenses.ts
+var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
+var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
+var RULE = "-".repeat(72);
+
+// packages/core/src/bundle.ts
+var BUNDLE_GLOBAL = "__principle";
+var MAX_BUNDLE_BYTES = 1024 * 1024;
+var SDK = "@wellactually/sdk";
+var SDK_NOW = `${SDK}/v${API_VERSION}`;
 
 // packages/core/src/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path2) {
+function normalizeAbsolute(path3) {
   const out = [];
-  for (const part of path2.split("/")) {
+  for (const part of path3.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -3771,24 +3790,24 @@ function fsHost(cwd, project) {
     if (++calls > MAX_FS_CALLS) {
       return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
     }
-    const path2 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    const path3 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
     if (op === "stat") {
-      const stat = project.stat(path2);
+      const stat = project.stat(path3);
       return stat ? { stat } : missing;
     }
     if (op === "list") {
-      const entries = project.list(path2);
+      const entries = project.list(path3);
       if (entries) {
         return { entries };
       }
-      return project.stat(path2) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      return project.stat(path3) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
     }
-    const text = project.read(path2);
+    const text = project.read(path3);
     if (text === null) {
-      return project.stat(path2)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+      return project.stat(path3)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
     }
     bytes += text.length;
     if (bytes > MAX_FS_BYTES) {
@@ -3832,19 +3851,8 @@ function environmentFor(api, ctx, project) {
     functions: { __fs: fsHost(ctx.project ?? "/", project) }
   };
 }
-var SDK = "@wellactually/sdk";
-var current = `"${SDK}/v${API_VERSION}"`;
-
-// packages/core/src/licenses.ts
-var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
-var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
-var RULE = "-".repeat(72);
-
-// packages/core/src/bundle.ts
-var BUNDLE_GLOBAL = "__principle";
-var MAX_BUNDLE_BYTES = 1024 * 1024;
 var SDK2 = "@wellactually/sdk";
-var SDK_NOW = `${SDK2}/v${API_VERSION}`;
+var current = `"${SDK2}/v${API_VERSION}"`;
 
 // packages/core/src/sandbox.ts
 var DEFAULT_LIMITS = {
@@ -4035,8 +4043,7 @@ var MAX_TOTAL_BYTES = 512 * 1024;
 var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 
 // packages/core/src/fs.ts
-import fs from "node:fs";
-import path from "node:path";
+var readFrom = /* @__PURE__ */ new Set();
 var MAX_READ_BYTES = 512 * 1024;
 function diskFiles() {
   const kindOf = (stat) => stat.isFile() ? "file" : stat.isDirectory() ? "dir" : null;
@@ -4126,20 +4133,25 @@ var sandbox = null;
 setEngines({
   // Loaded on first use. The hook only runs detectors and never builds one,
   // and the plugin's single-file bundle cannot carry esbuild's native binary.
-  build: async (options) => {
-    let esbuild;
-    try {
-      esbuild = await import("esbuild");
-    } catch {
-      throw new Error(
-        "Building a principle needs esbuild, which the installed plugin does not carry. Use the command from a checkout of https://github.com/passsy/wellactually: `npm install && npm link -w wellactually`."
-      );
-    }
-    return esbuild.build(options);
-  },
+  build: async (options) => (await loadEsbuild()).build(options),
   // The build with the WebAssembly inlined, so the isolate also loads from a single bundled file.
   quickjs: () => sandbox ??= newQuickJSWASMModuleFromVariant(src_default)
 });
+async function loadEsbuild() {
+  try {
+    return await import("esbuild");
+  } catch {
+    for (const dir of [...readFrom].reverse()) {
+      try {
+        return createRequire(path2.join(dir, "package.json"))("esbuild");
+      } catch {
+      }
+    }
+    throw new Error(
+      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev github:passsy/wellactually#sdk vitest`."
+    );
+  }
+}
 
 // packages/cli/src/worker.ts
 void serveDetectors();

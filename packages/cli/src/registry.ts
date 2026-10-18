@@ -67,7 +67,7 @@ function retryAfterMs(response: Response): number {
 
 async function failure(response: Response): Promise<RegistryError> {
   if (response.status === 401) {
-    return new RegistryError("not signed in, or the token was revoked. Run `wellactually login`.");
+    return new RegistryError("not signed in, or the token was revoked. Sign in with the plugin's login skill.");
   }
   const body = (await response.json().catch(() => null)) as { error?: string } | null;
   return new RegistryError(body?.error ?? `the registry answered ${response.status}`, response.status);
@@ -75,7 +75,7 @@ async function failure(response: Response): Promise<RegistryError> {
 
 function requireToken(): void {
   if (!readConfig().token) {
-    throw new RegistryError("not signed in. Run `wellactually login`.");
+    throw new RegistryError("not signed in. Sign in with the plugin's login skill.");
   }
 }
 
@@ -152,7 +152,7 @@ export async function finishDeviceLogin(start: DeviceStart): Promise<string> {
     writeConfig({ ...readConfig(), token, handle });
     return handle;
   }
-  throw new RegistryError("the code expired before it was confirmed. Run `wellactually login` again.");
+  throw new RegistryError("the code expired before it was confirmed. Sign in again with the plugin's login skill.");
 }
 
 export function logout(): void {
@@ -406,7 +406,7 @@ export async function ratePrinciple(id: string, rating: Rating, rater: Rater = {
     return `${id} is a local principle. It belongs to no registry, so there is nobody to send a rating to.`;
   }
   if (!readConfig().stats) {
-    return "Reporting is turned off on this machine (`wellactually stats off`), so the rating was not sent.";
+    return "Reporting is turned off on this machine, so the rating was not sent.";
   }
   const entry = readLockfile().entries.find((candidate) => candidate.id === id);
   if (!entry) {

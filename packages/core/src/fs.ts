@@ -7,6 +7,13 @@ import { assertFileMapSize } from "./principle.ts";
 import type { ProjectFiles } from "./project.ts";
 import { scaffoldFiles } from "./scaffold.ts";
 
+/**
+ * The principle directories read in this process, newest last. The installed
+ * plugin carries no esbuild, so building looks for one where they live: a
+ * repository of principles has it, as a dependency of the SDK.
+ */
+export const readFrom = new Set<string>();
+
 /** Reads a principle directory into a file map, the form every other function takes. */
 export function readPrincipleDir(dir: string): FileMap {
   const files: FileMap = {};
@@ -108,6 +115,7 @@ function takenFrom(root: string, name: string): string | null {
  * the packages it imports, taken from what is installed on this machine.
  */
 export async function readPrinciple(dir: string): Promise<FileMap> {
+  readFrom.add(dir);
   return vendorPackages(readPrincipleDir(dir), diskPackages(dir));
 }
 

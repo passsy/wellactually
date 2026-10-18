@@ -1,9 +1,10 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { API_VERSION } from "@wellactually/sdk";
-import { ADVICE_BUDGET, ADVICE_MAX, adviceLengthWarnings, buildBundle, DetectorPool, describeFinding, fileCtx, forgetShown, frame, frameEvents, readConfig, readShown, runBoard, SESSION_MAX_AGE_MS, sweepShown, textCtx, writeCached, writeConfig, writeShown } from "../src/node.ts";
+import { ADVICE_BUDGET, ADVICE_MAX, adviceLengthWarnings, buildBundle, DetectorPool, describeFinding, fileCtx, FORMER_REGISTRY_HOSTS, forgetShown, frame, frameEvents, readConfig, readShown, runBoard, SESSION_MAX_AGE_MS, sweepShown, textCtx, writeCached, writeConfig, writeShown } from "../src/node.ts";
 
 const sdk = `import { onPrompt } from "@wellactually/sdk/v3";`;
 const handlers = [{ event: "prompt" as const, globs: [] }];
@@ -172,10 +173,11 @@ describe("what the agent is shown", () => {
 });
 
 describe("the stored login", () => {
-  test("moves from the Railway address to wellactually.dev and keeps any other registry", () => {
+  test("moves from a former address to wellactually.dev and keeps any other registry", () => {
     process.env.WELLACTUALLY_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-config-"));
+    FORMER_REGISTRY_HOSTS.add(createHash("sha256").update("old.example").digest("hex"));
     const login = { token: "t", handle: "ana", stats: true };
-    writeConfig({ ...login, registry: "https://web-production-a1cda.up.railway.app" });
+    writeConfig({ ...login, registry: "https://old.example" });
     expect(readConfig().registry).toBe("https://wellactually.dev");
     expect(readConfig().token).toBe("t");
 

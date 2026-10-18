@@ -95,7 +95,7 @@ export function switchPrinciple(wanted: string, on: boolean, scope: Scope, cwd: 
   const id = knownId(wanted);
   if (!id) {
     const known = readLockfile().entries.map((entry) => entry.id);
-    throw new Error(`"${wanted}" is not on this machine's advisory board. ${known.length > 0 ? `It holds: ${known.join(", ")}.` : "It is empty; run `wellactually sync`."}`);
+    throw new Error(`"${wanted}" is not on this machine's advisory board. ${known.length > 0 ? `It holds: ${known.join(", ")}.` : "It is empty; download it with the plugin's sync skill."}`);
   }
   const file = fileOf(scope, cwd);
   const disabled = new Set(read(file));

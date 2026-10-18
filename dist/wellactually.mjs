@@ -6936,8 +6936,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path14) {
-      let input2 = path14;
+    function removeDotSegments(path15) {
+      let input2 = path15;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -7346,8 +7346,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path14 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path14 && path14 !== "/" ? path14 : void 0;
+        const path15 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path15 && path15 !== "/" ? path15 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -10874,10 +10874,14 @@ var require_dist = __commonJS({
 });
 
 // packages/cli/src/main.ts
-import path13 from "node:path";
+import path14 from "node:path";
 import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
+
+// packages/core/src/node.ts
+import { createRequire } from "node:module";
+import path8 from "node:path";
 
 // node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
 var variant = { type: "sync", importFFI: () => Promise.resolve().then(() => (init_ffi(), ffi_exports)).then((mod) => mod.QuickJSFFI), importModuleLoader: () => Promise.resolve().then(() => (init_emscripten_module_Q67P5WYC(), emscripten_module_Q67P5WYC_exports)).then((mod) => mod.default) };
@@ -10932,42 +10936,28 @@ function loadSandbox() {
   return quickjs;
 }
 
-// packages/core/src/advice-length.ts
-var ADVICE_BUDGET = 9e3;
-var ADVICE_MAX = 7500;
-var ADVICE_LONG = 4e3;
-function adviceLengthWarnings(advice) {
-  const length = advice.length;
-  if (length > ADVICE_MAX) {
-    return [
-      `The advice is ${length.toLocaleString("en")} characters, more than the ${ADVICE_MAX.toLocaleString("en")} that fit in full. Agents are only shown its summary. Shorten it or split it into several principles.`
-    ];
-  }
-  if (length > ADVICE_LONG) {
-    return [
-      `The advice is ${length.toLocaleString("en")} characters, on the long end. Above ${ADVICE_LONG.toLocaleString("en")} it leaves little room for other principles that fire on the same change, which then get only their summary.`
-    ];
-  }
-  return [];
-}
+// packages/core/src/fs.ts
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 // packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path14, pattern) {
+function matchesGlob(path15, pattern) {
   let regex = cache.get(pattern);
   if (!regex) {
     regex = globToRegExp(pattern);
     cache.set(pattern, regex);
   }
-  return regex.test(path14);
+  return regex.test(path15);
 }
-function matchesGlobs(path14, globs) {
+function matchesGlobs(path15, globs) {
   const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
-  if (excluded.some((glob) => matchesGlob(path14, glob))) {
+  if (excluded.some((glob) => matchesGlob(path15, glob))) {
     return false;
   }
   const included = globs.filter((glob) => !glob.startsWith("!"));
-  return included.length === 0 || included.some((glob) => matchesGlob(path14, glob));
+  return included.length === 0 || included.some((glob) => matchesGlob(path15, glob));
 }
 function globToRegExp(pattern) {
   const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
@@ -11066,15 +11056,15 @@ var TEST_ROOT = "/project";
 function fileCtx(event, relativePath, content, written, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === void 0 ? TEST_ROOT : where.root;
-  const path14 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
-  const name = path14.slice(path14.lastIndexOf("/") + 1);
+  const path15 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
+  const name = path15.slice(path15.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
   const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
   return {
     event,
     file: {
-      path: path14,
+      path: path15,
       relativePath: relative,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
@@ -11128,189 +11118,6 @@ function locateWritten(content, fragments) {
   }
   return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text2]) => ({ line, text: text2 }));
 }
-
-// packages/core/src/project.ts
-var MAX_FS_CALLS = 500;
-var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path14) {
-  const out = [];
-  for (const part of path14.split("/")) {
-    if (part === "" || part === ".") {
-      continue;
-    }
-    if (part === "..") {
-      out.pop();
-      continue;
-    }
-    out.push(part);
-  }
-  return `/${out.join("/")}`;
-}
-function mapProject(root, files) {
-  const relative = (path14) => path14 === root ? "" : path14.startsWith(`${root}/`) ? path14.slice(root.length + 1) : null;
-  const isDir = (inside) => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));
-  return {
-    read: (path14) => {
-      const inside = relative(path14);
-      return inside === null ? null : files[inside] ?? null;
-    },
-    stat: (path14) => {
-      const inside = relative(path14);
-      if (inside === null) {
-        return null;
-      }
-      const content = files[inside];
-      if (content !== void 0) {
-        return { kind: "file", size: new TextEncoder().encode(content).length };
-      }
-      return isDir(inside) ? { kind: "dir", size: 0 } : null;
-    },
-    list: (path14) => {
-      const inside = relative(path14);
-      if (inside === null || inside in files || !isDir(inside)) {
-        return null;
-      }
-      const prefix = inside === "" ? "" : `${inside}/`;
-      const entries = /* @__PURE__ */ new Map();
-      for (const name of Object.keys(files)) {
-        if (!name.startsWith(prefix)) {
-          continue;
-        }
-        const rest = name.slice(prefix.length);
-        const slash = rest.indexOf("/");
-        entries.set(slash === -1 ? rest : rest.slice(0, slash), slash === -1 ? "file" : "dir");
-      }
-      return [...entries].sort(([a], [b]) => a < b ? -1 : 1).map(([name, kind]) => ({ name, kind }));
-    }
-  };
-}
-function fsHost(cwd, project) {
-  let calls = 0;
-  let bytes = 0;
-  const answer = (request) => {
-    let op;
-    let asked;
-    try {
-      ({ op, path: asked } = JSON.parse(request));
-    } catch {
-      return { error: { code: "EINVAL", message: "EINVAL: invalid argument" } };
-    }
-    const shown = typeof asked === "string" ? asked : "";
-    const missing = { error: { code: "ENOENT", message: `ENOENT: no such file or directory, '${shown}'` } };
-    if (typeof asked !== "string" || project === null) {
-      return missing;
-    }
-    if (++calls > MAX_FS_CALLS) {
-      return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
-    }
-    const path14 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
-    if (op === "stat") {
-      const stat = project.stat(path14);
-      return stat ? { stat } : missing;
-    }
-    if (op === "list") {
-      const entries = project.list(path14);
-      if (entries) {
-        return { entries };
-      }
-      return project.stat(path14) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
-    }
-    if (op !== "read") {
-      return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
-    }
-    const text2 = project.read(path14);
-    if (text2 === null) {
-      return project.stat(path14)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
-    }
-    bytes += text2.length;
-    if (bytes > MAX_FS_BYTES) {
-      return { error: { code: "EFBIG", message: `EFBIG: a detector may read at most ${MAX_FS_BYTES / 1024 / 1024} MB per run` } };
-    }
-    return { text: text2 };
-  };
-  return (request) => JSON.stringify(answer(request));
-}
-
-// packages/core/src/api.ts
-var MIN_API_VERSION = 3;
-function apiOf(manifest) {
-  return manifest.api ?? 1;
-}
-function unsupported(api) {
-  if (!Number.isInteger(api) || api < 1) {
-    return `it names a detector API version this host does not know: ${String(api)}`;
-  }
-  if (api > API_VERSION) {
-    return `it was built for detector API ${api} and this version of Well Actually runs up to ${API_VERSION}. Update the plugin.`;
-  }
-  if (api < MIN_API_VERSION) {
-    return `it was built for detector API ${api}, which is no longer run. Its expert has to release it again.`;
-  }
-  return null;
-}
-var DOWNGRADE = {};
-function ctxFor(api, ctx) {
-  let event = ctx;
-  for (let version2 = API_VERSION; version2 > api; version2--) {
-    const step = DOWNGRADE[version2];
-    if (!step) {
-      throw new Error(`there is no step from detector API ${version2} to ${version2 - 1}`);
-    }
-    event = step(event);
-  }
-  return event;
-}
-function environmentFor(api, ctx, project) {
-  return {
-    // `node:path` resolves against the project root, and `node:fs` asks the host.
-    strings: { __ctx: JSON.stringify(ctxFor(api, ctx)), __cwd: ctx.project ?? "/" },
-    functions: { __fs: fsHost(ctx.project ?? "/", project) }
-  };
-}
-var SDK = "@wellactually/sdk";
-var current = `"${SDK}/v${API_VERSION}"`;
-function sdkImports(source) {
-  const code = blankCommentsAndStrings(source);
-  const found = /* @__PURE__ */ new Set();
-  for (const match of code.matchAll(/\b(?:from|import)\s*\(?\s*(["'])/g)) {
-    const open2 = match.index + match[0].length;
-    const close = source.indexOf(match[1] ?? '"', open2);
-    const specifier = close === -1 ? "" : source.slice(open2, close);
-    if (specifier === SDK || specifier.startsWith(`${SDK}/`)) {
-      found.add(specifier);
-    }
-  }
-  return [...found];
-}
-function importedApi(sources) {
-  const seen = /* @__PURE__ */ new Map();
-  for (const name of Object.keys(sources).sort()) {
-    for (const specifier of sdkImports(sources[name] ?? "")) {
-      const where = `${name} imports "${specifier}"`;
-      const version2 = /^@wellactually\/sdk\/v(\d+)(?:\/test)?$/.exec(specifier)?.[1];
-      if (version2 === void 0) {
-        const wanted = specifier.endsWith("/test") ? `"${SDK}/v${API_VERSION}/test"` : current;
-        throw new Error(`${where}. The detector API version is part of the path: import from ${wanted}.`);
-      }
-      const api = Number(version2);
-      if (api < MIN_API_VERSION || api > API_VERSION) {
-        const built = MIN_API_VERSION === API_VERSION ? `detector API ${API_VERSION}` : `the detector API versions ${MIN_API_VERSION} to ${API_VERSION}`;
-        throw new Error(`${where}. This version of Well Actually builds for ${built}: import from ${specifier.endsWith("/test") ? `"${SDK}/v${API_VERSION}/test"` : current}.`);
-      }
-      if (!seen.has(api)) {
-        seen.set(api, where);
-      }
-    }
-  }
-  if (seen.size === 0) {
-    throw new Error(`no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import { onWrite } from ${current};`);
-  }
-  if (seen.size > 1) {
-    throw new Error(`the principle is written against ${seen.size} versions of the detector API: ${[...seen.values()].join(", ")}. Import from one version everywhere.`);
-  }
-  return [...seen.keys()][0];
-}
-var BUILT_IN_SINCE = {};
 
 // packages/core/src/licenses.ts
 var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
@@ -11678,8 +11485,8 @@ function isExactVersion(version2) {
   return EXACT_VERSION.test(version2);
 }
 var PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
-function isPackageFile(path14) {
-  return path14.startsWith(PACKAGE_DIR);
+function isPackageFile(path15) {
+  return path15.startsWith(PACKAGE_DIR);
 }
 function readPins(files) {
   const source = files["package.json"];
@@ -11717,11 +11524,11 @@ function splitSpecifier(specifier) {
   }
   return { name, subpath: parts.slice(count2).join("/") };
 }
-function packageOf(path14) {
-  if (!isPackageFile(path14)) {
+function packageOf(path15) {
+  if (!isPackageFile(path15)) {
     return null;
   }
-  return splitSpecifier(path14.slice(PACKAGE_DIR.length))?.name ?? null;
+  return splitSpecifier(path15.slice(PACKAGE_DIR.length))?.name ?? null;
 }
 async function readPackageJson(read2, name) {
   const source = await read2(`${PACKAGE_DIR}${name}/package.json`);
@@ -11829,9 +11636,9 @@ async function resolveInPackage(read2, importer, relative) {
   return probe(read2, joined);
 }
 var SUFFIXES = ["", ".js", ".mjs", ".cjs", ".ts", ".json", "/index.js", "/index.mjs", "/index.cjs", "/index.ts"];
-async function probe(read2, path14) {
+async function probe(read2, path15) {
   for (const suffix of SUFFIXES) {
-    const candidate = `${path14}${suffix}`;
+    const candidate = `${path15}${suffix}`;
     if (suffix === "" && !/\.[a-z]+$/.test(candidate)) {
       continue;
     }
@@ -11950,14 +11757,14 @@ function declaredLicense(json2) {
 }
 function carriedPackages(files) {
   const packages = [];
-  for (const path14 of Object.keys(files).sort()) {
-    const name = packageOf(path14);
-    if (name === null || path14 !== `${PACKAGE_DIR}${name}/package.json`) {
+  for (const path15 of Object.keys(files).sort()) {
+    const name = packageOf(path15);
+    if (name === null || path15 !== `${PACKAGE_DIR}${name}/package.json`) {
       continue;
     }
     let json2;
     try {
-      json2 = JSON.parse(files[path14] ?? "");
+      json2 = JSON.parse(files[path15] ?? "");
     } catch {
       throw new PackageError(`the package.json of ${name} is not valid JSON`);
     }
@@ -12018,9 +11825,9 @@ var BundleError = class extends Error {
 var BUNDLE_GLOBAL = "__principle";
 var MAX_BUNDLE_BYTES = 1024 * 1024;
 var NODE_MODULES = /* @__PURE__ */ new Set(["assert", "buffer", "child_process", "crypto", "events", "http", "https", "module", "net", "os", "process", "stream", "string_decoder", "tty", "url", "util", "worker_threads", "zlib"]);
-var SDK2 = "@wellactually/sdk";
+var SDK = "@wellactually/sdk";
 var SDK_ENTRY = /^@wellactually\/sdk\/(v\d+)(\/test)?$/;
-var SDK_NOW = `${SDK2}/v${API_VERSION}`;
+var SDK_NOW = `${SDK}/v${API_VERSION}`;
 var TEST_RUNTIME = "wellactually:test-runtime";
 var HANDLER_RUNTIME = "wellactually:handler-runtime";
 var DETECTOR_ENTRY = "__detector__.ts";
@@ -12042,9 +11849,9 @@ function testFiles(files) {
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
 }
-function normalize(path14) {
+function normalize(path15) {
   const out = [];
-  for (const part of path14.split("/")) {
+  for (const part of path15.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -12056,9 +11863,9 @@ function normalize(path14) {
   }
   return out.join("/");
 }
-function dirname(path14) {
-  const slash = path14.lastIndexOf("/");
-  return slash === -1 ? "" : path14.slice(0, slash);
+function dirname(path15) {
+  const slash = path15.lastIndexOf("/");
+  return slash === -1 ? "" : path15.slice(0, slash);
 }
 async function vendorPackages(files, source) {
   let pins;
@@ -12074,8 +11881,8 @@ async function vendorPackages(files, source) {
   await buildDetector(files, source, fetched);
   await buildTestBundle(files, source, fetched);
   const names = /* @__PURE__ */ new Set();
-  for (const path14 of Object.keys(fetched)) {
-    const name = packageOf(path14);
+  for (const path15 of Object.keys(fetched)) {
+    const name = packageOf(path15);
     if (name !== null) {
       names.add(name);
     }
@@ -12125,21 +11932,21 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
     throw new BundleError(error62.message);
   }
   const missing = /* @__PURE__ */ new Set();
-  const read2 = async (path14) => {
-    const own2 = files[path14] ?? fetched[path14];
+  const read2 = async (path15) => {
+    const own2 = files[path15] ?? fetched[path15];
     if (own2 !== void 0) {
       return own2;
     }
-    const name = packageOf(path14);
-    if (name === null || source === void 0 || missing.has(path14)) {
+    const name = packageOf(path15);
+    if (name === null || source === void 0 || missing.has(path15)) {
       return null;
     }
-    const text2 = await source(name, pins[name] ?? null, path14.slice(PACKAGE_DIR.length + name.length + 1));
+    const text2 = await source(name, pins[name] ?? null, path15.slice(PACKAGE_DIR.length + name.length + 1));
     if (text2 === null) {
-      missing.add(path14);
+      missing.add(path15);
       return null;
     }
-    fetched[path14] = text2;
+    fetched[path15] = text2;
     return text2;
   };
   const virtual = {
@@ -12169,7 +11976,7 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
           }
           return { path: "test.ts", namespace: "sdk" };
         }
-        if (args.path === SDK2 || args.path.startsWith(`${SDK2}/`)) {
+        if (args.path === SDK || args.path.startsWith(`${SDK}/`)) {
           return { errors: [{ text: `"${args.path}" cannot be imported. The detector API version is part of the path: "${args.path.endsWith("/test") ? `${SDK_NOW}/test` : SDK_NOW}".` }] };
         }
         const builtIn = BUILT_INS[args.path];
@@ -12300,46 +12107,193 @@ function formatMessage(message) {
   return `${where}${message.text}`;
 }
 
-// packages/core/src/credits.ts
-function describeCredits(handles) {
-  const [original, ...editors] = handles;
-  if (original === void 0 || editors.length === 0) {
-    return null;
+// packages/core/src/project.ts
+var MAX_FS_CALLS = 500;
+var MAX_FS_BYTES = 4 * 1024 * 1024;
+function normalizeAbsolute(path15) {
+  const out = [];
+  for (const part of path15.split("/")) {
+    if (part === "" || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      out.pop();
+      continue;
+    }
+    out.push(part);
   }
-  const named = editors.map((handle) => `@${handle}`);
-  const last = named.pop();
-  return `Original by @${original}, edited by ${named.length > 0 ? `${named.join(", ")} and ${last}` : last}`;
+  return `/${out.join("/")}`;
 }
+function mapProject(root, files) {
+  const relative = (path15) => path15 === root ? "" : path15.startsWith(`${root}/`) ? path15.slice(root.length + 1) : null;
+  const isDir = (inside) => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));
+  return {
+    read: (path15) => {
+      const inside = relative(path15);
+      return inside === null ? null : files[inside] ?? null;
+    },
+    stat: (path15) => {
+      const inside = relative(path15);
+      if (inside === null) {
+        return null;
+      }
+      const content = files[inside];
+      if (content !== void 0) {
+        return { kind: "file", size: new TextEncoder().encode(content).length };
+      }
+      return isDir(inside) ? { kind: "dir", size: 0 } : null;
+    },
+    list: (path15) => {
+      const inside = relative(path15);
+      if (inside === null || inside in files || !isDir(inside)) {
+        return null;
+      }
+      const prefix = inside === "" ? "" : `${inside}/`;
+      const entries = /* @__PURE__ */ new Map();
+      for (const name of Object.keys(files)) {
+        if (!name.startsWith(prefix)) {
+          continue;
+        }
+        const rest = name.slice(prefix.length);
+        const slash = rest.indexOf("/");
+        entries.set(slash === -1 ? rest : rest.slice(0, slash), slash === -1 ? "file" : "dir");
+      }
+      return [...entries].sort(([a], [b]) => a < b ? -1 : 1).map(([name, kind]) => ({ name, kind }));
+    }
+  };
+}
+function fsHost(cwd, project) {
+  let calls = 0;
+  let bytes = 0;
+  const answer = (request) => {
+    let op;
+    let asked;
+    try {
+      ({ op, path: asked } = JSON.parse(request));
+    } catch {
+      return { error: { code: "EINVAL", message: "EINVAL: invalid argument" } };
+    }
+    const shown = typeof asked === "string" ? asked : "";
+    const missing = { error: { code: "ENOENT", message: `ENOENT: no such file or directory, '${shown}'` } };
+    if (typeof asked !== "string" || project === null) {
+      return missing;
+    }
+    if (++calls > MAX_FS_CALLS) {
+      return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
+    }
+    const path15 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    if (op === "stat") {
+      const stat = project.stat(path15);
+      return stat ? { stat } : missing;
+    }
+    if (op === "list") {
+      const entries = project.list(path15);
+      if (entries) {
+        return { entries };
+      }
+      return project.stat(path15) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+    }
+    if (op !== "read") {
+      return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
+    }
+    const text2 = project.read(path15);
+    if (text2 === null) {
+      return project.stat(path15)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+    }
+    bytes += text2.length;
+    if (bytes > MAX_FS_BYTES) {
+      return { error: { code: "EFBIG", message: `EFBIG: a detector may read at most ${MAX_FS_BYTES / 1024 / 1024} MB per run` } };
+    }
+    return { text: text2 };
+  };
+  return (request) => JSON.stringify(answer(request));
+}
+
+// packages/core/src/api.ts
+var MIN_API_VERSION = 3;
+function apiOf(manifest) {
+  return manifest.api ?? 1;
+}
+function unsupported(api) {
+  if (!Number.isInteger(api) || api < 1) {
+    return `it names a detector API version this host does not know: ${String(api)}`;
+  }
+  if (api > API_VERSION) {
+    return `it was built for detector API ${api} and this version of Well Actually runs up to ${API_VERSION}. Update the plugin.`;
+  }
+  if (api < MIN_API_VERSION) {
+    return `it was built for detector API ${api}, which is no longer run. Its expert has to release it again.`;
+  }
+  return null;
+}
+var DOWNGRADE = {};
+function ctxFor(api, ctx) {
+  let event = ctx;
+  for (let version2 = API_VERSION; version2 > api; version2--) {
+    const step = DOWNGRADE[version2];
+    if (!step) {
+      throw new Error(`there is no step from detector API ${version2} to ${version2 - 1}`);
+    }
+    event = step(event);
+  }
+  return event;
+}
+function environmentFor(api, ctx, project) {
+  return {
+    // `node:path` resolves against the project root, and `node:fs` asks the host.
+    strings: { __ctx: JSON.stringify(ctxFor(api, ctx)), __cwd: ctx.project ?? "/" },
+    functions: { __fs: fsHost(ctx.project ?? "/", project) }
+  };
+}
+var SDK2 = "@wellactually/sdk";
+var current = `"${SDK2}/v${API_VERSION}"`;
+function sdkImports(source) {
+  const code = blankCommentsAndStrings(source);
+  const found = /* @__PURE__ */ new Set();
+  for (const match of code.matchAll(/\b(?:from|import)\s*\(?\s*(["'])/g)) {
+    const open2 = match.index + match[0].length;
+    const close = source.indexOf(match[1] ?? '"', open2);
+    const specifier = close === -1 ? "" : source.slice(open2, close);
+    if (specifier === SDK2 || specifier.startsWith(`${SDK2}/`)) {
+      found.add(specifier);
+    }
+  }
+  return [...found];
+}
+function importedApi(sources) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const name of Object.keys(sources).sort()) {
+    for (const specifier of sdkImports(sources[name] ?? "")) {
+      const where = `${name} imports "${specifier}"`;
+      const version2 = /^@wellactually\/sdk\/v(\d+)(?:\/test)?$/.exec(specifier)?.[1];
+      if (version2 === void 0) {
+        const wanted = specifier.endsWith("/test") ? `"${SDK2}/v${API_VERSION}/test"` : current;
+        throw new Error(`${where}. The detector API version is part of the path: import from ${wanted}.`);
+      }
+      const api = Number(version2);
+      if (api < MIN_API_VERSION || api > API_VERSION) {
+        const built = MIN_API_VERSION === API_VERSION ? `detector API ${API_VERSION}` : `the detector API versions ${MIN_API_VERSION} to ${API_VERSION}`;
+        throw new Error(`${where}. This version of Well Actually builds for ${built}: import from ${specifier.endsWith("/test") ? `"${SDK2}/v${API_VERSION}/test"` : current}.`);
+      }
+      if (!seen.has(api)) {
+        seen.set(api, where);
+      }
+    }
+  }
+  if (seen.size === 0) {
+    throw new Error(`no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import { onWrite } from ${current};`);
+  }
+  if (seen.size > 1) {
+    throw new Error(`the principle is written against ${seen.size} versions of the detector API: ${[...seen.values()].join(", ")}. Import from one version everywhere.`);
+  }
+  return [...seen.keys()][0];
+}
+var BUILT_IN_SINCE = {};
 
 // packages/core/src/ctx.ts
 function applies(manifest, ctx) {
   const file2 = ctx.file;
   return (manifest.handlers ?? []).some((handler) => handler.event === ctx.event && (!file2 || matchesGlobs(file2.relativePath, handler.globs)));
-}
-
-// packages/core/src/finding.ts
-var MAX_QUOTED_LENGTH = 300;
-function describeFinding(ctx, finding) {
-  const place = describePlace(ctx, finding);
-  if (finding.file === void 0 || finding.file === ctx.file?.relativePath) {
-    return place ?? (ctx.file ? `the file ${ctx.file.relativePath}` : null);
-  }
-  if (place === null) {
-    return `the file ${finding.file}`;
-  }
-  return `the file ${finding.file}, from ${place}`;
-}
-function describePlace(ctx, finding) {
-  const match = finding.match === void 0 ? null : JSON.stringify(finding.match);
-  if (finding.line === void 0) {
-    return match;
-  }
-  const lines = ctx.file?.lines ?? ctx.text.split("\n");
-  const text2 = (lines[finding.line - 1] ?? "").trim();
-  const quoted = text2.length > MAX_QUOTED_LENGTH ? `${text2.slice(0, MAX_QUOTED_LENGTH)}\u2026` : text2;
-  const where = finding.endLine === void 0 ? `line ${finding.line}` : `lines ${finding.line}-${finding.endLine}`;
-  const named = match !== null && finding.match !== text2 ? `${where}, ${match}` : where;
-  return quoted === "" ? named : `${named}: ${quoted}`;
 }
 
 // packages/core/src/manifest.ts
@@ -12774,6 +12728,25 @@ function scanAdvice(advice) {
   return warnings;
 }
 
+// packages/core/src/advice-length.ts
+var ADVICE_BUDGET = 9e3;
+var ADVICE_MAX = 7500;
+var ADVICE_LONG = 4e3;
+function adviceLengthWarnings(advice) {
+  const length = advice.length;
+  if (length > ADVICE_MAX) {
+    return [
+      `The advice is ${length.toLocaleString("en")} characters, more than the ${ADVICE_MAX.toLocaleString("en")} that fit in full. Agents are only shown its summary. Shorten it or split it into several principles.`
+    ];
+  }
+  if (length > ADVICE_LONG) {
+    return [
+      `The advice is ${length.toLocaleString("en")} characters, on the long end. Above ${ADVICE_LONG.toLocaleString("en")} it leaves little room for other principles that fire on the same change, which then get only their summary.`
+    ];
+  }
+  return [];
+}
+
 // packages/core/src/principle.ts
 var MAX_FILES = 60;
 var MAX_TOTAL_BYTES = 512 * 1024;
@@ -13118,15 +13091,8 @@ test("stays quiet in other languages", () => {
   };
 }
 
-// packages/core/src/board.ts
-import fs2 from "node:fs";
-import os2 from "node:os";
-import path2 from "node:path";
-
 // packages/core/src/fs.ts
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+var readFrom = /* @__PURE__ */ new Set();
 function readPrincipleDir(dir) {
   const files = {};
   const walk = (current2) => {
@@ -13210,6 +13176,7 @@ function takenFrom(root, name) {
   return resolved;
 }
 async function readPrinciple(dir) {
+  readFrom.add(dir);
   return vendorPackages(readPrincipleDir(dir), diskPackages(dir));
 }
 function scaffold(slug, parent) {
@@ -13307,9 +13274,59 @@ function diskFiles() {
   };
 }
 
+// packages/core/src/credits.ts
+function describeCredits(handles) {
+  const [original, ...editors] = handles;
+  if (original === void 0 || editors.length === 0) {
+    return null;
+  }
+  const named = editors.map((handle) => `@${handle}`);
+  const last = named.pop();
+  return `Original by @${original}, edited by ${named.length > 0 ? `${named.join(", ")} and ${last}` : last}`;
+}
+
+// packages/core/src/finding.ts
+var MAX_QUOTED_LENGTH = 300;
+function describeFinding(ctx, finding) {
+  const place = describePlace(ctx, finding);
+  if (finding.file === void 0 || finding.file === ctx.file?.relativePath) {
+    return place ?? (ctx.file ? `the file ${ctx.file.relativePath}` : null);
+  }
+  if (place === null) {
+    return `the file ${finding.file}`;
+  }
+  return `the file ${finding.file}, from ${place}`;
+}
+function describePlace(ctx, finding) {
+  const match = finding.match === void 0 ? null : JSON.stringify(finding.match);
+  if (finding.line === void 0) {
+    return match;
+  }
+  const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  const text2 = (lines[finding.line - 1] ?? "").trim();
+  const quoted = text2.length > MAX_QUOTED_LENGTH ? `${text2.slice(0, MAX_QUOTED_LENGTH)}\u2026` : text2;
+  const where = finding.endLine === void 0 ? `line ${finding.line}` : `lines ${finding.line}-${finding.endLine}`;
+  const named = match !== null && finding.match !== text2 ? `${where}, ${match}` : where;
+  return quoted === "" ? named : `${named}: ${quoted}`;
+}
+
 // packages/core/src/board.ts
+import { createHash } from "node:crypto";
+import fs2 from "node:fs";
+import os2 from "node:os";
+import path2 from "node:path";
 var DEFAULT_REGISTRY = "https://wellactually.dev";
-var RAILWAY_REGISTRY = "https://web-production-a1cda.up.railway.app";
+var FORMER_REGISTRY_HOSTS = /* @__PURE__ */ new Set(["53174f685516576dd8f13b83837c7726ffb7ad7dd2bb469453d2eb5a53e4c14e"]);
+function isFormerRegistryHost(host) {
+  return FORMER_REGISTRY_HOSTS.has(createHash("sha256").update(host).digest("hex"));
+}
+function isFormerRegistry(registry2) {
+  try {
+    return isFormerRegistryHost(new URL(registry2).host);
+  } catch {
+    return false;
+  }
+}
 function boardHome() {
   return process.env.WELLACTUALLY_HOME ?? path2.join(os2.homedir(), ".wellactually");
 }
@@ -13331,7 +13348,7 @@ function writeJson(file2, value) {
 }
 function readConfig() {
   const stored = readJson(path2.join(boardHome(), "config.json"));
-  const registry2 = stored?.registry === RAILWAY_REGISTRY ? DEFAULT_REGISTRY : stored?.registry;
+  const registry2 = stored?.registry !== void 0 && isFormerRegistry(stored.registry) ? DEFAULT_REGISTRY : stored?.registry;
   return {
     registry: process.env.WELLACTUALLY_REGISTRY ?? registry2 ?? DEFAULT_REGISTRY,
     token: stored?.token ?? null,
@@ -13379,7 +13396,7 @@ async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ ne
     const cached2 = readCached(entry.hash);
     const principle = cached2 && { ...cached2, id: entry.id, version: entry.version };
     if (!principle) {
-      run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; run `wellactually sync`" });
+      run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; download it with the plugin's sync skill" });
       run.skipped.push({ id: entry.id, reason: "not cached" });
       continue;
     }
@@ -13883,7 +13900,7 @@ function switchPrinciple(wanted, on, scope, cwd) {
   const id = knownId(wanted);
   if (!id) {
     const known = readLockfile().entries.map((entry) => entry.id);
-    throw new Error(`"${wanted}" is not on this machine's advisory board. ${known.length > 0 ? `It holds: ${known.join(", ")}.` : "It is empty; run `wellactually sync`."}`);
+    throw new Error(`"${wanted}" is not on this machine's advisory board. ${known.length > 0 ? `It holds: ${known.join(", ")}.` : "It is empty; download it with the plugin's sync skill."}`);
   }
   const file2 = fileOf(scope, cwd);
   const disabled = new Set(read(file2));
@@ -14019,7 +14036,7 @@ function readText(file2) {
 
 // packages/core/src/turn.ts
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 import fs6 from "node:fs";
 import os4 from "node:os";
 import path7 from "node:path";
@@ -14319,7 +14336,7 @@ function sessionDir(sessionId) {
   return path7.join(turnsDir(), sessionId.replace(/[^A-Za-z0-9_-]/g, "_"));
 }
 function repoDir(sessionId, root) {
-  return path7.join(sessionDir(sessionId), createHash("sha256").update(root).digest("hex").slice(0, 16));
+  return path7.join(sessionDir(sessionId), createHash2("sha256").update(root).digest("hex").slice(0, 16));
 }
 
 // packages/core/src/node.ts
@@ -14327,24 +14344,29 @@ var sandbox = null;
 setEngines({
   // Loaded on first use. The hook only runs detectors and never builds one,
   // and the plugin's single-file bundle cannot carry esbuild's native binary.
-  build: async (options) => {
-    let esbuild;
-    try {
-      esbuild = await import("esbuild");
-    } catch {
-      throw new Error(
-        "Building a principle needs esbuild, which the installed plugin does not carry. Use the command from a checkout of https://github.com/passsy/wellactually: `npm install && npm link -w wellactually`."
-      );
-    }
-    return esbuild.build(options);
-  },
+  build: async (options) => (await loadEsbuild()).build(options),
   // The build with the WebAssembly inlined, so the isolate also loads from a single bundled file.
   quickjs: () => sandbox ??= newQuickJSWASMModuleFromVariant(src_default)
 });
+async function loadEsbuild() {
+  try {
+    return await import("esbuild");
+  } catch {
+    for (const dir of [...readFrom].reverse()) {
+      try {
+        return createRequire(path8.join(dir, "package.json"))("esbuild");
+      } catch {
+      }
+    }
+    throw new Error(
+      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev github:passsy/wellactually#sdk vitest`."
+    );
+  }
+}
 
 // packages/cli/src/commands.ts
 import fs7 from "node:fs";
-import path8 from "node:path";
+import path9 from "node:path";
 
 // packages/cli/src/registry.ts
 var RegistryError = class extends Error {
@@ -14390,14 +14412,14 @@ function retryAfterMs(response) {
 }
 async function failure(response) {
   if (response.status === 401) {
-    return new RegistryError("not signed in, or the token was revoked. Run `wellactually login`.");
+    return new RegistryError("not signed in, or the token was revoked. Sign in with the plugin's login skill.");
   }
   const body = await response.json().catch(() => null);
   return new RegistryError(body?.error ?? `the registry answered ${response.status}`, response.status);
 }
 function requireToken() {
   if (!readConfig().token) {
-    throw new RegistryError("not signed in. Run `wellactually login`.");
+    throw new RegistryError("not signed in. Sign in with the plugin's login skill.");
   }
 }
 async function syncRepository(name) {
@@ -14442,7 +14464,7 @@ async function finishDeviceLogin(start) {
     writeConfig({ ...readConfig(), token, handle });
     return handle;
   }
-  throw new RegistryError("the code expired before it was confirmed. Run `wellactually login` again.");
+  throw new RegistryError("the code expired before it was confirmed. Sign in again with the plugin's login skill.");
 }
 function logout() {
   writeConfig({ ...readConfig(), token: null, handle: null });
@@ -14563,7 +14585,7 @@ async function ratePrinciple(id, rating, rater = { agent: null, model: null }) {
     return `${id} is a local principle. It belongs to no registry, so there is nobody to send a rating to.`;
   }
   if (!readConfig().stats) {
-    return "Reporting is turned off on this machine (`wellactually stats off`), so the rating was not sent.";
+    return "Reporting is turned off on this machine, so the rating was not sent.";
   }
   const entry = readLockfile().entries.find((candidate) => candidate.id === id);
   if (!entry) {
@@ -14579,10 +14601,10 @@ async function ratePrinciple(id, rating, rater = { agent: null, model: null }) {
 
 // packages/cli/src/commands.ts
 function idOf(dir) {
-  return path8.basename(path8.resolve(dir));
+  return path9.basename(path9.resolve(dir));
 }
 async function checkDir(dir) {
-  const { built, report } = await checkPrinciple(await readPrinciple(path8.resolve(dir)));
+  const { built, report } = await checkPrinciple(await readPrinciple(path9.resolve(dir)));
   const id = idOf(dir);
   if (isPrincipleId(id)) {
     return { id, built, report };
@@ -14595,7 +14617,7 @@ async function testPrinciple(dir) {
   return { id, title: built?.manifest.title ?? null, report };
 }
 async function tryPrinciple(dir, input2) {
-  const built = await buildPrinciple(await readPrinciple(path8.resolve(dir)));
+  const built = await buildPrinciple(await readPrinciple(path9.resolve(dir)));
   const ctx = tryCtx(input2);
   if (!applies(built.manifest, ctx)) {
     return { applies: false, run: null, injected: "" };
@@ -14618,15 +14640,15 @@ function tryCtx(input2) {
   if (input2.file === void 0) {
     throw new Error("pass a file, --prompt, --command or --output");
   }
-  const absolute = path8.resolve(input2.file);
-  const root = projectRootOf(path8.dirname(absolute));
-  const relative = path8.relative(root ?? process.cwd(), absolute);
-  const shown = relative.startsWith("..") ? path8.basename(absolute) : toPosix(relative);
+  const absolute = path9.resolve(input2.file);
+  const root = projectRootOf(path9.dirname(absolute));
+  const relative = path9.relative(root ?? process.cwd(), absolute);
+  const shown = relative.startsWith("..") ? path9.basename(absolute) : toPosix(relative);
   return fileCtx(input2.read ? "read" : "write", shown, fs7.readFileSync(absolute, "utf8"), void 0, { root: root === null ? null : toPosix(root), absolute: toPosix(absolute) });
 }
 async function probePrinciple(dir, repo) {
-  const built = await buildPrinciple(await readPrinciple(path8.resolve(dir)));
-  return probeRepo(built, path8.resolve(repo));
+  const built = await buildPrinciple(await readPrinciple(path9.resolve(dir)));
+  return probeRepo(built, path9.resolve(repo));
 }
 var ApprovalError = class extends Error {
 };
@@ -14648,7 +14670,7 @@ async function publishPrinciple(dir, options = {}) {
   if (!isPrincipleId(id)) {
     throw new Error(`The folder name "${id}" is the principle's id and must be ${PRINCIPLE_ID_RULE}. Rename the folder, then publish again.`);
   }
-  const files = await readPrinciple(path8.resolve(dir));
+  const files = await readPrinciple(path9.resolve(dir));
   const approved = [];
   const open2 = [];
   for (const info of await packagesToApprove(files)) {
@@ -14754,13 +14776,13 @@ function renderHistory(result) {
 }
 async function pullPrinciple(id, dir, force) {
   const source = await pullSource(id);
-  const target = path8.resolve(dir ?? source.id.split("/")[1] ?? "principle");
+  const target = path9.resolve(dir ?? source.id.split("/")[1] ?? "principle");
   if (fs7.existsSync(target) && fs7.readdirSync(target).length > 0) {
     if (!force) {
       throw new Error(`${target} already has files. Pass --force to replace them with the registry's version.`);
     }
     for (const name of Object.keys(readPrincipleDir(target))) {
-      fs7.rmSync(path8.join(target, name));
+      fs7.rmSync(path9.join(target, name));
     }
   }
   const own2 = {};
@@ -14783,9 +14805,9 @@ It uses packages. Install them first: npm install --prefix ${result.dir}`;
   const credits = described === null ? "" : `
 ${described}.`;
   return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).${credits}${install}
-Edit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
+Edit it, then run its tests and publish it.`;
 }
-var REGISTRY_HOSTS = [new URL(DEFAULT_REGISTRY).host, "www.wellactually.dev", "web-production-a1cda.up.railway.app"];
+var REGISTRY_HOSTS = [new URL(DEFAULT_REGISTRY).host, "www.wellactually.dev"];
 function principleIdOf(reference) {
   const trimmed = reference.trim();
   const link = /^(https?:\/\/)?([^/\s]+)(\/p\/[^\s]*)$/i.exec(trimmed);
@@ -14794,7 +14816,7 @@ function principleIdOf(reference) {
   }
   const url2 = new URL(`${link[1] ?? "https://"}${link[2]}${link[3]}`);
   const hosts = [...REGISTRY_HOSTS, new URL(readConfig().registry).host];
-  if (!hosts.includes(url2.host)) {
+  if (!hosts.includes(url2.host) && !isFormerRegistryHost(url2.host)) {
     throw new RegistryError(`${reference} is not a link to a principle on ${hosts[0]}.`);
   }
   const [handle, slug] = url2.pathname.split("/").slice(2).map(decodeURIComponent);
@@ -14980,12 +15002,12 @@ function renderSync(result) {
 // packages/cli/src/hook.ts
 import { spawn as spawn2 } from "node:child_process";
 import fs10 from "node:fs";
-import path11 from "node:path";
+import path12 from "node:path";
 
 // packages/cli/src/hook-log.ts
 import { spawn } from "node:child_process";
 import fs8 from "node:fs";
-import path9 from "node:path";
+import path10 from "node:path";
 var LOG_MAX_AGE_MS = 24 * 60 * 60 * 1e3;
 var LOG_MAX_FILE_BYTES = 2 * 1024 * 1024;
 var EXCERPT = 300;
@@ -15002,7 +15024,7 @@ function someFindings(findings) {
 function scheduleHookLog(dir, entry) {
   try {
     const main2 = process.argv[1];
-    const writer = [path9.join(path9.dirname(main2), "wellactually-log.mjs"), path9.join(path9.dirname(main2), "log-writer.ts")].find((file2) => fs8.existsSync(file2));
+    const writer = [path10.join(path10.dirname(main2), "wellactually-log.mjs"), path10.join(path10.dirname(main2), "log-writer.ts")].find((file2) => fs8.existsSync(file2));
     const args = writer ? [writer, dir] : [main2, "hook-log", dir];
     const child = spawn(process.execPath, args, { detached: true, stdio: ["pipe", "ignore", "ignore"] });
     child.on("error", () => {
@@ -15021,7 +15043,7 @@ function writeHookLog(dir, line, now = /* @__PURE__ */ new Date()) {
     if (!/^hooks-.*\.jsonl$/.test(name)) {
       continue;
     }
-    const file3 = path9.join(dir, name);
+    const file3 = path10.join(dir, name);
     try {
       if (now.getTime() - fs8.statSync(file3).mtimeMs > LOG_MAX_AGE_MS) {
         fs8.rmSync(file3, { force: true });
@@ -15029,7 +15051,7 @@ function writeHookLog(dir, line, now = /* @__PURE__ */ new Date()) {
     } catch {
     }
   }
-  const file2 = path9.join(dir, `hooks-${now.toISOString().slice(0, 13)}.jsonl`);
+  const file2 = path10.join(dir, `hooks-${now.toISOString().slice(0, 13)}.jsonl`);
   let size = 0;
   try {
     size = fs8.statSync(file2).size;
@@ -15056,7 +15078,7 @@ async function writeHookLogFromStdin(dir) {
 // packages/cli/src/rater.ts
 import fs9 from "node:fs";
 import os5 from "node:os";
-import path10 from "node:path";
+import path11 from "node:path";
 var NAME = /^[A-Za-z0-9][A-Za-z0-9._:/@[\]-]{0,79}$/;
 var TRANSCRIPT_TAIL = 8 * 1024 * 1024;
 async function raterOf(clientName, meta3) {
@@ -15091,12 +15113,12 @@ function agentOf(clientName) {
 var TRANSCRIPT_WAIT_MS = 3e3;
 async function noteToolUse(toolUseId, transcript) {
   const model = await waitForModel(transcript, toolUseId, TRANSCRIPT_WAIT_MS);
-  const dir = path10.join(boardHome(), "tool-uses");
+  const dir = path11.join(boardHome(), "tool-uses");
   fs9.mkdirSync(dir, { recursive: true });
-  fs9.writeFileSync(path10.join(dir, `${safe(toolUseId)}.json`), JSON.stringify({ transcript, model }), { mode: 384 });
+  fs9.writeFileSync(path11.join(dir, `${safe(toolUseId)}.json`), JSON.stringify({ transcript, model }), { mode: 384 });
   const stale = Date.now() - 864e5;
   for (const name of fs9.readdirSync(dir)) {
-    const file2 = path10.join(dir, name);
+    const file2 = path11.join(dir, name);
     try {
       if (fs9.statSync(file2).mtimeMs < stale) {
         fs9.rmSync(file2, { force: true });
@@ -15106,7 +15128,7 @@ async function noteToolUse(toolUseId, transcript) {
   }
 }
 async function claudeModel(toolUseId) {
-  const note = path10.join(boardHome(), "tool-uses", `${safe(toolUseId)}.json`);
+  const note = path11.join(boardHome(), "tool-uses", `${safe(toolUseId)}.json`);
   const transcripts = [];
   try {
     const { transcript, model } = JSON.parse(fs9.readFileSync(note, "utf8"));
@@ -15121,9 +15143,9 @@ async function claudeModel(toolUseId) {
   }
   const session = process.env.CLAUDE_CODE_SESSION_ID;
   if (transcripts.length === 0 && session) {
-    const projects = path10.join(process.env.CLAUDE_CONFIG_DIR ?? path10.join(os5.homedir(), ".claude"), "projects");
+    const projects = path11.join(process.env.CLAUDE_CONFIG_DIR ?? path11.join(os5.homedir(), ".claude"), "projects");
     for (const project of safeList(projects)) {
-      const transcript = path10.join(projects, project, `${safe(session)}.jsonl`);
+      const transcript = path11.join(projects, project, `${safe(session)}.jsonl`);
       if (fs9.existsSync(transcript)) {
         transcripts.push(transcript);
       }
@@ -15140,8 +15162,8 @@ async function claudeModel(toolUseId) {
 async function waitForModel(transcript, toolUseId, ms) {
   const until = Date.now() + ms;
   for (; ; ) {
-    const subagents = path10.join(transcript.replace(/\.jsonl$/, ""), "subagents");
-    for (const file2 of [transcript, ...safeList(subagents).map((name) => path10.join(subagents, name))]) {
+    const subagents = path11.join(transcript.replace(/\.jsonl$/, ""), "subagents");
+    for (const file2 of [transcript, ...safeList(subagents).map((name) => path11.join(subagents, name))]) {
       const model = modelInTranscript(file2, toolUseId);
       if (model) {
         return model;
@@ -15233,7 +15255,7 @@ async function runHook(stdin, log, frame2 = frameEvents) {
   }
   const lockfile = readLockfile();
   if (lockfile.entries.length === 0) {
-    return note("the advisory board on this machine is empty; run `wellactually sync`");
+    return note("the advisory board on this machine is empty; download it with the plugin's sync skill");
   }
   const turn = followRepos(payload);
   if (log && turn && turn.failures.length > 0) {
@@ -15268,7 +15290,7 @@ async function runEvents(payload, events, lockfile, pool, frame2, log) {
   const cwd = payload.cwd ?? process.cwd();
   const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
   for (const ctx of events) {
-    const off = new Set(switchedOff(ctx.file ? path11.dirname(ctx.file.path) : cwd).keys());
+    const off = new Set(switchedOff(ctx.file ? path12.dirname(ctx.file.path) : cwd).keys());
     const run = await runBoard(ctx, lockfile, off, pool, parallelFrom);
     log?.events.push({
       event: ctx.event,
@@ -15348,7 +15370,7 @@ function followRepos(payload) {
 }
 function workerFile() {
   const main2 = process.argv[1];
-  const beside = [path11.join(path11.dirname(main2), "wellactually-worker.mjs"), path11.join(path11.dirname(main2), "worker.ts")];
+  const beside = [path12.join(path12.dirname(main2), "wellactually-worker.mjs"), path12.join(path12.dirname(main2), "worker.ts")];
   return beside.find((file2) => fs10.existsSync(file2)) ?? main2;
 }
 function readText2(file2) {
@@ -15369,7 +15391,7 @@ function startBackgroundSync() {
     return;
   }
   const main2 = process.argv[1];
-  const log = fs10.openSync(path11.join(ensureHome(), "sync.log"), "a");
+  const log = fs10.openSync(path12.join(ensureHome(), "sync.log"), "a");
   const child = spawn2(process.execPath, [main2, "sync"], { detached: true, stdio: ["ignore", log, log] });
   child.unref();
 }
@@ -15381,12 +15403,12 @@ function ensureHome() {
 function logHookFailure(error62) {
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${error62 instanceof Error ? error62.stack ?? error62.message : String(error62)}
 `;
-  fs10.appendFileSync(path11.join(ensureHome(), "hook.log"), line);
+  fs10.appendFileSync(path12.join(ensureHome(), "hook.log"), line);
 }
 
 // packages/cli/src/mcp.ts
 import fs11 from "node:fs";
-import path12 from "node:path";
+import path13 from "node:path";
 
 // node_modules/zod/v3/helpers/util.js
 var util;
@@ -15762,8 +15784,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path14, errorMaps, issueData } = params;
-  const fullPath = [...path14, ...issueData.path || []];
+  const { data, path: path15, errorMaps, issueData } = params;
+  const fullPath = [...path15, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -15878,11 +15900,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path14, key) {
+  constructor(parent, value, path15, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path14;
+    this._path = path15;
     this._key = key;
   }
   get path() {
@@ -19836,10 +19858,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path14) {
-  if (!path14)
+function getElementAtPath(obj, path15) {
+  if (!path15)
     return obj;
-  return path14.reduce((acc, key) => acc?.[key], obj);
+  return path15.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -20179,11 +20201,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path14, issues) {
+function prefixIssues(path15, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path14);
+    iss.path.unshift(path15);
     return iss;
   });
 }
@@ -20633,16 +20655,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path14 = []) => {
+  const processError = (error63, path15 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path15, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else {
-        const fullpath = [...path14, ...issue2.path];
+        const fullpath = [...path15, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -20681,17 +20703,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path14 = []) => {
+  const processError = (error63, path15 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path14, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path15, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path14, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path15, ...issue2.path]);
       } else {
-        const fullpath = [...path14, ...issue2.path];
+        const fullpath = [...path15, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -20730,8 +20752,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path14 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path14) {
+  const path15 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path15) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -36246,11 +36268,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path14) {
-  if (path14.length === 0) {
+function getDotPath(path15) {
+  if (path15.length === 0) {
     return "object root";
   }
-  return path14.reduce((acc, seg, index) => {
+  return path15.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -38477,13 +38499,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path14 = ref.slice(1).split("/").filter(Boolean);
-  if (path14.length === 0) {
+  const path15 = ref.slice(1).split("/").filter(Boolean);
+  if (path15.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path14[0] === defsKey) {
-    const key = path14[1] === void 0 ? void 0 : decodeJSONPointerSegment(path14[1]);
+  if (path15[0] === defsKey) {
+    const key = path15[1] === void 0 ? void 0 : decodeJSONPointerSegment(path15[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -44899,7 +44921,7 @@ ${report}`);
     dir: external_exports.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started; required in Codex.")
   };
   const switchTool = (on) => async ({ id, scope, dir }) => {
-    if (scope === "project" && dir === void 0 && fs11.existsSync(path12.join(process.cwd(), "dist", "wellactually.mjs"))) {
+    if (scope === "project" && dir === void 0 && fs11.existsSync(path13.join(process.cwd(), "dist", "wellactually.mjs"))) {
       return text("Pass dir, a directory inside the project: this server does not run in the project, so it cannot tell which one is meant.");
     }
     try {
@@ -44923,6 +44945,23 @@ ${report}`);
       inputSchema: switchInput
     },
     switchTool(true)
+  );
+  server.registerTool(
+    "set_stats",
+    {
+      description: "Switch on or off what this machine reports to the registry: how often each principle fired, as a count per day, and the ratings you give. Only when the user asks. Leave on out to read the current setting.",
+      inputSchema: {
+        on: external_exports.boolean().optional().describe("true to report, false to send nothing. Left out, the setting stays as it is.")
+      }
+    },
+    async ({ on }) => {
+      if (on !== void 0) {
+        writeConfig({ ...readConfig(), stats: on });
+      }
+      return text(
+        readConfig().stats ? "Reporting is on: the sync at session start sends how often each principle fired, as a count per day, and ratings are sent. No file, prompt or finding is sent." : "Reporting is off: nothing about what fires on this machine is sent, and no rating."
+      );
+    }
   );
   const transport = new StdioServerTransport();
   await server.connect(transport);
@@ -45235,7 +45274,7 @@ Added ${result.id} to this machine's advisory board.` : renderReport(result));
       }
       log.ms = Math.round(performance.now() - started);
       if (process.env.WELLACTUALLY_HOOK_LOG !== "0") {
-        scheduleHookLog(path13.join(boardHome(), "logs"), log);
+        scheduleHookLog(path14.join(boardHome(), "logs"), log);
       }
       return 0;
     }

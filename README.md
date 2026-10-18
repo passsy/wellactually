@@ -101,7 +101,7 @@ The code that does this is in `packages/core`: `sandbox.ts` is the isolate, `boa
 - A rating, when your agent gives one: the principle's hash and `up`, `down` or `not_applicable`.
 
 No path, file content, prompt, command or finding is sent.
-`wellactually stats off` turns both off.
+Ask your agent to switch reporting off, and it turns both off.
 
 ## Write a principle
 
@@ -117,26 +117,17 @@ avoid-late/
 A detector reads `onWrite({ globs: ["**/*.dart"], *detect(event) { ... yield { line: written.line }; } })`.
 A test reads `expect(detect(write("lib/user.dart", code))).toEqual([{ line: 2 }])`.
 The tests must pass, make the detector fire at least once, and show it staying quiet at least once.
-[Pascal's principles](https://wellactually.dev/e/passsy) on the registry are examples to read, and `wellactually pull` copies one into your repository.
+[Pascal's principles](https://wellactually.dev/e/passsy) on the registry are examples to read.
+
+Write one in the browser on [wellactually.dev](https://wellactually.dev/studio/new), with nothing installed, or ask your agent.
+The plugin gives it tools to create a principle, run its tests, try it on a file, probe a repository and publish it.
+Building a principle needs esbuild, which the plugin does not carry, so install the SDK in the repository that holds your principles, which brings it:
 
 ```bash
-wellactually init avoid-late
+npm install --save-dev github:passsy/wellactually#sdk vitest
 ```
 
-```bash
-wellactually test avoid-late
-```
-
-```bash
-wellactually publish avoid-late
-```
-
-`publish` uploads a private draft, and you release it on the website.
-Building a principle needs esbuild, which the plugin does not carry, so the authoring commands need the command installed from a checkout of this repository:
-
-```bash
-npm install && npm link -w wellactually
-```
+`npm test` then runs the principles' tests with vitest.
 
 A detector may import `@wellactually/sdk/v3`, which is in `packages/sdk`, its own files, and packages from npm that its `package.json` names.
 The `v3` is the detector API version it is written against.
@@ -145,12 +136,12 @@ The `v3` is the detector API version it is written against.
 
 | Path                | What it is                                                                    |
 | ------------------- | ----------------------------------------------------------------------------- |
-| `hooks`, `commands` | The plugin: when the hook runs, and the `login` and `sync` commands.          |
+| `hooks`, `skills`   | The plugin: when the hook runs, and the `login` and `sync` skills.            |
 | `dist`              | The command as one file, built from `packages/cli`. The plugin runs it.       |
 | `opencode`          | The plugin for OpenCode, with its own copy of the command and the skills.     |
 | `packages/core`     | Builds, checks and runs principles: the isolate and the local advisory board. |
 | `packages/sdk`      | The types and helpers a detector may import.                                  |
-| `packages/cli`      | The `wellactually` command and its MCP server.                                |
+| `packages/cli`      | The `wellactually` command the plugin runs, and its MCP server.               |
 
 The registry is not in this repository.
 

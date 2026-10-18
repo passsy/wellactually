@@ -82,7 +82,7 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
 
   const lockfile = readLockfile();
   if (lockfile.entries.length === 0) {
-    return note("the advisory board on this machine is empty; run `wellactually sync`");
+    return note("the advisory board on this machine is empty; download it with the plugin's sync skill");
   }
   const turn = followRepos(payload);
   if (log && turn && turn.failures.length > 0) {

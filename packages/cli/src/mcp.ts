@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { scaffold, switchPrinciple } from "@wellactually/core/node";
+import { readConfig, scaffold, switchPrinciple, writeConfig } from "@wellactually/core/node";
 import { z } from "zod";
 import { raterOf } from "./rater.ts";
 import { ratePrinciple, RegistryError, type DraftResult } from "./registry.ts";
@@ -315,6 +315,27 @@ export async function serveMcp(): Promise<void> {
       inputSchema: switchInput,
     },
     switchTool(true),
+  );
+
+  server.registerTool(
+    "set_stats",
+    {
+      description:
+        "Switch on or off what this machine reports to the registry: how often each principle fired, as a count per day, and the ratings you give. Only when the user asks. Leave on out to read the current setting.",
+      inputSchema: {
+        on: z.boolean().optional().describe("true to report, false to send nothing. Left out, the setting stays as it is."),
+      },
+    },
+    async ({ on }) => {
+      if (on !== undefined) {
+        writeConfig({ ...readConfig(), stats: on });
+      }
+      return text(
+        readConfig().stats
+          ? "Reporting is on: the sync at session start sends how often each principle fired, as a count per day, and ratings are sent. No file, prompt or finding is sent."
+          : "Reporting is off: nothing about what fires on this machine is sent, and no rating.",
+      );
+    },
   );
 
   const transport = new StdioServerTransport();

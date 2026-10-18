@@ -5,29 +5,40 @@
  * WebAssembly, and adds what needs a disk: reading a principle
  * directory, the local advisory board and the repository probe.
  */
+import { createRequire } from "node:module";
+import path from "node:path";
 import variant from "@jitl/quickjs-singlefile-mjs-release-sync";
 import { newQuickJSWASMModuleFromVariant, type QuickJSWASMModule } from "quickjs-emscripten-core";
 import { setEngines } from "./engines.ts";
+import { readFrom } from "./fs.ts";
 
 let sandbox: Promise<QuickJSWASMModule> | null = null;
 
 setEngines({
   // Loaded on first use. The hook only runs detectors and never builds one,
   // and the plugin's single-file bundle cannot carry esbuild's native binary.
-  build: async (options) => {
-    let esbuild: typeof import("esbuild");
-    try {
-      esbuild = await import("esbuild");
-    } catch {
-      throw new Error(
-        "Building a principle needs esbuild, which the installed plugin does not carry. Use the command from a checkout of https://github.com/passsy/wellactually: `npm install && npm link -w wellactually`.",
-      );
-    }
-    return esbuild.build(options);
-  },
+  build: async (options) => (await loadEsbuild()).build(options),
   // The build with the WebAssembly inlined, so the isolate also loads from a single bundled file.
   quickjs: () => (sandbox ??= newQuickJSWASMModuleFromVariant(variant)),
 });
+
+/** esbuild from this installation, or else from the repository of the principle being built. */
+async function loadEsbuild(): Promise<typeof import("esbuild")> {
+  try {
+    return await import("esbuild");
+  } catch {
+    for (const dir of [...readFrom].reverse()) {
+      try {
+        return createRequire(path.join(dir, "package.json"))("esbuild") as typeof import("esbuild");
+      } catch {
+        // Not installed there either.
+      }
+    }
+    throw new Error(
+      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev github:passsy/wellactually#sdk vitest`.",
+    );
+  }
+}
 
 export * from "./index.ts";
 export * from "./board.ts";

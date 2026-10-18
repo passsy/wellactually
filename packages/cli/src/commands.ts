@@ -20,6 +20,7 @@ import {
   isPackageFile,
   ManifestError,
   DEFAULT_REGISTRY,
+  isFormerRegistryHost,
   parseTags,
   needsApproval,
   readConfig,
@@ -366,11 +367,11 @@ export function renderPull(result: PullResult): string {
   }
   const described = describeCredits(result.credits);
   const credits = described === null ? "" : `\n${described}.`;
-  return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).${credits}${install}\nEdit it, then: wellactually test ${result.dir} && wellactually publish ${result.dir}`;
+  return `Pulled ${what} of ${result.id} into ${result.dir} (${result.files.length} files).${credits}${install}\nEdit it, then run its tests and publish it.`;
 }
 
 /** Hosts whose principle links name a principle of the registry, besides the one this machine is signed in to. */
-const REGISTRY_HOSTS = [new URL(DEFAULT_REGISTRY).host, "www.wellactually.dev", "web-production-a1cda.up.railway.app"];
+const REGISTRY_HOSTS = [new URL(DEFAULT_REGISTRY).host, "www.wellactually.dev"];
 
 /**
  * Turns what an agent has in hand into the id the registry knows: `expert/principle`
@@ -385,7 +386,7 @@ export function principleIdOf(reference: string): string {
   }
   const url = new URL(`${link[1] ?? "https://"}${link[2]}${link[3]}`);
   const hosts = [...REGISTRY_HOSTS, new URL(readConfig().registry).host];
-  if (!hosts.includes(url.host)) {
+  if (!hosts.includes(url.host) && !isFormerRegistryHost(url.host)) {
     throw new RegistryError(`${reference} is not a link to a principle on ${hosts[0]}.`);
   }
   const [handle, slug] = url.pathname.split("/").slice(2).map(decodeURIComponent);

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -24,8 +25,25 @@ export interface Config {
 /** Where the advisory board lives unless `login --registry` or WELLACTUALLY_REGISTRY says otherwise. */
 export const DEFAULT_REGISTRY = "https://wellactually.dev";
 
-/** Where the registry ran before wellactually.dev. A login stored with it moves to the new address. */
-const RAILWAY_REGISTRY = "https://web-production-a1cda.up.railway.app";
+/**
+ * The hosts the registry ran on before wellactually.dev, as the SHA-256 of the host.
+ * A login stored with one moves to the new address, and a link to one still
+ * names a principle. Only their hash is kept, so the old address stays unpublished.
+ */
+export const FORMER_REGISTRY_HOSTS = new Set(["53174f685516576dd8f13b83837c7726ffb7ad7dd2bb469453d2eb5a53e4c14e"]);
+
+/** Whether a host is one the registry ran on before wellactually.dev. */
+export function isFormerRegistryHost(host: string): boolean {
+  return FORMER_REGISTRY_HOSTS.has(createHash("sha256").update(host).digest("hex"));
+}
+
+function isFormerRegistry(registry: string): boolean {
+  try {
+    return isFormerRegistryHost(new URL(registry).host);
+  } catch {
+    return false;
+  }
+}
 
 /** Where the advisory board lives on this machine. `WELLACTUALLY_HOME` moves it, which the tests use. */
 export function boardHome(): string {
@@ -51,7 +69,7 @@ function writeJson(file: string, value: unknown): void {
 
 export function readConfig(): Config {
   const stored = readJson<Partial<Config>>(path.join(boardHome(), "config.json"));
-  const registry = stored?.registry === RAILWAY_REGISTRY ? DEFAULT_REGISTRY : stored?.registry;
+  const registry = stored?.registry !== undefined && isFormerRegistry(stored.registry) ? DEFAULT_REGISTRY : stored?.registry;
   return {
     registry: process.env.WELLACTUALLY_REGISTRY ?? registry ?? DEFAULT_REGISTRY,
     token: stored?.token ?? null,
@@ -162,7 +180,7 @@ export async function runBoard(
     // Who the advice comes from is what the advisory board says, not who was cached first.
     const principle = cached && { ...cached, id: entry.id, version: entry.version };
     if (!principle) {
-      run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; run `wellactually sync`" });
+      run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; download it with the plugin's sync skill" });
       run.skipped.push({ id: entry.id, reason: "not cached" });
       continue;
     }

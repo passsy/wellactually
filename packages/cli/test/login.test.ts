@@ -40,7 +40,7 @@ test("a login keeps waiting when a poll gets no answer", async () => {
 });
 
 test("a login stops when the code expired", async () => {
-  vi.stubGlobal("fetch", async () => Response.json({ error: "The code expired. Run `wellactually login` again." }, { status: 410 }));
+  vi.stubGlobal("fetch", async () => Response.json({ error: "The code expired. Sign in again with the plugin's login skill." }, { status: 410 }));
 
   await expect(finishDeviceLogin({ device_code: "device", user_code: "ABCD-EFGH", verification_url: "https://wellactually.dev/device", interval: 0, expires_in: 60 })).rejects.toThrow("The code expired");
 });
