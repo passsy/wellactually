@@ -171,4 +171,4 @@ The released `opencode` folder is a copy of these files that OpenCode installs o
 
 ## License
 
-MIT
+[Apache License 2.0](LICENSE)

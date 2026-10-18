@@ -3,7 +3,7 @@
   "version": "0.9.19",
   "description": "Runs the principles on your Well Actually advisory board while your agent works, and lets it author and rate them.",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./index.mjs",
     "./server": "./index.mjs"
