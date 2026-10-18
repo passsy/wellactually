@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Ctx, Finding } from "@wellactually/sdk";
-import { ADVICE_BUDGET } from "./advice-length.ts";
+import { ADVICE_BUDGET, adviceBytes } from "./advice-length.ts";
 import { apiOf } from "./api.ts";
 import { applies } from "./ctx.ts";
 import { describeFinding } from "./finding.ts";
@@ -269,7 +269,7 @@ export function frameEvents(events: EventFirings[], alreadyShown: ReadonlySet<st
   for (const event of firing) {
     const next = [...shown, event];
     // Counting the line about what is left out keeps it within the budget too.
-    const fits = (): boolean => render(next, full, firing.length - next.length).length <= budget;
+    const fits = (): boolean => adviceBytes(render(next, full, firing.length - next.length)) <= budget;
     for (const item of event.firings) {
       if (due.has(item)) {
         full.add(item);

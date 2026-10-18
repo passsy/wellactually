@@ -8,6 +8,7 @@ import {
   type EventFirings,
   type TurnDiff,
   ADVICE_BUDGET,
+  adviceBytes,
   DetectorPool,
   PARALLEL_FROM,
   absorbWrites,
@@ -164,7 +165,7 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
       : "";
 
   // One block for the whole call, small enough that the host shows all of it.
-  const framed = frame(fired, shown, ADVICE_BUDGET - notice.length);
+  const framed = frame(fired, shown, ADVICE_BUDGET - adviceBytes(notice));
   if (framed.text) {
     parts.push(framed.text);
   }
@@ -172,7 +173,7 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
     shown.add(hash);
   }
   if (log && framed.shown.length < fired.filter((entry) => entry.firings.length > 0).length) {
-    log.note = `left out ${fired.filter((entry) => entry.firings.length > 0).length - framed.shown.length} events to stay within ${ADVICE_BUDGET} characters`;
+    log.note = `left out ${fired.filter((entry) => entry.firings.length > 0).length - framed.shown.length} events to stay within ${ADVICE_BUDGET} bytes`;
   }
   // Counted per event a principle was shown in, whether in full or as its summary.
   // What was left out never reached the agent. Principles added from a local directory belong to no registry.

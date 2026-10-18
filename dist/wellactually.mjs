@@ -12732,16 +12732,20 @@ function scanAdvice(advice) {
 var ADVICE_BUDGET = 9e3;
 var ADVICE_MAX = 7500;
 var ADVICE_LONG = 4e3;
+var encoder = new TextEncoder();
+function adviceBytes(text2) {
+  return encoder.encode(text2).length;
+}
 function adviceLengthWarnings(advice) {
-  const length = advice.length;
+  const length = adviceBytes(advice);
   if (length > ADVICE_MAX) {
     return [
-      `The advice is ${length.toLocaleString("en")} characters, more than the ${ADVICE_MAX.toLocaleString("en")} that fit in full. Agents are only shown its summary. Shorten it or split it into several principles.`
+      `The advice is ${length.toLocaleString("en")} bytes, more than the ${ADVICE_MAX.toLocaleString("en")} that fit in full (a letter like \xE4 takes 2, a symbol like \u2192 takes 3). Agents are only shown its summary. Shorten it or split it into several principles.`
     ];
   }
   if (length > ADVICE_LONG) {
     return [
-      `The advice is ${length.toLocaleString("en")} characters, on the long end. Above ${ADVICE_LONG.toLocaleString("en")} it leaves little room for other principles that fire on the same change, which then get only their summary.`
+      `The advice is ${length.toLocaleString("en")} bytes, on the long end. Above ${ADVICE_LONG.toLocaleString("en")} it leaves little room for other principles that fire on the same change, which then get only their summary.`
     ];
   }
   return [];
@@ -13445,7 +13449,7 @@ function frameEvents(events, alreadyShown = /* @__PURE__ */ new Set(), budget = 
   const full = /* @__PURE__ */ new Set();
   for (const event of firing) {
     const next = [...shown, event];
-    const fits = () => render2(next, full, firing.length - next.length).length <= budget;
+    const fits = () => adviceBytes(render2(next, full, firing.length - next.length)) <= budget;
     for (const item of event.firings) {
       if (due.has(item)) {
         full.add(item);
@@ -15308,7 +15312,7 @@ async function runEvents(payload, events, lockfile, pool, frame2, log) {
     ...newFailures.map(([id, error62]) => `- ${id}: ${error62}`),
     "</wellactually-notice>"
   ].join("\n") : "";
-  const framed = frame2(fired, shown, ADVICE_BUDGET - notice.length);
+  const framed = frame2(fired, shown, ADVICE_BUDGET - adviceBytes(notice));
   if (framed.text) {
     parts.push(framed.text);
   }
@@ -15316,7 +15320,7 @@ async function runEvents(payload, events, lockfile, pool, frame2, log) {
     shown.add(hash2);
   }
   if (log && framed.shown.length < fired.filter((entry) => entry.firings.length > 0).length) {
-    log.note = `left out ${fired.filter((entry) => entry.firings.length > 0).length - framed.shown.length} events to stay within ${ADVICE_BUDGET} characters`;
+    log.note = `left out ${fired.filter((entry) => entry.firings.length > 0).length - framed.shown.length} events to stay within ${ADVICE_BUDGET} bytes`;
   }
   if (readConfig().stats) {
     for (const { firings } of framed.shown) {

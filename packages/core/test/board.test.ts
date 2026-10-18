@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { API_VERSION } from "@wellactually/sdk";
-import { ADVICE_BUDGET, ADVICE_MAX, adviceLengthWarnings, buildBundle, DetectorPool, describeFinding, fileCtx, forgetShown, frame, frameEvents, readConfig, readShown, runBoard, SESSION_MAX_AGE_MS, sweepShown, textCtx, writeCached, writeConfig, writeShown } from "../src/node.ts";
+import { ADVICE_BUDGET, ADVICE_MAX, adviceBytes, adviceLengthWarnings, buildBundle, DetectorPool, describeFinding, fileCtx, forgetShown, frame, frameEvents, readConfig, readShown, runBoard, SESSION_MAX_AGE_MS, sweepShown, textCtx, writeCached, writeConfig, writeShown } from "../src/node.ts";
 
 const sdk = `import { onPrompt } from "@wellactually/sdk/v3";`;
 const handlers = [{ event: "prompt" as const, globs: [] }];
@@ -144,14 +144,24 @@ describe("what the agent is shown", () => {
     const longest = { ...principle, id: "someone-long/a-principle-with-a-long-name", manifest: { ...principle.manifest, title: "T".repeat(120), summary: "S".repeat(200) }, advice: "a".repeat(ADVICE_MAX) };
     const { full, text } = frameEvents([{ ctx, firings: [{ principle: longest, findings: [{ line: 1, match: "x".repeat(80) }] }] }]);
     expect(full).toEqual(new Set([longest.hash]));
-    expect(text.length).toBeLessThanOrEqual(ADVICE_BUDGET);
+    expect(adviceBytes(text)).toBeLessThanOrEqual(ADVICE_BUDGET);
     expect(adviceLengthWarnings(longest.advice).join()).not.toMatch(/only shown its summary/);
   });
 
   test("warns about advice on the long end, and about advice agents only see the summary of", () => {
     expect(adviceLengthWarnings("a".repeat(4000))).toEqual([]);
-    expect(adviceLengthWarnings("a".repeat(4001)).join()).toMatch(/4,001 characters, on the long end/);
+    expect(adviceLengthWarnings("a".repeat(4001)).join()).toMatch(/4,001 bytes, on the long end/);
     expect(adviceLengthWarnings("a".repeat(7501)).join()).toMatch(/Agents are only shown its summary/);
+    // Codex counts bytes, so 3,000 arrows are 9,000 bytes however few characters they are.
+    expect(adviceLengthWarnings("→".repeat(3000)).join()).toMatch(/9,000 bytes, more than the 7,500/);
+  });
+
+  test("counts the budget in bytes, so advice full of non-ASCII text still fits", () => {
+    const wide = { ...principle, advice: `# Umlaute\n\n${"ä→".repeat(1800)}` };
+    const { full, text } = frameEvents([{ ctx: file, firings: [{ principle: wide, findings: [{ line: 2 }] }] }]);
+    // 3,600 characters would fit, 9,000 bytes do not.
+    expect(full).toEqual(new Set());
+    expect(adviceBytes(text)).toBeLessThanOrEqual(ADVICE_BUDGET);
   });
 
   test("stays within the budget: full advice while it fits, then summaries, then fewer files", () => {

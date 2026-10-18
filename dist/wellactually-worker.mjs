@@ -4038,6 +4038,9 @@ function validateFindings(json, ctx, project = null) {
   return { findings, dropped };
 }
 
+// packages/core/src/advice-length.ts
+var encoder = new TextEncoder();
+
 // packages/core/src/principle.ts
 var MAX_TOTAL_BYTES = 512 * 1024;
 var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
