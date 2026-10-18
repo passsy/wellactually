@@ -3,7 +3,11 @@ import path from "node:path";
 import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
-import { approvalKey, boardHome, describeReview, readConfig, readCached, readLockfile, scaffold, serveDetectors, switchedOff, switchPrinciple, writeConfig, type PackageInfo } from "@wellactually/core/node";
+import { approvalKey, describeReview, type PackageInfo } from "@wellactually/core/node";
+import { scaffold } from "./files.ts";
+import { boardHome, readConfig, readCached, readLockfile, writeConfig } from "./board.ts";
+import { serveDetectors } from "./pool.ts";
+import { switchedOff, switchPrinciple } from "./switches.ts";
 import {
   addLocal,
   ApprovalError,

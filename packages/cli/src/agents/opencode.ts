@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { HookPayload } from "@wellactually/core/node";
+import { type HookPayload } from "../payload.ts";
 import { Pending, callHook, command, pluginRoot, readSkills, withAdvice } from "./bridge.ts";
 
 /**

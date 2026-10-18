@@ -139,9 +139,9 @@ The `v3` is the detector API version it is written against.
 | `hooks`, `skills`   | The plugin: when the hook runs, and the `login` and `sync` skills.            |
 | `dist`              | The command as one file, built from `packages/cli`. The plugin runs it.       |
 | `opencode`          | The plugin for OpenCode, with its own copy of the command and the skills.     |
-| `packages/core`     | Builds, checks and runs principles: the isolate and the local advisory board. |
+| `packages/core`     | Builds, checks and runs principles: the isolate, the bundler and the tests.   |
 | `packages/sdk`      | The types and helpers a detector may import.                                  |
-| `packages/cli`      | The `wellactually` command the plugin runs, and its MCP server.               |
+| `packages/cli`      | The command the plugin runs: the hook, the advisory board and the MCP server. |
 
 The registry is not in this repository.
 

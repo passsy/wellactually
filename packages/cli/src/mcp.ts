@@ -2,8 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { readConfig, scaffold, switchPrinciple, writeConfig } from "@wellactually/core/node";
 import { z } from "zod";
+import { scaffold } from "./files.ts";
+import { readConfig, writeConfig } from "./board.ts";
+import { switchPrinciple } from "./switches.ts";
 import { raterOf } from "./rater.ts";
 import { ratePrinciple, RegistryError, type DraftResult } from "./registry.ts";
 import {

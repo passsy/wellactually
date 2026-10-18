@@ -3679,9 +3679,12 @@ var init_module_ES6BEMUI = __esm({
   }
 });
 
+// packages/cli/src/pool.ts
+import { parentPort, Worker } from "node:worker_threads";
+
 // packages/core/src/node.ts
 import { createRequire } from "node:module";
-import path2 from "node:path";
+import path from "node:path";
 
 // node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
 var variant = { type: "sync", importFFI: () => Promise.resolve().then(() => (init_ffi(), ffi_exports)).then((mod) => mod.QuickJSFFI), importModuleLoader: () => Promise.resolve().then(() => (init_emscripten_module_Q67P5WYC(), emscripten_module_Q67P5WYC_exports)).then((mod) => mod.default) };
@@ -3735,10 +3738,6 @@ function loadSandbox() {
   });
   return quickjs;
 }
-
-// packages/core/src/fs.ts
-import fs from "node:fs";
-import path from "node:path";
 
 // packages/sdk/src/index.ts
 var API_VERSION = 3;
@@ -4047,6 +4046,35 @@ var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 
 // packages/core/src/fs.ts
 var readFrom = /* @__PURE__ */ new Set();
+
+// packages/core/src/node.ts
+var sandbox = null;
+setEngines({
+  // Loaded on first use. The hook only runs detectors and never builds one,
+  // and the plugin's single-file bundle cannot carry esbuild's native binary.
+  build: async (options) => (await loadEsbuild()).build(options),
+  // The build with the WebAssembly inlined, so the isolate also loads from a single bundled file.
+  quickjs: () => sandbox ??= newQuickJSWASMModuleFromVariant(src_default)
+});
+async function loadEsbuild() {
+  try {
+    return await import("esbuild");
+  } catch {
+    for (const dir of [...readFrom].reverse()) {
+      try {
+        return createRequire(path.join(dir, "package.json"))("esbuild");
+      } catch {
+      }
+    }
+    throw new Error(
+      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev github:passsy/wellactually#sdk vitest`."
+    );
+  }
+}
+
+// packages/cli/src/files.ts
+import fs from "node:fs";
+import path2 from "node:path";
 var MAX_READ_BYTES = 512 * 1024;
 function diskFiles() {
   const kindOf = (stat) => stat.isFile() ? "file" : stat.isDirectory() ? "dir" : null;
@@ -4087,7 +4115,7 @@ function diskFiles() {
       }
       const entries = [];
       for (const name of names) {
-        const stat = statOf(path.join(dir, name));
+        const stat = statOf(path2.join(dir, name));
         const kind = stat ? kindOf(stat) : null;
         if (kind) {
           entries.push({ name, kind });
@@ -4098,11 +4126,7 @@ function diskFiles() {
   };
 }
 
-// packages/core/src/board.ts
-var SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
-
-// packages/core/src/pool.ts
-import { parentPort, Worker } from "node:worker_threads";
+// packages/cli/src/pool.ts
 function failed(error) {
   return { findings: [], error, dropped: [], ms: 0 };
 }
@@ -4123,37 +4147,6 @@ async function serveDetectors() {
     port.postMessage({ id: message.id, result });
   });
   port.postMessage({ ready: true });
-}
-
-// packages/core/src/probe.ts
-var MAX_FILE_BYTES = 512 * 1024;
-
-// packages/core/src/turn.ts
-var SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
-
-// packages/core/src/node.ts
-var sandbox = null;
-setEngines({
-  // Loaded on first use. The hook only runs detectors and never builds one,
-  // and the plugin's single-file bundle cannot carry esbuild's native binary.
-  build: async (options) => (await loadEsbuild()).build(options),
-  // The build with the WebAssembly inlined, so the isolate also loads from a single bundled file.
-  quickjs: () => sandbox ??= newQuickJSWASMModuleFromVariant(src_default)
-});
-async function loadEsbuild() {
-  try {
-    return await import("esbuild");
-  } catch {
-    for (const dir of [...readFrom].reverse()) {
-      try {
-        return createRequire(path2.join(dir, "package.json"))("esbuild");
-      } catch {
-      }
-    }
-    throw new Error(
-      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev github:passsy/wellactually#sdk vitest`."
-    );
-  }
 }
 
 // packages/cli/src/worker.ts

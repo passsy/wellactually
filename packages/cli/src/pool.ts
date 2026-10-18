@@ -1,8 +1,8 @@
 import os from "node:os";
 import { parentPort, Worker } from "node:worker_threads";
 import type { Ctx } from "@wellactually/sdk";
-import { diskFiles } from "./fs.ts";
-import { DEFAULT_LIMITS, detectorRunner, type DetectorRun } from "./sandbox.ts";
+import { DEFAULT_LIMITS, type DetectorRun, detectorRunner } from "@wellactually/core/node";
+import { diskFiles } from "./files.ts";
 
 /**
  * Runs the detectors of an advisory board on several threads.

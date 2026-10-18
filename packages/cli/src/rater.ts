@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { boardHome } from "@wellactually/core/node";
+import { boardHome } from "./board.ts";
 
 /** Which agent sent a rating, and which model was answering when it did. */
 export interface Rater {

@@ -14,5 +14,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["sdk/src", "core/src", "core/test", "cli/src"]
+  "include": ["sdk/src", "core/src", "core/test", "cli/src", "cli/test"]
 }

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileCtx, locateWritten, textCtx, type Ctx, type Where, type Written } from "@wellactually/sdk";
-import { projectRootOf, toPosix } from "./fs.ts";
 import type { TurnDiff } from "./turn.ts";
+import { projectRootOf, toPosix } from "./files.ts";
 
 /** The fields of a Claude Code or Codex hook payload this host reads. */
 export interface HookPayload {

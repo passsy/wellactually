@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { eventsOf, type HookPayload } from "../src/node.ts";
+import { eventsOf, type HookPayload } from "../src/payload.ts";
 
 /**
  * The payload shapes are the ones Claude Code and Codex send to a hook.

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { boardHome, readLockfile } from "./board.ts";
-import { findProjectRoot } from "./fs.ts";
+import { findProjectRoot } from "./files.ts";
 
 /**
  * Principles switched off on this machine.

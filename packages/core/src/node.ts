@@ -1,9 +1,8 @@
 /**
- * The core for Node: the CLI, the hook, tests and local development.
+ * The core for Node: the CLI, tests and local development.
  *
  * Importing this sets the engines, esbuild's native binary and QuickJS as
- * WebAssembly, and adds what needs a disk: reading a principle
- * directory, the local advisory board and the repository probe.
+ * WebAssembly, and adds reading a principle directory from disk.
  */
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -41,11 +40,4 @@ async function loadEsbuild(): Promise<typeof import("esbuild")> {
 }
 
 export * from "./index.ts";
-export * from "./board.ts";
-export * from "./detections.ts";
 export * from "./fs.ts";
-export * from "./payload.ts";
-export * from "./pool.ts";
-export * from "./switches.ts";
-export * from "./probe.ts";
-export * from "./turn.ts";

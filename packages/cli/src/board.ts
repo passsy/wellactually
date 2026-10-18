@@ -2,16 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Ctx, Finding } from "@wellactually/sdk";
-import { ADVICE_BUDGET, adviceBytes } from "./advice-length.ts";
-import { apiOf } from "./api.ts";
-import { applies } from "./ctx.ts";
+import { ADVICE_BUDGET, adviceBytes, apiOf, applies, type BoardEntry, type CachedPrinciple, DEFAULT_LIMITS, type DetectorRun, type Lockfile, runDetector } from "@wellactually/core/node";
 import { describeFinding } from "./finding.ts";
-import { diskFiles } from "./fs.ts";
-import type { BoardEntry, CachedPrinciple, Lockfile } from "./types.ts";
 import type { DetectorPool } from "./pool.ts";
-import { DEFAULT_LIMITS, runDetector, type DetectorRun } from "./sandbox.ts";
+import { diskFiles } from "./files.ts";
 
-export type { BoardEntry, CachedPrinciple, Lockfile } from "./types.ts";
+export type { BoardEntry, CachedPrinciple, Lockfile } from "@wellactually/core/node";
 
 export interface Config {
   registry: string;

@@ -1,45 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import {
-  apiOf,
-  applies,
-  approvalKey,
-  buildPrinciple,
-  BundleError,
-  describeReview,
-  diskFiles,
-  projectRootOf,
-  toPosix,
-  checkPrinciple,
-  describeCredits,
-  isPrincipleId,
-  PRINCIPLE_ID_RULE,
-  fileCtx,
-  frame,
-  probeRepo,
-  isPackageFile,
-  ManifestError,
-  DEFAULT_REGISTRY,
-  parseTags,
-  needsApproval,
-  readConfig,
-  readLockfile,
-  readPrinciple,
-  readPrincipleDir,
-  runDetector,
-  textCtx,
-  writeCached,
-  writeFileMap,
-  writeLockfile,
-  type BuiltPrinciple,
-  type CheckReport,
-  type DetectorRun,
-  type FileMap,
-  type PackageInfo,
-  type ProbeReport,
-  type SwitchResult,
-} from "@wellactually/core/node";
+import { apiOf, applies, approvalKey, buildPrinciple, BundleError, describeReview, checkPrinciple, isPrincipleId, PRINCIPLE_ID_RULE, fileCtx, isPackageFile, ManifestError, parseTags, needsApproval, readPrinciple, readPrincipleDir, runDetector, textCtx, type BuiltPrinciple, type CheckReport, type DetectorRun, type FileMap, type PackageInfo } from "@wellactually/core/node";
 import type { Ctx } from "@wellactually/sdk";
+import { diskFiles, projectRootOf, toPosix, writeFileMap } from "./files.ts";
+import { frame, DEFAULT_REGISTRY, readConfig, readLockfile, writeCached, writeLockfile } from "./board.ts";
+import { probeRepo, type ProbeReport } from "./probe.ts";
+import { type SwitchResult } from "./switches.ts";
 import {
   fetchHistory,
   publishDraft,
@@ -356,6 +322,22 @@ export async function pullPrinciple(id: string, dir: string | undefined, force: 
   }
   writeFileMap(target, own);
   return { id: source.id, version: source.version, status: source.status, dir: target, files: Object.keys(own).sort(), credits: source.credits ?? [] };
+}
+
+/**
+ * Who a principle is by, in one line: "Original by @passsy, edited by @john
+ * and @jimmy". `handles` starts with the expert of the original and goes on
+ * with each who forked it on the way, oldest first. Null when only one
+ * expert worked on it.
+ */
+export function describeCredits(handles: string[]): string | null {
+  const [original, ...editors] = handles;
+  if (original === undefined || editors.length === 0) {
+    return null;
+  }
+  const named = editors.map((handle) => `@${handle}`);
+  const last = named.pop() as string;
+  return `Original by @${original}, edited by ${named.length > 0 ? `${named.join(", ")} and ${last}` : last}`;
 }
 
 export function renderPull(result: PullResult): string {

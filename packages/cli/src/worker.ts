@@ -5,6 +5,6 @@
  * command carries the MCP server, the registry client and the authoring
  * tools, and a detector needs none of them.
  */
-import { serveDetectors } from "@wellactually/core/node";
+import { serveDetectors } from "./pool.ts";
 
 void serveDetectors();

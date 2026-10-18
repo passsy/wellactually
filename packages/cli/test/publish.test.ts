@@ -2,7 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { scaffoldFiles, writeFileMap, type PackageInfo } from "@wellactually/core/node";
+import { scaffoldFiles, type PackageInfo } from "@wellactually/core/node";
+import { writeFileMap } from "../src/files.ts";
 import { ApprovalError, publishPrinciple } from "../src/commands.ts";
 
 /** A principle on disk whose detector imports a package under the GPL, installed next to it. */

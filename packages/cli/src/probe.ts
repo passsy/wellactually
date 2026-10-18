@@ -1,12 +1,9 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { apiOf } from "./api.ts";
-import { applies, fileCtx } from "./ctx.ts";
+import { apiOf, applies, type BuiltPrinciple, fileCtx, runDetector } from "@wellactually/core/node";
 import { describeFinding } from "./finding.ts";
-import { diskFiles, toPosix } from "./fs.ts";
-import type { BuiltPrinciple } from "./principle.ts";
-import { runDetector } from "./sandbox.ts";
+import { diskFiles, toPosix } from "./files.ts";
 
 export interface ProbeSample {
   path: string;

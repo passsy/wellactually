@@ -1,17 +1,6 @@
-import {
-  drainDetections,
-  hashPrinciple,
-  hasCached,
-  readConfig,
-  readLockfile,
-  writeCached,
-  writeConfig,
-  writeLockfile,
-  type BoardEntry,
-  type CachedPrinciple,
-  type CheckReport,
-  type FileMap,
-} from "@wellactually/core/node";
+import { hashPrinciple, type BoardEntry, type CachedPrinciple, type CheckReport, type FileMap } from "@wellactually/core/node";
+import { hasCached, readConfig, readLockfile, writeCached, writeConfig, writeLockfile } from "./board.ts";
+import { drainDetections } from "./detections.ts";
 import type { Rater } from "./rater.ts";
 
 export class RegistryError extends Error {

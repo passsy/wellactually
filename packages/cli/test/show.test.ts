@@ -2,8 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { readConfig, writeConfig, writeLockfile } from "@wellactually/core/node";
-import { principleIdOf, renderShow, showPrinciple } from "../src/commands.ts";
+import { readConfig, writeConfig, writeLockfile } from "../src/board.ts";
+import { describeCredits, principleIdOf, renderShow, showPrinciple } from "../src/commands.ts";
 
 const ADVICE = "# Avoid late\n\nInitialize fields where they are declared instead of marking them late.\n\nSee [Prefer final](https://wellactually.dev/p/passsy/prefer-final).";
 
@@ -137,5 +137,14 @@ describe("showing a principle", () => {
   test("does not take a failing registry for a missing principle", async () => {
     vi.stubGlobal("fetch", async () => Response.json({ error: "too many requests" }, { status: 429 }));
     await expect(showPrinciple("prefer-final")).rejects.toThrow("too many requests");
+  });
+});
+
+describe("the credits of a pulled principle", () => {
+  test("name the original expert and everyone who edited it on the way", () => {
+    expect(describeCredits(["expert"])).toBeNull();
+    expect(describeCredits(["passsy", "john"])).toBe("Original by @passsy, edited by @john");
+    expect(describeCredits(["passsy", "john", "jimmy"])).toBe("Original by @passsy, edited by @john and @jimmy");
+    expect(describeCredits(["passsy", "ann", "john", "jimmy"])).toBe("Original by @passsy, edited by @ann, @john and @jimmy");
   });
 });
