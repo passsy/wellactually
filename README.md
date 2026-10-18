@@ -6,7 +6,8 @@
 <h1 align="center">Well Actually</h1>
 
 <p align="center">
-  <em>Well actually, that's not idiomatic React.</em>
+  Experts correct LLMs:<br>
+  <em>"Well actually, there's a better way to do this in [insert technology]."</em>
 </p>
 
 Your coding agent is a capable generalist.

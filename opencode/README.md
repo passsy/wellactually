@@ -1,0 +1,12 @@
+# opencode
+
+The plugin for OpenCode, as a package of its own.
+
+```bash
+opencode plugin add 'github:passsy/wellactually#path:opencode'
+```
+
+OpenCode installs a plugin from git the way npm installs a package, and fails on a repository with workspaces or a build step.
+So this folder carries everything itself: a copy of the command from [dist](../dist), the OpenCode plugin and the skills.
+The skills are named `wellactually-login` and `wellactually-sync` here, because OpenCode and pi know a skill by its name alone.
+pi reads its skills from this folder too.
