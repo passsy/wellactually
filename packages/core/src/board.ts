@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -25,26 +24,6 @@ export interface Config {
 /** Where the advisory board lives unless `login --registry` or WELLACTUALLY_REGISTRY says otherwise. */
 export const DEFAULT_REGISTRY = "https://wellactually.dev";
 
-/**
- * The hosts the registry ran on before wellactually.dev, as the SHA-256 of the host.
- * A login stored with one moves to the new address, and a link to one still
- * names a principle. Only their hash is kept, so the old address stays unpublished.
- */
-export const FORMER_REGISTRY_HOSTS = new Set(["53174f685516576dd8f13b83837c7726ffb7ad7dd2bb469453d2eb5a53e4c14e"]);
-
-/** Whether a host is one the registry ran on before wellactually.dev. */
-export function isFormerRegistryHost(host: string): boolean {
-  return FORMER_REGISTRY_HOSTS.has(createHash("sha256").update(host).digest("hex"));
-}
-
-function isFormerRegistry(registry: string): boolean {
-  try {
-    return isFormerRegistryHost(new URL(registry).host);
-  } catch {
-    return false;
-  }
-}
-
 /** Where the advisory board lives on this machine. `WELLACTUALLY_HOME` moves it, which the tests use. */
 export function boardHome(): string {
   return process.env.WELLACTUALLY_HOME ?? path.join(os.homedir(), ".wellactually");
@@ -69,9 +48,8 @@ function writeJson(file: string, value: unknown): void {
 
 export function readConfig(): Config {
   const stored = readJson<Partial<Config>>(path.join(boardHome(), "config.json"));
-  const registry = stored?.registry !== undefined && isFormerRegistry(stored.registry) ? DEFAULT_REGISTRY : stored?.registry;
   return {
-    registry: process.env.WELLACTUALLY_REGISTRY ?? registry ?? DEFAULT_REGISTRY,
+    registry: process.env.WELLACTUALLY_REGISTRY ?? stored?.registry ?? DEFAULT_REGISTRY,
     token: stored?.token ?? null,
     handle: stored?.handle ?? null,
     stats: stored?.stats ?? true,

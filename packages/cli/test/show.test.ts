@@ -1,9 +1,8 @@
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { FORMER_REGISTRY_HOSTS, readConfig, writeConfig, writeLockfile } from "@wellactually/core/node";
+import { readConfig, writeConfig, writeLockfile } from "@wellactually/core/node";
 import { principleIdOf, renderShow, showPrinciple } from "../src/commands.ts";
 
 const ADVICE = "# Avoid late\n\nInitialize fields where they are declared instead of marking them late.\n\nSee [Prefer final](https://wellactually.dev/p/passsy/prefer-final).";
@@ -52,10 +51,8 @@ describe("a principle reference", () => {
     expect(principleIdOf("avoid-late")).toBe("avoid-late");
   });
 
-  test("is a link to its page, on the new host, the old one, or without a scheme", () => {
+  test("is a link to its page, with or without a scheme", () => {
     expect(principleIdOf("https://wellactually.dev/p/passsy/avoid-late")).toBe("passsy/avoid-late");
-    FORMER_REGISTRY_HOSTS.add(createHash("sha256").update("old.example").digest("hex"));
-    expect(principleIdOf("https://old.example/p/passsy/avoid-late")).toBe("passsy/avoid-late");
     expect(principleIdOf("wellactually.dev/p/passsy/avoid-late/")).toBe("passsy/avoid-late");
     expect(principleIdOf("https://wellactually.dev/p/passsy/avoid-late?v=3#advice")).toBe("passsy/avoid-late@3");
     expect(principleIdOf("https://wellactually.dev/p/passsy/avoid-late/edit")).toBe("passsy/avoid-late");

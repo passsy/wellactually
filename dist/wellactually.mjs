@@ -13311,22 +13311,10 @@ function describePlace(ctx, finding) {
 }
 
 // packages/core/src/board.ts
-import { createHash } from "node:crypto";
 import fs2 from "node:fs";
 import os2 from "node:os";
 import path2 from "node:path";
 var DEFAULT_REGISTRY = "https://wellactually.dev";
-var FORMER_REGISTRY_HOSTS = /* @__PURE__ */ new Set(["53174f685516576dd8f13b83837c7726ffb7ad7dd2bb469453d2eb5a53e4c14e"]);
-function isFormerRegistryHost(host) {
-  return FORMER_REGISTRY_HOSTS.has(createHash("sha256").update(host).digest("hex"));
-}
-function isFormerRegistry(registry2) {
-  try {
-    return isFormerRegistryHost(new URL(registry2).host);
-  } catch {
-    return false;
-  }
-}
 function boardHome() {
   return process.env.WELLACTUALLY_HOME ?? path2.join(os2.homedir(), ".wellactually");
 }
@@ -13348,9 +13336,8 @@ function writeJson(file2, value) {
 }
 function readConfig() {
   const stored = readJson(path2.join(boardHome(), "config.json"));
-  const registry2 = stored?.registry !== void 0 && isFormerRegistry(stored.registry) ? DEFAULT_REGISTRY : stored?.registry;
   return {
-    registry: process.env.WELLACTUALLY_REGISTRY ?? registry2 ?? DEFAULT_REGISTRY,
+    registry: process.env.WELLACTUALLY_REGISTRY ?? stored?.registry ?? DEFAULT_REGISTRY,
     token: stored?.token ?? null,
     handle: stored?.handle ?? null,
     stats: stored?.stats ?? true
@@ -14036,7 +14023,7 @@ function readText(file2) {
 
 // packages/core/src/turn.ts
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { createHash as createHash2 } from "node:crypto";
+import { createHash } from "node:crypto";
 import fs6 from "node:fs";
 import os4 from "node:os";
 import path7 from "node:path";
@@ -14336,7 +14323,7 @@ function sessionDir(sessionId) {
   return path7.join(turnsDir(), sessionId.replace(/[^A-Za-z0-9_-]/g, "_"));
 }
 function repoDir(sessionId, root) {
-  return path7.join(sessionDir(sessionId), createHash2("sha256").update(root).digest("hex").slice(0, 16));
+  return path7.join(sessionDir(sessionId), createHash("sha256").update(root).digest("hex").slice(0, 16));
 }
 
 // packages/core/src/node.ts
@@ -14816,7 +14803,7 @@ function principleIdOf(reference) {
   }
   const url2 = new URL(`${link[1] ?? "https://"}${link[2]}${link[3]}`);
   const hosts = [...REGISTRY_HOSTS, new URL(readConfig().registry).host];
-  if (!hosts.includes(url2.host) && !isFormerRegistryHost(url2.host)) {
+  if (!hosts.includes(url2.host)) {
     throw new RegistryError(`${reference} is not a link to a principle on ${hosts[0]}.`);
   }
   const [handle, slug] = url2.pathname.split("/").slice(2).map(decodeURIComponent);

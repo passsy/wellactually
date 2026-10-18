@@ -20,7 +20,6 @@ import {
   isPackageFile,
   ManifestError,
   DEFAULT_REGISTRY,
-  isFormerRegistryHost,
   parseTags,
   needsApproval,
   readConfig,
@@ -386,7 +385,7 @@ export function principleIdOf(reference: string): string {
   }
   const url = new URL(`${link[1] ?? "https://"}${link[2]}${link[3]}`);
   const hosts = [...REGISTRY_HOSTS, new URL(readConfig().registry).host];
-  if (!hosts.includes(url.host) && !isFormerRegistryHost(url.host)) {
+  if (!hosts.includes(url.host)) {
     throw new RegistryError(`${reference} is not a link to a principle on ${hosts[0]}.`);
   }
   const [handle, slug] = url.pathname.split("/").slice(2).map(decodeURIComponent);
