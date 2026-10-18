@@ -1,8 +1,0 @@
-{
-  "name": "avoid-late",
-  "private": true,
-  "type": "module",
-  "tags": [
-    "dart"
-  ]
-}

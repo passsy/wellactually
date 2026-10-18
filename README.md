@@ -115,7 +115,7 @@ avoid-late/
 A detector reads `onWrite({ globs: ["**/*.dart"], *detect(event) { ... yield { line: written.line }; } })`.
 A test reads `expect(detect(write("lib/user.dart", code))).toEqual([{ line: 2 }])`.
 The tests must pass, make the detector fire at least once, and show it staying quiet at least once.
-`principles/passsy` holds the examples: Pascal's own principles.
+[Pascal's principles](https://wellactually.dev/e/passsy) on the registry are examples to read, and `wellactually pull` copies one into your repository.
 
 ```bash
 wellactually init avoid-late
@@ -149,7 +149,6 @@ The `v3` is the detector API version it is written against.
 | `packages/core`     | Builds, checks and runs principles: the isolate and the local advisory board. |
 | `packages/sdk`      | The types and helpers a detector may import.                                  |
 | `packages/cli`      | The `wellactually` command and its MCP server.                                |
-| `principles`        | Example principles.                                                           |
 
 The registry is not in this repository.
 

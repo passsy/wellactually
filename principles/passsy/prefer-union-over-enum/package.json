@@ -1,8 +1,0 @@
-{
-  "name": "prefer-union-over-enum",
-  "private": true,
-  "type": "module",
-  "tags": [
-    "typescript"
-  ]
-}

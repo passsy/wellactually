@@ -1,8 +1,17 @@
 {
   "name": "wellactually",
-  "version": "0.9.18",
+  "version": "0.9.19",
   "description": "Runs the principles on your Well Actually advisory board while your agent works, and lets it author and rate them.",
   "author": {
     "name": "Pascal Welsch"
+  },
+  "mcpServers": {
+    "wellactually": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs",
+        "mcp"
+      ]
+    }
   }
 }

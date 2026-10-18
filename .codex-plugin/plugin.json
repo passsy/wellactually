@@ -1,12 +1,12 @@
 {
   "name": "wellactually",
-  "version": "0.9.18",
+  "version": "0.9.19",
   "description": "Runs the principles on your Well Actually advisory board while your agent works, and lets it author and rate them.",
   "author": {
     "name": "Pascal Welsch"
   },
   "skills": "./skills/",
-  "mcpServers": "./.codex-mcp.json",
+  "mcpServers": "./.codex-plugin/mcp.json",
   "interface": {
     "displayName": "Well Actually",
     "shortDescription": "Engineering principles from the experts you choose.",

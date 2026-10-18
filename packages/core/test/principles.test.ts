@@ -1,24 +1,6 @@
-import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { buildPrinciple, checkPrinciple, hasDetector, cleanTags, matchesGlob, parseSettings, parseTags, tagsOf, withoutSettings, withTags, matchesGlobs, parsePrinciple, readPrincipleDir, scanAdvice } from "../src/node.ts";
-
-const root = path.resolve(import.meta.dirname, "../../../principles");
-
-describe("the example principles", () => {
-  // Next to the experts lies the tsconfig that type-checks their principles.
-  for (const expert of fs.readdirSync(root).filter((name) => fs.statSync(path.join(root, name)).isDirectory())) {
-    // A principle is a folder. A file next to them, such as collections.json, is not one.
-    for (const slug of fs.readdirSync(path.join(root, expert)).filter((name) => fs.statSync(path.join(root, expert, name)).isDirectory())) {
-      test(`${expert}/${slug} passes its cases and the publish gates`, async () => {
-        const { report } = await checkPrinciple(readPrincipleDir(path.join(root, expert, slug)));
-        expect(report.tests.filter((result) => !result.passed)).toEqual([]);
-        expect(report.problems).toEqual([]);
-        expect(report.ok).toBe(true);
-      });
-    }
-  }
-});
 
 describe("the tests of a principle", () => {
   const principle = ["# No TODO", "", "Finish it or file it.", "", "A TODO in code is a ticket nobody can find. File it or finish it."].join("\n");
