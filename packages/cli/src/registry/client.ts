@@ -1,4 +1,4 @@
-import { hashPrinciple, type BoardEntry, type CachedPrinciple, type CheckReport, type FileMap } from "@wellactually/core/node";
+import { hashPrinciple, type BoardPrinciple, type CheckReport, type FileMap, type ReleasedBundle } from "@wellactually/core/node";
 import { hasCached, readConfig, readLockfile, writeCached, writeConfig, writeLockfile } from "../board/board.ts";
 import { drainDetections } from "../board/detections.ts";
 import type { Rater } from "./rater.ts";
@@ -208,7 +208,7 @@ export interface SuggestedExpert {
 }
 
 export interface SyncResult {
-  entries: BoardEntry[];
+  entries: BoardPrinciple[];
   downloaded: string[];
   removed: string[];
   /** Detections reported to the registry with this sync. */
@@ -231,7 +231,7 @@ export async function sync(): Promise<SyncResult> {
   if (!response.ok) {
     throw await failure(response);
   }
-  const body = (await response.json()) as { entries: BoardEntry[]; suggestions?: Omit<SuggestedExpert, "url">[] };
+  const body = (await response.json()) as { entries: BoardPrinciple[]; suggestions?: Omit<SuggestedExpert, "url">[] };
   const remote = body.entries;
   const registry = readConfig().registry;
   const suggestions = (body.suggestions ?? []).map((expert) => ({ ...expert, url: new URL(`/e/${encodeURIComponent(expert.handle)}`, registry).toString() }));
@@ -245,12 +245,12 @@ export async function sync(): Promise<SyncResult> {
     if (!bundleResponse.ok) {
       throw await failure(bundleResponse);
     }
-    const principle = (await bundleResponse.json()) as CachedPrinciple;
+    const principle = (await bundleResponse.json()) as ReleasedBundle;
     const actual = await hashPrinciple(principle.manifest, principle.advice, principle.bundle);
     if (actual !== entry.hash) {
       throw new RegistryError(`${entry.id} does not match its hash. Refusing to install it.`);
     }
-    writeCached({ ...principle, id: entry.id, version: entry.version, hash: entry.hash });
+    writeCached({ id: entry.id, version: entry.version, hash: entry.hash, manifest: principle.manifest, advice: principle.advice, bundle: principle.bundle });
     downloaded.push(entry.id);
   }
 
@@ -260,7 +260,8 @@ export async function sync(): Promise<SyncResult> {
   const removed = before.entries
     .filter((entry) => !entry.id.startsWith("local/") && !remoteIds.has(entry.id))
     .map((entry) => entry.id);
-  writeLockfile({ syncedAt: new Date().toISOString(), entries: [...remote, ...local] });
+  const synced = remote.map(({ id, version, hash, enabled }) => ({ id, version, hash, enabled }));
+  writeLockfile({ syncedAt: new Date().toISOString(), entries: [...synced, ...local] });
   return { entries: remote, downloaded, removed, reported: await reportDetections(), suggestions };
 }
 

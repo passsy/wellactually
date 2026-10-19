@@ -21,4 +21,4 @@ export * from "./detector/project.ts";
 export * from "./detector/sandbox.ts";
 export * from "./principle/scaffold.ts";
 export * from "./principle/scan.ts";
-export * from "./principle/board-types.ts";
+export * from "./principle/released.ts";

@@ -14071,14 +14071,15 @@ async function sync() {
     if (actual !== entry.hash) {
       throw new RegistryError(`${entry.id} does not match its hash. Refusing to install it.`);
     }
-    writeCached({ ...principle, id: entry.id, version: entry.version, hash: entry.hash });
+    writeCached({ id: entry.id, version: entry.version, hash: entry.hash, manifest: principle.manifest, advice: principle.advice, bundle: principle.bundle });
     downloaded.push(entry.id);
   }
   const before = readLockfile();
   const local = before.entries.filter((entry) => entry.id.startsWith("local/"));
   const remoteIds = new Set(remote.map((entry) => entry.id));
   const removed = before.entries.filter((entry) => !entry.id.startsWith("local/") && !remoteIds.has(entry.id)).map((entry) => entry.id);
-  writeLockfile({ syncedAt: (/* @__PURE__ */ new Date()).toISOString(), entries: [...remote, ...local] });
+  const synced = remote.map(({ id, version: version2, hash: hash2, enabled }) => ({ id, version: version2, hash: hash2, enabled }));
+  writeLockfile({ syncedAt: (/* @__PURE__ */ new Date()).toISOString(), entries: [...synced, ...local] });
   return { entries: remote, downloaded, removed, reported: await reportDetections(), suggestions };
 }
 async function reportDetections() {

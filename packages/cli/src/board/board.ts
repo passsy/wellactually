@@ -2,12 +2,34 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Ctx, Finding } from "@wellactually/sdk";
-import { ADVICE_BUDGET, adviceBytes, apiOf, applies, type BoardEntry, type CachedPrinciple, DEFAULT_LIMITS, type DetectorRun, type Lockfile, runDetector } from "@wellactually/core/node";
+import { ADVICE_BUDGET, adviceBytes, apiOf, applies, DEFAULT_LIMITS, type DetectorRun, type Manifest, runDetector } from "@wellactually/core/node";
 import { describeFinding } from "../hook/finding.ts";
 import type { DetectorPool } from "./pool.ts";
 import { diskFiles } from "./files.ts";
 
-export type { BoardEntry, CachedPrinciple, Lockfile } from "@wellactually/core/node";
+/** One principle the hook runs: from the advisory board on the registry, or `local/slug` added from a directory. */
+export interface LockfileEntry {
+  id: string;
+  version: number;
+  hash: string;
+  enabled: boolean;
+}
+
+/** The lockfile: what the hook runs. Written by sync and by adding a local principle, read on every hook call. */
+export interface Lockfile {
+  syncedAt: string | null;
+  entries: LockfileEntry[];
+}
+
+/** A principle in this machine's cache, keyed by its hash: a release the sync checked, or a local build. */
+export interface CachedPrinciple {
+  id: string;
+  version: number;
+  hash: string;
+  manifest: Manifest;
+  advice: string;
+  bundle: string;
+}
 
 export interface Config {
   registry: string;
