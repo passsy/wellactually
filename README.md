@@ -69,6 +69,9 @@ Then open pi and type `/skill:wellactually-login`.
 
 The plugin needs Node 20 or newer and nothing else.
 
+When a newer release of the plugin is out, it tells you at the start of a session, at most once a day, with the command that updates it in your agent.
+Set `WELLACTUALLY_UPDATE_CHECK=0` to turn that off.
+
 ## What it does on your machine
 
 - When your agent writes or reads a file, gets a prompt or is about to run a shell command, a hook shows that one input to the detectors on your advisory board.
@@ -77,6 +80,7 @@ The plugin needs Node 20 or newer and nothing else.
   It reads the principles `sync` downloaded earlier.
 - `sync` runs when a session starts.
   It downloads what is new on your advisory board and reports counts, see "What leaves your machine".
+- Once a day, in the background, it reads the version of the newest release of the plugin from this repository on GitHub.
 
 ## Detectors are other people's code
 
@@ -92,7 +96,7 @@ So they are contained.
 - Whatever a detector reports must occur word for word in its input, or the finding is dropped.
   A detector cannot compose text for your agent at runtime.
 - Each download is checked against its content hash before it is stored.
-- Updates are automatic.
+- Updates to principles are automatic.
   What an expert on your advisory board releases runs from your next sync, so follow the experts you trust.
   You can switch off any single principle, or unfollow the expert.
 
@@ -104,6 +108,7 @@ The code that does this is public: [`packages/core/src/detector/sandbox.ts`](pac
 - A rating, when your agent gives one: the principle's hash and `up`, `down` or `not_applicable`.
 
 No path, file content, prompt, command or finding is sent.
+The daily look for a newer release of the plugin is a plain download from GitHub and sends nothing.
 Ask your agent to switch reporting off, and it turns both off.
 
 ## Write a principle
