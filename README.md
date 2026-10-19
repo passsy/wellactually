@@ -25,6 +25,9 @@ Anyone can publish principles on [the Well Actually registry](https://wellactual
 
 ## Install
 
+The plugin needs [Node](https://nodejs.org) 20 or newer and nothing else.
+Check with `node --version` before you install it, because without Node no principle reaches your agent.
+
 Claude Code:
 
 ```text
@@ -57,7 +60,9 @@ OpenCode:
 opencode plugin add 'github:passsy/wellactually#path:opencode'
 ```
 
-Then open OpenCode and type `/wellactually-login`.
+Then open OpenCode and type `@wellactually-login`.
+`opencode plugin add` needs OpenCode 2.
+OpenCode 1 from version 1.18.29 runs the plugin too, from a clone of this repository, as [the install guide](https://wellactually.dev/docs/getting-started/install#opencode) shows, and there the skill is `/wellactually-login`.
 
 pi:
 
@@ -66,8 +71,6 @@ pi install git:github.com/passsy/wellactually
 ```
 
 Then open pi and type `/skill:wellactually-login`.
-
-The plugin needs Node 20 or newer and nothing else.
 
 When a newer release of the plugin is out, it tells you at the start of a session, at most once a day, with the command that updates it in your agent.
 Set `WELLACTUALLY_UPDATE_CHECK=0` to turn that off.

@@ -54,6 +54,8 @@ fs.renameSync(path.join(root, "dist/opencode.mjs"), path.join(opencode, "dist/op
 fs.renameSync(path.join(root, "dist/opencode-tui.mjs"), path.join(opencode, "dist/tui.mjs"));
 // OpenCode and pi know a skill by its name alone, and login and sync are names
 // other skills have too. Their copies are called wellactually-login and wellactually-sync.
+// OpenCode 1 offers a skill as a slash command only when its metadata asks for it.
+// OpenCode 2 has no such command and loads a skill the user mentions with @.
 const skills = path.join(root, "skills");
 for (const name of fs.readdirSync(skills)) {
   const source = path.join(skills, name, "SKILL.md");
@@ -62,7 +64,7 @@ for (const name of fs.readdirSync(skills)) {
   }
   const copy = path.join(opencode, "skills", `wellactually-${name}`, "SKILL.md");
   fs.mkdirSync(path.dirname(copy), { recursive: true });
-  fs.writeFileSync(copy, fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1"));
+  fs.writeFileSync(copy, fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1\nmetadata:\n  opencode/slash: \"true\""));
 }
 
 console.log(`built dist: ${[outfile, worker, logWriter, ...plugins].map((file) => path.basename(file)).join(", ")}, and copied the command and the skills into opencode`);

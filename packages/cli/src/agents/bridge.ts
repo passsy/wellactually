@@ -72,9 +72,20 @@ export function callHook(payload: HookPayload, root = pluginRoot()): Promise<str
 }
 
 /**
- * What to tell the user about a newer release of the plugin, or "" when
- * there is none. The plugin shows it where its agent shows notices, which a
- * hook cannot reach. Like `callHook` it never throws.
+ * What to tell the user when there is no `node` to start the command with.
+ * OpenCode runs the plugin in its own runtime, so it loads without Node and
+ * every hook after that fails without a word.
+ */
+export function nodeMissing(agent: "opencode" | "opencode-1" | "pi"): string {
+  const name = agent === "pi" ? "pi" : "OpenCode";
+  return `Well Actually needs Node 20 or newer, and there is no \`node\` on your PATH. Install it from https://nodejs.org and restart ${name}.`;
+}
+
+/**
+ * What to tell the user about a newer release of the plugin, or about a
+ * missing Node, or "" when there is nothing. The plugin shows it where its
+ * agent shows notices, which a hook cannot reach. Like `callHook` it never
+ * throws.
  */
 export function updateNoticeFor(agent: "opencode" | "opencode-1" | "pi", root = pluginRoot()): Promise<string> {
   const { file, args } = command(root);
@@ -92,9 +103,9 @@ export function updateNoticeFor(agent: "opencode" | "opencode-1" | "pi", root = 
     child.stdout?.on("data", (chunk: string) => {
       out += chunk;
     });
-    child.on("error", () => {
+    child.on("error", (error: NodeJS.ErrnoException) => {
       clearTimeout(timer);
-      resolve("");
+      resolve(error.code === "ENOENT" && file === "node" ? nodeMissing(agent) : "");
     });
     child.on("close", (code) => {
       clearTimeout(timer);

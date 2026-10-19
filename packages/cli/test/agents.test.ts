@@ -1,6 +1,9 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { eventsOf, type HookPayload } from "../src/hook/payload.ts";
-import { Pending, adviceOf } from "../src/agents/bridge.ts";
+import { Pending, adviceOf, nodeMissing, updateNoticeFor } from "../src/agents/bridge.ts";
 import { opencodePayload } from "../src/agents/opencode.ts";
 import { piPayload } from "../src/agents/pi.ts";
 
@@ -109,5 +112,26 @@ describe("the hook's answer", () => {
     pending.add("c1", "second");
     expect(pending.take("c1")).toBe("first\n\nsecond");
     expect(pending.take("c1")).toBe("");
+  });
+});
+
+describe("without Node", () => {
+  test("the plugin tells the user to install it", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-"));
+    fs.mkdirSync(path.join(root, "dist"));
+    fs.writeFileSync(path.join(root, "dist", "wellactually.mjs"), "");
+    const before = process.env.PATH;
+    process.env.PATH = path.join(root, "empty");
+    try {
+      expect(await updateNoticeFor("opencode", root)).toBe(nodeMissing("opencode"));
+    } finally {
+      process.env.PATH = before;
+      fs.rmSync(root, { recursive: true });
+    }
+  });
+
+  test("names the agent to restart", () => {
+    expect(nodeMissing("opencode-1")).toContain("restart OpenCode.");
+    expect(nodeMissing("pi")).toContain("restart pi.");
   });
 });

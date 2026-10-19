@@ -3829,6 +3829,10 @@ function callHook(payload, root = pluginRoot()) {
     child.stdin?.end(JSON.stringify(payload));
   });
 }
+function nodeMissing(agent) {
+  const name = agent === "pi" ? "pi" : "OpenCode";
+  return `Well Actually needs Node 20 or newer, and there is no \`node\` on your PATH. Install it from https://nodejs.org and restart ${name}.`;
+}
 function updateNoticeFor(agent, root = pluginRoot()) {
   const { file, args } = command(root);
   return new Promise((resolve) => {
@@ -3845,9 +3849,9 @@ function updateNoticeFor(agent, root = pluginRoot()) {
     child.stdout?.on("data", (chunk) => {
       out += chunk;
     });
-    child.on("error", () => {
+    child.on("error", (error) => {
       clearTimeout(timer);
-      resolve("");
+      resolve(error.code === "ENOENT" && file === "node" ? nodeMissing(agent) : "");
     });
     child.on("close", (code) => {
       clearTimeout(timer);
