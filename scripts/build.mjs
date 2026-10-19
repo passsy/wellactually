@@ -1,17 +1,17 @@
 // Builds the command as one JavaScript file, the one the installed plugin runs,
-// and next to it the small script its worker threads run.
+// and next to it the small script its worker threads run. Then copies what
+// OpenCode needs into opencode/.
 //
 // A plugin is copied to the user's machine without `npm install`, so it
 // cannot have dependencies. Everything is bundled, including the isolate,
 // whose WebAssembly is inlined. esbuild itself stays outside: it is a native
 // binary, only the authoring commands need it, and they say so when it is missing.
-//
-// In the public repository this file is scripts/build.mjs.
+import fs from "node:fs";
 import path from "node:path";
 import { build } from "esbuild";
 
 const root = path.resolve(import.meta.dirname, "..");
-const outfile = path.resolve(process.argv[2] ?? path.join(root, "dist/wellactually.mjs"));
+const outfile = path.join(root, "dist/wellactually.mjs");
 
 const shared = {
   bundle: true,
@@ -38,4 +38,29 @@ const plugins = ["opencode", "pi"].map((agent) => path.join(path.dirname(outfile
 for (const plugin of plugins) {
   await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/agents", `${path.basename(plugin, ".mjs")}.ts`)], outfile: plugin, banner: {} });
 }
-console.log(`built ${path.relative(process.cwd(), outfile)}, ${[worker, logWriter, ...plugins].map((file) => path.basename(file)).join(", ")}`);
+
+// OpenCode installs a plugin from git like npm does, and npm runs `npm install`
+// in a repository with workspaces or a build script before it packs it, which
+// OpenCode cannot. So OpenCode gets a package of its own in opencode/, without
+// either, installed with the ::path:opencode selector. It carries its own copy
+// of the command, because only that folder is installed.
+const opencode = path.join(root, "opencode");
+fs.mkdirSync(path.join(opencode, "dist"), { recursive: true });
+for (const file of ["wellactually.mjs", "wellactually-worker.mjs", "wellactually-log.mjs"]) {
+  fs.copyFileSync(path.join(root, "dist", file), path.join(opencode, "dist", file));
+}
+fs.renameSync(path.join(root, "dist/opencode.mjs"), path.join(opencode, "dist/opencode.mjs"));
+// OpenCode and pi know a skill by its name alone, and login and sync are names
+// other skills have too. Their copies are called wellactually-login and wellactually-sync.
+const skills = path.join(root, "skills");
+for (const name of fs.readdirSync(skills)) {
+  const source = path.join(skills, name, "SKILL.md");
+  if (!fs.existsSync(source)) {
+    continue;
+  }
+  const copy = path.join(opencode, "skills", `wellactually-${name}`, "SKILL.md");
+  fs.mkdirSync(path.dirname(copy), { recursive: true });
+  fs.writeFileSync(copy, fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1"));
+}
+
+console.log(`built dist: ${[outfile, worker, logWriter, ...plugins].map((file) => path.basename(file)).join(", ")}, and copied the command and the skills into opencode`);

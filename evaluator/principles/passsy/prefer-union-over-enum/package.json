@@ -1,0 +1,9 @@
+{
+  "name": "prefer-union-over-enum",
+  "private": true,
+  "tags": [
+    "typescript",
+    "enum"
+  ],
+  "type": "module"
+}
