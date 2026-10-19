@@ -43,7 +43,8 @@ export function howToUpdate(agent: Agent): string {
   if (agent === "pi") {
     return "run `pi update git:github.com/passsy/wellactually` and restart pi";
   }
-  return "run `claude plugin update wellactually@wellactually` and restart Claude Code, or turn on auto-update for the wellactually marketplace in /plugin";
+  // `claude plugin update` alone reads the marketplace as it was last fetched and finds nothing new.
+  return "run `claude plugin marketplace update wellactually` and `claude plugin update wellactually@wellactually` and restart Claude Code, or turn on auto-update for the wellactually marketplace in /plugin";
 }
 
 /** Whether `latest` is a later release than `current`, both major.minor.patch. */
