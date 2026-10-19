@@ -35,6 +35,9 @@ Claude Code:
 
 The last line connects this machine to your advisory board and downloads it.
 
+Claude Code leaves auto-update off for marketplaces outside Anthropic's own.
+To get new releases of the plugin, type `/plugin`, open the Marketplaces tab, select `wellactually` and choose Enable auto-update.
+
 Codex:
 
 ```bash
