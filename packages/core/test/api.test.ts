@@ -234,7 +234,7 @@ describe("a detector's handlers", () => {
   test("cannot register another handler while they run", async () => {
     const built = await build(`onWrite({ detect: () => { onPrompt({ detect: () => [] }); return []; } });`);
     const run = await runDetector(built.bundle, written);
-    expect(run.error).toMatch(/onPrompt\(\) was called while a handler ran/);
+    expect(run.thrown).toMatch(/onPrompt\(\) was called while a handler ran/);
   });
 
   test("may return a list, a generator or nothing, and nothing else", async () => {
@@ -243,7 +243,7 @@ describe("a detector's handlers", () => {
     const other = await build(`onWrite({ *detect(event) { yield { line: 1, file: event.project + "/assets/hero.jpg" }; } });`);
     expect((await runDetector(other.bundle, written, undefined, mapProject("/project", { "assets/hero.jpg": "" }))).findings).toEqual([{ line: 1, file: "assets/hero.jpg" }]);
     const bool = await build(`onWrite({ detect: (() => true) as never });`);
-    expect((await runDetector(bool.bundle, written)).error).toMatch(/a handler has to return findings: a generator, a list, or nothing. This one returned true\./);
+    expect((await runDetector(bool.bundle, written)).thrown).toMatch(/a handler has to return findings: a generator, a list, or nothing. This one returned true\./);
   });
 });
 

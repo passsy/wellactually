@@ -113,7 +113,7 @@ export interface Firing {
 
 export interface BoardRun {
   firings: Firing[];
-  /** Principles that could not run, with the reason. Shown once, never silently skipped. */
+  /** Principles that could not run, with the reason the host gives. Shown once, never silently skipped. */
   failures: { id: string; error: string }[];
   /** What every detector that applied reported, firing or not, for the hook log. */
   detectors: DetectorReport[];
@@ -130,6 +130,8 @@ export interface DetectorReport {
   /** What the host left out of the findings, with the reason. */
   dropped: string[];
   error: string | null;
+  /** What the detector threw, in its own words. Kept in the log on this machine, never shown to the agent. */
+  thrown?: string;
   ms: number;
 }
 
@@ -204,7 +206,7 @@ export async function runBoard(
 
   applying.forEach((principle, index) => {
     const result = results[index] as DetectorRun;
-    run.detectors.push({ id: principle.id, version: principle.version, findings: result.findings, dropped: result.dropped, error: result.error, ms: result.ms });
+    run.detectors.push({ id: principle.id, version: principle.version, findings: result.findings, dropped: result.dropped, error: result.error, ...(result.thrown === undefined ? {} : { thrown: result.thrown }), ms: result.ms });
     if (result.error) {
       run.failures.push({ id: principle.id, error: result.error });
     } else if (result.findings.length > 0) {

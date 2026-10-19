@@ -6,7 +6,7 @@ import { ManifestError, parsePrinciple, parseSettings, parseTags, readHandlers, 
 import { thirdPartyNotices } from "../build/licenses.ts";
 import { approvalKey, carriedPackages, isPackageFile, needsApproval, noticeOf, PackageError, type CarriedPackage, type PackageInfo } from "../build/packages.ts";
 import { mapProject, type ProjectContents, type ProjectFiles } from "../detector/project.ts";
-import { readRegistered, runTestBundle, type DetectorRun } from "../detector/sandbox.ts";
+import { forAuthor, readRegistered, runTestBundle, type DetectorRun } from "../detector/sandbox.ts";
 import { scanAdvice } from "./scan.ts";
 import { adviceLengthWarnings } from "./advice-length.ts";
 
@@ -334,7 +334,7 @@ export function answerDetect(
   const result = run(built.bundle, ctx, mapProject(TEST_ROOT, projectFiles), apiOf(built.manifest));
   recorded.ms = result.ms;
   if (result.error) {
-    return { error: `The detector failed: ${result.error}` };
+    return { error: `The detector failed: ${forAuthor(result.error, result.thrown)}` };
   }
   if (result.dropped.length > 0) {
     return { error: `The host would leave out ${result.dropped.join("; ")}.` };

@@ -120,6 +120,7 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
         findings: someFindings(detector.findings),
         dropped: detector.dropped.length > 0 ? detector.dropped : undefined,
         error: detector.error ?? undefined,
+        thrown: detector.thrown,
       })),
       skipped: run.skipped.filter((skipped) => skipped.reason !== "globs"),
       unmatched: run.skipped.filter((skipped) => skipped.reason === "globs").length,

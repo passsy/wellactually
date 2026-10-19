@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { apiOf, applies, approvalKey, buildPrinciple, BundleError, describeReview, checkPrinciple, isPrincipleId, PRINCIPLE_ID_RULE, fileCtx, isPackageFile, ManifestError, parseTags, needsApproval, readPrinciple, readPrincipleDir, runDetector, textCtx, type BuiltPrinciple, type CheckReport, type DetectorRun, type PrincipleFiles, type PackageInfo } from "@wellactually/core/node";
+import { apiOf, applies, approvalKey, buildPrinciple, BundleError, describeReview, checkPrinciple, isPrincipleId, PRINCIPLE_ID_RULE, fileCtx, forAuthor, isPackageFile, ManifestError, parseTags, needsApproval, readPrinciple, readPrincipleDir, runDetector, textCtx, type BuiltPrinciple, type CheckReport, type DetectorRun, type PrincipleFiles, type PackageInfo } from "@wellactually/core/node";
 import type { Ctx } from "@wellactually/sdk";
 import { diskFiles, projectRootOf, toPosix, writePrincipleFiles } from "./board/files.ts";
 import { frame, DEFAULT_REGISTRY, readConfig, readLockfile, writeCached, writeLockfile } from "./board/board.ts";
@@ -568,7 +568,7 @@ export function renderTry(result: TryResult): string {
   }
   const { run } = result;
   if (run.error) {
-    return `The detector failed: ${run.error}`;
+    return `The detector failed: ${forAuthor(run.error, run.thrown)}`;
   }
   const lines = [`${run.findings.length} findings in ${run.ms.toFixed(1)} ms.`];
   for (const dropped of run.dropped) {

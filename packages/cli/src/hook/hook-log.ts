@@ -42,6 +42,7 @@ export interface HookLogEvent {
     findings: unknown[];
     dropped?: string[];
     error?: string;
+    thrown?: string;
   }[];
   /** Principles that did not run because they are switched off or missing from the cache. */
   skipped: { id: string; reason: string }[];

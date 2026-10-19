@@ -19,12 +19,22 @@ export const DEFAULT_LIMITS: Limits = {
 
 export const MAX_FINDINGS = 20;
 export const MAX_MATCH_LENGTH = 300;
+/** How much of what a detector threw its author is shown. */
+export const MAX_THROWN_LENGTH = 1000;
 
 export interface DetectorRun {
   /** Findings that passed validation. */
   findings: Finding[];
-  /** Why the run produced nothing usable, or null when it completed. */
+  /**
+   * Why the run produced nothing usable, or null when it completed.
+   * The host wrote it, so it can be shown to an agent.
+   */
   error: string | null;
+  /**
+   * What the detector threw, in its own words, when it threw. For its author
+   * only: the detector chose this text, so it never goes in front of an agent.
+   */
+  thrown?: string;
   /** What the host left out of the findings, with the reason, for the author to read. */
   dropped: string[];
   ms: number;
@@ -48,9 +58,9 @@ const HANDLERS = `JSON.stringify(${BUNDLE_GLOBAL}.handlers())`;
  * whatever the module registered.
  */
 export async function readRegistered(bundle: string, limits: Limits = LOAD_LIMITS): Promise<unknown> {
-  const { json, error } = evaluateIn(await loadSandbox(), `${bundle}\n;${HANDLERS}`, NOTHING, limits);
+  const { json, error, thrown } = evaluateIn(await loadSandbox(), `${bundle}\n;${HANDLERS}`, NOTHING, limits);
   if (json === null) {
-    throw new Error(`detector.ts could not be loaded: ${error ?? "it returned nothing"}`);
+    throw new Error(`detector.ts could not be loaded: ${forAuthor(error ?? "it returned nothing", thrown)}`);
   }
   return JSON.parse(json) as unknown;
 }
@@ -62,7 +72,7 @@ const NOTHING: Environment = { strings: {}, functions: {} };
  * Evaluates a script in a fresh isolate and returns the string it ends with.
  * The WebAssembly module is loaded already, so an isolate starts and ends without waiting.
  */
-function evaluateIn(QuickJS: QuickJSWASMModule, script: string, environment: Environment, limits: Limits): { json: string | null; error: string | null } {
+function evaluateIn(QuickJS: QuickJSWASMModule, script: string, environment: Environment, limits: Limits): { json: string | null } & Failure {
   const runtime = QuickJS.newRuntime();
   runtime.setMemoryLimit(limits.memoryBytes);
   runtime.setMaxStackSize(512 * 1024);
@@ -70,7 +80,7 @@ function evaluateIn(QuickJS: QuickJSWASMModule, script: string, environment: Env
   const vm = runtime.newContext();
 
   let json: string | null = null;
-  let error: string | null = null;
+  let failure: Failure = { error: null };
   try {
     for (const [name, value] of Object.entries(environment.strings)) {
       const handle = vm.newString(value);
@@ -84,19 +94,31 @@ function evaluateIn(QuickJS: QuickJSWASMModule, script: string, environment: Env
     }
     const result = vm.evalCode(script, "detector.js");
     if (result.error) {
-      error = describeError(vm.dump(result.error), limits);
-      result.error.dispose();
+      const dumped: unknown = vm.dump(result.error);
+      // Dumping a promise disposes of it already.
+      if (result.error.alive) {
+        result.error.dispose();
+      }
+      failure = describeError(dumped, limits);
     } else {
       json = vm.getString(result.value);
       result.value.dispose();
     }
   } catch (thrown) {
-    error = describeError(thrown, limits);
+    failure = describeError(thrown, limits);
   } finally {
-    vm.dispose();
-    runtime.dispose();
+    try {
+      vm.dispose();
+      runtime.dispose();
+    } catch (thrown) {
+      // The engine refused to let go of the isolate, after what the script did. Its result is not to be trusted.
+      json = null;
+      if (failure.error === null) {
+        failure = describeError(thrown, limits);
+      }
+    }
   }
-  return { json, error };
+  return { json, ...failure };
 }
 
 /**
@@ -134,13 +156,18 @@ function runDetectorIn(QuickJS: QuickJSWASMModule, bundle: string, ctx: Ctx, lim
     return { findings: [], error: refused, dropped: [], ms: 0 };
   }
   const started = performance.now();
-  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${RUN}`, environmentFor(api, ctx, project), limits);
-  const ms = performance.now() - started;
-  if (json === null) {
-    return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };
+  // Whatever a detector does, the host answers with a run: one detector must never take the others down with it.
+  try {
+    const { json, error, thrown } = evaluateIn(QuickJS, `${bundle}\n;${RUN}`, environmentFor(api, ctx, project), limits);
+    const ms = performance.now() - started;
+    if (json === null) {
+      return { findings: [], error: error ?? "the detector returned nothing", ...(thrown === undefined ? {} : { thrown }), dropped: [], ms };
+    }
+    const { findings, dropped } = validateFindings(json, ctx, project);
+    return { findings, error: null, dropped, ms };
+  } catch {
+    return { findings: [], error: "the host could not make sense of what the detector did", dropped: [], ms: performance.now() - started };
   }
-  const { findings, dropped } = validateFindings(json, ctx, project);
-  return { findings, error: null, dropped, ms };
 }
 
 /** The limits a principle's whole test run gets. Each detector run inside it still gets `DEFAULT_LIMITS`. */
@@ -192,27 +219,67 @@ export async function runTestBundle(bundle: string, host: TestHost, limits: Limi
       return JSON.stringify(host.detect(parsed, run));
     },
   };
-  const { json, error } = evaluateIn(QuickJS, `${bundle}\n;${TESTS_GLOBAL}.run()`, { strings: {}, functions }, limits);
+  const { json, error, thrown } = evaluateIn(QuickJS, `${bundle}\n;${TESTS_GLOBAL}.run()`, { strings: {}, functions }, limits);
   if (json === null) {
-    return { results: [], error: (error ?? "the tests returned nothing").replace("the detector ran longer", "the tests ran longer").replace("the detector used more", "the tests used more") };
+    // The tests are the author's, and so is what they threw.
+    return { results: [], error: forAuthor(error ?? "the tests returned nothing", thrown).replace("the detector ran longer", "the tests ran longer").replace("the detector used more", "the tests used more") };
   }
   return { results: JSON.parse(json) as RawTestResult[], error: null };
 }
 
-function describeError(dumped: unknown, limits: Limits): string {
-  const message =
-    typeof dumped === "object" && dumped !== null && "message" in dumped
-      ? String((dumped as { message: unknown }).message)
-      : String(dumped);
+/**
+ * A value the script handed over, as JSON. It came out of the isolate as
+ * JSON, so it may be an object whose `toString` is anything, including
+ * missing, and `String()` would throw on it.
+ */
+function jsonOf(value: unknown): string {
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return "a value that is not text";
+  }
+}
+
+/** A message the script threw, as text. */
+function textOf(value: unknown): string {
+  return typeof value === "string" ? value : jsonOf(value);
+}
+
+/** A value of a finding the host left out, short enough to quote back to the author. */
+function quoted(value: unknown): string {
+  const text = jsonOf(value);
+  return text.length > 60 ? `${text.slice(0, 60)}…` : text;
+}
+
+/** Why an isolate ended without a result: what the host says, and what the script threw. */
+interface Failure {
+  error: string | null;
+  thrown?: string;
+}
+
+/** Why a run failed, for the author of the detector: what it threw, or else what the host says. Never for an agent. */
+export function forAuthor(error: string, thrown: string | undefined): string {
+  return thrown ?? error;
+}
+
+/**
+ * Splits why an isolate ended into what the host can say about it and what
+ * the script said. Running out of time or memory is the host's own finding.
+ * Anything else the script threw, and its message is the script's text: a
+ * detector could put a file it read there, or words for the agent.
+ */
+function describeError(dumped: unknown, limits: Limits): Failure {
+  const message = typeof dumped === "object" && dumped !== null && "message" in dumped ? textOf((dumped as { message: unknown }).message) : textOf(dumped);
   if (message.includes("interrupted")) {
-    return `the detector ran longer than ${limits.ms} ms and was stopped`;
+    return { error: `the detector ran longer than ${limits.ms} ms and was stopped` };
   }
   if (message.includes("out of memory")) {
-    return `the detector used more than ${limits.memoryBytes / 1024 / 1024} MB and was stopped`;
+    return { error: `the detector used more than ${limits.memoryBytes / 1024 / 1024} MB and was stopped` };
   }
   const name =
-    typeof dumped === "object" && dumped !== null && "name" in dumped ? `${String((dumped as { name: unknown }).name)}: ` : "";
-  return `${name}${message}`;
+    typeof dumped === "object" && dumped !== null && "name" in dumped ? `${textOf((dumped as { name: unknown }).name)}: ` : "";
+  const thrown = `${name}${message}`;
+  return { error: "the detector threw an error", thrown: thrown.length > MAX_THROWN_LENGTH ? `${thrown.slice(0, MAX_THROWN_LENGTH)}…` : thrown };
 }
 
 /** A path as the agent is shown it: from the project root when it lies inside the project. */
@@ -287,7 +354,7 @@ export function validateFindings(json: string, ctx: Ctx, project: ProjectFiles |
       if (!hasLines(ctx)) {
         dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
       } else if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lines.length) {
-        dropped.push(`line ${String(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+        dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
       } else {
         finding.line = line;
       }
@@ -297,7 +364,7 @@ export function validateFindings(json: string, ctx: Ctx, project: ProjectFiles |
       if (finding.line === undefined) {
         dropped.push("the endLine of a finding without a line");
       } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || endLine > lines.length) {
-        dropped.push(`endLine ${String(endLine)} of a finding on line ${finding.line}`);
+        dropped.push(`endLine ${quoted(endLine)} of a finding on line ${finding.line}`);
       } else if (endLine > finding.line) {
         finding.endLine = endLine;
       }
@@ -340,7 +407,7 @@ export function validateFindings(json: string, ctx: Ctx, project: ProjectFiles |
     }
     if (candidate.depth !== undefined) {
       if (candidate.depth !== "pointer" && candidate.depth !== "full") {
-        dropped.push(`the unknown depth ${JSON.stringify(candidate.depth)}`);
+        dropped.push(`the unknown depth ${quoted(candidate.depth)}`);
       } else {
         finding.depth = candidate.depth;
       }

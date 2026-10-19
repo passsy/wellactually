@@ -355,6 +355,15 @@ describe("globs", () => {
     ["test/a_test.dart", "test/**/*_test.dart", true],
     ["src/a.tsx", "**/*.{ts,tsx}", true],
     ["src/a.jsx", "**/*.{ts,tsx}", false],
+    ["lib/a.g.dart", "lib/*.{g,{freezed,mocks}}.dart", true],
+    ["lib/a.mocks.dart", "lib/*.{g,{freezed,mocks}}.dart", true],
+    ["lib/a.dart", "lib/*.{g,{freezed,mocks}}.dart", false],
+    ["lib/{a.dart", "lib/{a.dart", true],
+    ["lib/a}.dart", "lib/a}.dart", true],
+    ["lib/a,b.dart", "lib/a,b.dart", true],
+    ["lib/a.dart", "lib/?.dart", true],
+    ["lib/ab.dart", "lib/?.dart", false],
+    ["lib/a/b.dart", "lib/*.dart", false],
   ])("%s against %s is %s", (file, glob, expected) => {
     expect(matchesGlob(file, glob)).toBe(expected);
   });
@@ -365,6 +374,15 @@ describe("globs", () => {
     expect(matchesGlobs("lib/user.g.dart", dart)).toBe(false);
     expect(matchesGlobs("test/user_test.dart", dart)).toBe(false);
     expect(matchesGlobs("lib/user.ts", dart)).toBe(false);
+  });
+
+  test("a pattern built to backtrack is matched as fast as any other", () => {
+    const started = performance.now();
+    for (const glob of ["**/".repeat(150) + "#", "*a".repeat(18) + "b", "**e".repeat(30) + "#", "{a,".repeat(50) + "b"]) {
+      expect(matchesGlob("packages/core/src/detector/sandbox-validation.ts", glob)).toBe(false);
+      expect(matchesGlob(`${"a".repeat(80)}x`, glob)).toBe(false);
+    }
+    expect(performance.now() - started).toBeLessThan(500);
   });
 
   test("without a pattern that selects, every file is in", () => {

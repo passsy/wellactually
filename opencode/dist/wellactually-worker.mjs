@@ -3860,6 +3860,7 @@ var DEFAULT_LIMITS = {
 };
 var MAX_FINDINGS = 20;
 var MAX_MATCH_LENGTH = 300;
+var MAX_THROWN_LENGTH = 1e3;
 var RUN = `JSON.stringify(${BUNDLE_GLOBAL}.run(JSON.parse(__ctx), ${MAX_FINDINGS}))`;
 var LOAD_LIMITS = { ...DEFAULT_LIMITS, ms: 2e3 };
 var HANDLERS = `JSON.stringify(${BUNDLE_GLOBAL}.handlers())`;
@@ -3870,7 +3871,7 @@ function evaluateIn(QuickJS, script, environment, limits) {
   runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + limits.ms));
   const vm = runtime.newContext();
   let json = null;
-  let error = null;
+  let failure = { error: null };
   try {
     for (const [name, value] of Object.entries(environment.strings)) {
       const handle = vm.newString(value);
@@ -3884,19 +3885,29 @@ function evaluateIn(QuickJS, script, environment, limits) {
     }
     const result = vm.evalCode(script, "detector.js");
     if (result.error) {
-      error = describeError(vm.dump(result.error), limits);
-      result.error.dispose();
+      const dumped = vm.dump(result.error);
+      if (result.error.alive) {
+        result.error.dispose();
+      }
+      failure = describeError(dumped, limits);
     } else {
       json = vm.getString(result.value);
       result.value.dispose();
     }
   } catch (thrown) {
-    error = describeError(thrown, limits);
+    failure = describeError(thrown, limits);
   } finally {
-    vm.dispose();
-    runtime.dispose();
+    try {
+      vm.dispose();
+      runtime.dispose();
+    } catch (thrown) {
+      json = null;
+      if (failure.error === null) {
+        failure = describeError(thrown, limits);
+      }
+    }
   }
-  return { json, error };
+  return { json, ...failure };
 }
 async function detectorRunner() {
   const QuickJS = await loadSandbox();
@@ -3908,29 +3919,48 @@ function runDetectorIn(QuickJS, bundle, ctx, limits, project, api) {
     return { findings: [], error: refused, dropped: [], ms: 0 };
   }
   const started = performance.now();
-  const { json, error } = evaluateIn(QuickJS, `${bundle}
+  try {
+    const { json, error, thrown } = evaluateIn(QuickJS, `${bundle}
 ;${RUN}`, environmentFor(api, ctx, project), limits);
-  const ms = performance.now() - started;
-  if (json === null) {
-    return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };
+    const ms = performance.now() - started;
+    if (json === null) {
+      return { findings: [], error: error ?? "the detector returned nothing", ...thrown === void 0 ? {} : { thrown }, dropped: [], ms };
+    }
+    const { findings, dropped } = validateFindings(json, ctx, project);
+    return { findings, error: null, dropped, ms };
+  } catch {
+    return { findings: [], error: "the host could not make sense of what the detector did", dropped: [], ms: performance.now() - started };
   }
-  const { findings, dropped } = validateFindings(json, ctx, project);
-  return { findings, error: null, dropped, ms };
 }
 var TEST_LIMITS = {
   ms: 5e3,
   memoryBytes: 64 * 1024 * 1024
 };
+function jsonOf(value) {
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return "a value that is not text";
+  }
+}
+function textOf(value) {
+  return typeof value === "string" ? value : jsonOf(value);
+}
+function quoted(value) {
+  const text = jsonOf(value);
+  return text.length > 60 ? `${text.slice(0, 60)}\u2026` : text;
+}
 function describeError(dumped, limits) {
-  const message = typeof dumped === "object" && dumped !== null && "message" in dumped ? String(dumped.message) : String(dumped);
+  const message = typeof dumped === "object" && dumped !== null && "message" in dumped ? textOf(dumped.message) : textOf(dumped);
   if (message.includes("interrupted")) {
-    return `the detector ran longer than ${limits.ms} ms and was stopped`;
+    return { error: `the detector ran longer than ${limits.ms} ms and was stopped` };
   }
   if (message.includes("out of memory")) {
-    return `the detector used more than ${limits.memoryBytes / 1024 / 1024} MB and was stopped`;
+    return { error: `the detector used more than ${limits.memoryBytes / 1024 / 1024} MB and was stopped` };
   }
-  const name = typeof dumped === "object" && dumped !== null && "name" in dumped ? `${String(dumped.name)}: ` : "";
-  return `${name}${message}`;
+  const name = typeof dumped === "object" && dumped !== null && "name" in dumped ? `${textOf(dumped.name)}: ` : "";
+  const thrown = `${name}${message}`;
+  return { error: "the detector threw an error", thrown: thrown.length > MAX_THROWN_LENGTH ? `${thrown.slice(0, MAX_THROWN_LENGTH)}\u2026` : thrown };
 }
 function fromRoot(file, root) {
   if (root !== null && file.startsWith(`${root}/`)) {
@@ -3976,7 +4006,7 @@ function validateFindings(json, ctx, project = null) {
       if (!hasLines(ctx)) {
         dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
       } else if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lines.length) {
-        dropped.push(`line ${String(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+        dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
       } else {
         finding.line = line;
       }
@@ -3986,7 +4016,7 @@ function validateFindings(json, ctx, project = null) {
       if (finding.line === void 0) {
         dropped.push("the endLine of a finding without a line");
       } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || endLine > lines.length) {
-        dropped.push(`endLine ${String(endLine)} of a finding on line ${finding.line}`);
+        dropped.push(`endLine ${quoted(endLine)} of a finding on line ${finding.line}`);
       } else if (endLine > finding.line) {
         finding.endLine = endLine;
       }
@@ -4027,7 +4057,7 @@ function validateFindings(json, ctx, project = null) {
     }
     if (candidate.depth !== void 0) {
       if (candidate.depth !== "pointer" && candidate.depth !== "full") {
-        dropped.push(`the unknown depth ${JSON.stringify(candidate.depth)}`);
+        dropped.push(`the unknown depth ${quoted(candidate.depth)}`);
       } else {
         finding.depth = candidate.depth;
       }
