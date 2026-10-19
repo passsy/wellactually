@@ -266,12 +266,13 @@ export async function sync(): Promise<SyncResult> {
 }
 
 /**
- * Sends how often each principle fired since the last sync: a day, a hash and a count.
+ * Sends how often each principle fired since it last sent: a day, a hash and a count.
+ * A sync does it, and the hook a few minutes after something fired.
  *
  * It is a courtesy to the authors, so it never fails a sync. What could not
  * be sent stays on disk and goes out next time.
  */
-async function reportDetections(): Promise<number> {
+export async function reportDetections(): Promise<number> {
   if (!readConfig().stats) {
     return 0;
   }

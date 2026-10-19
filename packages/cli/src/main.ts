@@ -38,7 +38,7 @@ import {
 import { logHookFailure, runHook } from "./hook/hook.ts";
 import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
-import { finishDeviceLogin, logout, RegistryError, startDeviceLogin, sync, whoami, type DraftResult } from "./registry/client.ts";
+import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "./registry/client.ts";
 
 const HELP = `wellactually: author principles and run your advisory board
 
@@ -263,6 +263,10 @@ async function main(): Promise<number> {
       print(result, renderSync(result));
       return 0;
     }
+    case "report-detections":
+      // Started by the hook in the background. A sync sends them as well.
+      console.log(`Reported ${await reportDetections()} detections.`);
+      return 0;
     case "stats": {
       const wanted = positionals[0];
       if (wanted === "on" || wanted === "off") {
@@ -273,7 +277,7 @@ async function main(): Promise<number> {
       }
       console.log(
         readConfig().stats
-          ? "Reporting is on: `wellactually sync` sends how often each principle fired, as a count per day. No file, prompt or finding is sent."
+          ? "Reporting is on: every few minutes, the hook sends how often each principle fired, as a count per day. No file, prompt or finding is sent."
           : "Reporting is off: nothing about what fires on this machine is sent.",
       );
       return 0;

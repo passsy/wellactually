@@ -4,7 +4,7 @@ import path from "node:path";
 import type { Ctx } from "@wellactually/sdk";
 import { ADVICE_BUDGET, adviceBytes } from "@wellactually/core/node";
 import { type EventFirings, type Lockfile, PARALLEL_FROM, boardHome, forgetShown, frameEvents, readConfig, readLockfile, readShown, runBoard, sweepShown, writeShown } from "../board/board.ts";
-import { recordDetections } from "../board/detections.ts";
+import { claimReport, recordDetections } from "../board/detections.ts";
 import { type HookPayload, eventsOf } from "./payload.ts";
 import { DetectorPool } from "../board/pool.ts";
 import { switchedOff } from "../board/switches.ts";
@@ -39,7 +39,7 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
   };
 
   if (event === "SessionStart") {
-    startBackgroundSync();
+    startInBackground("sync");
     // A session that crashed never reaches SessionEnd, so one starting tidies up after it.
     const swept = sweepShown();
     sweepSnapshots();
@@ -161,6 +161,9 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
     for (const { firings } of framed.shown) {
       recordDetections(firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
     }
+    if (framed.shown.length > 0 && readConfig().token && claimReport()) {
+      startInBackground("report-detections");
+    }
   }
   if (notice) {
     parts.push(notice);
@@ -232,15 +235,15 @@ function readText(file: string): string | null {
   return content.includes("\0") ? null : content;
 }
 
-/** Starts `wellactually sync` detached, so the session does not wait for the registry. */
-function startBackgroundSync(): void {
+/** Starts a `wellactually` command detached, so the session does not wait for the registry. */
+function startInBackground(command: "sync" | "report-detections"): void {
   if (!readConfig().token) {
     return;
   }
   // The file this process was started from: main.ts in a checkout, the single bundled file in the plugin.
   const main = process.argv[1] as string;
   const log = fs.openSync(path.join(ensureHome(), "sync.log"), "a");
-  const child = spawn(process.execPath, [main, "sync"], { detached: true, stdio: ["ignore", log, log] });
+  const child = spawn(process.execPath, [main, command], { detached: true, stdio: ["ignore", log, log] });
   child.unref();
 }
 

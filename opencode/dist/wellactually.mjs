@@ -13998,13 +13998,45 @@ import fs6 from "node:fs";
 import path7 from "node:path";
 var LOG = "detections.log";
 var SENDING = /^detections\.sending\.[a-z0-9]+$/;
-function recordDetections(hashes, day = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)) {
+var RECENT = "detections.recent";
+var REPORTED = "detections.reported";
+var REPORT_EVERY_MS = 5 * 6e4;
+var PER_WINDOW = 10;
+var WINDOW_MS = 10 * 6e4;
+function recordDetections(hashes, at = /* @__PURE__ */ new Date()) {
   if (hashes.length === 0) {
     return;
   }
   fs6.mkdirSync(boardHome(), { recursive: true });
-  fs6.appendFileSync(path7.join(boardHome(), LOG), hashes.map((hash2) => `${day} ${hash2}
+  const recentFile = path7.join(boardHome(), RECENT);
+  const since = at.getTime() - WINDOW_MS;
+  const recent = (fs6.existsSync(recentFile) ? fs6.readFileSync(recentFile, "utf8").split("\n") : []).map((line) => /^(\d+) ([a-f0-9]{64})$/.exec(line)).filter((match) => match !== null && Number(match[1]) > since && Number(match[1]) <= at.getTime()).map((match) => ({ ms: Number(match[1]), hash: match[2] }));
+  const counted = hashes.filter((hash2) => {
+    if (recent.filter((entry) => entry.hash === hash2).length >= PER_WINDOW) {
+      return false;
+    }
+    recent.push({ ms: at.getTime(), hash: hash2 });
+    return true;
+  });
+  fs6.writeFileSync(recentFile, recent.map((entry) => `${entry.ms} ${entry.hash}
 `).join(""));
+  if (counted.length === 0) {
+    return;
+  }
+  const day = at.toISOString().slice(0, 10);
+  fs6.appendFileSync(path7.join(boardHome(), LOG), counted.map((hash2) => `${day} ${hash2}
+`).join(""));
+}
+function claimReport(at = /* @__PURE__ */ new Date()) {
+  const marker = path7.join(boardHome(), REPORTED);
+  const last = fs6.existsSync(marker) ? fs6.statSync(marker).mtimeMs : 0;
+  if (at.getTime() - last < REPORT_EVERY_MS && last <= at.getTime()) {
+    return false;
+  }
+  fs6.mkdirSync(boardHome(), { recursive: true });
+  fs6.writeFileSync(marker, "");
+  fs6.utimesSync(marker, at, at);
+  return true;
 }
 function count(lines) {
   const totals = /* @__PURE__ */ new Map();
@@ -15334,7 +15366,7 @@ async function runHook(stdin, log, frame2 = frameEvents) {
     return "";
   };
   if (event === "SessionStart") {
-    startBackgroundSync();
+    startInBackground("sync");
     const swept = sweepShown();
     sweepSnapshots();
     return note(swept > 0 ? `started the background sync and swept ${swept} old sessions` : "started the background sync");
@@ -15435,6 +15467,9 @@ async function runEvents(payload, events, lockfile, pool, frame2, log) {
     for (const { firings } of framed.shown) {
       recordDetections(firings.filter((firing) => !firing.principle.id.startsWith("local/")).map((firing) => firing.principle.hash));
     }
+    if (framed.shown.length > 0 && readConfig().token && claimReport()) {
+      startInBackground("report-detections");
+    }
   }
   if (notice) {
     parts.push(notice);
@@ -15486,13 +15521,13 @@ function readText2(file2) {
   const content = fs11.readFileSync(file2, "utf8");
   return content.includes("\0") ? null : content;
 }
-function startBackgroundSync() {
+function startInBackground(command) {
   if (!readConfig().token) {
     return;
   }
   const main2 = process.argv[1];
   const log = fs11.openSync(path13.join(ensureHome(), "sync.log"), "a");
-  const child = spawn2(process.execPath, [main2, "sync"], { detached: true, stdio: ["ignore", log, log] });
+  const child = spawn2(process.execPath, [main2, command], { detached: true, stdio: ["ignore", log, log] });
   child.unref();
 }
 function ensureHome() {
@@ -45295,6 +45330,9 @@ and confirm the code ${start.user_code}`);
       print(result, renderSync(result));
       return 0;
     }
+    case "report-detections":
+      console.log(`Reported ${await reportDetections()} detections.`);
+      return 0;
     case "stats": {
       const wanted = positionals[0];
       if (wanted === "on" || wanted === "off") {
@@ -45304,7 +45342,7 @@ and confirm the code ${start.user_code}`);
         return 2;
       }
       console.log(
-        readConfig().stats ? "Reporting is on: `wellactually sync` sends how often each principle fired, as a count per day. No file, prompt or finding is sent." : "Reporting is off: nothing about what fires on this machine is sent."
+        readConfig().stats ? "Reporting is on: every few minutes, the hook sends how often each principle fired, as a count per day. No file, prompt or finding is sent." : "Reporting is off: nothing about what fires on this machine is sent."
       );
       return 0;
     }
