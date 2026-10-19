@@ -3809,7 +3809,7 @@ function callHook(payload, root = pluginRoot()) {
     };
     let child;
     try {
-      child = spawn(file, [...args, "hook"], { stdio: ["pipe", "pipe", "ignore"], env: { ...process.env, CLAUDE_PLUGIN_ROOT: root } });
+      child = spawn(file, [...args, "hook"], { stdio: ["pipe", "pipe", "ignore"], env: { ...process.env, CLAUDE_PLUGIN_ROOT: root, WELLACTUALLY_BRIDGED: "1" } });
     } catch {
       resolve("");
       return;
@@ -3827,6 +3827,32 @@ function callHook(payload, root = pluginRoot()) {
     child.stdin?.on("error", () => {
     });
     child.stdin?.end(JSON.stringify(payload));
+  });
+}
+function updateNoticeFor(agent, root = pluginRoot()) {
+  const { file, args } = command(root);
+  return new Promise((resolve) => {
+    let out = "";
+    let child;
+    try {
+      child = spawn(file, [...args, "update-notice", "--agent", agent], { stdio: ["ignore", "pipe", "ignore"] });
+    } catch {
+      resolve("");
+      return;
+    }
+    const timer = setTimeout(() => child.kill(), HOOK_TIMEOUT_MS);
+    child.stdout?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk) => {
+      out += chunk;
+    });
+    child.on("error", () => {
+      clearTimeout(timer);
+      resolve("");
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve(code === 0 ? out.trim() : "");
+    });
   });
 }
 function adviceOf(printed) {
@@ -4042,6 +4068,13 @@ async function setup(ctx) {
   })();
   return () => controller.abort();
 }
+async function announceUpdate(input, root) {
+  const text = await updateNoticeFor("opencode", root);
+  if (text !== "") {
+    await input.client?.tui?.showToast({ body: { title: "Well Actually", message: text, variant: "info", duration: 1e4 } }).catch(() => {
+    });
+  }
+}
 async function server(input) {
   const root = pluginRoot();
   const cwd = input.directory;
@@ -4061,6 +4094,7 @@ async function server(input) {
     event: async ({ event }) => {
       if (event.type === "session.created" && event.properties?.info?.id) {
         sessionStart(event.properties.info.id, cwd);
+        void announceUpdate(input, root);
       } else if (event.type === "session.compacted" && event.properties?.sessionID) {
         compacted(event.properties.sessionID, cwd);
       }

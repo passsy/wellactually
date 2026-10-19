@@ -51,7 +51,7 @@ export function callHook(payload: HookPayload, root = pluginRoot()): Promise<str
     };
     let child: ReturnType<typeof spawn>;
     try {
-      child = spawn(file, [...args, "hook"], { stdio: ["pipe", "pipe", "ignore"], env: { ...process.env, CLAUDE_PLUGIN_ROOT: root } });
+      child = spawn(file, [...args, "hook"], { stdio: ["pipe", "pipe", "ignore"], env: { ...process.env, CLAUDE_PLUGIN_ROOT: root, WELLACTUALLY_BRIDGED: "1" } });
     } catch {
       resolve("");
       return;
@@ -68,6 +68,38 @@ export function callHook(payload: HookPayload, root = pluginRoot()): Promise<str
     child.on("close", () => done(adviceOf(out)));
     child.stdin?.on("error", () => {});
     child.stdin?.end(JSON.stringify(payload));
+  });
+}
+
+/**
+ * What to tell the user about a newer release of the plugin, or "" when
+ * there is none. The plugin shows it where its agent shows notices, which a
+ * hook cannot reach. Like `callHook` it never throws.
+ */
+export function updateNoticeFor(agent: "opencode" | "pi", root = pluginRoot()): Promise<string> {
+  const { file, args } = command(root);
+  return new Promise((resolve) => {
+    let out = "";
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(file, [...args, "update-notice", "--agent", agent], { stdio: ["ignore", "pipe", "ignore"] });
+    } catch {
+      resolve("");
+      return;
+    }
+    const timer = setTimeout(() => child.kill(), HOOK_TIMEOUT_MS);
+    child.stdout?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk: string) => {
+      out += chunk;
+    });
+    child.on("error", () => {
+      clearTimeout(timer);
+      resolve("");
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve(code === 0 ? out.trim() : "");
+    });
   });
 }
 

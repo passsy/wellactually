@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { type HookPayload } from "../hook/payload.ts";
-import { Pending, callHook, command, pluginRoot, readSkills, withAdvice } from "./bridge.ts";
+import { Pending, callHook, command, pluginRoot, readSkills, updateNoticeFor, withAdvice } from "./bridge.ts";
 
 /**
  * The Well Actually plugin for OpenCode.
@@ -224,6 +224,15 @@ async function setup(ctx: V2Context): Promise<() => void> {
 /** OpenCode 1's plugin input and hooks, as far as this plugin uses them. */
 interface V1Input {
   directory: string;
+  client?: { tui?: { showToast(input: { body: { title?: string; message: string; variant: "info" | "success" | "warning" | "error"; duration?: number } }): Promise<unknown> } };
+}
+
+/** A toast about a newer release. OpenCode 2 shows it from the CLI plugin in tui.ts, which this server plugin cannot reach. */
+async function announceUpdate(input: V1Input, root: string): Promise<void> {
+  const text = await updateNoticeFor("opencode", root);
+  if (text !== "") {
+    await input.client?.tui?.showToast({ body: { title: "Well Actually", message: text, variant: "info", duration: 10_000 } }).catch(() => {});
+  }
 }
 
 async function server(input: V1Input): Promise<Record<string, unknown>> {
@@ -246,6 +255,7 @@ async function server(input: V1Input): Promise<Record<string, unknown>> {
     event: async ({ event }: { event: { type: string; properties?: { sessionID?: string; info?: { id?: string } } } }) => {
       if (event.type === "session.created" && event.properties?.info?.id) {
         sessionStart(event.properties.info.id, cwd);
+        void announceUpdate(input, root);
       } else if (event.type === "session.compacted" && event.properties?.sessionID) {
         compacted(event.properties.sessionID, cwd);
       }

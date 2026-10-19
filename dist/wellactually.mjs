@@ -164,7 +164,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs13 = require2("node:fs");
+    var fs14 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -6936,8 +6936,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path16) {
-      let input2 = path16;
+    function removeDotSegments(path17) {
+      let input2 = path17;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -7346,8 +7346,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path16 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path16 && path16 !== "/" ? path16 : void 0;
+        const path17 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path17 && path17 !== "/" ? path17 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -10860,12 +10860,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs13, exportName) {
+    function addFormats(ajv, list, fs14, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs13[f]);
+        ajv.addFormat(f, fs14[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10874,7 +10874,7 @@ var require_dist = __commonJS({
 });
 
 // packages/cli/src/main.ts
-import path15 from "node:path";
+import path16 from "node:path";
 import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
@@ -10942,21 +10942,21 @@ import path from "node:path";
 
 // packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path16, pattern) {
+function matchesGlob(path17, pattern) {
   let matcher = cache.get(pattern);
   if (!matcher) {
     matcher = compile(pattern);
     cache.set(pattern, matcher);
   }
-  return matcher(path16);
+  return matcher(path17);
 }
-function matchesGlobs(path16, globs) {
+function matchesGlobs(path17, globs) {
   const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
-  if (excluded.some((glob) => matchesGlob(path16, glob))) {
+  if (excluded.some((glob) => matchesGlob(path17, glob))) {
     return false;
   }
   const included = globs.filter((glob) => !glob.startsWith("!"));
-  return included.length === 0 || included.some((glob) => matchesGlob(path16, glob));
+  return included.length === 0 || included.some((glob) => matchesGlob(path17, glob));
 }
 function parse(pattern) {
   const anchored = [...pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`];
@@ -11049,9 +11049,9 @@ function compile(pattern) {
     }
     return seen;
   };
-  return (path16) => {
+  return (path17) => {
     let now = reach([start]);
-    for (const char of path16) {
+    for (const char of path17) {
       const next = [];
       for (const index of now) {
         for (const move of state(index).moves) {
@@ -11125,15 +11125,15 @@ var TEST_ROOT = "/project";
 function fileCtx(event, relativePath, content, written, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === void 0 ? TEST_ROOT : where.root;
-  const path16 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
-  const name = path16.slice(path16.lastIndexOf("/") + 1);
+  const path17 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
+  const name = path17.slice(path17.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
   const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
   return {
     event,
     file: {
-      path: path16,
+      path: path17,
       relativePath: relative,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
@@ -11554,8 +11554,8 @@ function isExactVersion(version2) {
   return EXACT_VERSION.test(version2);
 }
 var PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
-function isPackageFile(path16) {
-  return path16.startsWith(PACKAGE_DIR);
+function isPackageFile(path17) {
+  return path17.startsWith(PACKAGE_DIR);
 }
 function readPins(files) {
   const source = files["package.json"];
@@ -11593,11 +11593,11 @@ function splitSpecifier(specifier) {
   }
   return { name, subpath: parts.slice(count2).join("/") };
 }
-function packageOf(path16) {
-  if (!isPackageFile(path16)) {
+function packageOf(path17) {
+  if (!isPackageFile(path17)) {
     return null;
   }
-  return splitSpecifier(path16.slice(PACKAGE_DIR.length))?.name ?? null;
+  return splitSpecifier(path17.slice(PACKAGE_DIR.length))?.name ?? null;
 }
 async function readPackageJson(read2, name) {
   const source = await read2(`${PACKAGE_DIR}${name}/package.json`);
@@ -11705,9 +11705,9 @@ async function resolveInPackage(read2, importer, relative) {
   return probe(read2, joined);
 }
 var SUFFIXES = ["", ".js", ".mjs", ".cjs", ".ts", ".json", "/index.js", "/index.mjs", "/index.cjs", "/index.ts"];
-async function probe(read2, path16) {
+async function probe(read2, path17) {
   for (const suffix of SUFFIXES) {
-    const candidate = `${path16}${suffix}`;
+    const candidate = `${path17}${suffix}`;
     if (suffix === "" && !/\.[a-z]+$/.test(candidate)) {
       continue;
     }
@@ -11826,14 +11826,14 @@ function declaredLicense(json2) {
 }
 function carriedPackages(files) {
   const packages = [];
-  for (const path16 of Object.keys(files).sort()) {
-    const name = packageOf(path16);
-    if (name === null || path16 !== `${PACKAGE_DIR}${name}/package.json`) {
+  for (const path17 of Object.keys(files).sort()) {
+    const name = packageOf(path17);
+    if (name === null || path17 !== `${PACKAGE_DIR}${name}/package.json`) {
       continue;
     }
     let json2;
     try {
-      json2 = JSON.parse(files[path16] ?? "");
+      json2 = JSON.parse(files[path17] ?? "");
     } catch {
       throw new PackageError(`the package.json of ${name} is not valid JSON`);
     }
@@ -11918,9 +11918,9 @@ function testFiles(files) {
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
 }
-function normalize(path16) {
+function normalize(path17) {
   const out = [];
-  for (const part of path16.split("/")) {
+  for (const part of path17.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -11932,9 +11932,9 @@ function normalize(path16) {
   }
   return out.join("/");
 }
-function dirname(path16) {
-  const slash = path16.lastIndexOf("/");
-  return slash === -1 ? "" : path16.slice(0, slash);
+function dirname(path17) {
+  const slash = path17.lastIndexOf("/");
+  return slash === -1 ? "" : path17.slice(0, slash);
 }
 async function vendorPackages(files, source) {
   let pins;
@@ -11950,8 +11950,8 @@ async function vendorPackages(files, source) {
   await buildDetector(files, source, fetched);
   await buildTestBundle(files, source, fetched);
   const names = /* @__PURE__ */ new Set();
-  for (const path16 of Object.keys(fetched)) {
-    const name = packageOf(path16);
+  for (const path17 of Object.keys(fetched)) {
+    const name = packageOf(path17);
     if (name !== null) {
       names.add(name);
     }
@@ -12001,21 +12001,21 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
     throw new BundleError(error62.message);
   }
   const missing = /* @__PURE__ */ new Set();
-  const read2 = async (path16) => {
-    const own2 = files[path16] ?? fetched[path16];
+  const read2 = async (path17) => {
+    const own2 = files[path17] ?? fetched[path17];
     if (own2 !== void 0) {
       return own2;
     }
-    const name = packageOf(path16);
-    if (name === null || source === void 0 || missing.has(path16)) {
+    const name = packageOf(path17);
+    if (name === null || source === void 0 || missing.has(path17)) {
       return null;
     }
-    const text2 = await source(name, pins[name] ?? null, path16.slice(PACKAGE_DIR.length + name.length + 1));
+    const text2 = await source(name, pins[name] ?? null, path17.slice(PACKAGE_DIR.length + name.length + 1));
     if (text2 === null) {
-      missing.add(path16);
+      missing.add(path17);
       return null;
     }
-    fetched[path16] = text2;
+    fetched[path17] = text2;
     return text2;
   };
   const virtual = {
@@ -12179,9 +12179,9 @@ function formatMessage(message) {
 // packages/core/src/detector/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path16) {
+function normalizeAbsolute(path17) {
   const out = [];
-  for (const part of path16.split("/")) {
+  for (const part of path17.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -12194,15 +12194,15 @@ function normalizeAbsolute(path16) {
   return `/${out.join("/")}`;
 }
 function mapProject(root, files) {
-  const relative = (path16) => path16 === root ? "" : path16.startsWith(`${root}/`) ? path16.slice(root.length + 1) : null;
+  const relative = (path17) => path17 === root ? "" : path17.startsWith(`${root}/`) ? path17.slice(root.length + 1) : null;
   const isDir = (inside) => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));
   return {
-    read: (path16) => {
-      const inside = relative(path16);
+    read: (path17) => {
+      const inside = relative(path17);
       return inside === null ? null : files[inside] ?? null;
     },
-    stat: (path16) => {
-      const inside = relative(path16);
+    stat: (path17) => {
+      const inside = relative(path17);
       if (inside === null) {
         return null;
       }
@@ -12212,8 +12212,8 @@ function mapProject(root, files) {
       }
       return isDir(inside) ? { kind: "dir", size: 0 } : null;
     },
-    list: (path16) => {
-      const inside = relative(path16);
+    list: (path17) => {
+      const inside = relative(path17);
       if (inside === null || inside in files || !isDir(inside)) {
         return null;
       }
@@ -12250,24 +12250,24 @@ function fsHost(cwd, project) {
     if (++calls > MAX_FS_CALLS) {
       return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
     }
-    const path16 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    const path17 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
     if (op === "stat") {
-      const stat = project.stat(path16);
+      const stat = project.stat(path17);
       return stat ? { stat } : missing;
     }
     if (op === "list") {
-      const entries = project.list(path16);
+      const entries = project.list(path17);
       if (entries) {
         return { entries };
       }
-      return project.stat(path16) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      return project.stat(path17) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
     }
-    const text2 = project.read(path16);
+    const text2 = project.read(path17);
     if (text2 === null) {
-      return project.stat(path16)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+      return project.stat(path17)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
     }
     bytes += text2.length;
     if (bytes > MAX_FS_BYTES) {
@@ -14707,8 +14707,8 @@ function renderSync(result) {
 
 // packages/cli/src/hook/hook.ts
 import { spawn as spawn2 } from "node:child_process";
-import fs11 from "node:fs";
-import path13 from "node:path";
+import fs12 from "node:fs";
+import path14 from "node:path";
 
 // packages/cli/src/hook/payload.ts
 import path9 from "node:path";
@@ -15351,6 +15351,113 @@ function safeList(dir) {
   }
 }
 
+// packages/cli/src/update.ts
+import fs11 from "node:fs";
+import path13 from "node:path";
+
+// packages/cli/package.json
+var package_default = {
+  name: "wellactually",
+  version: "0.9.28",
+  type: "module",
+  description: "The wellactually command and its MCP server",
+  bin: {
+    wellactually: "./src/main.ts"
+  },
+  dependencies: {
+    "@wellactually/core": "0.1.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    zod: "^4.0.0"
+  }
+};
+
+// packages/cli/src/update.ts
+var CLIENT_VERSION = package_default.version;
+var LATEST_URL = "https://raw.githubusercontent.com/passsy/wellactually/main/packages/cli/package.json";
+var DAY_MS = 24 * 60 * 60 * 1e3;
+function agentOf2(env) {
+  if (env.PLUGIN_ROOT) {
+    return "codex";
+  }
+  return "claude-code";
+}
+function howToUpdate(agent) {
+  if (agent === "codex") {
+    return "run `codex plugin marketplace upgrade wellactually` and restart Codex";
+  }
+  if (agent === "opencode") {
+    return "run `opencode plugin update` and restart OpenCode";
+  }
+  if (agent === "pi") {
+    return "run `pi update git:github.com/passsy/wellactually` and restart pi";
+  }
+  return "run `claude plugin update wellactually@wellactually` and restart Claude Code, or turn on auto-update for the wellactually marketplace in /plugin";
+}
+function isNewer(latest, current2) {
+  const a = latest.split(".").map(Number);
+  const b = current2.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    const x = a[i] ?? 0;
+    const y = b[i] ?? 0;
+    if (Number.isNaN(x) || Number.isNaN(y)) {
+      return false;
+    }
+    if (x !== y) {
+      return x > y;
+    }
+  }
+  return false;
+}
+function updateCheckOff(env) {
+  return env.WELLACTUALLY_UPDATE_CHECK === "0" || Boolean(env.NO_UPDATE_NOTIFIER) || Boolean(env.CI);
+}
+function stateFile() {
+  return path13.join(boardHome(), "update.json");
+}
+function readState() {
+  try {
+    return JSON.parse(fs11.readFileSync(stateFile(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+function writeState(state) {
+  fs11.mkdirSync(boardHome(), { recursive: true });
+  fs11.writeFileSync(stateFile(), `${JSON.stringify(state, null, 2)}
+`);
+}
+function updateNotice(agent, now = Date.now(), current2 = CLIENT_VERSION) {
+  if (updateCheckOff(process.env)) {
+    return { text: "", stale: false };
+  }
+  const state = readState();
+  const stale = !state.checkedAt || now - Date.parse(state.checkedAt) >= DAY_MS;
+  if (!state.latest || !isNewer(state.latest, current2)) {
+    return { text: "", stale };
+  }
+  if (state.announced === state.latest && state.announcedAt && now - Date.parse(state.announcedAt) < DAY_MS) {
+    return { text: "", stale };
+  }
+  writeState({ ...state, announced: state.latest, announcedAt: new Date(now).toISOString() });
+  return { text: `Well Actually ${state.latest} is available, you have ${current2}. To update, ${howToUpdate(agent)}.`, stale };
+}
+async function checkForUpdate(now = Date.now()) {
+  const state = readState();
+  let latest = state.latest;
+  try {
+    const response = await fetch(LATEST_URL, { signal: AbortSignal.timeout(5e3) });
+    if (response.ok) {
+      const version2 = (await response.json()).version;
+      if (typeof version2 === "string" && /^\d+\.\d+\.\d+$/.test(version2)) {
+        latest = version2;
+      }
+    }
+  } catch {
+  }
+  writeState({ ...readState(), checkedAt: new Date(now).toISOString(), latest });
+  return latest;
+}
+
 // packages/cli/src/hook/hook.ts
 var MAX_FILE_BYTES2 = 512 * 1024;
 async function runHook(stdin, log, frame2 = frameEvents) {
@@ -15369,7 +15476,15 @@ async function runHook(stdin, log, frame2 = frameEvents) {
     startInBackground("sync");
     const swept = sweepShown();
     sweepSnapshots();
-    return note(swept > 0 ? `started the background sync and swept ${swept} old sessions` : "started the background sync");
+    note(swept > 0 ? `started the background sync and swept ${swept} old sessions` : "started the background sync");
+    if (process.env.WELLACTUALLY_BRIDGED === "1") {
+      return "";
+    }
+    const update = updateNotice(agentOf2(process.env));
+    if (update.stale) {
+      startInBackground("check-update");
+    }
+    return update.text ? JSON.stringify({ systemMessage: update.text }) : "";
   }
   if (event === "PostCompact" || event === "SessionEnd") {
     forgetShown(payload.session_id ?? "unknown");
@@ -15421,7 +15536,7 @@ async function runEvents(payload, events, lockfile, pool, frame2, log) {
   const cwd = payload.cwd ?? process.cwd();
   const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
   for (const ctx of events) {
-    const off = new Set(switchedOff(ctx.file ? path13.dirname(ctx.file.path) : cwd).keys());
+    const off = new Set(switchedOff(ctx.file ? path14.dirname(ctx.file.path) : cwd).keys());
     const run = await runBoard(ctx, lockfile, off, pool, parallelFrom);
     log?.events.push({
       event: ctx.event,
@@ -15505,45 +15620,45 @@ function followRepos(payload) {
 }
 function workerFile() {
   const main2 = process.argv[1];
-  const beside = [path13.join(path13.dirname(main2), "wellactually-worker.mjs"), path13.join(path13.dirname(main2), "worker.ts")];
-  return beside.find((file2) => fs11.existsSync(file2)) ?? main2;
+  const beside = [path14.join(path14.dirname(main2), "wellactually-worker.mjs"), path14.join(path14.dirname(main2), "worker.ts")];
+  return beside.find((file2) => fs12.existsSync(file2)) ?? main2;
 }
 function readText2(file2) {
   let stat;
   try {
-    stat = fs11.statSync(file2);
+    stat = fs12.statSync(file2);
   } catch {
     return null;
   }
   if (!stat.isFile() || stat.size > MAX_FILE_BYTES2) {
     return null;
   }
-  const content = fs11.readFileSync(file2, "utf8");
+  const content = fs12.readFileSync(file2, "utf8");
   return content.includes("\0") ? null : content;
 }
 function startInBackground(command) {
-  if (!readConfig().token) {
+  if (command !== "check-update" && !readConfig().token) {
     return;
   }
   const main2 = process.argv[1];
-  const log = fs11.openSync(path13.join(ensureHome(), "sync.log"), "a");
+  const log = fs12.openSync(path14.join(ensureHome(), "sync.log"), "a");
   const child = spawn2(process.execPath, [main2, command], { detached: true, stdio: ["ignore", log, log] });
   child.unref();
 }
 function ensureHome() {
   const home = boardHome();
-  fs11.mkdirSync(home, { recursive: true });
+  fs12.mkdirSync(home, { recursive: true });
   return home;
 }
 function logHookFailure(error62) {
   const line = `${(/* @__PURE__ */ new Date()).toISOString()} ${error62 instanceof Error ? error62.stack ?? error62.message : String(error62)}
 `;
-  fs11.appendFileSync(path13.join(ensureHome(), "hook.log"), line);
+  fs12.appendFileSync(path14.join(ensureHome(), "hook.log"), line);
 }
 
 // packages/cli/src/mcp.ts
-import fs12 from "node:fs";
-import path14 from "node:path";
+import fs13 from "node:fs";
+import path15 from "node:path";
 
 // node_modules/zod/v3/helpers/util.js
 var util;
@@ -15919,8 +16034,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path16, errorMaps, issueData } = params;
-  const fullPath = [...path16, ...issueData.path || []];
+  const { data, path: path17, errorMaps, issueData } = params;
+  const fullPath = [...path17, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -16035,11 +16150,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path16, key) {
+  constructor(parent, value, path17, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path16;
+    this._path = path17;
     this._key = key;
   }
   get path() {
@@ -19993,10 +20108,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path16) {
-  if (!path16)
+function getElementAtPath(obj, path17) {
+  if (!path17)
     return obj;
-  return path16.reduce((acc, key) => acc?.[key], obj);
+  return path17.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -20336,11 +20451,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path16, issues) {
+function prefixIssues(path17, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path16);
+    iss.path.unshift(path17);
     return iss;
   });
 }
@@ -20790,16 +20905,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path16 = []) => {
+  const processError = (error63, path17 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path16, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path17, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path16, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path16, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
       } else {
-        const fullpath = [...path16, ...issue2.path];
+        const fullpath = [...path17, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -20838,17 +20953,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path16 = []) => {
+  const processError = (error63, path17 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path16, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path17, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path16, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path16, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
       } else {
-        const fullpath = [...path16, ...issue2.path];
+        const fullpath = [...path17, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -20887,8 +21002,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path16 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path16) {
+  const path17 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path17) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -36403,11 +36518,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path16) {
-  if (path16.length === 0) {
+function getDotPath(path17) {
+  if (path17.length === 0) {
     return "object root";
   }
-  return path16.reduce((acc, seg, index) => {
+  return path17.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -38634,13 +38749,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path16 = ref.slice(1).split("/").filter(Boolean);
-  if (path16.length === 0) {
+  const path17 = ref.slice(1).split("/").filter(Boolean);
+  if (path17.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path16[0] === defsKey) {
-    const key = path16[1] === void 0 ? void 0 : decodeJSONPointerSegment(path16[1]);
+  if (path17[0] === defsKey) {
+    const key = path17[1] === void 0 ? void 0 : decodeJSONPointerSegment(path17[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -45056,7 +45171,7 @@ ${report}`);
     dir: external_exports.string().optional().describe("A directory inside the project, for scope project. Defaults to where the agent was started; required in Codex.")
   };
   const switchTool = (on) => async ({ id, scope, dir }) => {
-    if (scope === "project" && dir === void 0 && fs12.existsSync(path14.join(process.cwd(), "dist", "wellactually.mjs"))) {
+    if (scope === "project" && dir === void 0 && fs13.existsSync(path15.join(process.cwd(), "dist", "wellactually.mjs"))) {
       return text("Pass dir, a directory inside the project: this server does not run in the project, so it cannot tell which one is meant.");
     }
     try {
@@ -45144,6 +45259,8 @@ Your advisory board
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
   wellactually mcp                      Serve the authoring commands as an MCP server
+  wellactually update-notice --agent <opencode|pi> Print what to tell the user about a newer release
+  wellactually check-update             Look up the newest release on GitHub
 
 Every authoring command takes --json.`;
 async function main() {
@@ -45162,7 +45279,8 @@ async function main() {
       command: { type: "string" },
       output: { type: "string" },
       registry: { type: "string" },
-      global: { type: "boolean", default: false }
+      global: { type: "boolean", default: false },
+      agent: { type: "string" }
     }
   });
   const print = (data, rendered) => {
@@ -45330,6 +45448,24 @@ and confirm the code ${start.user_code}`);
       print(result, renderSync(result));
       return 0;
     }
+    case "check-update":
+      console.log(`The newest release is ${await checkForUpdate() ?? "unknown"}.`);
+      return 0;
+    case "update-notice": {
+      const agent = values.agent;
+      if (agent !== "opencode" && agent !== "pi") {
+        console.error("usage: wellactually update-notice --agent <opencode|pi>");
+        return 2;
+      }
+      const update = updateNotice(agent);
+      if (update.stale) {
+        startInBackground("check-update");
+      }
+      if (update.text) {
+        console.log(update.text);
+      }
+      return 0;
+    }
     case "report-detections":
       console.log(`Reported ${await reportDetections()} detections.`);
       return 0;
@@ -45412,7 +45548,7 @@ Added ${result.id} to this machine's advisory board.` : renderReport(result));
       }
       log.ms = Math.round(performance.now() - started);
       if (process.env.WELLACTUALLY_HOOK_LOG !== "0") {
-        scheduleHookLog(path15.join(boardHome(), "logs"), log);
+        scheduleHookLog(path16.join(boardHome(), "logs"), log);
       }
       return 0;
     }

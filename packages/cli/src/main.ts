@@ -35,9 +35,10 @@ import {
   testPrinciple,
   tryPrinciple,
 } from "./commands.ts";
-import { logHookFailure, runHook } from "./hook/hook.ts";
+import { logHookFailure, runHook, startInBackground } from "./hook/hook.ts";
 import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
+import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "./registry/client.ts";
 
 const HELP = `wellactually: author principles and run your advisory board
@@ -77,6 +78,8 @@ Your advisory board
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
   wellactually mcp                      Serve the authoring commands as an MCP server
+  wellactually update-notice --agent <opencode|pi> Print what to tell the user about a newer release
+  wellactually check-update             Look up the newest release on GitHub
 
 Every authoring command takes --json.`;
 
@@ -97,6 +100,7 @@ async function main(): Promise<number> {
       output: { type: "string" },
       registry: { type: "string" },
       global: { type: "boolean", default: false },
+      agent: { type: "string" },
     },
   });
   const print = (data: unknown, rendered: string): void => {
@@ -261,6 +265,26 @@ async function main(): Promise<number> {
     case "sync": {
       const result = await sync();
       print(result, renderSync(result));
+      return 0;
+    }
+    case "check-update":
+      // Started in the background at session start, at most once a day.
+      console.log(`The newest release is ${(await checkForUpdate()) ?? "unknown"}.`);
+      return 0;
+    case "update-notice": {
+      // The OpenCode and pi plugins show this where their agent shows notices.
+      const agent = values.agent;
+      if (agent !== "opencode" && agent !== "pi") {
+        console.error("usage: wellactually update-notice --agent <opencode|pi>");
+        return 2;
+      }
+      const update = updateNotice(agent satisfies Agent);
+      if (update.stale) {
+        startInBackground("check-update");
+      }
+      if (update.text) {
+        console.log(update.text);
+      }
       return 0;
     }
     case "report-detections":
