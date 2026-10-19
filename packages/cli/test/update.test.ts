@@ -103,7 +103,7 @@ test("session start shows the notice to the user in Claude Code, not to the agen
   const out = JSON.parse(await runHook(JSON.stringify({ hook_event_name: "SessionStart", session_id: "s1", cwd: os.tmpdir() })));
   expect(out.hookSpecificOutput).toBeUndefined();
   expect(out.systemMessage).toContain("Well Actually 99.0.0 is available");
-  expect(out.systemMessage).toContain("claude plugin update wellactually@wellactually");
+  expect(out.systemMessage).toContain("claude plugin marketplace update wellactually` and `claude plugin update wellactually@wellactually");
 });
 
 test("session start leaves the notice to the OpenCode and pi plugins", async () => {

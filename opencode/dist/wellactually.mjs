@@ -15391,7 +15391,7 @@ function howToUpdate(agent) {
   if (agent === "pi") {
     return "run `pi update git:github.com/passsy/wellactually` and restart pi";
   }
-  return "run `claude plugin update wellactually@wellactually` and restart Claude Code, or turn on auto-update for the wellactually marketplace in /plugin";
+  return "run `claude plugin marketplace update wellactually` and `claude plugin update wellactually@wellactually` and restart Claude Code, or turn on auto-update for the wellactually marketplace in /plugin";
 }
 function isNewer(latest, current2) {
   const a = latest.split(".").map(Number);
