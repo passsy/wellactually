@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { type HookPayload } from "../hook/payload.ts";
-import { Pending, callHook, command, pluginRoot } from "./bridge.ts";
+import { Pending, callHook, command, pluginRoot, updateNoticeFor } from "./bridge.ts";
 import { McpClient } from "./mcp-client.ts";
 
 /**
@@ -67,6 +67,9 @@ interface PiContext {
   cwd: string;
   model?: { id?: string; provider?: string };
   sessionManager: { getSessionId(): string; getSessionFile(): string | undefined };
+  /** False in print and JSON mode, which have nowhere to show a notice. */
+  hasUI?: boolean;
+  ui?: { notify(message: string, type?: "info" | "warning" | "error"): void };
 }
 interface PiApi {
   on(event: string, handler: (event: any, ctx: PiContext) => unknown): void;
@@ -95,6 +98,13 @@ export default async function wellactually(pi: PiApi): Promise<void> {
 
   pi.on("session_start", (_event, ctx) => {
     void callHook({ ...base(ctx), hook_event_name: "SessionStart" });
+    if (ctx.hasUI) {
+      void updateNoticeFor("pi", root).then((text) => {
+        if (text !== "") {
+          ctx.ui?.notify(text, "info");
+        }
+      });
+    }
   });
   pi.on("session_compact", (_event, ctx) => {
     void callHook({ ...base(ctx), hook_event_name: "PostCompact" });

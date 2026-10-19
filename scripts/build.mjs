@@ -32,9 +32,10 @@ await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/worker.
 // The hook starts this one after it has answered, to write its log line without loading the whole command.
 const logWriter = path.join(path.dirname(outfile), "wellactually-log.mjs");
 await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/log-writer.ts")], outfile: logWriter });
-// The plugins of the agents that load a JavaScript module instead of running hooks: OpenCode and pi.
-// They start the command beside them, so they bundle none of it but the code that talks to it.
-const plugins = ["opencode", "pi"].map((agent) => path.join(path.dirname(outfile), `${agent}.mjs`));
+// The plugins of the agents that load a JavaScript module instead of running hooks: OpenCode and pi,
+// plus OpenCode 2's CLI plugin, which shows toasts. They start the command beside them,
+// so they bundle none of it but the code that talks to it.
+const plugins = ["opencode", "opencode-tui", "pi"].map((agent) => path.join(path.dirname(outfile), `${agent}.mjs`));
 for (const plugin of plugins) {
   await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/agents", `${path.basename(plugin, ".mjs")}.ts`)], outfile: plugin, banner: {} });
 }
@@ -50,6 +51,7 @@ for (const file of ["wellactually.mjs", "wellactually-worker.mjs", "wellactually
   fs.copyFileSync(path.join(root, "dist", file), path.join(opencode, "dist", file));
 }
 fs.renameSync(path.join(root, "dist/opencode.mjs"), path.join(opencode, "dist/opencode.mjs"));
+fs.renameSync(path.join(root, "dist/opencode-tui.mjs"), path.join(opencode, "dist/tui.mjs"));
 // OpenCode and pi know a skill by its name alone, and login and sync are names
 // other skills have too. Their copies are called wellactually-login and wellactually-sync.
 const skills = path.join(root, "skills");

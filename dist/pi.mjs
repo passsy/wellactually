@@ -3809,7 +3809,7 @@ function callHook(payload, root = pluginRoot()) {
     };
     let child;
     try {
-      child = spawn(file, [...args, "hook"], { stdio: ["pipe", "pipe", "ignore"], env: { ...process.env, CLAUDE_PLUGIN_ROOT: root } });
+      child = spawn(file, [...args, "hook"], { stdio: ["pipe", "pipe", "ignore"], env: { ...process.env, CLAUDE_PLUGIN_ROOT: root, WELLACTUALLY_BRIDGED: "1" } });
     } catch {
       resolve("");
       return;
@@ -3827,6 +3827,32 @@ function callHook(payload, root = pluginRoot()) {
     child.stdin?.on("error", () => {
     });
     child.stdin?.end(JSON.stringify(payload));
+  });
+}
+function updateNoticeFor(agent, root = pluginRoot()) {
+  const { file, args } = command(root);
+  return new Promise((resolve) => {
+    let out = "";
+    let child;
+    try {
+      child = spawn(file, [...args, "update-notice", "--agent", agent], { stdio: ["ignore", "pipe", "ignore"] });
+    } catch {
+      resolve("");
+      return;
+    }
+    const timer = setTimeout(() => child.kill(), HOOK_TIMEOUT_MS);
+    child.stdout?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk) => {
+      out += chunk;
+    });
+    child.on("error", () => {
+      clearTimeout(timer);
+      resolve("");
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve(code === 0 ? out.trim() : "");
+    });
   });
 }
 function adviceOf(printed) {
@@ -4010,6 +4036,13 @@ async function wellactually(pi) {
   const existed = /* @__PURE__ */ new Map();
   pi.on("session_start", (_event, ctx) => {
     void callHook({ ...base(ctx), hook_event_name: "SessionStart" });
+    if (ctx.hasUI) {
+      void updateNoticeFor("pi", root).then((text) => {
+        if (text !== "") {
+          ctx.ui?.notify(text, "info");
+        }
+      });
+    }
   });
   pi.on("session_compact", (_event, ctx) => {
     void callHook({ ...base(ctx), hook_event_name: "PostCompact" });

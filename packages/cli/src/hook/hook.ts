@@ -11,6 +11,7 @@ import { switchedOff } from "../board/switches.ts";
 import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, snapshotRepos, sweepSnapshots } from "./turn.ts";
 import { excerpt, type HookLogEntry, someFindings } from "./hook-log.ts";
 import { noteToolUse } from "../registry/rater.ts";
+import { agentOf, updateNotice } from "../update.ts";
 
 const MAX_FILE_BYTES = 512 * 1024;
 
@@ -43,7 +44,17 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
     // A session that crashed never reaches SessionEnd, so one starting tidies up after it.
     const swept = sweepShown();
     sweepSnapshots();
-    return note(swept > 0 ? `started the background sync and swept ${swept} old sessions` : "started the background sync");
+    note(swept > 0 ? `started the background sync and swept ${swept} old sessions` : "started the background sync");
+    // The OpenCode and pi plugins show a newer release themselves, where their agent shows notices.
+    if (process.env.WELLACTUALLY_BRIDGED === "1") {
+      return "";
+    }
+    const update = updateNotice(agentOf(process.env));
+    if (update.stale) {
+      startInBackground("check-update");
+    }
+    // Shown to the user, not to the agent, which has nothing to do with it.
+    return update.text ? JSON.stringify({ systemMessage: update.text }) : "";
   }
   if (event === "PostCompact" || event === "SessionEnd") {
     // A compaction drops the advice from the context, so it may arrive in full again.
@@ -235,9 +246,10 @@ function readText(file: string): string | null {
   return content.includes("\0") ? null : content;
 }
 
-/** Starts a `wellactually` command detached, so the session does not wait for the registry. */
-function startInBackground(command: "sync" | "report-detections"): void {
-  if (!readConfig().token) {
+/** Starts a `wellactually` command detached, so the session does not wait for the registry or GitHub. */
+export function startInBackground(command: "sync" | "report-detections" | "check-update"): void {
+  // Only the look for a newer release works without signing in.
+  if (command !== "check-update" && !readConfig().token) {
     return;
   }
   // The file this process was started from: main.ts in a checkout, the single bundled file in the plugin.
