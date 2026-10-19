@@ -134,14 +134,16 @@ The `v3` is the detector API version it is written against.
 
 ## What is in here
 
-| Path                | What it is                                                                    |
-| ------------------- | ----------------------------------------------------------------------------- |
-| `hooks`, `skills`   | The plugin: when the hook runs, and the `login` and `sync` skills.            |
-| `dist`              | The command as one file, built from `packages/cli`. The plugin runs it.       |
-| `opencode`          | The plugin for OpenCode, with its own copy of the command and the skills.     |
-| `packages/core`     | Builds, checks and runs principles: the isolate, the bundler and the tests.   |
-| `packages/sdk`      | The types and helpers a detector may import.                                  |
-| `packages/cli`      | The command the plugin runs: the hook, the advisory board and the MCP server. |
+| Path              | What it is                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `hooks`, `skills` | The plugin: when the hook runs, and the `login` and `sync` skills.                    |
+| `dist`            | The command as one file, built from `packages/cli`. The plugin runs it.               |
+| `opencode`        | The plugin for OpenCode, with its own copy of the command and the skills.             |
+| `packages/core`   | Builds, checks and runs principles: the isolate, the bundler and the tests.           |
+| `packages/sdk`    | The types and helpers a detector may import.                                          |
+| `packages/cli`    | The command the plugin runs: the hook, the advisory board and the MCP server.         |
+| `evaluator`       | Checks with real agents that the framing around advice moves them the right way.      |
+| `scripts`         | Builds `dist` and `opencode`, sets the version of a release, writes the `sdk` branch. |
 
 The registry is not in this repository.
 
@@ -160,7 +162,33 @@ npm run build
 ```
 
 `npm run build` writes `dist/wellactually.mjs`, the file the plugin runs, and next to it `opencode.mjs` and `pi.mjs`, the plugins of OpenCode and pi.
-The released `opencode` folder is a copy of these files that OpenCode installs on its own.
+It also copies the command and the skills into `opencode`, which OpenCode installs on its own.
+Both folders are committed, because an agent installs a plugin from git without building it.
+
+## Release
+
+```bash
+node scripts/version.mjs 0.9.29
+```
+
+```bash
+npm run build
+```
+
+Commit the result as `Release 0.9.29` and push it.
+Agents update the plugin from `main`.
+
+The SDK is released to the `sdk` branch, from a checkout of it next to this one:
+
+```bash
+git worktree add ../wellactually-sdk sdk
+```
+
+```bash
+node scripts/release-sdk.mjs ../wellactually-sdk
+```
+
+Then commit it there as `Release 0.9.29` and push the `sdk` branch.
 
 ## License
 

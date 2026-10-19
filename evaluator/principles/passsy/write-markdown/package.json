@@ -1,0 +1,9 @@
+{
+  "name": "write-markdown",
+  "private": true,
+  "tags": [
+    "markdown",
+    "technical-writing"
+  ],
+  "type": "module"
+}

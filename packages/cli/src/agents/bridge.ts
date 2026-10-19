@@ -17,7 +17,7 @@ const HOOK_TIMEOUT_MS = 10_000;
 
 /**
  * The plugin's root: the folder above the built plugin file, which holds
- * dist/wellactually.mjs, skills/ and the rest of the public repository.
+ * dist/wellactually.mjs, skills/ and the rest of the repository.
  */
 export function pluginRoot(): string {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
