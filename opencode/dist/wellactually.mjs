@@ -15381,9 +15381,12 @@ function agentOf2(env) {
   }
   return "claude-code";
 }
-function howToUpdate(agent) {
+function howToUpdate(agent, folder = "") {
   if (agent === "codex") {
     return "run `codex plugin marketplace upgrade wellactually` and restart Codex";
+  }
+  if (agent === "opencode-1") {
+    return `run \`git pull\` in ${folder} and restart OpenCode`;
   }
   if (agent === "opencode") {
     return "run `opencode plugin update` and restart OpenCode";
@@ -15426,7 +15429,7 @@ function writeState(state) {
   fs11.writeFileSync(stateFile(), `${JSON.stringify(state, null, 2)}
 `);
 }
-function updateNotice(agent, now = Date.now(), current2 = CLIENT_VERSION) {
+function updateNotice(agent, now = Date.now(), current2 = CLIENT_VERSION, folder = "") {
   if (updateCheckOff(process.env)) {
     return { text: "", stale: false };
   }
@@ -15439,7 +15442,7 @@ function updateNotice(agent, now = Date.now(), current2 = CLIENT_VERSION) {
     return { text: "", stale };
   }
   writeState({ ...state, announced: state.latest, announcedAt: new Date(now).toISOString() });
-  return { text: `Well Actually ${state.latest} is available, you have ${current2}. To update, ${howToUpdate(agent)}.`, stale };
+  return { text: `Well Actually ${state.latest} is available, you have ${current2}. To update, ${howToUpdate(agent, folder)}.`, stale };
 }
 async function checkForUpdate(now = Date.now()) {
   const state = readState();
@@ -45259,7 +45262,7 @@ Your advisory board
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
   wellactually mcp                      Serve the authoring commands as an MCP server
-  wellactually update-notice --agent <opencode|pi> Print what to tell the user about a newer release
+  wellactually update-notice --agent <opencode|opencode-1|pi> Print what to tell the user about a newer release
   wellactually check-update             Look up the newest release on GitHub
 
 Every authoring command takes --json.`;
@@ -45453,11 +45456,11 @@ and confirm the code ${start.user_code}`);
       return 0;
     case "update-notice": {
       const agent = values.agent;
-      if (agent !== "opencode" && agent !== "pi") {
-        console.error("usage: wellactually update-notice --agent <opencode|pi>");
+      if (agent !== "opencode" && agent !== "opencode-1" && agent !== "pi") {
+        console.error("usage: wellactually update-notice --agent <opencode|opencode-1|pi>");
         return 2;
       }
-      const update = updateNotice(agent);
+      const update = updateNotice(agent, void 0, void 0, path16.resolve(path16.dirname(process.argv[1]), ".."));
       if (update.stale) {
         startInBackground("check-update");
       }

@@ -11,7 +11,8 @@ export const LATEST_URL = "https://raw.githubusercontent.com/passsy/wellactually
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export type Agent = "claude-code" | "codex" | "opencode" | "pi";
+/** OpenCode 1 runs the plugin from a git clone; only OpenCode 2 has `opencode plugin update`. */
+export type Agent = "claude-code" | "codex" | "opencode" | "opencode-1" | "pi";
 
 /** What the last look at GitHub found, and which release the user was last told about. */
 interface UpdateState {
@@ -32,10 +33,13 @@ export function agentOf(env: NodeJS.ProcessEnv): Agent {
   return "claude-code";
 }
 
-/** How a user of each agent gets the new release. */
-export function howToUpdate(agent: Agent): string {
+/** How a user of each agent gets the new release. `folder` is where the plugin is, which OpenCode 1 users pull in. */
+export function howToUpdate(agent: Agent, folder = ""): string {
   if (agent === "codex") {
     return "run `codex plugin marketplace upgrade wellactually` and restart Codex";
+  }
+  if (agent === "opencode-1") {
+    return `run \`git pull\` in ${folder} and restart OpenCode`;
   }
   if (agent === "opencode") {
     return "run `opencode plugin update` and restart OpenCode";
@@ -92,7 +96,7 @@ function writeState(state: UpdateState): void {
  * day. It never touches the network: it reads what the last check found, and
  * `stale` says whether a new check should start in the background.
  */
-export function updateNotice(agent: Agent, now = Date.now(), current = CLIENT_VERSION): { text: string; stale: boolean } {
+export function updateNotice(agent: Agent, now = Date.now(), current = CLIENT_VERSION, folder = ""): { text: string; stale: boolean } {
   if (updateCheckOff(process.env)) {
     return { text: "", stale: false };
   }
@@ -105,7 +109,7 @@ export function updateNotice(agent: Agent, now = Date.now(), current = CLIENT_VE
     return { text: "", stale };
   }
   writeState({ ...state, announced: state.latest, announcedAt: new Date(now).toISOString() });
-  return { text: `Well Actually ${state.latest} is available, you have ${current}. To update, ${howToUpdate(agent)}.`, stale };
+  return { text: `Well Actually ${state.latest} is available, you have ${current}. To update, ${howToUpdate(agent, folder)}.`, stale };
 }
 
 /**

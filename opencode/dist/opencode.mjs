@@ -4069,7 +4069,7 @@ async function setup(ctx) {
   return () => controller.abort();
 }
 async function announceUpdate(input, root) {
-  const text = await updateNoticeFor("opencode", root);
+  const text = await updateNoticeFor("opencode-1", root);
   if (text !== "") {
     await input.client?.tui?.showToast({ body: { title: "Well Actually", message: text, variant: "info", duration: 1e4 } }).catch(() => {
     });
