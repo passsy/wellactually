@@ -1,6 +1,6 @@
 {
   "name": "wellactually-opencode",
-  "version": "0.9.28",
+  "version": "0.9.29",
   "description": "Runs the principles on your Well Actually advisory board while your agent works, and lets it author and rate them.",
   "type": "module",
   "license": "Apache-2.0",
