@@ -78,7 +78,7 @@ Your advisory board
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
   wellactually mcp                      Serve the authoring commands as an MCP server
-  wellactually update-notice --agent <opencode|pi> Print what to tell the user about a newer release
+  wellactually update-notice --agent <opencode|opencode-1|pi> Print what to tell the user about a newer release
   wellactually check-update             Look up the newest release on GitHub
 
 Every authoring command takes --json.`;
@@ -274,11 +274,12 @@ async function main(): Promise<number> {
     case "update-notice": {
       // The OpenCode and pi plugins show this where their agent shows notices.
       const agent = values.agent;
-      if (agent !== "opencode" && agent !== "pi") {
-        console.error("usage: wellactually update-notice --agent <opencode|pi>");
+      if (agent !== "opencode" && agent !== "opencode-1" && agent !== "pi") {
+        console.error("usage: wellactually update-notice --agent <opencode|opencode-1|pi>");
         return 2;
       }
-      const update = updateNotice(agent satisfies Agent);
+      // The plugin's folder, above dist/ where this command is, which an OpenCode 1 user pulls in.
+      const update = updateNotice(agent satisfies Agent, undefined, undefined, path.resolve(path.dirname(process.argv[1] as string), ".."));
       if (update.stale) {
         startInBackground("check-update");
       }

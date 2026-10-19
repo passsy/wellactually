@@ -111,3 +111,10 @@ test("session start leaves the notice to the OpenCode and pi plugins", async () 
   process.env.WELLACTUALLY_BRIDGED = "1";
   expect(await runHook(JSON.stringify({ hook_event_name: "SessionStart", session_id: "s1", cwd: os.tmpdir() }))).toBe("");
 });
+
+test("OpenCode 1 users pull the clone the plugin runs from", () => {
+  found("0.9.30");
+  expect(updateNotice("opencode-1", NOW, "0.9.28", "/Users/me/wellactually/opencode").text).toBe(
+    "Well Actually 0.9.30 is available, you have 0.9.28. To update, run `git pull` in /Users/me/wellactually/opencode and restart OpenCode.",
+  );
+});

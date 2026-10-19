@@ -76,7 +76,7 @@ export function callHook(payload: HookPayload, root = pluginRoot()): Promise<str
  * there is none. The plugin shows it where its agent shows notices, which a
  * hook cannot reach. Like `callHook` it never throws.
  */
-export function updateNoticeFor(agent: "opencode" | "pi", root = pluginRoot()): Promise<string> {
+export function updateNoticeFor(agent: "opencode" | "opencode-1" | "pi", root = pluginRoot()): Promise<string> {
   const { file, args } = command(root);
   return new Promise((resolve) => {
     let out = "";

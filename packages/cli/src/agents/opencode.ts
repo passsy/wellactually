@@ -229,7 +229,8 @@ interface V1Input {
 
 /** A toast about a newer release. OpenCode 2 shows it from the CLI plugin in tui.ts, which this server plugin cannot reach. */
 async function announceUpdate(input: V1Input, root: string): Promise<void> {
-  const text = await updateNoticeFor("opencode", root);
+  // OpenCode 1 runs the plugin from a git clone and has no command that updates it.
+  const text = await updateNoticeFor("opencode-1", root);
   if (text !== "") {
     await input.client?.tui?.showToast({ body: { title: "Well Actually", message: text, variant: "info", duration: 10_000 } }).catch(() => {});
   }
