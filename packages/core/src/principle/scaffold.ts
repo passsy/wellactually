@@ -1,5 +1,5 @@
 import { API_VERSION } from "@wellactually/sdk";
-import type { FileMap } from "../build/bundle.ts";
+import type { PrincipleFiles } from "../build/bundle.ts";
 import { isPrincipleId, PRINCIPLE_ID_RULE } from "./manifest.ts";
 
 /**
@@ -9,7 +9,7 @@ import { isPrincipleId, PRINCIPLE_ID_RULE } from "./manifest.ts";
  * author starts from green and changes one thing at a time. The CLI writes
  * these to a directory and the website opens them in its editor.
  */
-export function scaffoldFiles(slug: string): FileMap {
+export function scaffoldFiles(slug: string): PrincipleFiles {
   if (!isPrincipleId(slug)) {
     throw new Error(`"${slug}" must be ${PRINCIPLE_ID_RULE}`);
   }

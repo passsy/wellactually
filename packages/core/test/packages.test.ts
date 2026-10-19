@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { buildPrinciple, checkPrinciple, fileCtx, keptPackages, parseGitHub, readPrinciple, runDetector, vendorPackages, type FileMap, type PackageSource } from "../src/node.ts";
+import { buildPrinciple, checkPrinciple, fileCtx, keptPackages, parseGitHub, readPrinciple, runDetector, vendorPackages, type PrincipleFiles, type PackageSource } from "../src/node.ts";
 
 const principle = ["# Name the port", "", "A port has a name.", "", "A bare number tells a reader nothing about what listens there. Give the port a name and say what it is for."].join("\n");
 const detector = `
@@ -37,7 +37,7 @@ const MIT = [
 const pins = JSON.stringify({ dependencies: { "tiny-yaml": "1.2.0" } });
 
 /** What is installed: a package with an entry, a file it imports and a package it depends on. */
-const installed: Record<string, FileMap> = {
+const installed: Record<string, PrincipleFiles> = {
   "tiny-yaml": {
     "package.json": JSON.stringify({ name: "tiny-yaml", version: "1.2.0", license: "ISC", exports: { ".": { node: "./node.js", default: "./dist/index.js" } }, dependencies: { "@tiny/split": "^3.0.0" } }),
     "dist/index.js": `import { pairs } from "./pairs.js";\nexport function parse(text) { return Object.fromEntries(pairs(text)); }`,
@@ -53,7 +53,7 @@ const installed: Record<string, FileMap> = {
   },
 };
 const source: PackageSource = async (name, _version, file) => installed[name]?.[file] ?? null;
-const files: FileMap = { "principle.md": principle, "detector.ts": detector, "package.json": pins };
+const files: PrincipleFiles = { "principle.md": principle, "detector.ts": detector, "package.json": pins };
 
 describe("a package from npm", () => {
   test("travels with the principle: the files the detector reaches, its package.json and its licence", async () => {
@@ -94,7 +94,7 @@ describe("a package from npm", () => {
   });
 
   test("needs its package in the package.json of the principle, at a version from npm", async () => {
-    const report = async (extra: FileMap) => (await checkPrinciple({ ...files, ...extra })).report.problems[0];
+    const report = async (extra: PrincipleFiles) => (await checkPrinciple({ ...files, ...extra })).report.problems[0];
     expect(await report({ "package.json": JSON.stringify({ dependencies: { "tiny-yaml": "file:../tiny-yaml" } }) })).toMatch(/has to name a version of tiny-yaml from npm/);
     const { "package.json": _, ...unpinned } = files;
     expect((await checkPrinciple(unpinned)).report.problems[0]).toMatch(/"tiny-yaml" cannot be imported.*packages its package.json names/);
@@ -107,7 +107,7 @@ describe("a package from npm", () => {
   });
 
   test("can come from a repository, in TypeScript, and records the commit it was taken at", async () => {
-    const kit: FileMap = {
+    const kit: PrincipleFiles = {
       "package.json": JSON.stringify({ name: "dart-kit", license: "MIT", exports: "./src/index.ts" }),
       LICENSE: MIT,
       "src/index.ts": `import { strip } from "./strip";\nexport function parse(text: string): Record<string, string> { return { port: strip(text) }; }`,
@@ -147,7 +147,7 @@ describe("a package from npm", () => {
       }
       return installed[name]?.[file] ?? null;
     };
-    const own: FileMap = {};
+    const own: PrincipleFiles = {};
     for (const [name, content] of Object.entries(synced)) {
       if (!name.startsWith("node_modules/")) {
         own[name] = content;

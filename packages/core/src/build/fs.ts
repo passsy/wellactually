@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { vendorPackages, type FileMap } from "./bundle.ts";
+import { vendorPackages, type PrincipleFiles } from "./bundle.ts";
 import { isGitReference, parseGitHub, TAKEN_FROM, type PackageSource } from "./packages.ts";
-import { assertFileMapSize } from "../principle/principle.ts";
+import { assertPrincipleFilesSize } from "../principle/principle.ts";
 
 /**
  * The principle directories read in this process, newest last. The installed
@@ -12,8 +12,8 @@ import { assertFileMapSize } from "../principle/principle.ts";
 export const readFrom = new Set<string>();
 
 /** Reads a principle directory into a file map, the form every other function takes. */
-export function readPrincipleDir(dir: string): FileMap {
-  const files: FileMap = {};
+export function readPrincipleDir(dir: string): PrincipleFiles {
+  const files: PrincipleFiles = {};
   const walk = (current: string): void => {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
       if (entry.name.startsWith(".") || entry.name === "node_modules") {
@@ -30,7 +30,7 @@ export function readPrincipleDir(dir: string): FileMap {
     }
   };
   walk(dir);
-  assertFileMapSize(files);
+  assertPrincipleFilesSize(files);
   return files;
 }
 
@@ -111,7 +111,7 @@ function takenFrom(root: string, name: string): string | null {
  * A principle directory as it is submitted: its own files, and the code of
  * the packages it imports, taken from what is installed on this machine.
  */
-export async function readPrinciple(dir: string): Promise<FileMap> {
+export async function readPrinciple(dir: string): Promise<PrincipleFiles> {
   readFrom.add(dir);
   return vendorPackages(readPrincipleDir(dir), diskPackages(dir));
 }

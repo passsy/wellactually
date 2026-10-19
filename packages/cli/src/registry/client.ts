@@ -1,4 +1,4 @@
-import { hashPrinciple, type BoardPrinciple, type CheckReport, type FileMap, type ReleasedBundle } from "@wellactually/core/node";
+import { hashPrinciple, type BoardPrinciple, type CheckReport, type PrincipleFiles, type ReleasedBundle } from "@wellactually/core/node";
 import { hasCached, readConfig, readLockfile, writeCached, writeConfig, writeLockfile } from "../board/board.ts";
 import { drainDetections } from "../board/detections.ts";
 import type { Rater } from "./rater.ts";
@@ -186,7 +186,7 @@ export type Visibility = "public" | "private";
  * itself which packages need that, and refuses the draft when one is missing.
  * `visibility`, when given, sets who can see it, as the website's switch does.
  */
-export async function publishDraft(slug: string, files: FileMap, approved: string[] = [], visibility?: Visibility): Promise<DraftResult> {
+export async function publishDraft(slug: string, files: PrincipleFiles, approved: string[] = [], visibility?: Visibility): Promise<DraftResult> {
   requireToken();
   const response = await call("/api/drafts", { method: "POST", body: { slug, files, approved, visibility } });
   if (response.status !== 201 && response.status !== 422) {
@@ -291,7 +291,7 @@ export interface PulledSource {
   id: string;
   version: number;
   status: "draft" | "released";
-  files: FileMap;
+  files: PrincipleFiles;
   /** Who it is by: the expert of the original first, then each who forked it. Absent from registries before forks were credited. */
   credits?: string[];
   /** Who can read it. Absent from registries before the show tool. */

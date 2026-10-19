@@ -5,8 +5,11 @@ import { LICENSE_FILE_NAMES } from "./licenses.ts";
 import { isPackageFile, packageOf, PACKAGE_DIR, PackageError, readPins, resolveInPackage, resolvePackage, TAKEN_FROM, type PackageSource } from "./packages.ts";
 import { SDK_SOURCES } from "./sdk-source.generated.ts";
 
-/** A principle's files, keyed by forward-slash path relative to its directory. */
-export type FileMap = Record<string, string>;
+/**
+ * A principle's files, keyed by forward-slash path relative to its directory,
+ * with the packages it vendors below `node_modules/`.
+ */
+export type PrincipleFiles = Record<string, string>;
 
 export class BundleError extends Error {}
 
@@ -41,19 +44,19 @@ const TEST_ENTRY = "__tests__.ts";
 export const TESTS_GLOBAL = "__tests";
 
 /** The detector file of a principle, or null when it has none. */
-export function detectorEntry(files: FileMap): string | null {
+export function detectorEntry(files: PrincipleFiles): string | null {
   return DETECTOR_ENTRIES.find((name) => name in files) ?? null;
 }
 
 /** The code of a principle: its detector, its tests and what they import. Not the projects in `fixtures/`. */
-export function codeFiles(files: FileMap): string[] {
+export function codeFiles(files: PrincipleFiles): string[] {
   return Object.keys(files)
     .filter((name) => /\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name) && !isPackageFile(name))
     .sort();
 }
 
 /** The test files of a principle: every `*.test.ts` or `*.test.js`, wherever it lies outside `fixtures/`. */
-export function testFiles(files: FileMap): string[] {
+export function testFiles(files: PrincipleFiles): string[] {
   return Object.keys(files)
     .filter((name) => /\.test\.(ts|js|mjs)$/.test(name) && !FIXTURES.test(name) && !isPackageFile(name))
     .sort();
@@ -99,7 +102,7 @@ function dirname(path: string): string {
  * With a `source`, the code of a package that is not among the files yet is
  * asked from there. That is how a principle is submitted: see `vendorPackages`.
  */
-export async function buildBundle(files: FileMap, source?: PackageSource): Promise<string> {
+export async function buildBundle(files: PrincipleFiles, source?: PackageSource): Promise<string> {
   return (await buildDetector(files, source)).bundle;
 }
 
@@ -111,7 +114,7 @@ export async function buildBundle(files: FileMap, source?: PackageSource): Promi
  * taken, with its package.json, its licence and its NOTICE. After this the files are the
  * whole principle: the registry builds them again with no source to ask.
  */
-export async function vendorPackages(files: FileMap, source: PackageSource): Promise<FileMap> {
+export async function vendorPackages(files: PrincipleFiles, source: PackageSource): Promise<PrincipleFiles> {
   let pins: Record<string, string>;
   try {
     pins = readPins(files);
@@ -121,7 +124,7 @@ export async function vendorPackages(files: FileMap, source: PackageSource): Pro
   if (Object.keys(pins).length === 0 || detectorEntry(files) === null) {
     return files;
   }
-  const fetched: FileMap = {};
+  const fetched: PrincipleFiles = {};
   await buildDetector(files, source, fetched);
   await buildTestBundle(files, source, fetched);
   const names = new Set<string>();
@@ -158,7 +161,7 @@ export async function vendorPackages(files: FileMap, source: PackageSource): Pro
  * the packages whose code is in the bundle, which are the ones whose licence
  * the bundle has to carry.
  */
-export async function buildDetector(files: FileMap, source?: PackageSource, fetched: FileMap = {}): Promise<{ bundle: string; builtIns: string[]; inlined: string[] }> {
+export async function buildDetector(files: PrincipleFiles, source?: PackageSource, fetched: PrincipleFiles = {}): Promise<{ bundle: string; builtIns: string[]; inlined: string[] }> {
   const entry = detectorEntry(files);
   if (!entry) {
     throw new BundleError(`no detector found; expected one of ${DETECTOR_ENTRIES.join(", ")}`);
@@ -179,7 +182,7 @@ export async function buildDetector(files: FileMap, source?: PackageSource, fetc
  * of its API, the SDK of its version and its own relative files. Null when the principle has
  * no test files.
  */
-export async function buildTestBundle(files: FileMap, source?: PackageSource, fetched: FileMap = {}): Promise<string | null> {
+export async function buildTestBundle(files: PrincipleFiles, source?: PackageSource, fetched: PrincipleFiles = {}): Promise<string | null> {
   const tests = testFiles(files);
   if (tests.length === 0) {
     return null;
@@ -188,7 +191,7 @@ export async function buildTestBundle(files: FileMap, source?: PackageSource, fe
   return build({ ...files, [TEST_ENTRY]: entry }, TEST_ENTRY, TESTS_GLOBAL, true, new Set(), source, fetched);
 }
 
-async function build(files: FileMap, entry: string, globalName: string, isTest: boolean, builtIns: Set<string>, source: PackageSource | undefined, fetched: FileMap, inlined = new Set<string>()): Promise<string> {
+async function build(files: PrincipleFiles, entry: string, globalName: string, isTest: boolean, builtIns: Set<string>, source: PackageSource | undefined, fetched: PrincipleFiles, inlined = new Set<string>()): Promise<string> {
   const tests = new Set(isTest ? testFiles(files) : []);
   let pins: Record<string, string>;
   try {

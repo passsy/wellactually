@@ -1,11 +1,11 @@
 import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
 import { apiOf, BUILT_IN_SINCE, importedApi } from "../detector/api.ts";
-import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, withNotices, type FileMap } from "../build/bundle.ts";
+import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, withNotices, type PrincipleFiles } from "../build/bundle.ts";
 import { applies, fileCtx, textCtx } from "../detector/ctx.ts";
 import { ManifestError, parsePrinciple, parseSettings, parseTags, readHandlers, type Manifest } from "./manifest.ts";
 import { thirdPartyNotices } from "../build/licenses.ts";
 import { approvalKey, carriedPackages, isPackageFile, needsApproval, noticeOf, PackageError, type CarriedPackage, type PackageInfo } from "../build/packages.ts";
-import { mapProject, type ProjectFiles } from "../detector/project.ts";
+import { mapProject, type ProjectContents, type ProjectFiles } from "../detector/project.ts";
 import { readRegistered, runTestBundle, type DetectorRun } from "../detector/sandbox.ts";
 import { scanAdvice } from "./scan.ts";
 import { adviceLengthWarnings } from "./advice-length.ts";
@@ -37,7 +37,7 @@ export interface DetectCall {
   ms: number;
 }
 
-export interface TestResult {
+export interface TestCaseResult {
   /** The test file. */
   file: string;
   name: string;
@@ -54,7 +54,7 @@ export interface CheckReport {
   problems: string[];
   /** What a human should look at. Warnings never block. */
   warnings: string[];
-  tests: TestResult[];
+  tests: TestCaseResult[];
   /** The slowest detector run, as a share of the time limit a detector gets. */
   slowestMs: number;
   /**
@@ -80,7 +80,7 @@ const MAX_DETECT_CALLS = 300;
 const MAX_SHOWN_TEXT = 4000;
 
 /** Refuses a principle that is too large to be one principle. The registry applies it to uploads. */
-export function assertFileMapSize(files: FileMap): void {
+export function assertPrincipleFilesSize(files: PrincipleFiles): void {
   let count = 0;
   let total = 0;
   let packageCount = 0;
@@ -115,7 +115,7 @@ export function assertFileMapSize(files: FileMap): void {
  * them. It only matters for a package whose licence does not pass by itself,
  * and what was approved is recorded in the manifest.
  */
-export async function buildPrinciple(files: FileMap, approved: string[] = []): Promise<BuiltPrinciple> {
+export async function buildPrinciple(files: PrincipleFiles, approved: string[] = []): Promise<BuiltPrinciple> {
   const source = files["principle.md"];
   if (source === undefined) {
     throw new ManifestError("principle.md is missing");
@@ -186,13 +186,13 @@ export async function hashPrinciple(manifest: Manifest, advice: string, bundle: 
  * upload, because a report that came from the author's machine is a claim
  * and one that came from here is a result.
  */
-export async function checkPrinciple(files: FileMap, approved: string[] = []): Promise<Checked> {
+export async function checkPrinciple(files: PrincipleFiles, approved: string[] = []): Promise<Checked> {
   const report: CheckReport = { ok: false, problems: [], warnings: [], tests: [], slowestMs: 0, unapproved: [] };
 
   let built: BuiltPrinciple;
   let tests: string | null;
   try {
-    assertFileMapSize(files);
+    assertPrincipleFilesSize(files);
     built = await buildPrinciple(files, approved);
     tests = await buildTestBundle(files);
   } catch (error) {
@@ -255,7 +255,7 @@ export async function checkPrinciple(files: FileMap, approved: string[] = []): P
 /**
  * Runs the test bundle and answers its `detect` calls with the real detector.
  */
-async function runTests(built: BuiltPrinciple, files: FileMap, tests: string): Promise<{ results: TestResult[]; calls: DetectCall[]; error: string | null }> {
+async function runTests(built: BuiltPrinciple, files: PrincipleFiles, tests: string): Promise<{ results: TestCaseResult[]; calls: DetectCall[]; error: string | null }> {
   const calls: DetectCall[] = [];
   const byTest = new Map<string, DetectCall[]>();
   let current: DetectCall[] = [];
@@ -294,7 +294,7 @@ async function runTests(built: BuiltPrinciple, files: FileMap, tests: string): P
  */
 export function answerDetect(
   built: BuiltPrinciple,
-  files: FileMap,
+  files: PrincipleFiles,
   call: unknown,
   run: (bundle: string, ctx: Ctx, project: ProjectFiles | null, api: number) => DetectorRun,
   record: (call: DetectCall) => void = () => {},
@@ -344,12 +344,12 @@ export function answerDetect(
 }
 
 /** The files of one folder of a principle, with paths from that folder. Null when the folder holds nothing. */
-function filesBelow(files: FileMap, folder: string): FileMap | null {
+function filesBelow(files: PrincipleFiles, folder: string): ProjectContents | null {
   const prefix = `${folder.replaceAll("\\", "/").replace(/^\.?\/+|\/+$/g, "")}/`;
   if (prefix === "/" || prefix.split("/").includes("..")) {
     return null;
   }
-  const below: FileMap = {};
+  const below: ProjectContents = {};
   for (const [name, content] of Object.entries(files)) {
     if (name.startsWith(prefix)) {
       below[name.slice(prefix.length)] = content;
@@ -394,7 +394,7 @@ function eventCtx(raw: unknown): Ctx | null {
 }
 
 /** Whether a principle directory has the file that makes it one. The detector is optional. */
-export function looksLikePrinciple(files: FileMap): boolean {
+export function looksLikePrinciple(files: PrincipleFiles): boolean {
   return "principle.md" in files;
 }
 

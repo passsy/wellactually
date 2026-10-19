@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { apiOf, applies, approvalKey, buildPrinciple, BundleError, describeReview, checkPrinciple, isPrincipleId, PRINCIPLE_ID_RULE, fileCtx, isPackageFile, ManifestError, parseTags, needsApproval, readPrinciple, readPrincipleDir, runDetector, textCtx, type BuiltPrinciple, type CheckReport, type DetectorRun, type FileMap, type PackageInfo } from "@wellactually/core/node";
+import { apiOf, applies, approvalKey, buildPrinciple, BundleError, describeReview, checkPrinciple, isPrincipleId, PRINCIPLE_ID_RULE, fileCtx, isPackageFile, ManifestError, parseTags, needsApproval, readPrinciple, readPrincipleDir, runDetector, textCtx, type BuiltPrinciple, type CheckReport, type DetectorRun, type PrincipleFiles, type PackageInfo } from "@wellactually/core/node";
 import type { Ctx } from "@wellactually/sdk";
-import { diskFiles, projectRootOf, toPosix, writeFileMap } from "./board/files.ts";
+import { diskFiles, projectRootOf, toPosix, writePrincipleFiles } from "./board/files.ts";
 import { frame, DEFAULT_REGISTRY, readConfig, readLockfile, writeCached, writeLockfile } from "./board/board.ts";
 import { probeRepo, type ProbeReport } from "./probe.ts";
 import { type SwitchResult } from "./board/switches.ts";
@@ -30,7 +30,8 @@ import {
  * caller's job, which is what keeps the two front ends saying the same thing.
  */
 
-export interface TestResult {
+/** The check of a principle folder: its id, its title once it built, and what the check found. */
+export interface FolderCheck {
   id: string | null;
   title: string | null;
   report: CheckReport;
@@ -52,7 +53,7 @@ async function checkDir(dir: string) {
   return { id, built, report: { ...report, ok: false, problems: [problem, ...report.problems] } };
 }
 
-export async function testPrinciple(dir: string): Promise<TestResult> {
+export async function testPrinciple(dir: string): Promise<FolderCheck> {
   const { id, built, report } = await checkDir(dir);
   return { id, title: built?.manifest.title ?? null, report };
 }
@@ -138,7 +139,7 @@ export function describeApproval(info: PackageInfo): string {
  * The packages in the bundle the expert has to approve before the principle
  * is uploaded. Empty when it does not build: then the registry says why.
  */
-async function packagesToApprove(files: FileMap): Promise<PackageInfo[]> {
+async function packagesToApprove(files: PrincipleFiles): Promise<PackageInfo[]> {
   try {
     return ((await buildPrinciple(files)).manifest.packages ?? []).filter(needsApproval);
   } catch (error) {
@@ -314,13 +315,13 @@ export async function pullPrinciple(id: string, dir: string | undefined, force: 
     }
   }
   // The code of packages is not written out. `npm install` puts the same versions there, complete.
-  const own: FileMap = {};
+  const own: PrincipleFiles = {};
   for (const [name, content] of Object.entries(source.files)) {
     if (!isPackageFile(name)) {
       own[name] = content;
     }
   }
-  writeFileMap(target, own);
+  writePrincipleFiles(target, own);
   return { id: source.id, version: source.version, status: source.status, dir: target, files: Object.keys(own).sort(), credits: source.credits ?? [] };
 }
 
@@ -471,7 +472,7 @@ function asLocal(built: BuiltPrinciple, id: string) {
  * It has to pass the same check a published one does. The advisory board pins the
  * hash, so editing the directory changes nothing until it is added again.
  */
-export async function addLocal(dir: string): Promise<TestResult> {
+export async function addLocal(dir: string): Promise<FolderCheck> {
   const { id, built, report } = await checkDir(dir);
   if (!built || !report.ok) {
     return { id, title: built?.manifest.title ?? null, report };
@@ -497,7 +498,7 @@ export function removeLocal(id: string): boolean {
   return true;
 }
 
-export function renderReport(result: TestResult): string {
+export function renderReport(result: FolderCheck): string {
   const lines: string[] = [];
   if (result.id) {
     lines.push(`${result.id}  ${result.title ?? ""}`.trimEnd());

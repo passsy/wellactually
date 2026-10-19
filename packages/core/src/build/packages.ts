@@ -1,5 +1,8 @@
-import type { FileMap } from "./bundle.ts";
+import type { PrincipleFiles } from "./bundle.ts";
 import { readLicensing, type Licensing, type NoticeEntry } from "./licenses.ts";
+
+/** The files of one package, keyed by path inside the package. */
+export type PackageFiles = Record<string, string>;
 
 /**
  * Packages from npm in a principle.
@@ -142,7 +145,7 @@ export type PackageSource = (name: string, version: string | null, file: string)
  * along. It is never asked for elsewhere, where a stranger could have
  * published something under the same name.
  */
-export function keptPackages(files: FileMap, other: PackageSource): PackageSource {
+export function keptPackages(files: PrincipleFiles, other: PackageSource): PackageSource {
   return async (name, version, file) => {
     const dir = `${PACKAGE_DIR}${name}/`;
     const carried = files[`${dir}${TAKEN_FROM}`] !== undefined;
@@ -204,7 +207,7 @@ export function isPackageFile(path: string): boolean {
 }
 
 /** The packages the principle's `package.json` names, each with the version or range it asks for. */
-export function readPins(files: FileMap): Record<string, string> {
+export function readPins(files: PrincipleFiles): Record<string, string> {
   const source = files["package.json"];
   if (source === undefined) {
     return {};
@@ -532,7 +535,7 @@ function declaredLicense(json: PackageJson): string {
 }
 
 /** Every package a principle carries, by name, with its licence. Read from the code that travels with it. */
-export function carriedPackages(files: FileMap): CarriedPackage[] {
+export function carriedPackages(files: PrincipleFiles): CarriedPackage[] {
   const packages: CarriedPackage[] = [];
   for (const path of Object.keys(files).sort()) {
     const name = packageOf(path);
@@ -563,7 +566,7 @@ export function carriedPackages(files: FileMap): CarriedPackage[] {
     }
     // The files at the top of the package: that is where a licence lies.
     const root = `${PACKAGE_DIR}${name}/`;
-    const own: FileMap = {};
+    const own: PackageFiles = {};
     for (const [file, content] of Object.entries(files)) {
       if (file.startsWith(root) && !file.slice(root.length).includes("/")) {
         own[file.slice(root.length)] = content;
@@ -582,7 +585,7 @@ export function carriedPackages(files: FileMap): CarriedPackage[] {
 }
 
 /** Every package a principle carries, by name. */
-export function packagesOf(files: FileMap): PackageInfo[] {
+export function packagesOf(files: PrincipleFiles): PackageInfo[] {
   return carriedPackages(files).map((carried) => carried.info);
 }
 

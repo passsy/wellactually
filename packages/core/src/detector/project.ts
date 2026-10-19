@@ -1,4 +1,6 @@
-import type { FileMap } from "../build/bundle.ts";
+
+/** The files of a project that is not on a disk, keyed by path from its root: a test's fixture, or what the browser editor holds. */
+export type ProjectContents = Record<string, string>;
 
 /**
  * The files a detector may read.
@@ -47,7 +49,7 @@ export function normalizeAbsolute(path: string): string {
  * A project made of a file map, rooted at `root`.
  * Used wherever there is no disk to read, and for the fixtures of a test.
  */
-export function mapProject(root: string, files: FileMap): ProjectFiles {
+export function mapProject(root: string, files: ProjectContents): ProjectFiles {
   /** The path from `root`, or null when it is not below it: then it is nothing this project has. */
   const relative = (path: string): string | null => (path === root ? "" : path.startsWith(`${root}/`) ? path.slice(root.length + 1) : null);
   const isDir = (inside: string): boolean => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));

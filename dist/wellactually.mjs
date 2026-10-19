@@ -12757,7 +12757,7 @@ var MAX_PACKAGE_FILES = 500;
 var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 var MAX_DETECT_CALLS = 300;
 var MAX_SHOWN_TEXT = 4e3;
-function assertFileMapSize(files) {
+function assertPrincipleFilesSize(files) {
   let count2 = 0;
   let total = 0;
   let packageCount = 0;
@@ -12845,7 +12845,7 @@ async function checkPrinciple(files, approved = []) {
   let built;
   let tests;
   try {
-    assertFileMapSize(files);
+    assertPrincipleFilesSize(files);
     built = await buildPrinciple(files, approved);
     tests = await buildTestBundle(files);
   } catch (error63) {
@@ -13021,7 +13021,7 @@ function readPrincipleDir(dir) {
     }
   };
   walk(dir);
-  assertFileMapSize(files);
+  assertPrincipleFilesSize(files);
   return files;
 }
 function diskPackages(dir) {
@@ -13218,10 +13218,10 @@ function scaffold(slug, parent) {
   if (fs2.existsSync(dir)) {
     throw new Error(`${dir} already exists`);
   }
-  writeFileMap(dir, files);
+  writePrincipleFiles(dir, files);
   return dir;
 }
-function writeFileMap(dir, files) {
+function writePrincipleFiles(dir, files) {
   for (const [name, content] of Object.entries(files)) {
     const file2 = path3.resolve(dir, name);
     if (!file2.startsWith(path3.resolve(dir) + path3.sep)) {
@@ -14353,7 +14353,7 @@ async function pullPrinciple(id, dir, force) {
       own2[name] = content;
     }
   }
-  writeFileMap(target, own2);
+  writePrincipleFiles(target, own2);
   return { id: source.id, version: source.version, status: source.status, dir: target, files: Object.keys(own2).sort(), credits: source.credits ?? [] };
 }
 function describeCredits(handles) {

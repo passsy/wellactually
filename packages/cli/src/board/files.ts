@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { scaffoldFiles, type FileMap, type ProjectFiles } from "@wellactually/core/node";
+import { scaffoldFiles, type PrincipleFiles, type ProjectFiles } from "@wellactually/core/node";
 
 /** Writes a new principle to `parent/slug` and returns the directory. */
 export function scaffold(slug: string, parent: string): string {
@@ -14,12 +14,12 @@ export function scaffold(slug: string, parent: string): string {
   if (fs.existsSync(dir)) {
     throw new Error(`${dir} already exists`);
   }
-  writeFileMap(dir, files);
+  writePrincipleFiles(dir, files);
   return dir;
 }
 
 /** Writes a principle's files below `dir`. Paths that would leave `dir` are refused. */
-export function writeFileMap(dir: string, files: FileMap): void {
+export function writePrincipleFiles(dir: string, files: PrincipleFiles): void {
   for (const [name, content] of Object.entries(files)) {
     const file = path.resolve(dir, name);
     if (!file.startsWith(path.resolve(dir) + path.sep)) {

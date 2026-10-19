@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildPrinciple, bundleTermsOf, checkPrinciple, describeReview, fileCtx, noticesOf, parseSpdx, readLicensing, recognizeLicense, runDetector, vendorPackages, type FileMap, type PackageSource } from "../src/node.ts";
+import { buildPrinciple, bundleTermsOf, checkPrinciple, describeReview, fileCtx, noticesOf, parseSpdx, readLicensing, recognizeLicense, runDetector, vendorPackages, type PrincipleFiles, type PackageSource } from "../src/node.ts";
 
 const MIT = [
   "MIT License",
@@ -122,7 +122,7 @@ const tests = `
     expect(detect(write("config.yaml", "port: 81"))).toEqual([]);
   });`;
 
-const installed: Record<string, FileMap> = {
+const installed: Record<string, PrincipleFiles> = {
   "tiny-yaml": {
     "package.json": JSON.stringify({ name: "tiny-yaml", version: "1.2.0", license: "ISC", main: "index.js" }),
     "index.js": `export function parse(text) { return Object.fromEntries(text.split("\\n").filter(Boolean).map((line) => line.split(": "))); }`,
@@ -140,7 +140,7 @@ const installed: Record<string, FileMap> = {
   },
 };
 const source: PackageSource = async (name, _version, file) => installed[name]?.[file] ?? null;
-const files: FileMap = {
+const files: PrincipleFiles = {
   "principle.md": principle,
   "detector.ts": detector,
   "detector.test.ts": tests,
@@ -222,7 +222,7 @@ describe("a bundle with packages", () => {
 
   test("names a package from a repository by its commit, in the approval and in the notices", async () => {
     const commit = "0123456789abcdef0123456789abcdef01234567";
-    const kit: FileMap = {
+    const kit: PrincipleFiles = {
       "package.json": JSON.stringify({ name: "copyleft", main: "index.js" }),
       "index.js": "export function strict(value) { return value; }",
       ".wellactually-from": `github:passsy/copyleft#${commit}`,

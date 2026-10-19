@@ -1,4 +1,4 @@
-import type { FileMap } from "./bundle.ts";
+import type { PackageFiles } from "./packages.ts";
 
 /**
  * The licences of the packages a detector takes in.
@@ -301,7 +301,7 @@ function copyrightLines(files: LicenseFile[]): string[] {
  * package.json names it and a licence file is its text. Of `A OR B` the first
  * branch that passes this way is taken.
  */
-export function readLicensing(declared: string, own: FileMap): Licensing {
+export function readLicensing(declared: string, own: PackageFiles): Licensing {
   const texts: LicenseFile[] = [];
   const notices: LicenseFile[] = [];
   for (const name of Object.keys(own).sort()) {

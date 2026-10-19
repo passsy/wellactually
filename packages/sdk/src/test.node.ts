@@ -23,7 +23,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { answerDetect, detectorRunner, type BuiltPrinciple, type FileMap } from "@wellactually/core/node";
+import { answerDetect, detectorRunner, type BuiltPrinciple, type PrincipleFiles } from "@wellactually/core/node";
 import type { DetectOptions } from "./events.ts";
 import type { Ctx, Finding } from "./index.ts";
 
@@ -48,7 +48,7 @@ const self = fileURLToPath(import.meta.url);
 
 interface Prepared {
   built: BuiltPrinciple;
-  files: FileMap;
+  files: PrincipleFiles;
 }
 
 const prepared = new Map<string, Prepared>();

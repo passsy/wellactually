@@ -3,14 +3,14 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { scaffoldFiles, type PackageInfo } from "@wellactually/core/node";
-import { writeFileMap } from "../src/board/files.ts";
+import { writePrincipleFiles } from "../src/board/files.ts";
 import { ApprovalError, publishPrinciple } from "../src/commands.ts";
 
 /** A principle on disk whose detector imports a package under the GPL, installed next to it. */
 function principleWithCopyleft(): string {
   const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "wa-publish-")), "name-the-port");
   const files = scaffoldFiles("name-the-port");
-  writeFileMap(dir, {
+  writePrincipleFiles(dir, {
     ...files,
     "detector.ts": `import { strict } from "copyleft";\nstrict("loaded");\n${files["detector.ts"] ?? ""}`,
     "package.json": JSON.stringify({ dependencies: { copyleft: "2.0.1" } }),
