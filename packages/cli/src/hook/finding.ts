@@ -34,11 +34,22 @@ function describePlace(ctx: Pick<Ctx, "file" | "text">, finding: Finding): strin
   if (finding.line === undefined) {
     return match;
   }
-  const lines = ctx.file?.lines ?? ctx.text.split("\n");
-  const text = (lines[finding.line - 1] ?? "").trim();
+  const text = lineText(ctx, finding).trim();
   const quoted = text.length > MAX_QUOTED_LENGTH ? `${text.slice(0, MAX_QUOTED_LENGTH)}…` : text;
-  const where = finding.endLine === undefined ? `line ${finding.line}` : `lines ${finding.line}-${finding.endLine}`;
+  // A removed line is not in the file any more. Its number is the one it had before.
+  const kind = finding.removed === true ? "removed line" : "line";
+  const where = finding.endLine === undefined ? `${kind} ${finding.line}` : `${kind}s ${finding.line}-${finding.endLine}`;
   // A match that is the whole line would only repeat it.
   const named = match !== null && finding.match !== text ? `${where}, ${match}` : where;
   return quoted === "" ? named : `${named}: ${quoted}`;
+}
+
+/** The text of the line a finding names: in the file, in what a command printed, or among the removed lines. */
+function lineText(ctx: Pick<Ctx, "file" | "text">, finding: Finding): string {
+  if (finding.removed === true) {
+    const removed = ctx.file?.removed.find((line) => line.line === finding.line);
+    return removed?.text ?? "";
+  }
+  const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  return lines[(finding.line ?? 1) - 1] ?? "";
 }

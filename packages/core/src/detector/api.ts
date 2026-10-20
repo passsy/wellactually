@@ -24,7 +24,7 @@ import { fsHost, type ProjectFiles } from "./project.ts";
  */
 
 /** The oldest version this host still runs. Raise it to retire one, and delete its step. */
-export const MIN_API_VERSION = 3;
+export const MIN_API_VERSION: number = 3;
 
 /** The version a principle was built against. Principles from before versions were recorded are version 1. */
 export function apiOf(manifest: { api?: number }): number {
@@ -50,7 +50,16 @@ export function unsupported(api: number): string | null {
  * the event of version `n - 1`. A detector of an old version gets today's
  * event walked down, step by step, so a new version only ever adds one step.
  */
-const DOWNGRADE: Record<number, (ctx: never) => unknown> = {};
+const DOWNGRADE: Record<number, (ctx: never) => unknown> = {
+  // Version 4 added the lines a write removed and the `delete` event. A detector of version 3 has no handler for a deletion, so it is never asked about one.
+  4: (ctx: Ctx) => {
+    if (ctx.file === null) {
+      return ctx;
+    }
+    const { removed: _, ...file } = ctx.file;
+    return { ...ctx, file };
+  },
+};
 
 /** Today's event as a detector of version `api` expects it. */
 export function ctxFor(api: number, ctx: Ctx): unknown {

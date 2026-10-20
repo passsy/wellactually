@@ -19,7 +19,7 @@
 import type { Ctx, Finding } from "./index.ts";
 import type { DetectOptions } from "./events.ts";
 
-export { command, edit, output, prompt, read, source, write, type DetectOptions } from "./events.ts";
+export { command, deleted, edit, output, prompt, read, source, write, type DetectOptions, type EditChange } from "./events.ts";
 
 interface Host {
   __detect?: (call: string) => string;

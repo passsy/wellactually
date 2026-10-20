@@ -121,7 +121,7 @@ A principle is a directory, and its name is the principle's id:
 ```text
 avoid-late/
   principle.md      the advice: a heading, one sentence of summary, then the rest
-  detector.ts       a handler per event it reacts to: onWrite, onRead, onPrompt, onCommand, onOutput
+  detector.ts       a handler per event it reacts to: onWrite, onRead, onDelete, onPrompt, onCommand, onOutput
   detector.test.ts  the tests: what the detector reports for an event
 ```
 
@@ -140,8 +140,10 @@ npm install --save-dev github:passsy/wellactually#sdk vitest
 
 `npm test` then runs the principles' tests with vitest.
 
-A detector may import `@wellactually/sdk/v3`, which is in `packages/sdk`, its own files, and packages from npm that its `package.json` names.
-The `v3` is the detector API version it is written against.
+A detector may import `@wellactually/sdk/v4`, which is in `packages/sdk`, its own files, and packages from npm that its `package.json` names.
+The `v4` is the detector API version it is written against.
+Version 4 added the lines a write removed, `event.removed`, and `onDelete` for a deleted file.
+A principle written against `v3` keeps running as it was.
 
 ## What is in here
 

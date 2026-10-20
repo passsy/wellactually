@@ -8,7 +8,7 @@ import { claimReport, recordDetections } from "../board/detections.ts";
 import { type HookPayload, eventsOf } from "./payload.ts";
 import { DetectorPool } from "../board/pool.ts";
 import { boardOffIn, switchedOff } from "../board/switches.ts";
-import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, snapshotRepos, sweepSnapshots } from "./turn.ts";
+import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, snapshotContent, snapshotRepos, sweepSnapshots } from "./turn.ts";
 import { excerpt, type HookLogEntry, someFindings } from "./hook-log.ts";
 import { noteToolUse } from "../registry/rater.ts";
 import { agentOf, updateNotice } from "../update.ts";
@@ -80,12 +80,12 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
   if (log && turn && turn.failures.length > 0) {
     log.repos = turn.failures;
   }
-  const all = eventsOf(payload, readText, turn);
+  const all = eventsOf(payload, readText, turn, (file) => readSnapshot(payload, file));
   // The switch belongs to the project the file is in, which need not be the one the session started in.
   const events = all.filter((ctx) => boardOffIn(ctx.file ? path.dirname(ctx.file.path) : (payload.cwd ?? process.cwd())) === null);
   if (event === "PostToolUse" && payload.session_id && !SHELL_TOOLS.has(payload.tool_name ?? "")) {
     // A file tool reported its file already, so the next look after a shell command must not report it again.
-    const written = events.flatMap((ctx) => (ctx.event === "write" && ctx.file ? [ctx.file.path] : []));
+    const written = events.flatMap((ctx) => ((ctx.event === "write" || ctx.event === "delete") && ctx.file ? [ctx.file.path] : []));
     if (written.length > 0) {
       absorbWrites(payload.session_id, written);
     }
@@ -128,6 +128,7 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
       event: ctx.event,
       file: ctx.file?.path,
       written: ctx.event === "write" ? ctx.file?.written.map((written) => written.line) : undefined,
+      removed: ctx.event === "write" && ctx.file && ctx.file.removed.length > 0 ? ctx.file.removed.map((removed) => removed.line) : undefined,
       command: excerpt(ctx.command),
       text: ctx.file ? undefined : excerpt(ctx.event === "command" ? null : ctx.text),
       detectors: run.detectors.map((detector) => ({
@@ -236,6 +237,21 @@ function workerFile(): string {
   const main = process.argv[1] as string;
   const beside = [path.join(path.dirname(main), "wellactually-worker.mjs"), path.join(path.dirname(main), "worker.ts")];
   return beside.find((file) => fs.existsSync(file)) ?? main;
+}
+
+/**
+ * A file as the session's last look at its repository saw it: before the
+ * file tool that just ran. Null when the repositories are not followed.
+ */
+function readSnapshot(payload: HookPayload, file: string): string | null {
+  if (!payload.session_id || process.env.WELLACTUALLY_GIT === "0" || payload.hook_event_name !== "PostToolUse") {
+    return null;
+  }
+  const content = snapshotContent(payload.session_id, file);
+  if (content === null || content.length > MAX_FILE_BYTES || content.includes("\0")) {
+    return null;
+  }
+  return content;
 }
 
 function readText(file: string): string | null {

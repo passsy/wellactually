@@ -1,7 +1,6 @@
-import fs from "node:fs";
 import path from "node:path";
 import { type HookPayload } from "../hook/payload.ts";
-import { Pending, callHook, command, pluginRoot, updateNoticeFor } from "./bridge.ts";
+import { Pending, callHook, command, contentBefore, fileResponse, pluginRoot, updateNoticeFor } from "./bridge.ts";
 import { McpClient } from "./mcp-client.ts";
 
 /**
@@ -34,8 +33,11 @@ export function piText(content: unknown): string {
 /**
  * The Claude Code payload for a pi tool call: before it runs when `output` is
  * undefined, after it ran otherwise. Null when no detector looks at this tool.
+ *
+ * `before` is the file the call writes as it was before the call ran: null
+ * when it was not there, undefined when that is not known.
  */
-export function piPayload(call: PiCall, base: { session_id: string; cwd: string; transcript_path?: string }, output?: string, existed?: boolean): HookPayload | null {
+export function piPayload(call: PiCall, base: { session_id: string; cwd: string; transcript_path?: string }, output?: string, before?: string | null): HookPayload | null {
   const { toolName: tool, input } = call;
   const common = { ...base, tool_use_id: call.toolCallId };
   if (output === undefined) {
@@ -53,11 +55,11 @@ export function piPayload(call: PiCall, base: { session_id: string; cwd: string;
     return { ...post, tool_name: "Read", tool_input: { file_path: file } };
   }
   if (tool === "write") {
-    return { ...post, tool_name: "Write", tool_input: { file_path: file }, tool_response: { type: existed === false ? "create" : "update" } };
+    return { ...post, tool_name: "Write", tool_input: { file_path: file }, tool_response: fileResponse(before) };
   }
   if (tool === "edit") {
     const edits = Array.isArray(input.edits) ? (input.edits as Record<string, unknown>[]) : [input];
-    return { ...post, tool_name: "MultiEdit", tool_input: { file_path: file, edits: edits.map((edit) => ({ new_string: str(edit.newText) ?? "" })) } };
+    return { ...post, tool_name: "MultiEdit", tool_input: { file_path: file, edits: edits.map((edit) => ({ new_string: str(edit.newText) ?? "" })) }, tool_response: fileResponse(before) };
   }
   return null;
 }
@@ -94,7 +96,7 @@ export default async function wellactually(pi: PiApi): Promise<void> {
     transcript_path: ctx.sessionManager.getSessionFile(),
   });
   const pending = new Pending();
-  const existed = new Map<string, boolean>();
+  const was = new Map<string, string | null | undefined>();
 
   pi.on("session_start", (_event, ctx) => {
     void callHook({ ...base(ctx), hook_event_name: "SessionStart" });
@@ -120,8 +122,8 @@ export default async function wellactually(pi: PiApi): Promise<void> {
   });
 
   pi.on("tool_call", async (event: PiCall, ctx) => {
-    if (event.toolName === "write" && str(event.input.path)) {
-      existed.set(event.toolCallId, fs.existsSync(path.resolve(ctx.cwd, (event.input.path as string).replace(/^@/, ""))));
+    if ((event.toolName === "write" || event.toolName === "edit") && str(event.input.path)) {
+      was.set(event.toolCallId, contentBefore(path.resolve(ctx.cwd, (event.input.path as string).replace(/^@/, ""))));
     }
     const payload = piPayload(event, base(ctx));
     if (payload) {
@@ -131,9 +133,9 @@ export default async function wellactually(pi: PiApi): Promise<void> {
 
   pi.on("tool_result", async (event: PiCall & { content: unknown; isError?: boolean }, ctx) => {
     const held = pending.take(event.toolCallId);
-    const wasThere = existed.get(event.toolCallId);
-    existed.delete(event.toolCallId);
-    const payload = event.isError ? null : piPayload(event, base(ctx), piText(event.content), wasThere);
+    const before = was.get(event.toolCallId);
+    was.delete(event.toolCallId);
+    const payload = event.isError ? null : piPayload(event, base(ctx), piText(event.content), before);
     const advice = [held, payload ? await callHook(payload) : ""].filter((text) => text !== "").join("\n\n");
     if (advice === "") {
       return undefined;

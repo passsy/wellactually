@@ -3740,7 +3740,7 @@ function loadSandbox() {
 }
 
 // packages/sdk/src/index.ts
-var API_VERSION = 3;
+var API_VERSION = 4;
 
 // packages/core/src/build/licenses.ts
 var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
@@ -3831,7 +3831,16 @@ function unsupported(api) {
   }
   return null;
 }
-var DOWNGRADE = {};
+var DOWNGRADE = {
+  // Version 4 added the lines a write removed and the `delete` event. A detector of version 3 has no handler for a deletion, so it is never asked about one.
+  4: (ctx) => {
+    if (ctx.file === null) {
+      return ctx;
+    }
+    const { removed: _, ...file } = ctx.file;
+    return { ...ctx, file };
+  }
+};
 function ctxFor(api, ctx) {
   let event = ctx;
   for (let version = API_VERSION; version > api; version--) {
@@ -3974,6 +3983,21 @@ function existingFile(file, ctx, project) {
   const exists = absolute === ctx.file?.path || project !== null && project.stat(absolute) !== null;
   return exists ? fromRoot(absolute, ctx.project) : null;
 }
+function everyLine(first, last, textOn) {
+  for (let line = first; line <= last; line++) {
+    if (textOn(line) === void 0) {
+      return false;
+    }
+  }
+  return true;
+}
+function linesFrom(first, last, textOn) {
+  const texts = [];
+  for (let line = first; line <= last; line++) {
+    texts.push(textOn(line) ?? "");
+  }
+  return texts;
+}
 function hasLines(ctx) {
   return ctx.file !== null || ctx.event === "output";
 }
@@ -3990,6 +4014,7 @@ function validateFindings(json, ctx, project = null) {
     return { findings, dropped: ["the detector did not return a list of findings"] };
   }
   const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  const removed = new Map((ctx.file?.removed ?? []).map((line) => [line.line, line.text]));
   for (const raw of parsed) {
     if (findings.length >= MAX_FINDINGS) {
       dropped.push(`more than ${MAX_FINDINGS} findings; the rest were dropped`);
@@ -4001,21 +4026,40 @@ function validateFindings(json, ctx, project = null) {
     }
     const candidate = raw;
     const finding = {};
+    const onRemoved = candidate.removed === true;
+    if (candidate.removed !== void 0 && typeof candidate.removed !== "boolean") {
+      dropped.push(`the removed of a finding, which is true or false: ${quoted(candidate.removed)}`);
+    } else if (onRemoved && candidate.line === void 0) {
+      dropped.push("the removed of a finding without a line");
+    }
+    const textOn = (line) => {
+      if (onRemoved) {
+        return removed.get(line);
+      }
+      return lines[line - 1];
+    };
     if (candidate.line !== void 0) {
       const line = candidate.line;
       if (!hasLines(ctx)) {
         dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
-      } else if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lines.length) {
-        dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+      } else if (typeof line !== "number" || !Number.isInteger(line) || textOn(line) === void 0) {
+        if (onRemoved) {
+          dropped.push(`line ${quoted(line)} of a finding, which the agent did not remove`);
+        } else {
+          dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+        }
       } else {
         finding.line = line;
+        if (onRemoved) {
+          finding.removed = true;
+        }
       }
     }
     if (candidate.endLine !== void 0) {
       const endLine = candidate.endLine;
       if (finding.line === void 0) {
         dropped.push("the endLine of a finding without a line");
-      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || endLine > lines.length) {
+      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || !everyLine(finding.line, endLine, textOn)) {
         dropped.push(`endLine ${quoted(endLine)} of a finding on line ${finding.line}`);
       } else if (endLine > finding.line) {
         finding.endLine = endLine;
@@ -4023,7 +4067,7 @@ function validateFindings(json, ctx, project = null) {
     }
     if (candidate.match !== void 0) {
       const match = typeof candidate.match === "string" ? candidate.match.trim() : "";
-      const scope = finding.line === void 0 ? [ctx.text] : lines.slice(finding.line - 1, finding.endLine ?? finding.line);
+      const scope = finding.line === void 0 ? [ctx.text, ...removed.values()] : linesFrom(finding.line, finding.endLine ?? finding.line, textOn);
       if (match === "") {
         dropped.push("an empty match");
       } else if (match.includes("\n")) {

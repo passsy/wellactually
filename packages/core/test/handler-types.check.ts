@@ -65,3 +65,5 @@ onWrite({ *detect(event) { yield { line: 1, file: "assets/hero.jpg" }; yield { f
 onCommand({ *detect(event) { yield { file: "hero.jpg", match: event.command }; } });
 // @ts-expect-error a file is a path
 onOutput({ *detect() { yield { file: 1 }; } });
+// @ts-expect-error removed lines came with version 4
+onWrite({ detect: (event) => event.removed });

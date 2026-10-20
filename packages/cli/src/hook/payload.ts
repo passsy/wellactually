@@ -1,6 +1,6 @@
 import path from "node:path";
-import { fileCtx, locateWritten, textCtx, type Ctx, type Where, type Written } from "@wellactually/sdk";
-import type { TurnDiff } from "./turn.ts";
+import { fileCtx, locateWritten, textCtx, type Change, type Ctx, type Where, type Written } from "@wellactually/sdk";
+import { removedLines, type TurnDiff } from "./turn.ts";
 import { projectRootOf, toPosix } from "../board/files.ts";
 
 /** The fields of a Claude Code or Codex hook payload this host reads. */
@@ -32,7 +32,8 @@ export interface HookPayload {
   };
   /**
    * What the tool answered. Claude Code says here whether a Write created the
-   * file, and what a shell command printed. Some hosts answer a command with plain text.
+   * file, what a file was before a Write or an Edit, and what a shell command
+   * printed. Some hosts answer a command with plain text.
    */
   tool_response?: { type?: string; originalFile?: string | null; stdout?: string; stderr?: string; output?: string } | string | null;
 }
@@ -62,7 +63,9 @@ function printed(response: HookPayload["tool_response"]): string {
  * what it printed; a payload that is none of a detector's business is none.
  *
  * `readFile` gets an absolute path and returns the file as it is after the
- * tool ran, or null when it cannot be read as text.
+ * tool ran, or null when it cannot be read as text. `readBefore` returns it
+ * as it was before, when the agent did not say so itself, or null when that
+ * is not known. What a file tool removed is the difference.
  *
  * Where an event happened is worked out for each file, from the file. The
  * session's working directory only stands in when there is no file: for a
@@ -71,9 +74,9 @@ function printed(response: HookPayload["tool_response"]): string {
  * `turn` is what changed in the session's git repositories while a shell
  * command ran. Each changed file is written like one from Write, whichever
  * program wrote it. What a command writes outside a git repository is not
- * seen.
+ * seen. A file a shell command deleted there is a `delete` event.
  */
-export function eventsOf(payload: HookPayload, readFile: (absolute: string) => string | null, turn?: TurnDiff): Ctx[] {
+export function eventsOf(payload: HookPayload, readFile: (absolute: string) => string | null, turn?: TurnDiff, readBefore: (absolute: string) => string | null = () => null): Ctx[] {
   const event = payload.hook_event_name ?? "";
   const tool = payload.tool_name ?? "";
   const input = payload.tool_input ?? {};
@@ -82,9 +85,24 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
     const root = projectRootOf(cwd);
     return root === null ? null : toPosix(root);
   };
-  const file = (kind: "write" | "read", absolute: string, content: string, written?: Written[], isNew = false): Ctx => {
+  const file = (kind: "write" | "read" | "delete", absolute: string, content: string, change: Change = {}, isNew = false): Ctx => {
     const { relativePath, where } = locate(absolute, cwd);
-    return fileCtx(kind, relativePath, content, written, { ...where, isNew });
+    return fileCtx(kind, relativePath, content, change, { ...where, isNew });
+  };
+  const response = typeof payload.tool_response === "string" ? null : payload.tool_response;
+  // What the file was before this tool ran: as the agent reports it, or as the last look at its repository saw it.
+  const before = (absolute: string): string | null => {
+    if (typeof response?.originalFile === "string") {
+      return response.originalFile;
+    }
+    return readBefore(absolute);
+  };
+  const removedFrom = (absolute: string, content: string): Written[] => {
+    const was = before(absolute);
+    if (was === null) {
+      return [];
+    }
+    return removedLines(was, content);
   };
 
   if (event === "UserPromptSubmit") {
@@ -104,20 +122,34 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
   if (SHELL_TOOLS.has(tool)) {
     const command = input.command ?? input.cmd ?? "";
     // A file the command changed, like `dart run build_runner build` does, is written like one from Write.
-    const writes = (turn?.writes ?? []).flatMap(({ file: absolute, written, isNew }) => {
+    const writes = (turn?.writes ?? []).flatMap(({ file: absolute, written, removed, isNew }) => {
       const content = readFile(absolute);
-      return content === null ? [] : [file("write", absolute, content, written, isNew)];
+      return content === null ? [] : [file("write", absolute, content, { written, removed }, isNew)];
     });
+    const deletes = (turn?.deletes ?? []).map(({ file: absolute, content }) => file("delete", absolute, content));
     const text = printed(payload.tool_response).slice(0, MAX_OUTPUT_LENGTH);
-    return text.trim() === "" ? writes : [...writes, textCtx("output", text, sessionRoot(), command, toPosix(cwd))];
+    return text.trim() === "" ? [...writes, ...deletes] : [...writes, ...deletes, textCtx("output", text, sessionRoot(), command, toPosix(cwd))];
   }
 
   if (tool === "apply_patch") {
-    return patchedFiles(input.command ?? input.patch ?? "").flatMap(({ file: patched, added, isNew }) => {
+    return patchedFiles(input.command ?? input.patch ?? "").flatMap(({ file: patched, from, added, isNew, isDeleted }) => {
       const absolute = path.resolve(cwd, patched);
+      if (isDeleted) {
+        // The patch does not say what the file held. The last look at its repository may.
+        const was = readBefore(absolute);
+        return was === null ? [] : [file("delete", absolute, was)];
+      }
       // A new file that is not on disk is still fully described by its patch.
       const content = readFile(absolute) ?? (isNew ? added.join("\n") : null);
-      return content === null || added.length === 0 ? [] : [file("write", absolute, content, locateWritten(content, added), isNew)];
+      if (content === null) {
+        return [];
+      }
+      const was = isNew ? null : readBefore(path.resolve(cwd, from));
+      const removed = was === null ? [] : removedLines(was, content);
+      if (added.length === 0 && removed.length === 0) {
+        return [];
+      }
+      return [file("write", absolute, content, { written: locateWritten(content, added), removed }, isNew)];
     });
   }
 
@@ -133,15 +165,17 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
     return [file("read", absolute, content)];
   }
   if (tool === "Write") {
-    const response = typeof payload.tool_response === "string" ? null : payload.tool_response;
     const created = response?.type === "create" || (response !== null && response !== undefined && "originalFile" in response && response.originalFile === null);
-    return [file("write", absolute, content, undefined, created)];
+    if (created) {
+      return [file("write", absolute, content, {}, true)];
+    }
+    return [file("write", absolute, content, { removed: removedFrom(absolute, content) })];
   }
   if (!EDIT_TOOLS.has(tool)) {
     return [];
   }
   const fragments = tool === "Edit" ? [input.new_string ?? ""] : (input.edits ?? []).map((edit) => edit.new_string ?? "");
-  return [file("write", absolute, content, locateWritten(content, fragments))];
+  return [file("write", absolute, content, { written: locateWritten(content, fragments), removed: removedFrom(absolute, content) })];
 }
 
 /**
@@ -164,16 +198,20 @@ function locate(absolute: string, cwd: string): { relativePath: string; where: W
 interface PatchedFile {
   /** Where the file is after the patch. */
   file: string;
+  /** Where the file was before the patch, which differs when it moved. */
+  from: string;
   /** Each run of consecutive `+` lines, as one piece of text. */
   added: string[];
   isNew: boolean;
+  isDeleted: boolean;
 }
 
 /**
- * The files a Codex `apply_patch` body adds or updates, with the text it adds to each.
+ * The files a Codex `apply_patch` body adds, updates or deletes, with the text it adds to each.
  *
  * Only the `+` lines are what the agent wrote. Context lines and removed
- * lines were there before, and a deleted file leaves nothing to judge.
+ * lines were there before. What was removed is found by comparing the file
+ * with what it was, because a patch does not say where its lines were.
  */
 function patchedFiles(patch: string): PatchedFile[] {
   const files: PatchedFile[] = [];
@@ -190,10 +228,9 @@ function patchedFiles(patch: string): PatchedFile[] {
     const header = /^\*\*\* (Add|Update|Delete) File: (.+)$/.exec(line);
     if (header) {
       endRun();
-      current = header[1] === "Delete" ? null : { file: (header[2] ?? "").trim(), added: [], isNew: header[1] === "Add" };
-      if (current) {
-        files.push(current);
-      }
+      const named = (header[2] ?? "").trim();
+      current = { file: named, from: named, added: [], isNew: header[1] === "Add", isDeleted: header[1] === "Delete" };
+      files.push(current);
       continue;
     }
     const moved = /^\*\*\* Move to: (.+)$/.exec(line);

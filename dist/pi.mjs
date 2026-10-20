@@ -134,7 +134,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs3 = require2("node:fs");
+    var fs2 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -3678,11 +3678,10 @@ var init_module_ES6BEMUI = __esm({
 });
 
 // packages/cli/src/agents/pi.ts
-import fs2 from "node:fs";
 import path3 from "node:path";
 
 // packages/sdk/src/index.ts
-var API_VERSION = 3;
+var API_VERSION = 4;
 
 // packages/core/src/node.ts
 import { createRequire } from "node:module";
@@ -3782,12 +3781,48 @@ async function loadEsbuild() {
 // packages/cli/src/board/files.ts
 var MAX_READ_BYTES = 512 * 1024;
 
+// packages/cli/src/board/board.ts
+var SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+
+// packages/cli/src/hook/turn.ts
+var SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // packages/cli/src/agents/bridge.ts
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path2 from "node:path";
 import { fileURLToPath } from "node:url";
 var HOOK_TIMEOUT_MS = 1e4;
+var MAX_BEFORE_BYTES = 512 * 1024;
+function contentBefore(file) {
+  let stat;
+  try {
+    stat = fs.statSync(file);
+  } catch {
+    return null;
+  }
+  if (!stat.isFile() || stat.size > MAX_BEFORE_BYTES) {
+    return void 0;
+  }
+  try {
+    const content = fs.readFileSync(file, "utf8");
+    if (content.includes("\0")) {
+      return void 0;
+    }
+    return content;
+  } catch {
+    return void 0;
+  }
+}
+function fileResponse(before) {
+  if (before === null) {
+    return { type: "create", originalFile: null };
+  }
+  if (before === void 0) {
+    return { type: "update" };
+  }
+  return { type: "update", originalFile: before };
+}
 function pluginRoot() {
   return path2.resolve(path2.dirname(fileURLToPath(import.meta.url)), "..");
 }
@@ -4001,7 +4036,7 @@ function str(value) {
 function piText(content) {
   return Array.isArray(content) ? content.map((part) => part.type === "text" && typeof part.text === "string" ? part.text : "").join("\n") : "";
 }
-function piPayload(call, base, output, existed) {
+function piPayload(call, base, output, before) {
   const { toolName: tool, input } = call;
   const common = { ...base, tool_use_id: call.toolCallId };
   if (output === void 0) {
@@ -4019,11 +4054,11 @@ function piPayload(call, base, output, existed) {
     return { ...post, tool_name: "Read", tool_input: { file_path: file } };
   }
   if (tool === "write") {
-    return { ...post, tool_name: "Write", tool_input: { file_path: file }, tool_response: { type: existed === false ? "create" : "update" } };
+    return { ...post, tool_name: "Write", tool_input: { file_path: file }, tool_response: fileResponse(before) };
   }
   if (tool === "edit") {
     const edits = Array.isArray(input.edits) ? input.edits : [input];
-    return { ...post, tool_name: "MultiEdit", tool_input: { file_path: file, edits: edits.map((edit) => ({ new_string: str(edit.newText) ?? "" })) } };
+    return { ...post, tool_name: "MultiEdit", tool_input: { file_path: file, edits: edits.map((edit) => ({ new_string: str(edit.newText) ?? "" })) }, tool_response: fileResponse(before) };
   }
   return null;
 }
@@ -4037,7 +4072,7 @@ async function wellactually(pi) {
     transcript_path: ctx.sessionManager.getSessionFile()
   });
   const pending = new Pending();
-  const existed = /* @__PURE__ */ new Map();
+  const was = /* @__PURE__ */ new Map();
   pi.on("session_start", (_event, ctx) => {
     void callHook({ ...base(ctx), hook_event_name: "SessionStart" });
     if (ctx.hasUI) {
@@ -4059,8 +4094,8 @@ async function wellactually(pi) {
     return advice === "" ? void 0 : { message: { customType: "wellactually", content: advice, display: false } };
   });
   pi.on("tool_call", async (event, ctx) => {
-    if (event.toolName === "write" && str(event.input.path)) {
-      existed.set(event.toolCallId, fs2.existsSync(path3.resolve(ctx.cwd, event.input.path.replace(/^@/, ""))));
+    if ((event.toolName === "write" || event.toolName === "edit") && str(event.input.path)) {
+      was.set(event.toolCallId, contentBefore(path3.resolve(ctx.cwd, event.input.path.replace(/^@/, ""))));
     }
     const payload = piPayload(event, base(ctx));
     if (payload) {
@@ -4069,9 +4104,9 @@ async function wellactually(pi) {
   });
   pi.on("tool_result", async (event, ctx) => {
     const held = pending.take(event.toolCallId);
-    const wasThere = existed.get(event.toolCallId);
-    existed.delete(event.toolCallId);
-    const payload = event.isError ? null : piPayload(event, base(ctx), piText(event.content), wasThere);
+    const before = was.get(event.toolCallId);
+    was.delete(event.toolCallId);
+    const payload = event.isError ? null : piPayload(event, base(ctx), piText(event.content), before);
     const advice = [held, payload ? await callHook(payload) : ""].filter((text) => text !== "").join("\n\n");
     if (advice === "") {
       return void 0;

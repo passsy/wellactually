@@ -302,7 +302,7 @@ export function answerDetect(
   const { event, options } = (typeof call === "object" && call !== null ? call : {}) as { event?: unknown; options?: { project?: unknown } };
   const ctx = eventCtx(event);
   if (!ctx) {
-    return { error: "detect() needs an event from write(), edit(), read(), prompt(), command() or output()" };
+    return { error: "detect() needs an event from write(), edit(), read(), deleted(), prompt(), command() or output()" };
   }
   const fixture = options?.project;
   if (fixture !== undefined && typeof fixture !== "string") {
@@ -312,8 +312,8 @@ export function answerDetect(
   if (projectFiles === null) {
     return { error: `detect(): the principle has no folder "${fixture}" to use as the project` };
   }
-  if (ctx.file) {
-    // After a write or a read the file is on the disk, so it is in the project too.
+  if (ctx.file && ctx.event !== "delete") {
+    // After a write or a read the file is on the disk, so it is in the project too. After a deletion it is gone.
     projectFiles[ctx.file.relativePath] = ctx.file.content;
   }
 
@@ -362,8 +362,8 @@ function filesBelow(files: PrincipleFiles, folder: string): ProjectContents | nu
  * Rebuilds the event a test passed to `detect`.
  *
  * It arrives as JSON from code the host does not trust. Only what defines an
- * event is taken from it (kind, path, content, which lines were written,
- * whether the file is new) and everything else is derived again, so a
+ * event is taken from it (kind, path, content, which lines were written and
+ * removed, whether the file is new) and everything else is derived again, so a
  * detector under test sees an event with the same guarantees as one from a
  * session. The project root is always `TEST_ROOT`, whatever the event claims.
  */
@@ -371,7 +371,7 @@ function eventCtx(raw: unknown): Ctx | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
   }
-  const event = raw as { event?: unknown; text?: unknown; command?: unknown; file?: { relativePath?: unknown; content?: unknown; written?: unknown; isNew?: unknown } | null };
+  const event = raw as { event?: unknown; text?: unknown; command?: unknown; file?: { relativePath?: unknown; content?: unknown; written?: unknown; removed?: unknown; isNew?: unknown } | null };
   if (event.event === "prompt" || event.event === "command") {
     return typeof event.text === "string" ? textCtx(event.event, event.text) : null;
   }
@@ -379,7 +379,7 @@ function eventCtx(raw: unknown): Ctx | null {
     return typeof event.text === "string" && typeof event.command === "string" ? textCtx("output", event.text, undefined, event.command) : null;
   }
   const relativePath = event.file?.relativePath;
-  if ((event.event !== "write" && event.event !== "read") || typeof relativePath !== "string" || typeof event.file?.content !== "string") {
+  if ((event.event !== "write" && event.event !== "read" && event.event !== "delete") || typeof relativePath !== "string" || typeof event.file?.content !== "string") {
     return null;
   }
   if (relativePath === "" || relativePath.split("/").includes("..")) {
@@ -390,7 +390,12 @@ function eventCtx(raw: unknown): Ctx | null {
     .map((entry: unknown) => (entry as { line?: unknown } | null)?.line)
     .filter((line): line is number => typeof line === "number" && Number.isInteger(line) && line >= 1 && line <= lines.length)
     .map((line) => ({ line, text: lines[line - 1] ?? "" }));
-  return fileCtx(event.event, relativePath, event.file.content, written, { isNew: event.file.isNew === true });
+  // A removed line is not in the file any more, so its text is taken as the test passed it, one line of it.
+  const removed = (Array.isArray(event.file.removed) ? event.file.removed : [])
+    .map((entry: unknown) => entry as { line?: unknown; text?: unknown } | null)
+    .filter((entry): entry is { line: number; text: string } => typeof entry?.line === "number" && Number.isInteger(entry.line) && entry.line >= 1 && typeof entry.text === "string" && !entry.text.includes("\n"))
+    .map((entry) => ({ line: entry.line, text: entry.text }));
+  return fileCtx(event.event, relativePath, event.file.content, { written, removed }, { isNew: event.file.isNew === true });
 }
 
 /** Whether a principle directory has the file that makes it one. The detector is optional. */

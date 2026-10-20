@@ -15,6 +15,46 @@ import { type HookPayload } from "../hook/payload.ts";
 /** How long a hook may take before the agent goes on without its advice, as in hooks.json. */
 const HOOK_TIMEOUT_MS = 10_000;
 
+/** A file larger than this is not kept from before a tool changes it. The hook does not read it either. */
+const MAX_BEFORE_BYTES = 512 * 1024;
+
+/**
+ * A file as it is before a tool changes it, so the hook can tell what the
+ * tool removed: its text, null when it is not there, or undefined when it
+ * cannot be read as text.
+ */
+export function contentBefore(file: string): string | null | undefined {
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(file);
+  } catch {
+    return null;
+  }
+  if (!stat.isFile() || stat.size > MAX_BEFORE_BYTES) {
+    return undefined;
+  }
+  try {
+    const content = fs.readFileSync(file, "utf8");
+    if (content.includes("\0")) {
+      return undefined;
+    }
+    return content;
+  } catch {
+    return undefined;
+  }
+}
+
+/** What a file tool answered, the way Claude Code says it: whether it created the file, and what the file was before. */
+export function fileResponse(before: string | null | undefined): { type: "create" | "update"; originalFile?: string | null } {
+  if (before === null) {
+    return { type: "create", originalFile: null };
+  }
+  if (before === undefined) {
+    return { type: "update" };
+  }
+  return { type: "update", originalFile: before };
+}
+
 /**
  * The plugin's root: the folder above the built plugin file, which holds
  * dist/wellactually.mjs, skills/ and the rest of the repository.

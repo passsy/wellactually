@@ -27,10 +27,22 @@ const built = await buildPrinciple({
 });
 fs.writeFileSync(frozen, `${JSON.stringify({ manifest: built.manifest, bundle: built.bundle }, null, 2)}\n`);
 
-const file = fileCtx("write", "lib/a.dart", "a");
+// A write that removed a line, so the shape says what a removed line is.
+const file = fileCtx("write", "lib/a.dart", "a", { removed: [{ line: 1, text: "b" }] });
 const environment = environmentFor(API_VERSION, file, null);
 fs.writeFileSync(
   shape,
-  `${JSON.stringify({ file: shapeOf(file), text: shapeOf(textCtx("prompt", "a")), output: shapeOf(textCtx("output", "a", undefined, "b")), globals: Object.keys(environment.strings).sort(), functions: Object.keys(environment.functions).sort() }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      file: shapeOf(file),
+      delete: shapeOf(fileCtx("delete", "lib/a.dart", "a")),
+      text: shapeOf(textCtx("prompt", "a")),
+      output: shapeOf(textCtx("output", "a", undefined, "b")),
+      globals: Object.keys(environment.strings).sort(),
+      functions: Object.keys(environment.functions).sort(),
+    },
+    null,
+    2,
+  )}\n`,
 );
 console.log(`froze detector API ${API_VERSION} in ${path.relative(process.cwd(), dir)}`);

@@ -1,0 +1,80 @@
+{
+  "file": {
+    "command": "null",
+    "cwd": "null",
+    "event": "string",
+    "file": {
+      "content": "string",
+      "ext": "string",
+      "isNew": "boolean",
+      "lines": [
+        "string"
+      ],
+      "name": "string",
+      "path": "string",
+      "relativePath": "string",
+      "removed": [
+        {
+          "line": "number",
+          "text": "string"
+        }
+      ],
+      "written": [
+        {
+          "line": "number",
+          "text": "string"
+        }
+      ]
+    },
+    "project": "string",
+    "text": "string"
+  },
+  "delete": {
+    "command": "null",
+    "cwd": "null",
+    "event": "string",
+    "file": {
+      "content": "string",
+      "ext": "string",
+      "isNew": "boolean",
+      "lines": [
+        "string"
+      ],
+      "name": "string",
+      "path": "string",
+      "relativePath": "string",
+      "removed": [
+        {
+          "line": "number",
+          "text": "string"
+        }
+      ],
+      "written": []
+    },
+    "project": "string",
+    "text": "string"
+  },
+  "text": {
+    "command": "null",
+    "cwd": "string",
+    "event": "string",
+    "file": "null",
+    "project": "string",
+    "text": "string"
+  },
+  "output": {
+    "command": "string",
+    "cwd": "string",
+    "event": "string",
+    "file": "null",
+    "project": "string",
+    "text": "string"
+  },
+  "globals": [
+    "__ctx",
+    "__cwd"
+  ],
+  "functions": [
+    "__fs"
+  ]
+}

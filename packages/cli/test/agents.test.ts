@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { eventsOf, type HookPayload } from "../src/hook/payload.ts";
-import { Pending, adviceOf, nodeMissing, updateNoticeFor } from "../src/agents/bridge.ts";
+import { Pending, adviceOf, contentBefore, nodeMissing, updateNoticeFor } from "../src/agents/bridge.ts";
 import { opencodePayload } from "../src/agents/opencode.ts";
 import { piPayload } from "../src/agents/pi.ts";
 
@@ -26,6 +26,8 @@ const events = (payload: HookPayload | null) =>
         written: ctx.file?.written.map((line) => line.line) ?? null,
         isNew: ctx.file?.isNew ?? null,
       }));
+const removed = (payload: HookPayload | null) => (payload === null ? [] : eventsOf(payload, disk).map((ctx) => ctx.file?.removed.map((line) => `${line.line}:${line.text}`)));
+const before = "class User {\n  String name;\n  int age;\n}\n";
 
 describe("OpenCode", () => {
   const call = (tool: string, input: Record<string, unknown>) => ({ tool, sessionID: "ses_1", callID: "call_1", input });
@@ -41,7 +43,7 @@ describe("OpenCode", () => {
   });
 
   test("a new file from write is a new write of the whole file", () => {
-    expect(events(opencodePayload(call("write", { path: "lib/user.dart", content: file }), cwd, "Created file", false))).toEqual([
+    expect(events(opencodePayload(call("write", { path: "lib/user.dart", content: file }), cwd, "Created file", null))).toEqual([
       { event: "write", path: "lib/user.dart", text: null, written: [1, 2, 3, 4], isNew: true },
     ]);
   });
@@ -50,6 +52,13 @@ describe("OpenCode", () => {
     const expected = [{ event: "write", path: "lib/user.dart", text: null, written: [2], isNew: false }];
     expect(events(opencodePayload(call("edit", { path: "lib/user.dart", oldString: "x", newString: "  late String name;" }), cwd, "Edited"))).toEqual(expected);
     expect(events(opencodePayload(call("edit", { filePath: "lib/user.dart", oldString: "x", newString: "  late String name;" }), cwd, "Edited"))).toEqual(expected);
+  });
+
+  test("a write or an edit knows what it removed from the file as it was before", () => {
+    expect(removed(opencodePayload(call("edit", { path: "lib/user.dart", oldString: "String name;", newString: "late String name;" }), cwd, "Edited", before))).toEqual([["2:  String name;", "3:  int age;"]]);
+    expect(removed(opencodePayload(call("write", { path: "lib/user.dart", content: file }), cwd, "Wrote", before))).toEqual([["2:  String name;", "3:  int age;"]]);
+    // Not known, as for a file too large to keep.
+    expect(removed(opencodePayload(call("edit", { path: "lib/user.dart", oldString: "x", newString: "y" }), cwd, "Edited", undefined))).toEqual([[]]);
   });
 
   test("a read is a read", () => {
@@ -86,13 +95,18 @@ describe("pi", () => {
     ]);
   });
 
+  test("an edit knows what it removed from the file as it was before", () => {
+    const edit = call("edit", { path: "lib/user.dart", edits: [{ oldText: "String name;", newText: "late String name;" }] });
+    expect(removed(piPayload(edit, base, "Edited", before))).toEqual([["2:  String name;", "3:  int age;"]]);
+  });
+
   test("an edit is a write of the lines its edits wrote", () => {
     const edit = call("edit", { path: "lib/user.dart", edits: [{ oldText: "String name;", newText: "late String name;" }] });
     expect(events(piPayload(edit, base, "Edited"))).toEqual([{ event: "write", path: "lib/user.dart", text: null, written: [2], isNew: false }]);
   });
 
   test("a path pi was given with @ is the file", () => {
-    expect(events(piPayload(call("write", { path: "@lib/user.dart", content: file }), base, "Wrote", false))).toEqual([
+    expect(events(piPayload(call("write", { path: "@lib/user.dart", content: file }), base, "Wrote", null))).toEqual([
       { event: "write", path: "lib/user.dart", text: null, written: [1, 2, 3, 4], isNew: true },
     ]);
   });
@@ -133,5 +147,17 @@ describe("without Node", () => {
   test("names the agent to restart", () => {
     expect(nodeMissing("opencode-1")).toContain("restart OpenCode.");
     expect(nodeMissing("pi")).toContain("restart pi.");
+  });
+});
+
+describe("the file before a tool changes it", () => {
+  test("is its text, null when it is not there, and unknown when it is no text", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-before-"));
+    fs.writeFileSync(path.join(dir, "a.txt"), "a\n");
+    fs.writeFileSync(path.join(dir, "logo.png"), "\0PNG");
+    expect(contentBefore(path.join(dir, "a.txt"))).toBe("a\n");
+    expect(contentBefore(path.join(dir, "missing.txt"))).toBeNull();
+    expect(contentBefore(path.join(dir, "logo.png"))).toBeUndefined();
+    expect(contentBefore(dir)).toBeUndefined();
   });
 });

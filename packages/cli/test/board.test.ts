@@ -120,6 +120,9 @@ describe("what the agent is shown", () => {
     expect(describeFinding(file, { match: "late" })).toBe('"late"');
     expect(describeFinding(file, { file: "assets/hero.jpg" })).toBe("the file assets/hero.jpg");
     expect(describeFinding(file, { line: 2, file: "assets/hero.jpg" })).toBe("the file assets/hero.jpg, from line 2: late User user;");
+    const edited = fileCtx("write", "test/a_test.dart", "void main() {\n}", { written: [], removed: [{ line: 2, text: "  test('a', () {});" }, { line: 3, text: "  test('b', () {});" }] });
+    expect(describeFinding(edited, { line: 3, removed: true })).toBe("removed line 3: test('b', () {});");
+    expect(describeFinding(edited, { line: 2, endLine: 3, removed: true, match: "test(" })).toBe("removed lines 2-3, \"test(\": test('a', () {});");
     expect(describeFinding(file, { file: "lib/session.dart" })).toBe("the file lib/session.dart");
     expect(describeFinding(textCtx("command", "convert a.png hero.jpg"), { file: "hero.jpg", match: "hero.jpg" })).toBe('the file hero.jpg, from "hero.jpg"');
     expect(describeFinding(textCtx("prompt", "why late final"), {})).toBeNull();

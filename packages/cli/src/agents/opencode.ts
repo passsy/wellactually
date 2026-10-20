@@ -1,7 +1,6 @@
-import fs from "node:fs";
 import path from "node:path";
 import { type HookPayload } from "../hook/payload.ts";
-import { Pending, callHook, command, pluginRoot, readSkills, updateNoticeFor, withAdvice } from "./bridge.ts";
+import { Pending, callHook, command, contentBefore, fileResponse, pluginRoot, readSkills, updateNoticeFor, withAdvice } from "./bridge.ts";
 
 /**
  * The Well Actually plugin for OpenCode.
@@ -36,9 +35,10 @@ function fileOf(input: Record<string, unknown>): string | undefined {
  * `output` is undefined, after it ran otherwise. Null when no detector looks
  * at this tool.
  *
- * `existed` says whether a file the call writes was there before it ran.
+ * `before` is the file the call writes as it was before the call ran: null
+ * when it was not there, undefined when that is not known.
  */
-export function opencodePayload(call: OpencodeCall, cwd: string, output?: string, existed?: boolean): HookPayload | null {
+export function opencodePayload(call: OpencodeCall, cwd: string, output?: string, before?: string | null): HookPayload | null {
   const base = { session_id: call.sessionID, tool_use_id: call.callID, cwd };
   const { tool, input } = call;
   if (output === undefined) {
@@ -66,31 +66,36 @@ export function opencodePayload(call: OpencodeCall, cwd: string, output?: string
     return { ...post, tool_name: "Read", tool_input: { file_path: file } };
   }
   if (tool === "write") {
-    return { ...post, tool_name: "Write", tool_input: { file_path: file }, tool_response: { type: existed === false ? "create" : "update" } };
+    return { ...post, tool_name: "Write", tool_input: { file_path: file }, tool_response: fileResponse(before) };
   }
   if (tool === "edit") {
-    return { ...post, tool_name: "Edit", tool_input: { file_path: file, new_string: str(input.newString) ?? str(input.new_string) ?? "" } };
+    return { ...post, tool_name: "Edit", tool_input: { file_path: file, new_string: str(input.newString) ?? str(input.new_string) ?? "" }, tool_response: fileResponse(before) };
   }
   if (tool === "multiedit" && Array.isArray(input.edits)) {
     const edits = (input.edits as Record<string, unknown>[]).map((edit) => ({ new_string: str(edit.newString) ?? str(edit.new_string) ?? "" }));
-    return { ...post, tool_name: "MultiEdit", tool_input: { file_path: file, edits } };
+    return { ...post, tool_name: "MultiEdit", tool_input: { file_path: file, edits }, tool_response: fileResponse(before) };
   }
   return null;
 }
 
-/** Whether the file a write names is there yet, looked up before the write runs. */
-function exists(call: OpencodeCall, cwd: string): boolean | undefined {
-  const file = call.tool === "write" ? fileOf(call.input) : undefined;
-  return file === undefined ? undefined : fs.existsSync(path.resolve(cwd, file));
+const FILE_TOOLS = new Set(["write", "edit", "multiedit"]);
+
+/** The file a write or an edit names as it is before the call runs. */
+function before(call: OpencodeCall, cwd: string): string | null | undefined {
+  const file = FILE_TOOLS.has(call.tool) ? fileOf(call.input) : undefined;
+  if (file === undefined) {
+    return undefined;
+  }
+  return contentBefore(path.resolve(cwd, file));
 }
 
 /** What the hook needs to remember between a tool call and its result. */
 class Calls {
   readonly pending = new Pending();
-  private readonly existed = new Map<string, boolean | undefined>();
+  private readonly was = new Map<string, string | null | undefined>();
 
   async before(call: OpencodeCall, cwd: string): Promise<void> {
-    this.existed.set(call.callID, exists(call, cwd));
+    this.was.set(call.callID, before(call, cwd));
     const payload = opencodePayload(call, cwd);
     if (payload) {
       this.pending.add(call.callID, await callHook(payload));
@@ -99,10 +104,10 @@ class Calls {
 
   /** The advice for a call that ran, including what was held from before it ran. */
   async after(call: OpencodeCall, cwd: string, output: string): Promise<string> {
-    const existed = this.existed.get(call.callID);
-    this.existed.delete(call.callID);
+    const was = this.was.get(call.callID);
+    this.was.delete(call.callID);
     const held = this.pending.take(call.callID);
-    const payload = opencodePayload(call, cwd, output, existed);
+    const payload = opencodePayload(call, cwd, output, was);
     const advice = payload ? await callHook(payload) : "";
     return [held, advice].filter((text) => text !== "").join("\n\n");
   }

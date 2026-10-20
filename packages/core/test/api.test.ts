@@ -36,7 +36,7 @@ const frozen = (version: number) => JSON.parse(fs.readFileSync(path.join(dir, `v
 const shape = (version: number) => JSON.parse(fs.readFileSync(path.join(dir, `v${version}/shape.json`), "utf8")) as Record<string, unknown>;
 
 const session = ["// relative absolute shape alone fresh root reads", "class Session {", "  late User user;", "}"].join("\n");
-const written = fileCtx("write", "lib/session.dart", session, undefined, { isNew: true });
+const written = fileCtx("write", "lib/session.dart", session, {}, { isNew: true });
 const pubspec = fileCtx("write", "pubspec.yaml", "name: app\ndependencies:\n  rxdart: ^1.0.0");
 const project = mapProject("/project", { "pubspec.yaml": "name: app\n", "lib/session.dart": session });
 const said = (findings: Finding[]) => findings.map((finding) => finding.match ?? `line ${finding.line}`);
@@ -51,19 +51,24 @@ describe("every version of the detector API", () => {
 
   test.each(versions)("version %s still gets the event it was promised", (version) => {
     const environment = environmentFor(version, written, project);
-    const today = {
-      file: shapeOf(ctxFor(version, written)),
+    const promised = shape(version);
+    const today: Record<string, unknown> = {
+      file: shapeOf(ctxFor(version, fileCtx("write", "lib/a.dart", "a", { removed: [{ line: 1, text: "b" }] }))),
       text: shapeOf(ctxFor(version, textCtx("prompt", "a"))),
       output: shapeOf(ctxFor(version, textCtx("output", "a", undefined, "b"))),
       globals: Object.keys(environment.strings).sort(),
       functions: Object.keys(environment.functions).sort(),
     };
+    // A version from before deletions is never handed one.
+    if ("delete" in promised) {
+      today.delete = shapeOf(ctxFor(version, fileCtx("delete", "lib/a.dart", "a")));
+    }
     expect(
       today,
       version === API_VERSION
         ? `The event or the host functions changed. That is a new version of the detector API: raise API_VERSION in packages/sdk/src/index.ts, add the step back to version ${API_VERSION} in packages/core/src/detector/api.ts, then run node scripts/freeze-api.mjs. Do not edit shape.json.`
         : `Version ${version} is released and principles depend on it. Fix the step in packages/core/src/detector/api.ts, not shape.json.`,
-    ).toEqual(shape(version));
+    ).toEqual(promised);
   });
 });
 
@@ -116,6 +121,50 @@ describe("a detector built against API 3", () => {
     expect((await run(fileCtx("write", "test/session_test.dart", code))).findings).toEqual([{ line: 3 }]);
     expect((await run(textCtx("command", "echo shape"))).findings).toEqual([{ match: "shape" }]);
     expect((await run(textCtx("output", "Analyzing...\nshape of things", undefined, "dart analyze"))).findings).toEqual([{ line: 2, match: "shape" }]);
+  });
+});
+
+describe("a detector built against API 4", () => {
+  const { manifest, bundle } = frozen(4);
+  const run = (ctx: Ctx) => runDetector(bundle, ctx, undefined, project, apiOf(manifest));
+  const before = ["void main() {", "  test('loads', () {});", "  test('saves', () {});", "}"];
+
+  test("says in its manifest that it wants deletions", () => {
+    expect(manifest.events).toEqual(["write", "read", "delete", "prompt", "command", "output"]);
+    expect(manifest.handlers).toContainEqual({ event: "delete", globs: ["test/**/*.dart"] });
+  });
+
+  test("gets the lines a write removed, and may return them as findings", async () => {
+    const after = ["void main() {", "  test('loads', () {});", "}"].join("\n");
+    const ctx = fileCtx("write", "test/session_test.dart", after, { written: [], removed: [{ line: 3, text: before[2] as string }] });
+    const result = await run(ctx);
+    expect(result.dropped).toEqual([]);
+    expect(result.findings).toEqual([{ line: 3, removed: true }]);
+  });
+
+  test("gets a deleted file as it was, with every line removed", async () => {
+    const ctx = fileCtx("delete", "test/session_test.dart", before.join("\n"));
+    expect(applies(manifest, ctx)).toBe(true);
+    const result = await run(ctx);
+    expect(result.dropped).toEqual([]);
+    expect(result.findings).toEqual([{}, { line: 2, removed: true, match: "test(" }, { line: 3, removed: true, match: "test(" }]);
+  });
+
+  test("still gets everything API 3 promised", async () => {
+    const result = await run(written);
+    expect(said(result.findings)).toEqual(["absolute", "shape", "fresh", "root", "reads", "line 3"]);
+  });
+});
+
+describe("a detector built against API 3 next to one built against API 4", () => {
+  const three = frozen(3);
+
+  test("is never asked about a deletion, and never sees removed lines", async () => {
+    const deletion = fileCtx("delete", "lib/session.dart", session);
+    expect(applies(three.manifest, deletion)).toBe(false);
+    const edited = fileCtx("write", "lib/session.dart", session, { written: [{ line: 3, text: "  late User user;" }], removed: [{ line: 3, text: "  User user;" }] });
+    // Its handler only says "shape" for the keys API 3 promised, so removed lines would cost that finding.
+    expect(said((await runDetector(three.bundle, edited, undefined, project, 3)).findings)).toContain("shape");
   });
 });
 
@@ -182,10 +231,10 @@ describe("a build", () => {
 
   test("refuses a version this host does not build for", async () => {
     await expect(build(`import type { Finding } from "@wellactually/sdk/v${API_VERSION + 1}"; export const nothing = 1;`)).rejects.toThrow(
-      `detector.ts imports "@wellactually/sdk/v${API_VERSION + 1}". This version of Well Actually builds for detector API ${API_VERSION}: import from "@wellactually/sdk/v${API_VERSION}".`,
+      `detector.ts imports "@wellactually/sdk/v${API_VERSION + 1}". This version of Well Actually builds for the detector API versions ${MIN_API_VERSION} to ${API_VERSION}: import from "@wellactually/sdk/v${API_VERSION}".`,
     );
     // The versions before handlers are no longer built either.
-    await expect(build(`import type { Ctx } from "@wellactually/sdk/v2"; export function detect() { return []; }`)).rejects.toThrow(/builds for detector API 3/);
+    await expect(build(`import type { Ctx } from "@wellactually/sdk/v2"; export function detect() { return []; }`)).rejects.toThrow(/builds for the detector API versions 3 to/);
     await expect(build(`import type { Ctx } from "@wellactually/sdk/vnext"; export const nothing = 1;`)).rejects.toThrow(/The detector API version is part of the path/);
   });
 
@@ -301,6 +350,24 @@ describe("a finding", () => {
     expect(check([{ line: 1, match: "late" }], textCtx("prompt", "late final"))).toEqual({ findings: [{ match: "late" }], dropped: ["the line of a finding on a prompt, which has no lines to point at"] });
     expect(check([{ line: 1 }], textCtx("command", "ls")).findings).toEqual([{}]);
     expect(check([{ line: 2, match: "warning" }], textCtx("output", "ok\nwarning: late", undefined, "dart analyze"))).toEqual({ findings: [{ line: 2, match: "warning" }], dropped: [] });
+  });
+
+  test("names lines the agent removed, by the line each had before", () => {
+    const edited = fileCtx("write", "test/a_test.dart", "void main() {\n}", { written: [], removed: [{ line: 2, text: "  test('a', () {});" }, { line: 3, text: "  test('b', () {});" }] });
+    expect(check([{ line: 2, removed: true }, { line: 2, endLine: 3, removed: true, match: "test('b'" }], edited)).toEqual({
+      findings: [{ line: 2, removed: true }, { line: 2, endLine: 3, removed: true, match: "test('b'" }],
+      dropped: [],
+    });
+    // A match without a line may be in what was removed too.
+    expect(check([{ match: "test('a'" }], edited)).toEqual({ findings: [{ match: "test('a'" }], dropped: [] });
+    expect(check([{ line: 1, removed: true }], edited)).toEqual({ findings: [{}], dropped: ["line 1 of a finding, which the agent did not remove"] });
+    expect(check([{ line: 2, endLine: 4, removed: true }], edited)).toEqual({ findings: [{ line: 2, removed: true }], dropped: ["endLine 4 of a finding on line 2"] });
+    expect(check([{ line: 2, removed: true, match: "void" }], edited)).toEqual({ findings: [{ line: 2, removed: true }], dropped: ['a match that does not occur on line 2: "void"'] });
+    expect(check([{ removed: true }], edited)).toEqual({ findings: [{}], dropped: ["the removed of a finding without a line"] });
+    expect(check([{ line: 1, removed: "yes" }], edited)).toEqual({ findings: [{ line: 1 }], dropped: ['the removed of a finding, which is true or false: "yes"'] });
+    // On a deleted file every line is removed, so a line counts either way.
+    const deletion = fileCtx("delete", "test/a_test.dart", "void main() {\n  test('a', () {});\n}");
+    expect(check([{ line: 2, match: "test(" }, { line: 2, removed: true, match: "test(" }], deletion).dropped).toEqual([]);
   });
 
   test("is something, and there are at most twenty", () => {

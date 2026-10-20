@@ -304,6 +304,25 @@ function existingFile(file: string, ctx: Ctx, project: ProjectFiles | null): str
   return exists ? fromRoot(absolute, ctx.project) : null;
 }
 
+/** Whether every line from `first` to `last` has a text. */
+function everyLine(first: number, last: number, textOn: (line: number) => string | undefined): boolean {
+  for (let line = first; line <= last; line++) {
+    if (textOn(line) === undefined) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** The texts of the lines from `first` to `last`. */
+function linesFrom(first: number, last: number, textOn: (line: number) => string | undefined): string[] {
+  const texts: string[] = [];
+  for (let line = first; line <= last; line++) {
+    texts.push(textOn(line) ?? "");
+  }
+  return texts;
+}
+
 /** Whether the event's text has lines a finding can point at: a file, or what a command printed. */
 function hasLines(ctx: Ctx): boolean {
   return ctx.file !== null || ctx.event === "output";
@@ -337,6 +356,7 @@ export function validateFindings(json: string, ctx: Ctx, project: ProjectFiles |
   }
 
   const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  const removed = new Map((ctx.file?.removed ?? []).map((line) => [line.line, line.text]));
   for (const raw of parsed) {
     if (findings.length >= MAX_FINDINGS) {
       dropped.push(`more than ${MAX_FINDINGS} findings; the rest were dropped`);
@@ -349,21 +369,41 @@ export function validateFindings(json: string, ctx: Ctx, project: ProjectFiles |
     const candidate = raw as Record<string, unknown>;
     const finding: Finding = {};
 
+    // A finding on removed lines counts lines in the file as it was, and only the removed ones are known.
+    const onRemoved = candidate.removed === true;
+    if (candidate.removed !== undefined && typeof candidate.removed !== "boolean") {
+      dropped.push(`the removed of a finding, which is true or false: ${quoted(candidate.removed)}`);
+    } else if (onRemoved && candidate.line === undefined) {
+      dropped.push("the removed of a finding without a line");
+    }
+    const textOn = (line: number): string | undefined => {
+      if (onRemoved) {
+        return removed.get(line);
+      }
+      return lines[line - 1];
+    };
     if (candidate.line !== undefined) {
       const line = candidate.line;
       if (!hasLines(ctx)) {
         dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
-      } else if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lines.length) {
-        dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+      } else if (typeof line !== "number" || !Number.isInteger(line) || textOn(line) === undefined) {
+        if (onRemoved) {
+          dropped.push(`line ${quoted(line)} of a finding, which the agent did not remove`);
+        } else {
+          dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+        }
       } else {
         finding.line = line;
+        if (onRemoved) {
+          finding.removed = true;
+        }
       }
     }
     if (candidate.endLine !== undefined) {
       const endLine = candidate.endLine;
       if (finding.line === undefined) {
         dropped.push("the endLine of a finding without a line");
-      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || endLine > lines.length) {
+      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || !everyLine(finding.line, endLine, textOn)) {
         dropped.push(`endLine ${quoted(endLine)} of a finding on line ${finding.line}`);
       } else if (endLine > finding.line) {
         finding.endLine = endLine;
@@ -372,7 +412,7 @@ export function validateFindings(json: string, ctx: Ctx, project: ProjectFiles |
     if (candidate.match !== undefined) {
       const match = typeof candidate.match === "string" ? candidate.match.trim() : "";
       // With a line the match has to be there, because that is where the agent is sent to look.
-      const scope = finding.line === undefined ? [ctx.text] : lines.slice(finding.line - 1, finding.endLine ?? finding.line);
+      const scope = finding.line === undefined ? [ctx.text, ...removed.values()] : linesFrom(finding.line, finding.endLine ?? finding.line, textOn);
       if (match === "") {
         dropped.push("an empty match");
       } else if (match.includes("\n")) {

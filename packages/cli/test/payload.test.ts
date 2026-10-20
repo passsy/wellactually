@@ -20,6 +20,14 @@ const summary = (payload: HookPayload, files: Record<string, string> = {}) =>
 
 const legacy = "late User user;\nint retries = 3;\n";
 
+/** The file events of a payload with the lines removed from each, given what the files were before. */
+const removals = (payload: HookPayload, files: Record<string, string>, before: Record<string, string> = {}) =>
+  eventsOf({ cwd, session_id: "s", ...payload }, disk(files), undefined, disk(before)).map((ctx) => ({
+    event: ctx.event,
+    path: ctx.file?.relativePath ?? null,
+    removed: ctx.file?.removed.map((line) => `${line.line}:${line.text}`) ?? null,
+  }));
+
 describe("Claude Code payloads", () => {
   test("a prompt is a prompt event", () => {
     expect(summary({ hook_event_name: "UserPromptSubmit", prompt: "add a late field" })).toEqual([{ event: "prompt", path: null, text: "add a late field", written: null }]);
@@ -43,7 +51,7 @@ describe("Claude Code payloads", () => {
 
   test("a Bash call writes the files git saw it change, and then what it printed", () => {
     const payload = { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "dart run build_runner build" }, tool_response: { stdout: "done" } };
-    const turn = { writes: [{ file: "/repo/lib/a.dart", written: [{ line: 2, text: "int retries = 3;" }], isNew: false }], roots: ["/repo"], failures: [] };
+    const turn = { writes: [{ file: "/repo/lib/a.dart", written: [{ line: 2, text: "int retries = 3;" }], removed: [], isNew: false }], deletes: [], roots: ["/repo"], failures: [] };
     const events = eventsOf({ cwd, ...payload }, disk({ "/repo/lib/a.dart": legacy }), turn);
     expect(events.map((ctx) => [ctx.event, ctx.file?.relativePath ?? null, ctx.file?.written.map((line) => line.line) ?? null])).toEqual([
       ["write", "lib/a.dart", [2]],
@@ -91,6 +99,33 @@ describe("Claude Code payloads", () => {
   test("a file that cannot be read is no event", () => {
     expect(summary({ hook_event_name: "PostToolUse", tool_name: "Edit", tool_input: { file_path: "lib/gone.dart", new_string: "x" } })).toEqual([]);
   });
+
+  test("Edit and Write know what they removed from the file Claude Code says they started from", () => {
+    const originalFile = "late User user;\nint retries = 1;\nint timeout = 5;\n";
+    const edit = { hook_event_name: "PostToolUse", tool_name: "Edit", tool_input: { file_path: "lib/a.dart", new_string: "int retries = 3;" }, tool_response: { originalFile } };
+    expect(removals(edit, { "/repo/lib/a.dart": legacy })).toEqual([{ event: "write", path: "lib/a.dart", removed: ["2:int retries = 1;", "3:int timeout = 5;"] }]);
+    const write = { hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: "lib/a.dart" }, tool_response: { type: "update", originalFile } };
+    expect(removals(write, { "/repo/lib/a.dart": legacy })[0]?.removed).toEqual(["2:int retries = 1;", "3:int timeout = 5;"]);
+  });
+
+  test("Edit falls back to the file as the last look at its repository saw it", () => {
+    const edit = { hook_event_name: "PostToolUse", tool_name: "Edit", tool_input: { file_path: "lib/a.dart", new_string: "" } };
+    expect(removals(edit, { "/repo/lib/a.dart": "a\n" }, { "/repo/lib/a.dart": "a\nb\n" })).toEqual([{ event: "write", path: "lib/a.dart", removed: ["2:b"] }]);
+    // Not known at all, nothing was removed as far as a detector can tell.
+    expect(removals(edit, { "/repo/lib/a.dart": "a\n" })[0]?.removed).toEqual([]);
+  });
+
+  test("a new file removed nothing", () => {
+    const write = { hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: "lib/a.dart" }, tool_response: { type: "create", originalFile: null } };
+    expect(removals(write, { "/repo/lib/a.dart": legacy }, { "/repo/lib/a.dart": "stale" })[0]?.removed).toEqual([]);
+  });
+
+  test("a file a Bash call deleted in a git repository is a delete event with what it held", () => {
+    const payload = { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "rm test/a_test.dart" }, tool_response: { stdout: "" } };
+    const turn = { writes: [], deletes: [{ file: "/repo/test/a_test.dart", content: "test('a');" }], roots: ["/repo"], failures: [] };
+    const events = eventsOf({ cwd, ...payload }, disk({}), turn);
+    expect(events.map((ctx) => [ctx.event, ctx.file?.relativePath, ctx.text, ctx.file?.removed])).toEqual([["delete", "test/a_test.dart", "test('a');", [{ line: 1, text: "test('a');" }]]]);
+  });
 });
 
 describe("Codex payloads", () => {
@@ -107,8 +142,21 @@ describe("Codex payloads", () => {
     expect(summary(patch(body), { "/repo/lib/a.dart": legacy })).toEqual([{ event: "write", path: "lib/a.dart", text: legacy, written: [2] }]);
   });
 
-  test("a patch that only removes lines is no event", () => {
-    expect(summary(patch("*** Update File: lib/a.dart\n@@\n-int old = 1;"), { "/repo/lib/a.dart": legacy })).toEqual([]);
+  test("a patch that only removes lines is no event, unless the file is known from before", () => {
+    const body = patch("*** Update File: lib/a.dart\n@@\n-int old = 1;");
+    expect(summary(body, { "/repo/lib/a.dart": legacy })).toEqual([]);
+    expect(removals(body, { "/repo/lib/a.dart": legacy }, { "/repo/lib/a.dart": `int old = 1;\n${legacy}` })).toEqual([{ event: "write", path: "lib/a.dart", removed: ["1:int old = 1;"] }]);
+  });
+
+  test("a deleted file is a delete event when the file is known from before", () => {
+    const body = patch("*** Delete File: test/a_test.dart");
+    expect(removals(body, {}, { "/repo/test/a_test.dart": "test('a');\n" })).toEqual([{ event: "delete", path: "test/a_test.dart", removed: ["1:test('a');", "2:"] }]);
+    expect(removals(body, {})).toEqual([]);
+  });
+
+  test("a moved file is compared with the file it was", () => {
+    const body = patch("*** Update File: lib/a.dart\n*** Move to: lib/moved.dart\n@@\n-int old = 1;\n+int retries = 3;");
+    expect(removals(body, { "/repo/lib/moved.dart": legacy }, { "/repo/lib/a.dart": "late User user;\nint old = 1;\n" })).toEqual([{ event: "write", path: "lib/moved.dart", removed: ["2:int old = 1;"] }]);
   });
 
   test("a patch over several files is one event per file", () => {
