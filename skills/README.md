@@ -1,8 +1,10 @@
 # skills
 
-The two things you do yourself, as skills of the plugin.
+The things you do yourself, as skills of the plugin.
 
 - `login` connects this machine to your advisory board on [wellactually.dev](https://wellactually.dev) and downloads it.
 - `sync` downloads it again after you changed it on the website.
+- `disable` stops all advice in the project you work in, on this machine, and `enable` brings it back.
+  With a principle's id they switch only that principle.
 
-Claude Code offers them as `/wellactually:login` and `/wellactually:sync`, Codex as `$wellactually:login` and `$wellactually:sync`.
+Claude Code offers them as `/wellactually:login`, `/wellactually:sync`, `/wellactually:disable` and `/wellactually:enable`, Codex as `$wellactually:login` and so on.
