@@ -7,7 +7,7 @@ import { type EventFirings, type Lockfile, PARALLEL_FROM, boardHome, forgetShown
 import { claimReport, recordDetections } from "../board/detections.ts";
 import { type HookPayload, eventsOf } from "./payload.ts";
 import { DetectorPool } from "../board/pool.ts";
-import { switchedOff } from "../board/switches.ts";
+import { boardOffIn, switchedOff } from "../board/switches.ts";
 import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, snapshotRepos, sweepSnapshots } from "./turn.ts";
 import { excerpt, type HookLogEntry, someFindings } from "./hook-log.ts";
 import { noteToolUse } from "../registry/rater.ts";
@@ -75,17 +75,23 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
   if (lockfile.entries.length === 0) {
     return note("the advisory board on this machine is empty; download it with the plugin's sync skill");
   }
-  const turn = followRepos(payload);
+  // The repositories of a project the advisory board is switched off in are not followed.
+  const turn = boardOffIn(payload.cwd ?? process.cwd()) === null ? followRepos(payload) : undefined;
   if (log && turn && turn.failures.length > 0) {
     log.repos = turn.failures;
   }
-  const events = eventsOf(payload, readText, turn);
+  const all = eventsOf(payload, readText, turn);
+  // The switch belongs to the project the file is in, which need not be the one the session started in.
+  const events = all.filter((ctx) => boardOffIn(ctx.file ? path.dirname(ctx.file.path) : (payload.cwd ?? process.cwd())) === null);
   if (event === "PostToolUse" && payload.session_id && !SHELL_TOOLS.has(payload.tool_name ?? "")) {
     // A file tool reported its file already, so the next look after a shell command must not report it again.
     const written = events.flatMap((ctx) => (ctx.event === "write" && ctx.file ? [ctx.file.path] : []));
     if (written.length > 0) {
       absorbWrites(payload.session_id, written);
     }
+  }
+  if (all.length > 0 && events.length === 0) {
+    return note("the advisory board is switched off in this project");
   }
   if (events.length === 0) {
     return note("nothing in this call is an event detectors see");

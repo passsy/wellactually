@@ -7,7 +7,7 @@ import { approvalKey, describeReview, type PackageInfo } from "@wellactually/cor
 import { scaffold } from "./board/files.ts";
 import { boardHome, readConfig, readCached, readLockfile, writeConfig } from "./board/board.ts";
 import { serveDetectors } from "./board/pool.ts";
-import { switchedOff, switchPrinciple } from "./board/switches.ts";
+import { boardOffIn, switchedOff, switchPrinciple, switchProject } from "./board/switches.ts";
 import {
   addLocal,
   ApprovalError,
@@ -28,6 +28,7 @@ import {
   renderVisibility,
   renderReport,
   renderRepositorySync,
+  renderProjectSwitch,
   renderSwitch,
   renderSync,
   renderTry,
@@ -71,7 +72,9 @@ Your advisory board
   wellactually list                     Show what the hook runs
   wellactually add <dir>                Put a local principle on this machine's advisory board
   wellactually remove <slug>            Take a local principle off again
-  wellactually disable <id> [--global]  Switch a principle off in this project, or everywhere with --global
+  wellactually disable                  Switch the whole advisory board off in this project
+  wellactually enable                   Switch it on again
+  wellactually disable <id> [--global]  Switch one principle off in this project, or everywhere with --global
   wellactually enable <id> [--global]   Switch it on again
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
 
@@ -313,6 +316,10 @@ async function main(): Promise<number> {
         console.log("Your advisory board is empty. Follow experts on the website and run `wellactually sync`, or `wellactually add <dir>`.");
         return 0;
       }
+      const boardOff = boardOffIn(process.cwd());
+      if (boardOff) {
+        console.log(`The advisory board is switched off in ${boardOff}. \`wellactually enable\` switches it on again.`);
+      }
       const off = switchedOff(process.cwd());
       for (const entry of lockfile.entries) {
         const title = readCached(entry.hash)?.manifest.title ?? "(not downloaded, run `wellactually sync`)";
@@ -324,11 +331,16 @@ async function main(): Promise<number> {
     case "disable":
     case "enable": {
       const id = positionals[0];
-      if (!id) {
-        console.error(`usage: wellactually ${command} <expert/principle> [--global]`);
-        return 2;
-      }
       const on = command === "enable";
+      if (!id) {
+        if (values.global) {
+          console.error(`usage: wellactually ${command} <expert/principle> --global`);
+          return 2;
+        }
+        const result = switchProject(on, process.cwd());
+        print(result, renderProjectSwitch(result, on));
+        return 0;
+      }
       try {
         const result = switchPrinciple(id, on, values.global ? "global" : "project", process.cwd());
         print(result, renderSwitch(result, on));

@@ -107,3 +107,100 @@ export function switchPrinciple(wanted: string, on: boolean, scope: Scope, cwd: 
   write(file, [...disabled]);
   return { id, scope, file, stillOff: switchedOff(cwd).get(id) ?? [] };
 }
+
+/**
+ * Projects where the whole advisory board is off on this machine.
+ *
+ * They are kept in `disabled.json` in the Well Actually home directory, next to
+ * the principles switched off everywhere, and not in the project: switching
+ * advice off for yourself should leave no file behind in somebody else's
+ * repository, and no change the agent might commit. A git worktree counts as
+ * the checkout it belongs to, and a project covers every folder inside it.
+ */
+function offProjects(): string[] {
+  try {
+    const stored = JSON.parse(fs.readFileSync(path.join(boardHome(), "disabled.json"), "utf8")) as { projects?: unknown };
+    return Array.isArray(stored.projects) ? stored.projects.filter((dir): dir is string => typeof dir === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeOffProjects(projects: string[]): void {
+  const file = path.join(boardHome(), "disabled.json");
+  let stored: Record<string, unknown> = {};
+  try {
+    stored = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>;
+  } catch {
+    // A missing or unreadable file starts over.
+  }
+  const { projects: _previous, ...rest } = stored;
+  if (projects.length === 0 && Object.keys(rest).length === 0) {
+    fs.rmSync(file, { force: true });
+    return;
+  }
+  const next = projects.length === 0 ? rest : { ...rest, projects: [...projects].sort() };
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify(next, null, 2)}\n`);
+}
+
+/**
+ * The checkout a project belongs to. A git worktree has a `.git` file that
+ * points into the main checkout's `.git/worktrees/<name>`.
+ */
+function mainCheckout(root: string): string {
+  try {
+    const pointer = /^gitdir: (.+)$/m.exec(fs.readFileSync(path.join(root, ".git"), "utf8"))?.[1]?.trim();
+    if (!pointer) {
+      return root;
+    }
+    const gitDir = path.resolve(root, pointer);
+    if (path.basename(path.dirname(gitDir)) === "worktrees" && path.basename(path.dirname(path.dirname(gitDir))) === ".git") {
+      return path.dirname(path.dirname(path.dirname(gitDir)));
+    }
+  } catch {
+    // No .git file: a plain checkout, a .git directory or no repository at all.
+  }
+  return root;
+}
+
+function realPath(dir: string): string {
+  try {
+    return fs.realpathSync(dir);
+  } catch {
+    return path.resolve(dir);
+  }
+}
+
+/** The project the advisory board is switched off in, for work in `cwd`, or null when it runs there. */
+export function boardOffIn(cwd: string): string | null {
+  const projects = offProjects();
+  if (projects.length === 0) {
+    return null;
+  }
+  const root = realPath(mainCheckout(projectRoot(cwd)));
+  return projects.find((dir) => root === dir || root.startsWith(dir + path.sep)) ?? null;
+}
+
+export interface ProjectSwitchResult {
+  /** The project's folder, as recorded. */
+  project: string;
+  /** Whether the advisory board was already in that state. */
+  unchanged: boolean;
+  /** The folder that still holds the board off around this project, when switching on could not. */
+  stillOffIn: string | null;
+}
+
+/** Switches the whole advisory board off or on again, for the project `cwd` is in. */
+export function switchProject(on: boolean, cwd: string): ProjectSwitchResult {
+  const project = realPath(mainCheckout(projectRoot(cwd)));
+  const projects = new Set(offProjects());
+  const unchanged = projects.has(project) !== on;
+  if (on) {
+    projects.delete(project);
+  } else {
+    projects.add(project);
+  }
+  writeOffProjects([...projects]);
+  return { project, unchanged, stillOffIn: on ? boardOffIn(cwd) : null };
+}

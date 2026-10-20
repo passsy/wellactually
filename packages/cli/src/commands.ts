@@ -5,7 +5,7 @@ import type { Ctx } from "@wellactually/sdk";
 import { diskFiles, projectRootOf, toPosix, writePrincipleFiles } from "./board/files.ts";
 import { frame, DEFAULT_REGISTRY, readConfig, readLockfile, writeCached, writeLockfile } from "./board/board.ts";
 import { probeRepo, type ProbeReport } from "./probe.ts";
-import { type SwitchResult } from "./board/switches.ts";
+import { type ProjectSwitchResult, type SwitchResult } from "./board/switches.ts";
 import {
   fetchHistory,
   publishDraft,
@@ -536,6 +536,16 @@ export function renderReport(result: FolderCheck): string {
 }
 
 /** What to tell whoever switched a principle off or on. */
+export function renderProjectSwitch(result: ProjectSwitchResult, on: boolean): string {
+  if (!on) {
+    return `${result.unchanged ? "The advisory board was already off" : "The advisory board is off"} in ${result.project}. No advice is shown there until you switch it on again.`;
+  }
+  if (result.stillOffIn) {
+    return `The advisory board is still off here, because it is switched off for ${result.stillOffIn}, which holds ${result.project}. Switch it on there.`;
+  }
+  return `${result.unchanged ? "The advisory board was already on" : "The advisory board runs again"} in ${result.project}.`;
+}
+
 export function renderSwitch(result: SwitchResult, on: boolean): string {
   const where = result.scope === "global" ? "everywhere on this machine" : "in this project";
   if (!on) {

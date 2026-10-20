@@ -13866,6 +13866,72 @@ function switchPrinciple(wanted, on, scope, cwd) {
   write(file2, [...disabled]);
   return { id, scope, file: file2, stillOff: switchedOff(cwd).get(id) ?? [] };
 }
+function offProjects() {
+  try {
+    const stored = JSON.parse(fs4.readFileSync(path5.join(boardHome(), "disabled.json"), "utf8"));
+    return Array.isArray(stored.projects) ? stored.projects.filter((dir) => typeof dir === "string") : [];
+  } catch {
+    return [];
+  }
+}
+function writeOffProjects(projects) {
+  const file2 = path5.join(boardHome(), "disabled.json");
+  let stored = {};
+  try {
+    stored = JSON.parse(fs4.readFileSync(file2, "utf8"));
+  } catch {
+  }
+  const { projects: _previous, ...rest } = stored;
+  if (projects.length === 0 && Object.keys(rest).length === 0) {
+    fs4.rmSync(file2, { force: true });
+    return;
+  }
+  const next = projects.length === 0 ? rest : { ...rest, projects: [...projects].sort() };
+  fs4.mkdirSync(path5.dirname(file2), { recursive: true });
+  fs4.writeFileSync(file2, `${JSON.stringify(next, null, 2)}
+`);
+}
+function mainCheckout(root) {
+  try {
+    const pointer = /^gitdir: (.+)$/m.exec(fs4.readFileSync(path5.join(root, ".git"), "utf8"))?.[1]?.trim();
+    if (!pointer) {
+      return root;
+    }
+    const gitDir = path5.resolve(root, pointer);
+    if (path5.basename(path5.dirname(gitDir)) === "worktrees" && path5.basename(path5.dirname(path5.dirname(gitDir))) === ".git") {
+      return path5.dirname(path5.dirname(path5.dirname(gitDir)));
+    }
+  } catch {
+  }
+  return root;
+}
+function realPath(dir) {
+  try {
+    return fs4.realpathSync(dir);
+  } catch {
+    return path5.resolve(dir);
+  }
+}
+function boardOffIn(cwd) {
+  const projects = offProjects();
+  if (projects.length === 0) {
+    return null;
+  }
+  const root = realPath(mainCheckout(projectRoot(cwd)));
+  return projects.find((dir) => root === dir || root.startsWith(dir + path5.sep)) ?? null;
+}
+function switchProject(on, cwd) {
+  const project = realPath(mainCheckout(projectRoot(cwd)));
+  const projects = new Set(offProjects());
+  const unchanged = projects.has(project) !== on;
+  if (on) {
+    projects.delete(project);
+  } else {
+    projects.add(project);
+  }
+  writeOffProjects([...projects]);
+  return { project, unchanged, stillOffIn: on ? boardOffIn(cwd) : null };
+}
 
 // packages/cli/src/commands.ts
 import fs7 from "node:fs";
@@ -14648,6 +14714,15 @@ function renderReport(result) {
     }
   }
   return lines.join("\n");
+}
+function renderProjectSwitch(result, on) {
+  if (!on) {
+    return `${result.unchanged ? "The advisory board was already off" : "The advisory board is off"} in ${result.project}. No advice is shown there until you switch it on again.`;
+  }
+  if (result.stillOffIn) {
+    return `The advisory board is still off here, because it is switched off for ${result.stillOffIn}, which holds ${result.project}. Switch it on there.`;
+  }
+  return `${result.unchanged ? "The advisory board was already on" : "The advisory board runs again"} in ${result.project}.`;
 }
 function renderSwitch(result, on) {
   const where = result.scope === "global" ? "everywhere on this machine" : "in this project";
@@ -15506,16 +15581,20 @@ async function runHook(stdin, log, frame2 = frameEvents) {
   if (lockfile.entries.length === 0) {
     return note("the advisory board on this machine is empty; download it with the plugin's sync skill");
   }
-  const turn = followRepos(payload);
+  const turn = boardOffIn(payload.cwd ?? process.cwd()) === null ? followRepos(payload) : void 0;
   if (log && turn && turn.failures.length > 0) {
     log.repos = turn.failures;
   }
-  const events = eventsOf(payload, readText2, turn);
+  const all = eventsOf(payload, readText2, turn);
+  const events = all.filter((ctx) => boardOffIn(ctx.file ? path14.dirname(ctx.file.path) : payload.cwd ?? process.cwd()) === null);
   if (event === "PostToolUse" && payload.session_id && !SHELL_TOOLS2.has(payload.tool_name ?? "")) {
     const written = events.flatMap((ctx) => ctx.event === "write" && ctx.file ? [ctx.file.path] : []);
     if (written.length > 0) {
       absorbWrites(payload.session_id, written);
     }
+  }
+  if (all.length > 0 && events.length === 0) {
+    return note("the advisory board is switched off in this project");
   }
   if (events.length === 0) {
     return note("nothing in this call is an event detectors see");
@@ -45255,7 +45334,9 @@ Your advisory board
   wellactually list                     Show what the hook runs
   wellactually add <dir>                Put a local principle on this machine's advisory board
   wellactually remove <slug>            Take a local principle off again
-  wellactually disable <id> [--global]  Switch a principle off in this project, or everywhere with --global
+  wellactually disable                  Switch the whole advisory board off in this project
+  wellactually enable                   Switch it on again
+  wellactually disable <id> [--global]  Switch one principle off in this project, or everywhere with --global
   wellactually enable <id> [--global]   Switch it on again
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
 
@@ -45491,6 +45572,10 @@ and confirm the code ${start.user_code}`);
         console.log("Your advisory board is empty. Follow experts on the website and run `wellactually sync`, or `wellactually add <dir>`.");
         return 0;
       }
+      const boardOff = boardOffIn(process.cwd());
+      if (boardOff) {
+        console.log(`The advisory board is switched off in ${boardOff}. \`wellactually enable\` switches it on again.`);
+      }
       const off = switchedOff(process.cwd());
       for (const entry of lockfile.entries) {
         const title = readCached(entry.hash)?.manifest.title ?? "(not downloaded, run `wellactually sync`)";
@@ -45502,11 +45587,16 @@ and confirm the code ${start.user_code}`);
     case "disable":
     case "enable": {
       const id = positionals[0];
-      if (!id) {
-        console.error(`usage: wellactually ${command} <expert/principle> [--global]`);
-        return 2;
-      }
       const on = command === "enable";
+      if (!id) {
+        if (values.global) {
+          console.error(`usage: wellactually ${command} <expert/principle> --global`);
+          return 2;
+        }
+        const result = switchProject(on, process.cwd());
+        print(result, renderProjectSwitch(result, on));
+        return 0;
+      }
       try {
         const result = switchPrinciple(id, on, values.global ? "global" : "project", process.cwd());
         print(result, renderSwitch(result, on));
