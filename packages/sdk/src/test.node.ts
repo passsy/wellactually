@@ -27,7 +27,7 @@ import { answerDetect, detectorRunner, type BuiltPrinciple, type PrincipleFiles 
 import type { DetectOptions } from "./events.ts";
 import type { Ctx, Finding } from "./index.ts";
 
-export { command, edit, output, prompt, read, source, write, type DetectOptions } from "./events.ts";
+export { command, deleted, edit, output, prompt, read, source, write, type DetectOptions, type EditChange } from "./events.ts";
 
 const runOnce = await detectorRunner();
 

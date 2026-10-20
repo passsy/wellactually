@@ -32,6 +32,8 @@ export interface HookLogEvent {
   file?: string;
   /** The lines the agent wrote, on a write. */
   written?: number[];
+  /** The lines the agent removed on a write, by the line each had before. Left out when there are none. */
+  removed?: number[];
   command?: string;
   /** The start of the prompt, or of what a command printed. */
   text?: string;

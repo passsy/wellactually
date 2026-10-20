@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, test } from "vitest";
 import { eventsOf } from "../src/hook/payload.ts";
-import { absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, parsePatch, snapshotRepos } from "../src/hook/turn.ts";
+import { absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, parsePatch, removedLines, snapshotContent, snapshotRepos } from "../src/hook/turn.ts";
 
 /**
  * Real repositories in a temporary folder, because what is checked is how
@@ -68,12 +68,35 @@ describe("what a shell command changed in a git repository", () => {
     expect(git(root, "status", "--porcelain")).toBe("?? b.txt\n");
   });
 
-  test("says nothing about lines that were only removed", () => {
+  test("knows the lines that were removed, by the line each had before", () => {
+    const root = repo({ "a.txt": "one\ntwo\nthree\nfour\n" });
+    snapshotRepos("s", [root]);
+    write(root, "a.txt", "one\n3\nfour\n");
+    const [change] = diffRepos("s", root).writes;
+    expect(change?.written).toEqual([{ line: 2, text: "3" }]);
+    expect(change?.removed).toEqual([
+      { line: 2, text: "two" },
+      { line: 3, text: "three" },
+    ]);
+  });
+
+  test("reports a file that only lost lines", () => {
     const root = repo({ "a.txt": "one\ntwo\n" });
     snapshotRepos("s", [root]);
     write(root, "a.txt", "one\n");
-    fs.rmSync(path.join(root, "a.txt"));
-    expect(changes("s", root)).toEqual([]);
+    expect(diffRepos("s", root).writes).toEqual([{ file: path.join(root, "a.txt"), written: [], removed: [{ line: 2, text: "two" }], isNew: false }]);
+  });
+
+  test("reports a deleted file with what it held, and not a deleted binary one", () => {
+    const root = repo({ "test/a_test.dart": "void main() {\n  test('a', () {});\n}\n", "logo.png": "\0PNG" });
+    snapshotRepos("s", [root]);
+    fs.rmSync(path.join(root, "test/a_test.dart"));
+    fs.rmSync(path.join(root, "logo.png"));
+    const turn = diffRepos("s", root);
+    expect(turn.writes).toEqual([]);
+    expect(turn.deletes).toEqual([{ file: path.join(root, "test/a_test.dart"), content: "void main() {\n  test('a', () {});\n}" }]);
+    // Reported once.
+    expect(diffRepos("s", root).deletes).toEqual([]);
   });
 
   test("leaves out what a person changed between two prompts", () => {
@@ -130,7 +153,7 @@ describe("what a shell command changed in a git repository", () => {
     const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-plain-")));
     snapshotRepos("s", [dir]);
     write(dir, "a.txt", "a\n");
-    expect(diffRepos("s", dir)).toEqual({ writes: [], roots: [], failures: [] });
+    expect(diffRepos("s", dir)).toEqual({ writes: [], deletes: [], roots: [], failures: [] });
   });
 
   test("is forgotten with the session", () => {
@@ -177,6 +200,8 @@ describe("parsePatch", () => {
       {
         path: "café x.txt",
         isNew: false,
+        isDeleted: false,
+        removed: [{ line: 9, text: "old" }],
         written: [
           { line: 2, text: "two" },
           { line: 3, text: "three" },
@@ -184,5 +209,34 @@ describe("parsePatch", () => {
         ],
       },
     ]);
+  });
+
+  test("names a deleted file by the path it had, and does not take its header for a removed line", () => {
+    const patch = ["diff --git a/--- b/---", "deleted file mode 100644", "index 1..0", "--- a/---", "+++ /dev/null", "@@ -1,2 +0,0 @@", "--- a", "-b"].join("\n");
+    expect(parsePatch(patch)).toEqual([{ path: "---", isNew: false, isDeleted: true, written: [], removed: [{ line: 1, text: "-- a" }, { line: 2, text: "b" }] }]);
+  });
+});
+
+describe("removedLines", () => {
+  test("are the lines of before that are gone, by the line each had there", () => {
+    expect(removedLines("a\nb\nc\nd\n", "a\nB\nd\n")).toEqual([
+      { line: 2, text: "b" },
+      { line: 3, text: "c" },
+    ]);
+    expect(removedLines("a\n", "a\nb\n")).toEqual([]);
+    expect(removedLines("same", "same")).toEqual([]);
+  });
+});
+
+describe("snapshotContent", () => {
+  test("is a file as the last look saw it, before a file tool changed it", () => {
+    const root = repo({ "a.txt": "before\n" });
+    snapshotRepos("s", [root]);
+    write(root, "a.txt", "after\n");
+    expect(snapshotContent("s", path.join(root, "a.txt"))).toBe("before\n");
+    absorbWrites("s", [path.join(root, "a.txt")]);
+    expect(snapshotContent("s", path.join(root, "a.txt"))).toBe("after\n");
+    expect(snapshotContent("s", path.join(root, "missing.txt"))).toBeNull();
+    expect(snapshotContent("other", path.join(root, "a.txt"))).toBeNull();
   });
 });

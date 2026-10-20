@@ -3684,7 +3684,7 @@ import path2 from "node:path";
 import { fileURLToPath } from "node:url";
 
 // packages/sdk/src/index.ts
-var API_VERSION = 3;
+var API_VERSION = 4;
 
 // packages/core/src/node.ts
 import { createRequire } from "node:module";
@@ -3784,8 +3784,15 @@ async function loadEsbuild() {
 // packages/cli/src/board/files.ts
 var MAX_READ_BYTES = 512 * 1024;
 
+// packages/cli/src/board/board.ts
+var SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+
+// packages/cli/src/hook/turn.ts
+var SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // packages/cli/src/agents/bridge.ts
 var HOOK_TIMEOUT_MS = 1e4;
+var MAX_BEFORE_BYTES = 512 * 1024;
 function pluginRoot() {
   return path2.resolve(path2.dirname(fileURLToPath(import.meta.url)), "..");
 }

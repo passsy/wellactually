@@ -1,22 +1,34 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Written } from "@wellactually/sdk";
 import { boardHome } from "../board/board.ts";
+import { toPosix } from "../board/files.ts";
 
-/** A file that changed in a git repository since the last look, with the lines that are new in it. */
+/** A file that changed in a git repository since the last look, with the lines that are new in it and the ones that are gone. */
 export interface TurnWrite {
   /** The absolute path of the file. */
   file: string;
   written: Written[];
+  /** By the line each had before. */
+  removed: Written[];
   isNew: boolean;
+}
+
+/** A file that was deleted from a git repository since the last look. */
+export interface TurnDelete {
+  /** The absolute path the file had. */
+  file: string;
+  /** What the file held. */
+  content: string;
 }
 
 /** What a look at the repositories of a session found. */
 export interface TurnDiff {
   writes: TurnWrite[];
+  deletes: TurnDelete[];
   /** The repositories that were compared. A file in one of them that is not in `writes` did not change. */
   roots: string[];
   /** Repositories that could not be compared, with the reason. What changed in them is not reported. */
@@ -124,13 +136,13 @@ export function absorbWrites(sessionId: string, files: readonly string[]): void 
  * What changed in the session's repositories since the last look, and moves
  * the snapshot on, so every change is reported once.
  *
- * Only added lines count: a change that only removes is nothing an agent
- * wrote. Files that changed because HEAD moved, like a checkout or a pull,
+ * A changed file is reported with the lines that were added and the ones
+ * that were removed, a deleted file with what it held. Files that changed because HEAD moved, like a checkout or a pull,
  * came from the history and are left out.
  */
 export function diffRepos(sessionId: string, cwd: string): TurnDiff {
   ensureSnapshot(sessionId, cwd);
-  const result: TurnDiff = { writes: [], roots: [], failures: [] };
+  const result: TurnDiff = { writes: [], deletes: [], roots: [], failures: [] };
   for (const root of knownRoots(sessionId)) {
     const baseline = readBaseline(sessionId, root);
     if (baseline === null) {
@@ -145,7 +157,7 @@ export function diffRepos(sessionId: string, cwd: string): TurnDiff {
         const tree = writeTree(repo, ["add", "--all"]);
         const head = headOf(repo);
         const fromHistory = head === baseline.head || baseline.head === null || head === null ? new Set<string>() : new Set(git(repo, ["diff", "--name-only", "--no-renames", baseline.head, head]).split("\n"));
-        const patch = tree === baseline.tree ? "" : git(repo, ["diff-tree", "-r", "-p", "-U0", "--no-renames", "--no-ext-diff", "--no-color", "--diff-filter=AM", baseline.tree, tree]);
+        const patch = tree === baseline.tree ? "" : git(repo, ["diff-tree", "-r", "-p", "-U0", "--no-renames", "--no-ext-diff", "--no-color", "--diff-filter=AMD", baseline.tree, tree]);
         writeBaseline(sessionId, { root, tree, head });
         return parsePatch(patch).filter((change) => !fromHistory.has(change.path));
       });
@@ -154,7 +166,19 @@ export function diffRepos(sessionId: string, cwd: string): TurnDiff {
         continue;
       }
       result.roots.push(root);
-      result.writes.push(...done.filter((change) => change.written.length > 0).map((change) => ({ file: path.join(root, change.path), written: change.written, isNew: change.isNew })));
+      for (const change of done) {
+        const file = path.join(root, change.path);
+        if (change.isDeleted) {
+          // A deleted binary file has no lines to judge.
+          if (change.removed.length > 0) {
+            result.deletes.push({ file, content: change.removed.map((line) => line.text).join("\n") });
+          }
+          continue;
+        }
+        if (change.written.length > 0 || change.removed.length > 0) {
+          result.writes.push({ file, written: change.written, removed: change.removed, isNew: change.isNew });
+        }
+      }
     } catch (error) {
       result.failures.push({ root, reason: error instanceof Error ? error.message : String(error) });
     }
@@ -197,45 +221,141 @@ interface PatchedFile {
   /** From the root of the repository. */
   path: string;
   written: Written[];
+  /** By the line each had before. */
+  removed: Written[];
   isNew: boolean;
+  isDeleted: boolean;
 }
 
 /**
  * The files of a `git diff -U0` patch, each with the lines that are in it
- * after the change and were not before.
+ * after the change and were not before, and the lines that were in it before
+ * and are not any more.
  */
 export function parsePatch(patch: string): PatchedFile[] {
   const files: PatchedFile[] = [];
   let current: PatchedFile | null = null;
+  // Until the first hunk of a file, a line starting with --- or +++ names the file.
+  let inHunk = false;
   let line = 0;
+  let oldLine = 0;
   for (const text of patch.split("\n")) {
     if (text.startsWith("diff --git ")) {
-      current = { path: "", written: [], isNew: false };
+      current = { path: "", written: [], removed: [], isNew: false, isDeleted: false };
       files.push(current);
+      inHunk = false;
       continue;
     }
     if (current === null) {
       continue;
     }
-    if (text.startsWith("new file mode")) {
+    if (!inHunk && text.startsWith("new file mode")) {
       current.isNew = true;
       continue;
     }
-    if (text.startsWith("+++ ")) {
-      current.path = unquote(text.slice(4)).replace(/^b\//, "");
+    if (!inHunk && text.startsWith("deleted file mode")) {
+      current.isDeleted = true;
       continue;
     }
-    const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(text);
+    if (!inHunk && text.startsWith("--- ")) {
+      // A deleted file is only named here.
+      current.path = unquote(text.slice(4)).replace(/^a\//, "");
+      continue;
+    }
+    if (!inHunk && text.startsWith("+++ ")) {
+      const named = unquote(text.slice(4));
+      if (named !== "/dev/null") {
+        current.path = named.replace(/^b\//, "");
+      }
+      continue;
+    }
+    const hunk = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(text);
     if (hunk) {
-      line = Number(hunk[1]);
+      inHunk = true;
+      oldLine = Number(hunk[1]);
+      line = Number(hunk[2]);
+      continue;
+    }
+    if (!inHunk) {
       continue;
     }
     if (text.startsWith("+")) {
       current.written.push({ line, text: text.slice(1) });
       line++;
+      continue;
+    }
+    if (text.startsWith("-")) {
+      current.removed.push({ line: oldLine, text: text.slice(1) });
+      oldLine++;
     }
   }
   return files.filter((file) => file.path !== "" && file.path !== "/dev/null");
+}
+
+/**
+ * The lines of `before` that are not in `after` any more, by the line each
+ * had in `before`. Git compares them, the way it compares a turn. Empty
+ * when git cannot.
+ */
+export function removedLines(before: string, after: string): Written[] {
+  if (before === after) {
+    return [];
+  }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-"));
+  try {
+    const old = path.join(dir, "before");
+    const now = path.join(dir, "after");
+    fs.writeFileSync(old, before);
+    fs.writeFileSync(now, after);
+    // Outside a repository, so the user's diff settings and drivers do not apply.
+    const diff = spawnSync("git", ["diff", "--no-index", "-U0", "--no-color", "--no-ext-diff", "--text", "--", old, now], {
+      cwd: dir,
+      encoding: "utf8",
+      timeout: GIT_TIMEOUT_MS,
+      maxBuffer: 64 * 1024 * 1024,
+      env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: os.devNull },
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    // git diff says 1 when the files differ.
+    if (diff.status !== 1 || typeof diff.stdout !== "string") {
+      return [];
+    }
+    return parsePatch(diff.stdout)[0]?.removed ?? [];
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * The file as the last look at its repository saw it, which is before the
+ * tool that just ran changed it. Null when the session has no look at that
+ * repository, or the file was not there.
+ */
+export function snapshotContent(sessionId: string, file: string): string | null {
+  const root = gitRootOf(path.dirname(file));
+  if (root === null) {
+    return null;
+  }
+  const baseline = readBaseline(sessionId, root);
+  if (baseline === null) {
+    return null;
+  }
+  const repo = repoOf(sessionId, root);
+  if (repo === null) {
+    return null;
+  }
+  try {
+    return execFileSync("git", ["cat-file", "blob", `${baseline.tree}:${toPosix(path.relative(root, file))}`], {
+      cwd: root,
+      env: repo.env,
+      encoding: "utf8",
+      timeout: GIT_TIMEOUT_MS,
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return null;
+  }
 }
 
 /** A path as git prints it, which quotes it in C style when it holds unusual characters. */

@@ -32,7 +32,7 @@
  * detector is bundled with its own copy and runs in a fresh isolate.
  */
 import { matchesGlobs } from "./glob.ts";
-import type { CommandEvent, Ctx, EventName, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, TextFinding, WriteEvent, WrittenLine } from "./index.ts";
+import type { CommandEvent, Ctx, DeleteEvent, EventName, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, RemovedLine, TextFinding, WriteEvent, WrittenLine } from "./index.ts";
 
 /**
  * `F`, with every field that `Allowed` does not have turned into an error.
@@ -45,16 +45,17 @@ type Only<F, Allowed> = F extends unknown ? F & { [K in Exclude<keyof F, keyof A
 
 /**
  * A handler of an event with lines: it yields findings that may name a line.
- * It may also return written lines as they are, each of which is a finding on its line.
+ * It may also return written or removed lines as they are, each of which is a
+ * finding on its line.
  *
  * The first half of the union is what lets one handler yield a finding for
  * the file, `{}`, next to findings with a line.
  */
-type FileHandler<E, F> = (event: E) => Findings<Only<F, Finding>> | Findings<Only<F, Finding> | WrittenLine>;
+type FileHandler<E, F> = (event: E) => Findings<Only<F, Finding>> | Findings<Only<F, Finding> | WrittenLine | RemovedLine>;
 /** A handler of a prompt or a command: its findings have no line to name. */
 type TextHandler<E, F> = (event: E) => Findings<Only<F, TextFinding>>;
 
-/** What `onWrite` and `onRead` take: which files, and what to look for in them. */
+/** What `onWrite`, `onRead` and `onDelete` take: which files, and what to look for in them. */
 export interface FileOptions<E, F> {
   /**
    * Patterns for the path from the project root: `**`, `*`, `?` and `{a,b}`.
@@ -106,7 +107,7 @@ function register(event: EventName, options: unknown): void {
   registered.push({ event, globs: (Array.isArray(globs) ? [...globs] : (globs ?? [])) as string[], handler: detect as Registration["handler"] });
 }
 
-/** Runs when the agent wrote or edited a file. `event.written` holds the lines it wrote. */
+/** Runs when the agent wrote or edited a file. `event.written` holds the lines it wrote, `event.removed` the lines it removed. */
 export function onWrite<F extends Finding>(options: FileOptions<WriteEvent, F>): void {
   register("write", options);
 }
@@ -114,6 +115,11 @@ export function onWrite<F extends Finding>(options: FileOptions<WriteEvent, F>):
 /** Runs when the agent read a file. It did not write this code, so judge the place, not the author. */
 export function onRead<F extends Finding>(options: FileOptions<ReadEvent, F>): void {
   register("read", options);
+}
+
+/** Runs when the agent deleted a file. `event.file` is the file as it was, and every line of it is in `event.removed`. */
+export function onDelete<F extends Finding>(options: FileOptions<DeleteEvent, F>): void {
+  register("delete", options);
 }
 
 /** Runs when the user typed a message, and when the agent briefed a subagent. */
@@ -143,11 +149,19 @@ function eventOf(ctx: Ctx): unknown {
     const text = { ...base, cwd: ctx.cwd ?? ctx.project ?? "/" };
     return ctx.command === null ? text : { ...text, command: ctx.command };
   }
-  const { written, ...file } = ctx.file;
-  if (ctx.event !== "write") {
+  const { written, removed, ...file } = ctx.file;
+  if (ctx.event === "read") {
     return { ...base, file };
   }
-  return { ...base, file, written };
+  // A detector of an older API is handed an event without removed lines, and gets none.
+  if (removed === undefined) {
+    return { ...base, file, written };
+  }
+  const removedLines: RemovedLine[] = removed.map((line) => ({ line: line.line, text: line.text, removed: true }));
+  if (ctx.event === "delete") {
+    return { ...base, file, removed: removedLines };
+  }
+  return { ...base, file, written, removed: removedLines };
 }
 
 /**
@@ -181,13 +195,14 @@ export function __dispatch(ctx: Ctx, limit: number): unknown[] {
 }
 
 /**
- * What a handler yielded, reduced to what a finding is. A written line that
- * was returned as it is becomes a finding on its line: its text stays here.
+ * What a handler yielded, reduced to what a finding is. A written or removed
+ * line that was returned as it is becomes a finding on its line: its text
+ * stays here.
  */
 function asFinding(found: unknown): unknown {
   if (typeof found !== "object" || found === null || Array.isArray(found)) {
     return found;
   }
-  const { line, endLine, match, file, depth } = found as Record<string, unknown>;
-  return { line, endLine, match, file, depth };
+  const { line, endLine, match, file, depth, removed } = found as Record<string, unknown>;
+  return { line, endLine, match, file, depth, removed };
 }

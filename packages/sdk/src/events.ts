@@ -22,20 +22,59 @@ export interface DetectOptions {
  * Pass `{ isNew: true }` when the write created the file.
  */
 export function write(path: string, content: string, options: { isNew?: boolean } = {}): Ctx {
-  return fileCtx("write", path, content, undefined, { isNew: options.isNew === true });
+  return fileCtx("write", path, content, {}, { isNew: options.isNew === true });
+}
+
+/** What `edit` takes besides the file after the edit. */
+export interface EditChange {
+  /** The text the agent put in, as one piece or several. */
+  written?: string | readonly string[];
+  /** The text the agent took out, as one piece or several. Needs `before`, where it is found. */
+  removed?: string | readonly string[];
+  /** The file as it was before the edit. A removed line has the line it had there. */
+  before?: string;
 }
 
 /**
- * The agent edited a file. `content` is the file after the edit and
- * `change.written` is the text the agent put in, as one piece or several.
+ * The agent edited a file. `content` is the file after the edit,
+ * `change.written` is the text the agent put in, and `change.removed` the
+ * text it took out of `change.before`.
  */
-export function edit(path: string, content: string, change: { written: string | readonly string[] }): Ctx {
-  const fragments = typeof change.written === "string" ? [change.written] : change.written;
-  const written = locateWritten(content, fragments);
-  if (written.length === 0) {
+export function edit(path: string, content: string, change: EditChange): Ctx {
+  const written = locateWritten(content, piecesOf(change.written));
+  const removedPieces = piecesOf(change.removed);
+  if (written.length === 0 && removedPieces.length === 0) {
+    throw new Error(`edit("${path}"): pass the text the agent wrote as written, or the text it removed as removed.`);
+  }
+  if (change.written !== undefined && written.length === 0) {
     throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);
   }
-  return fileCtx("write", path, content, written);
+  if (removedPieces.length === 0) {
+    return fileCtx("write", path, content, { written });
+  }
+  if (change.before === undefined) {
+    throw new Error(`edit("${path}"): pass the file as it was before the edit as before, so the removed lines have their line numbers.`);
+  }
+  const removed = locateWritten(change.before, removedPieces);
+  if (removed.length === 0) {
+    throw new Error(`edit("${path}"): the removed text does not occur in before. Pass the file as it was before the edit.`);
+  }
+  return fileCtx("write", path, content, { written, removed });
+}
+
+function piecesOf(text: string | readonly string[] | undefined): readonly string[] {
+  if (text === undefined) {
+    return [];
+  }
+  if (typeof text === "string") {
+    return [text];
+  }
+  return text;
+}
+
+/** The agent deleted this file. `content` is what it held. Every line of it counts as removed. */
+export function deleted(path: string, content: string): Ctx {
+  return fileCtx("delete", path, content);
 }
 
 /** The agent read this file. It wrote none of it. */

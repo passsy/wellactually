@@ -11070,9 +11070,9 @@ function compile(pattern) {
 }
 
 // packages/sdk/src/index.ts
-var API_VERSION = 3;
-var EVENTS = ["write", "read", "prompt", "command", "output"];
-var FILE_EVENTS = ["write", "read"];
+var API_VERSION = 4;
+var EVENTS = ["write", "read", "delete", "prompt", "command", "output"];
+var FILE_EVENTS = ["write", "read", "delete"];
 var C_LIKE = {
   lineComment: "//",
   blockComment: ["/*", "*/"],
@@ -11122,7 +11122,16 @@ function blankCommentsAndStrings(text2, syntax = C_LIKE) {
   return out.join("");
 }
 var TEST_ROOT = "/project";
-function fileCtx(event, relativePath, content, written, where = {}) {
+function removedOf(event, change, allLines) {
+  if (event === "delete") {
+    return allLines;
+  }
+  if (event === "read") {
+    return [];
+  }
+  return change.removed ?? [];
+}
+function fileCtx(event, relativePath, content, change = {}, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === void 0 ? TEST_ROOT : where.root;
   const path17 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
@@ -11139,7 +11148,8 @@ function fileCtx(event, relativePath, content, written, where = {}) {
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
       content,
       lines,
-      written: event === "read" ? [] : written ?? allLines,
+      written: event === "write" ? change.written ?? allLines : [],
+      removed: removedOf(event, change, allLines),
       isNew: event === "write" && where.isNew === true
     },
     text: content,
@@ -11876,15 +11886,16 @@ function noticeOf(carried) {
 
 // packages/core/src/build/sdk-source.generated.ts
 var SDK_SOURCES = {
-  "events.ts": '/**\n * The events a test shows to a detector.\n *\n * They are the same in every runner: vitest on the author\'s machine,\n * `wellactually test`, the browser editor and the registry. A path is relative\n * to a made-up project root, and the detector sees it below that root.\n */\nimport { fileCtx, locateWritten, textCtx, type Ctx } from "./index.ts";\n\n/** What `detect` takes besides the event. */\nexport interface DetectOptions {\n  /**\n   * A folder of the principle, e.g. "fixtures/flutter_app", that is the\n   * project the event happens in. The detector reads its files with `node:fs`.\n   * Without it the only file there is, anywhere, is the file of the event.\n   */\n  project?: string;\n}\n\n/**\n * The agent wrote this file in full. Every line counts as written.\n * Pass `{ isNew: true }` when the write created the file.\n */\nexport function write(path: string, content: string, options: { isNew?: boolean } = {}): Ctx {\n  return fileCtx("write", path, content, undefined, { isNew: options.isNew === true });\n}\n\n/**\n * The agent edited a file. `content` is the file after the edit and\n * `change.written` is the text the agent put in, as one piece or several.\n */\nexport function edit(path: string, content: string, change: { written: string | readonly string[] }): Ctx {\n  const fragments = typeof change.written === "string" ? [change.written] : change.written;\n  const written = locateWritten(content, fragments);\n  if (written.length === 0) {\n    throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);\n  }\n  return fileCtx("write", path, content, written);\n}\n\n/** The agent read this file. It wrote none of it. */\nexport function read(path: string, content: string): Ctx {\n  return fileCtx("read", path, content);\n}\n\n/** The user typed this, or the agent handed it to a subagent. */\nexport function prompt(text: string): Ctx {\n  return textCtx("prompt", text);\n}\n\n/** The agent is about to run this shell command. */\nexport function command(text: string): Ctx {\n  return textCtx("command", text);\n}\n\n/** `command` ran, and this is what it printed. */\nexport function output(command: string, text: string): Ctx {\n  return textCtx("output", text, undefined, command);\n}\n\n/**\n * A multi-line string without the indentation of the test around it.\n *\n * `${` and a backtick inside it need a backslash, as in any template string.\n */\nexport function source(strings: TemplateStringsArray, ...values: unknown[]): string {\n  const text = strings.raw.reduce((out, part, index) => out + part.replace(/\\\\([`$\\\\])/g, "$1") + (index < values.length ? String(values[index]) : ""), "");\n  const lines = text.split("\\n");\n  if (lines[0]?.trim() === "") {\n    lines.shift();\n  }\n  if (lines.at(-1)?.trim() === "") {\n    lines.pop();\n  }\n  const indent = Math.min(...lines.filter((line) => line.trim() !== "").map((line) => /^[ \\t]*/.exec(line)?.[0].length ?? 0));\n  return lines.map((line) => line.slice(Number.isFinite(indent) ? indent : 0)).join("\\n");\n}\n',
+  "events.ts": '/**\n * The events a test shows to a detector.\n *\n * They are the same in every runner: vitest on the author\'s machine,\n * `wellactually test`, the browser editor and the registry. A path is relative\n * to a made-up project root, and the detector sees it below that root.\n */\nimport { fileCtx, locateWritten, textCtx, type Ctx } from "./index.ts";\n\n/** What `detect` takes besides the event. */\nexport interface DetectOptions {\n  /**\n   * A folder of the principle, e.g. "fixtures/flutter_app", that is the\n   * project the event happens in. The detector reads its files with `node:fs`.\n   * Without it the only file there is, anywhere, is the file of the event.\n   */\n  project?: string;\n}\n\n/**\n * The agent wrote this file in full. Every line counts as written.\n * Pass `{ isNew: true }` when the write created the file.\n */\nexport function write(path: string, content: string, options: { isNew?: boolean } = {}): Ctx {\n  return fileCtx("write", path, content, {}, { isNew: options.isNew === true });\n}\n\n/** What `edit` takes besides the file after the edit. */\nexport interface EditChange {\n  /** The text the agent put in, as one piece or several. */\n  written?: string | readonly string[];\n  /** The text the agent took out, as one piece or several. Needs `before`, where it is found. */\n  removed?: string | readonly string[];\n  /** The file as it was before the edit. A removed line has the line it had there. */\n  before?: string;\n}\n\n/**\n * The agent edited a file. `content` is the file after the edit,\n * `change.written` is the text the agent put in, and `change.removed` the\n * text it took out of `change.before`.\n */\nexport function edit(path: string, content: string, change: EditChange): Ctx {\n  const written = locateWritten(content, piecesOf(change.written));\n  const removedPieces = piecesOf(change.removed);\n  if (written.length === 0 && removedPieces.length === 0) {\n    throw new Error(`edit("${path}"): pass the text the agent wrote as written, or the text it removed as removed.`);\n  }\n  if (change.written !== undefined && written.length === 0) {\n    throw new Error(`edit("${path}"): the written text does not occur in the file. Pass the file as it is after the edit.`);\n  }\n  if (removedPieces.length === 0) {\n    return fileCtx("write", path, content, { written });\n  }\n  if (change.before === undefined) {\n    throw new Error(`edit("${path}"): pass the file as it was before the edit as before, so the removed lines have their line numbers.`);\n  }\n  const removed = locateWritten(change.before, removedPieces);\n  if (removed.length === 0) {\n    throw new Error(`edit("${path}"): the removed text does not occur in before. Pass the file as it was before the edit.`);\n  }\n  return fileCtx("write", path, content, { written, removed });\n}\n\nfunction piecesOf(text: string | readonly string[] | undefined): readonly string[] {\n  if (text === undefined) {\n    return [];\n  }\n  if (typeof text === "string") {\n    return [text];\n  }\n  return text;\n}\n\n/** The agent deleted this file. `content` is what it held. Every line of it counts as removed. */\nexport function deleted(path: string, content: string): Ctx {\n  return fileCtx("delete", path, content);\n}\n\n/** The agent read this file. It wrote none of it. */\nexport function read(path: string, content: string): Ctx {\n  return fileCtx("read", path, content);\n}\n\n/** The user typed this, or the agent handed it to a subagent. */\nexport function prompt(text: string): Ctx {\n  return textCtx("prompt", text);\n}\n\n/** The agent is about to run this shell command. */\nexport function command(text: string): Ctx {\n  return textCtx("command", text);\n}\n\n/** `command` ran, and this is what it printed. */\nexport function output(command: string, text: string): Ctx {\n  return textCtx("output", text, undefined, command);\n}\n\n/**\n * A multi-line string without the indentation of the test around it.\n *\n * `${` and a backtick inside it need a backslash, as in any template string.\n */\nexport function source(strings: TemplateStringsArray, ...values: unknown[]): string {\n  const text = strings.raw.reduce((out, part, index) => out + part.replace(/\\\\([`$\\\\])/g, "$1") + (index < values.length ? String(values[index]) : ""), "");\n  const lines = text.split("\\n");\n  if (lines[0]?.trim() === "") {\n    lines.shift();\n  }\n  if (lines.at(-1)?.trim() === "") {\n    lines.pop();\n  }\n  const indent = Math.min(...lines.filter((line) => line.trim() !== "").map((line) => /^[ \\t]*/.exec(line)?.[0].length ?? 0));\n  return lines.map((line) => line.slice(Number.isFinite(indent) ? indent : 0)).join("\\n");\n}\n',
   "find.ts": '/**\n * Looking around the project from where an event happened.\n *\n * A detector reads files with `node:fs`, and may read any text file. What it\n * usually wants to know first is what kind of project it is in, and the\n * answer lies in a file somewhere above: a `pubspec.yaml`, a `package.json`.\n */\nimport { existsSync } from "./fs.ts";\nimport { dirname, join } from "./path.ts";\n\n/**\n * The nearest file called `name`, looking in `from` and then in every folder\n * above it, as an absolute path. Null when there is none.\n *\n *     findUp("pubspec.yaml", event.cwd)                  // for a prompt\n *     findUp("pubspec.yaml", path.dirname(event.file.path)) // for a file\n */\nexport function findUp(name: string, from: string): string | null {\n  for (let dir = from; ; dir = dirname(dir)) {\n    const candidate = join(dir, name);\n    if (existsSync(candidate)) {\n      return candidate;\n    }\n    if (dir === dirname(dir)) {\n      return null;\n    }\n  }\n}\n',
   "fs.ts": '/**\n * What `node:fs` resolves to inside the isolate: the reading half of it.\n *\n * A detector has no file system of its own. Each call here is a question to\n * the host, which reads the file for it. A file that is not text, is very\n * large or cannot be read looks like a file that does not exist.\n *\n * Only the synchronous calls exist, because a detector is synchronous.\n * Nothing can be written.\n */\n\ninterface Host {\n  __fs?: (request: string) => string;\n}\n\ninterface Entry {\n  name: string;\n  kind: "file" | "dir";\n}\n\ntype Answer =\n  | { text: string }\n  | { stat: { kind: "file" | "dir"; size: number } }\n  | { entries: Entry[] }\n  | { error: { code: string; message: string } };\n\nfunction ask(op: "read" | "stat" | "list", path: string): Answer {\n  const host = (globalThis as Host).__fs;\n  if (!host) {\n    return { error: { code: "ENOENT", message: `ENOENT: no such file or directory, ${op} \'${path}\'` } };\n  }\n  return JSON.parse(host(JSON.stringify({ op, path: String(path) }))) as Answer;\n}\n\nfunction fail(error: { code: string; message: string }): never {\n  throw Object.assign(new Error(error.message), { code: error.code });\n}\n\n/** The file as text. The encoding is always UTF-8, whatever is passed. */\nexport function readFileSync(path: string, _options?: unknown): string {\n  const answer = ask("read", path);\n  if ("error" in answer) {\n    fail(answer.error);\n  }\n  return (answer as { text: string }).text;\n}\n\nexport function existsSync(path: string): boolean {\n  return !("error" in ask("stat", path));\n}\n\nexport interface Stats {\n  size: number;\n  isFile(): boolean;\n  isDirectory(): boolean;\n  isSymbolicLink(): boolean;\n}\n\nexport function statSync(path: string, options?: { throwIfNoEntry?: boolean }): Stats | undefined {\n  const answer = ask("stat", path);\n  if ("error" in answer) {\n    if (options?.throwIfNoEntry === false) {\n      return undefined;\n    }\n    fail(answer.error);\n  }\n  const { kind, size } = (answer as { stat: { kind: "file" | "dir"; size: number } }).stat;\n  return { size, isFile: () => kind === "file", isDirectory: () => kind === "dir", isSymbolicLink: () => false };\n}\n\n/** Symlinks are resolved by the host, so this is `statSync`. */\nexport const lstatSync = statSync;\n\nexport interface Dirent {\n  name: string;\n  isFile(): boolean;\n  isDirectory(): boolean;\n  isSymbolicLink(): boolean;\n}\n\nexport function readdirSync(path: string, options: { withFileTypes: true }): Dirent[];\nexport function readdirSync(path: string, options?: { withFileTypes?: false } | string): string[];\nexport function readdirSync(path: string, options?: { withFileTypes?: boolean } | string): string[] | Dirent[] {\n  const answer = ask("list", path);\n  if ("error" in answer) {\n    fail(answer.error);\n  }\n  const entries = (answer as { entries: Entry[] }).entries;\n  if (typeof options === "object" && options.withFileTypes) {\n    return entries.map((entry) => ({ name: entry.name, isFile: () => entry.kind === "file", isDirectory: () => entry.kind === "dir", isSymbolicLink: () => false }));\n  }\n  return entries.map((entry) => entry.name);\n}\n\nfunction readOnly(name: string): () => never {\n  return () => {\n    throw Object.assign(new Error(`EROFS: read-only file system, ${name}. A detector can read the project and cannot change it.`), { code: "EROFS" });\n  };\n}\n\nexport const writeFileSync = readOnly("writeFileSync");\nexport const appendFileSync = readOnly("appendFileSync");\nexport const mkdirSync = readOnly("mkdirSync");\nexport const rmSync = readOnly("rmSync");\nexport const unlinkSync = readOnly("unlinkSync");\nexport const renameSync = readOnly("renameSync");\nexport const copyFileSync = readOnly("copyFileSync");\n\nexport default { readFileSync, existsSync, statSync, lstatSync, readdirSync, writeFileSync, appendFileSync, mkdirSync, rmSync, unlinkSync, renameSync, copyFileSync };\n',
   "glob.ts": '/**\n * Glob matching for the `globs` of a file handler, on forward-slash relative paths.\n *\n * Supports `**`, `*`, `?` and `{a,b}`. A pattern without a slash matches the\n * basename anywhere, so `*.dart` and `**\\/*.dart` mean the same thing.\n * A pattern that starts with `!` takes files out again: `!**\\/*.g.dart`.\n */\n\nconst cache = new Map<string, Matcher>();\n\nexport function matchesGlob(path: string, pattern: string): boolean {\n  let matcher = cache.get(pattern);\n  if (!matcher) {\n    matcher = compile(pattern);\n    cache.set(pattern, matcher);\n  }\n  return matcher(path);\n}\n\n/**\n * Whether `globs` select the file at `path`.\n *\n * A file is selected when one of the patterns matches it and no pattern\n * starting with `!` does. Without a pattern that selects, every file is in:\n * an empty list means all files, and `["!**\\/*.g.dart"]` all but generated ones.\n */\nexport function matchesGlobs(path: string, globs: readonly string[]): boolean {\n  const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));\n  if (excluded.some((glob) => matchesGlob(path, glob))) {\n    return false;\n  }\n  const included = globs.filter((glob) => !glob.startsWith("!"));\n  return included.length === 0 || included.some((glob) => matchesGlob(path, glob));\n}\n\ntype Matcher = (path: string) => boolean;\n\n/** One piece of a pattern: a character, `?`, `*`, `**` before a slash, `**` elsewhere, or `{a,b}`. */\ntype Piece =\n  | { kind: "char"; char: string }\n  | { kind: "one" }\n  | { kind: "star" }\n  | { kind: "folders" }\n  | { kind: "any" }\n  | { kind: "either"; options: Piece[][] };\n\n/**\n * Reads a pattern into pieces. A `{` that is never closed is a character,\n * and so are a `}` without its `{` and a `,` outside braces.\n */\nfunction parse(pattern: string): Piece[] {\n  // By code point, the way the path is read, so a character outside the BMP is one character.\n  const anchored = [...(pattern.includes("/") ? pattern.replace(/^\\.?\\//, "") : `**/${pattern}`)];\n  const root: Piece[] = [];\n  // The braces that are open, innermost last, each with its options so far.\n  const open: Piece[][][] = [];\n  const current = (): Piece[] => open.at(-1)?.at(-1) ?? root;\n  for (let i = 0; i < anchored.length; i++) {\n    const char = anchored[i] ?? "";\n    if (char === "*" && anchored[i + 1] === "*") {\n      const slashAfter = anchored[i + 2] === "/";\n      current().push({ kind: slashAfter ? "folders" : "any" });\n      i += slashAfter ? 2 : 1;\n      continue;\n    }\n    if (char === "*") {\n      current().push({ kind: "star" });\n    } else if (char === "?") {\n      current().push({ kind: "one" });\n    } else if (char === "{") {\n      open.push([[]]);\n    } else if (char === "}" && open.length > 0) {\n      const options = open.pop() as Piece[][];\n      current().push({ kind: "either", options });\n    } else if (char === "," && open.length > 0) {\n      open.at(-1)?.push([]);\n    } else {\n      current().push({ kind: "char", char });\n    }\n  }\n  while (open.length > 0) {\n    const [first = [], ...rest] = open.pop() as Piece[][];\n    current().push({ kind: "char", char: "{" }, ...first, ...rest.flatMap((option): Piece[] => [{ kind: "char", char: "," }, ...option]));\n  }\n  return root;\n}\n\n/** A state of the matcher: the characters it moves on with, and the states it reaches without one. */\ninterface State {\n  moves: { takes: (char: string) => boolean; to: number }[];\n  free: number[];\n}\n\nconst anyChar = (): boolean => true;\nconst notSlash = (char: string): boolean => char !== "/";\n\n/**\n * Turns a pattern into a matcher that takes time in proportion to the\n * pattern times the path, whatever the pattern.\n *\n * A regular expression would be shorter, but it backtracks: a pattern such\n * as `**\\/**\\/**\\/\u2026` takes seconds on an ordinary path. Globs come from\n * detectors, which anybody writes, and the host matches them before any\n * isolate starts, outside its time limit. So the pattern becomes a set of\n * states that is walked one character of the path at a time, and the walk\n * never goes back.\n */\nfunction compile(pattern: string): Matcher {\n  const states: State[] = [{ moves: [], free: [] }];\n  const add = (): number => states.push({ moves: [], free: [] }) - 1;\n  const state = (index: number): State => states[index] as State;\n\n  // Builds the pieces back to front, so each knows the state that follows it.\n  const sequence = (pieces: Piece[], next: number): number => {\n    let after = next;\n    for (let i = pieces.length - 1; i >= 0; i--) {\n      after = piece(pieces[i] as Piece, after);\n    }\n    return after;\n  };\n  const piece = (it: Piece, next: number): number => {\n    const at = add();\n    switch (it.kind) {\n      case "char":\n        state(at).moves.push({ takes: (char) => char === it.char, to: next });\n        break;\n      case "one":\n        state(at).moves.push({ takes: notSlash, to: next });\n        break;\n      case "star":\n        state(at).moves.push({ takes: notSlash, to: at });\n        state(at).free.push(next);\n        break;\n      case "any":\n        state(at).moves.push({ takes: anyChar, to: at });\n        state(at).free.push(next);\n        break;\n      case "folders": {\n        // Nothing, or anything that ends with a slash.\n        const inside = add();\n        state(at).free.push(next, inside);\n        state(inside).moves.push({ takes: anyChar, to: inside }, { takes: (char) => char === "/", to: next });\n        break;\n      }\n      case "either":\n        for (const option of it.options) {\n          state(at).free.push(sequence(option, next));\n        }\n        break;\n    }\n    return at;\n  };\n  const start = sequence(parse(pattern), 0);\n\n  const reach = (from: Iterable<number>): Set<number> => {\n    const seen = new Set<number>();\n    const stack = [...from];\n    while (stack.length > 0) {\n      const index = stack.pop() as number;\n      if (!seen.has(index)) {\n        seen.add(index);\n        stack.push(...state(index).free);\n      }\n    }\n    return seen;\n  };\n  return (path) => {\n    let now = reach([start]);\n    for (const char of path) {\n      const next: number[] = [];\n      for (const index of now) {\n        for (const move of state(index).moves) {\n          if (move.takes(char)) {\n            next.push(move.to);\n          }\n        }\n      }\n      if (next.length === 0) {\n        return false;\n      }\n      now = reach(next);\n    }\n    // State 0 is where every pattern ends.\n    return now.has(0);\n  };\n}\n',
-  "handlers.ts": '/**\n * How a detector says what it reacts to.\n *\n *     onWrite({\n *       globs: ["**\\/*.dart", "!**\\/*.g.dart"],\n *       *detect(event) {\n *         for (const written of event.written) {\n *           if (/\\blate\\b/.test(written.text)) {\n *             yield { line: written.line };\n *           }\n *         }\n *       },\n *     });\n *\n *     onPrompt({\n *       *detect(event) {\n *         yield* mentioned(event, ["late keyword", "late final"]);\n *       },\n *     });\n *\n * Each call takes one object. Its `detect` is a generator method, the star\n * in front of the name. It yields a finding for each thing it found, and\n * passes on what a helper returns with `yield*`.\n *\n * A detector file calls these at its top level. The build loads the file once\n * to learn which handlers it has and which files they want, so a host knows\n * without starting an isolate that an edit to a Python file is none of a Dart\n * principle\'s business. For that reason a call inside a function, an `if` or\n * another handler does not count.\n *\n * This file holds the one piece of state a detector has: its handlers. Each\n * detector is bundled with its own copy and runs in a fresh isolate.\n */\nimport { matchesGlobs } from "./glob.ts";\nimport type { CommandEvent, Ctx, EventName, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, TextFinding, WriteEvent, WrittenLine } from "./index.ts";\n\n/**\n * `F`, with every field that `Allowed` does not have turned into an error.\n *\n * A handler written inline has its return type inferred, and TypeScript lets\n * an inferred object carry extra fields. This is what makes `yield { line: 1 }`\n * in a prompt handler, or a misspelled field anywhere, fail to compile.\n */\ntype Only<F, Allowed> = F extends unknown ? F & { [K in Exclude<keyof F, keyof Allowed>]: never } : never;\n\n/**\n * A handler of an event with lines: it yields findings that may name a line.\n * It may also return written lines as they are, each of which is a finding on its line.\n *\n * The first half of the union is what lets one handler yield a finding for\n * the file, `{}`, next to findings with a line.\n */\ntype FileHandler<E, F> = (event: E) => Findings<Only<F, Finding>> | Findings<Only<F, Finding> | WrittenLine>;\n/** A handler of a prompt or a command: its findings have no line to name. */\ntype TextHandler<E, F> = (event: E) => Findings<Only<F, TextFinding>>;\n\n/** What `onWrite` and `onRead` take: which files, and what to look for in them. */\nexport interface FileOptions<E, F> {\n  /**\n   * Patterns for the path from the project root: `**`, `*`, `?` and `{a,b}`.\n   * A pattern starting with `!` takes files out again. Without a pattern that\n   * selects, `detect` runs on every file.\n   */\n  globs?: readonly string[];\n  /** Yields a finding for each thing it found in the event. */\n  detect: FileHandler<E, F>;\n}\n\n/** What `onPrompt` and `onCommand` take. */\nexport interface TextOptions<E, F> {\n  /** Yields a finding for each thing it found in the event. */\n  detect: TextHandler<E, F>;\n}\n\n/** What `onOutput` takes. */\nexport interface OutputOptions<F> {\n  /** Yields a finding for each thing it found in what the command printed. */\n  detect: FileHandler<OutputEvent, F>;\n}\n\n/** A handler as the build sees it: its event and the files it wants. */\nexport interface Registered {\n  event: EventName;\n  /** Empty on the events that carry no file. */\n  globs: string[];\n}\n\ninterface Registration extends Registered {\n  handler: (event: never) => Findings<Finding>;\n}\n\nconst registered: Registration[] = [];\n/** True once the file has been loaded. A handler registered after that was never seen by the build. */\nlet sealed = false;\n\nfunction register(event: EventName, options: unknown): void {\n  const name = `on${event[0]?.toUpperCase() ?? ""}${event.slice(1)}`;\n  if (sealed) {\n    throw new Error(`${name}() was called while a handler ran. Register handlers at the top level of detector.ts.`);\n  }\n  const { globs, detect } = (typeof options === "object" && options !== null ? options : {}) as { globs?: unknown; detect?: unknown };\n  if (typeof detect !== "function") {\n    throw new Error(`${name}() takes an object with a detect function: ${name}({ *detect(event) { ... } })`);\n  }\n  // What is not a list of patterns is kept as it is, for the build to refuse with a message for the author.\n  registered.push({ event, globs: (Array.isArray(globs) ? [...globs] : (globs ?? [])) as string[], handler: detect as Registration["handler"] });\n}\n\n/** Runs when the agent wrote or edited a file. `event.written` holds the lines it wrote. */\nexport function onWrite<F extends Finding>(options: FileOptions<WriteEvent, F>): void {\n  register("write", options);\n}\n\n/** Runs when the agent read a file. It did not write this code, so judge the place, not the author. */\nexport function onRead<F extends Finding>(options: FileOptions<ReadEvent, F>): void {\n  register("read", options);\n}\n\n/** Runs when the user typed a message, and when the agent briefed a subagent. */\nexport function onPrompt<F extends TextFinding>(options: TextOptions<PromptEvent, F>): void {\n  register("prompt", options);\n}\n\n/** Runs before the agent runs a shell command. */\nexport function onCommand<F extends TextFinding>(options: TextOptions<CommandEvent, F>): void {\n  register("command", options);\n}\n\n/** Runs after a shell command, on what it printed. */\nexport function onOutput<F extends Finding>(options: OutputOptions<F>): void {\n  register("output", options);\n}\n\n/** What the build reads: the handlers the detector file registered while it loaded. */\nexport function __handlers(): Registered[] {\n  return registered.map(({ handler: _, ...rest }) => rest);\n}\n\n/** The event as the handlers of its kind get it. */\nfunction eventOf(ctx: Ctx): unknown {\n  const base = { event: ctx.event, text: ctx.text, lines: ctx.file?.lines ?? ctx.text.split("\\n"), project: ctx.project };\n  if (!ctx.file) {\n    const text = { ...base, cwd: ctx.cwd ?? ctx.project ?? "/" };\n    return ctx.command === null ? text : { ...text, command: ctx.command };\n  }\n  const { written, ...file } = ctx.file;\n  if (ctx.event !== "write") {\n    return { ...base, file };\n  }\n  return { ...base, file, written };\n}\n\n/**\n * What the host calls inside the isolate: runs every handler that wants this\n * event and collects what they yield, up to `limit` findings and one more, so\n * the host can tell that there were too many.\n */\nexport function __dispatch(ctx: Ctx, limit: number): unknown[] {\n  sealed = true;\n  const out: unknown[] = [];\n  let event: unknown;\n  for (const { event: kind, globs, handler } of registered) {\n    if (kind !== ctx.event || (ctx.file && !matchesGlobs(ctx.file.relativePath, globs))) {\n      continue;\n    }\n    const found = (handler as (event: unknown) => unknown)((event ??= eventOf(ctx)));\n    if (found === null || found === undefined) {\n      continue;\n    }\n    if (typeof (found as { [Symbol.iterator]?: unknown })[Symbol.iterator] !== "function" || typeof found === "string") {\n      throw new Error(`a handler has to return findings: a generator, a list, or nothing. This one returned ${typeof found === "object" ? "an object" : String(found)}.`);\n    }\n    for (const finding of found as Iterable<unknown>) {\n      out.push(asFinding(finding));\n      if (out.length > limit) {\n        return out;\n      }\n    }\n  }\n  return out;\n}\n\n/**\n * What a handler yielded, reduced to what a finding is. A written line that\n * was returned as it is becomes a finding on its line: its text stays here.\n */\nfunction asFinding(found: unknown): unknown {\n  if (typeof found !== "object" || found === null || Array.isArray(found)) {\n    return found;\n  }\n  const { line, endLine, match, file, depth } = found as Record<string, unknown>;\n  return { line, endLine, match, file, depth };\n}\n',
-  "index.ts": '/**\n * Everything a detector may import, next to `node:fs` and `node:path`.\n *\n * A detector runs inside an isolate with no network and no process. It can\n * read files and cannot change any. This module is bundled into it at publish\n * time, so it must stay free of Node imports and of any state. The one piece\n * of state a detector has, the handlers it registered, lives in `handlers.ts`.\n */\n\n/**\n * The version of the detector API this SDK is: the event a detector is handed\n * and what it may ask the host for.\n *\n * A principle records the version it was built against, and a host runs each\n * detector against the version it was built for. So the API changes by adding\n * a version here, with the host\'s step back to the one before. Changing what\n * an existing version means would break principles that are already released.\n *\n * - 1: one `detect(ctx)` with `file.path` relative. No longer run.\n * - 2: `file.path` absolute, `file.relativePath`, `file.isNew`, `project`, and\n *   reading files through `node:fs` and `node:path`. No longer run.\n * - 3: handlers in place of `detect`: `onWrite`, `onRead`, `onPrompt`,\n *   `onCommand` and `onOutput`, each with its own typed event, and globs on\n *   the file handlers. A finding names a line or a match and carries no text\n *   of its own. Added the `output` event, and a prompt is also what the agent\n *   hands to a subagent.\n *\n * A detector says which one it was written against by where it imports from:\n * `@wellactually/sdk/v3`. Each version has its own file next to this one. A\n * principle is then handed the event of that version for as long as it is\n * run, also when it is uploaded again after the API has moved on. This file\n * itself is what the host imports, not a detector.\n */\nexport const API_VERSION = 3;\n\nexport { matchesGlob, matchesGlobs } from "./glob.ts";\n\n/**\n * What happened in the session.\n *\n * - `write`: the agent wrote or edited a file.\n * - `read`: the agent read a file. It did not write this code.\n * - `prompt`: the user typed a message, or the agent briefed a subagent.\n * - `command`: the agent is about to run a shell command.\n * - `output`: a shell command ran, and this is what it printed.\n */\nexport type EventName = "write" | "read" | "prompt" | "command" | "output";\n\nexport const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command", "output"];\n\n/** The events that carry a file, and so the ones a handler can have globs for. */\nexport const FILE_EVENTS: readonly EventName[] = ["write", "read"];\n\n/** A line the agent wrote in this event, as the host records it. */\nexport interface Written {\n  /** 1-based line in the file. */\n  line: number;\n  /** The line as written, untrimmed. */\n  text: string;\n}\n\n/** A line the agent wrote in this event, as a handler of `onWrite` gets it. */\nexport type WrittenLine = Written;\n\n/** The file of a `write` or `read` event. */\nexport interface File {\n  /** Absolute path, with forward slashes. Navigate from here with `node:path` and read neighbours with `node:fs`. */\n  path: string;\n  /**\n   * Path from the project root, e.g. "lib/src/config_loader.dart". This is what `globs` are matched against.\n   * Without a project root it is the path from where the session runs, or just the file\'s name.\n   */\n  relativePath: string;\n  /** Basename, e.g. "config_loader.dart". */\n  name: string;\n  /** Extension including the dot, lower case. Empty when there is none. */\n  ext: string;\n  content: string;\n  /** `content` split into lines. */\n  lines: string[];\n  /** The agent created this file with this write. It did not exist before. Always false on `read`. */\n  isNew: boolean;\n}\n\n/**\n * An event as the host builds it and hands it to the isolate: one shape for\n * all five. A detector never sees this. Its handlers get the event of their\n * kind, see `WriteEvent` and the others.\n */\nexport interface Ctx {\n  event: EventName;\n  /** Null when the event carries text instead of a file. */\n  file: (File & { written: Written[] }) | null;\n  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */\n  text: string;\n  /** The command line on `command` and `output`. Null on the others. */\n  command: string | null;\n  /** The folder the session runs in, as an absolute path, on the events without a file. Null on `write` and `read`. */\n  cwd: string | null;\n  /**\n   * The root of the project the event happened in, as an absolute path: the\n   * nearest folder upwards with a `.git`. Null when there is none.\n   */\n  project: string | null;\n}\n\n/** What every event has. */\ninterface EventBase {\n  /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */\n  text: string;\n  /** `text` split into lines. A finding\'s `line` counts in here. */\n  lines: string[];\n  /**\n   * The root of the project the event happened in, as an absolute path: the\n   * nearest folder upwards with a `.git`. Null when there is none, which is\n   * normal, so do not rely on it. To find a `pubspec.yaml` or a\n   * `package.json`, walk up from `file.path` instead.\n   */\n  project: string | null;\n}\n\n/** The agent wrote or edited a file. */\nexport interface WriteEvent extends EventBase {\n  event: "write";\n  file: File;\n  /** The lines the agent wrote. Code that was there before is not in here. */\n  written: WrittenLine[];\n}\n\n/** The agent read a file. It wrote none of it. */\nexport interface ReadEvent extends EventBase {\n  event: "read";\n  file: File;\n}\n\n/** What an event without a file has in its place: where the session is. */\ninterface TextEventBase extends EventBase {\n  /**\n   * The folder the session runs in, as an absolute path. Start here to look\n   * at the project with `node:fs`, e.g. `findUp("pubspec.yaml", event.cwd)`.\n   */\n  cwd: string;\n}\n\n/** The user typed a message, or the agent briefed a subagent. A request for work that has not happened yet. */\nexport interface PromptEvent extends TextEventBase {\n  event: "prompt";\n}\n\n/** The agent is about to run a shell command. */\nexport interface CommandEvent extends TextEventBase {\n  event: "command";\n  /** The command line. The same as `text`. */\n  command: string;\n}\n\n/** A shell command ran. `text` is what it printed. */\nexport interface OutputEvent extends TextEventBase {\n  event: "output";\n  /** The command line that printed it. */\n  command: string;\n}\n\n/** An event that carries a file, for a helper that serves `onWrite` and `onRead` alike. */\nexport type FileEvent = WriteEvent | ReadEvent;\n\n/**\n * How much of the advice a finding deserves.\n *\n * A word match established a topic and asks for a `pointer`: title and summary.\n * Code that breaks the principle asks for `full`: the whole advice text.\n */\nexport type Depth = "pointer" | "full";\n\n/**\n * What a handler of `onPrompt` or `onCommand` yields. Nothing in it is\n * required: `yield {}` fires the principle and says nothing more.\n */\nexport interface TextFinding {\n  /**\n   * The exact text that triggered: the keyword in a prompt, a piece of a line.\n   * It has to occur word for word in the event, within the lines the finding\n   * names when it names some, and may not span lines. The agent is shown it.\n   * A match that does not occur is left out, and the finding still fires.\n   */\n  match?: string;\n  /**\n   * Another file the finding points at: the jpg that should be a webp, the\n   * test that already exists. A path from the project root, or an absolute\n   * one. The agent is told the file. `line` and `match` stay about the event.\n   * It has to be a file or folder that exists, or occur word for word in the\n   * event. Any other path is left out, and the finding still fires.\n   */\n  file?: string;\n  /** Omitted means `full`. */\n  depth?: Depth;\n}\n\n/**\n * What a handler of `onWrite`, `onRead` or `onOutput` yields. Nothing in it\n * is required.\n *\n * A finding with a `line` points at that line, and the host quotes it to the\n * agent. A finding carries no text of its own.\n *\n * A finding without a `line` points at the file: `yield {}` in `onWrite` or\n * `onRead` says the file itself is the problem, for its name, its place or\n * something it lacks. Do not pick a first line to stand in for it. In\n * `onOutput` it fires the principle and says nothing more.\n *\n * A finding with a `file` points at another file than the one of the event:\n * `yield { line: written.line, file: "assets/hero.jpg" }`.\n */\nexport interface Finding extends TextFinding {\n  /** 1-based line of the event\'s text: of the file, or of what a command printed. */\n  line?: number;\n  /** The last line, when the finding spans several. Needs `line`. */\n  endLine?: number;\n}\n\n/** What a handler returns: a generator or any other iterable of findings, or nothing. */\nexport type Findings<F = Finding> = Iterable<F> | null | undefined | void;\n\nconst WORD_CHAR = /[A-Za-z0-9_$]/;\n\n/**\n * Index of `word` in `text` where it stands alone, or -1.\n * `findWord("isolate", "late")` is -1; `findWord("late final x", "late")` is 0.\n */\nexport function findWord(text: string, word: string, from = 0): number {\n  let at = text.indexOf(word, from);\n  while (at !== -1) {\n    const before = at === 0 ? "" : (text[at - 1] ?? "");\n    const after = text[at + word.length] ?? "";\n    if (!WORD_CHAR.test(before) && !WORD_CHAR.test(after)) {\n      return at;\n    }\n    at = text.indexOf(word, at + 1);\n  }\n  return -1;\n}\n\n/**\n * A pointer finding for the first of `names` that the event\'s text mentions.\n *\n * A name counts where it stands alone, in any case, and with or without the\n * separators people put inside names: `rxdart` also finds rx_dart, rx-dart\n * and RxDart. A space in a name stands for any whitespace.\n *\n * This is a name check for a named technology, not a keyword cloud.\n * Pass the few phrases that can only mean your topic.\n *\n *     onPrompt({\n *       *detect(event) {\n *         yield* mentioned(event, ["late keyword", "late final"]);\n *       },\n *     });\n */\nexport function mentioned(event: { text: string }, names: readonly string[]): TextFinding[] {\n  for (const name of names) {\n    const letters = [...name.toLowerCase().replaceAll(/[_\\-.]/g, "")];\n    if (letters.length === 0) {\n      continue;\n    }\n    const body = letters.map((letter) => (letter === " " ? "\\\\s+" : letter.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&"))).join("[_\\\\-.]?");\n    // Any letter ends a word, not just ASCII: "Pr\xFCfe" must not read as "pr" and "fe".\n    const match = new RegExp(`(?<![\\\\p{L}\\\\p{N}_$.\\\\-])${body}(?![\\\\p{L}\\\\p{N}_$\\\\-])`, "iu").exec(event.text);\n    if (match) {\n      // A match may not span lines, and a name with a space in it can. Then the finding goes without one.\n      return [match[0].includes("\\n") ? { depth: "pointer" } : { match: match[0], depth: "pointer" }];\n    }\n  }\n  return [];\n}\n\n/** 1-based line of a character offset in `text`. */\nexport function lineAt(text: string, offset: number): number {\n  let line = 1;\n  for (let i = 0; i < offset && i < text.length; i++) {\n    if (text[i] === "\\n") {\n      line++;\n    }\n  }\n  return line;\n}\n\nexport interface CodeSyntax {\n  /** Starts a comment that runs to the end of the line. */\n  lineComment?: string;\n  /** Opens and closes a block comment. */\n  blockComment?: readonly [string, string];\n  /** Characters that open and close a string literal. */\n  quotes?: readonly string[];\n}\n\n/** Comments and strings as written in C, Dart, Java, JavaScript, Kotlin, Swift and friends. */\nexport const C_LIKE: CodeSyntax = {\n  lineComment: "//",\n  blockComment: ["/*", "*/"],\n  quotes: [\'"\', "\'", "`"],\n};\n\n/** Comments and strings as written in Python, Ruby, shell and YAML. */\nexport const HASH_LIKE: CodeSyntax = {\n  lineComment: "#",\n  quotes: [\'"\', "\'"],\n};\n\n/**\n * `text` with comments and string contents replaced by spaces.\n *\n * Positions and line breaks are preserved, so an offset or line found in the\n * result points at the same place in the original. Use it to keep a keyword\n * inside a comment or a string from counting as code.\n */\nexport function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIKE): string {\n  const out: string[] = [];\n  const quotes = syntax.quotes ?? [];\n  let i = 0;\n  while (i < text.length) {\n    const char = text[i] ?? "";\n    if (syntax.lineComment && text.startsWith(syntax.lineComment, i)) {\n      while (i < text.length && text[i] !== "\\n") {\n        out.push(" ");\n        i++;\n      }\n      continue;\n    }\n    if (syntax.blockComment && text.startsWith(syntax.blockComment[0], i)) {\n      const close = text.indexOf(syntax.blockComment[1], i + syntax.blockComment[0].length);\n      const end = close === -1 ? text.length : close + syntax.blockComment[1].length;\n      for (; i < end; i++) {\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n      }\n      continue;\n    }\n    if (quotes.includes(char)) {\n      out.push(char);\n      i++;\n      while (i < text.length && text[i] !== char) {\n        if (text[i] === "\\\\" && i + 1 < text.length) {\n          out.push(" ");\n          i++;\n        }\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n        i++;\n      }\n      if (i < text.length) {\n        out.push(char);\n        i++;\n      }\n      continue;\n    }\n    out.push(char);\n    i++;\n  }\n  return out.join("");\n}\n\n/** The project root of every event a test builds. It is made up, and the same in every runner. */\nexport const TEST_ROOT = "/project";\n\n/** Where an event happened. A test leaves it out and gets `TEST_ROOT`. */\nexport interface Where {\n  /** The repository root, or null when the file is in none. */\n  root?: string | null;\n  /** The file\'s absolute path, when it is not simply `root/relativePath`. */\n  absolute?: string;\n  isNew?: boolean;\n}\n\n/**\n * The event for a file the agent wrote or read.\n *\n * On `write`, `written` defaults to every line: a new file is written whole.\n * On `read` nothing was written, whatever is passed.\n */\nexport function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: Written[], where: Where = {}): Ctx {\n  const relative = relativePath.replaceAll("\\\\", "/").replace(/^\\.?\\/+/, "");\n  const root = where.root === undefined ? TEST_ROOT : where.root;\n  const path = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\\\", "/");\n  const name = path.slice(path.lastIndexOf("/") + 1);\n  const dot = name.lastIndexOf(".");\n  const lines = content.split("\\n");\n  const allLines = lines.map((text, index) => ({ line: index + 1, text }));\n  return {\n    event,\n    file: {\n      path,\n      relativePath: relative,\n      name,\n      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",\n      content,\n      lines,\n      written: event === "read" ? [] : (written ?? allLines),\n      isNew: event === "write" && where.isNew === true,\n    },\n    text: content,\n    command: null,\n    cwd: null,\n    project: root,\n  };\n}\n\n/**\n * The event for text: a prompt, a command about to run, or what a command printed.\n * `command` is the command line an `output` belongs to, and `cwd` the folder\n * the session runs in, which is the project root unless said otherwise.\n */\nexport function textCtx(event: "prompt" | "command" | "output", text: string, root: string | null = TEST_ROOT, command = "", cwd: string = root ?? "/"): Ctx {\n  return {\n    event,\n    file: null,\n    text,\n    command: event === "prompt" ? null : event === "command" ? text : command,\n    cwd,\n    project: root,\n  };\n}\n\n/**\n * The lines of `content` the agent just wrote, given the text it inserted.\n *\n * The file after the edit is the truth. A fragment is found there as a whole\n * first; when it is not, for instance because a formatter ran, its lines are\n * matched one by one.\n */\nexport function locateWritten(content: string, fragments: readonly string[]): Written[] {\n  const lines = content.split("\\n");\n  const written = new Map<number, string>();\n  for (const fragment of fragments) {\n    if (fragment.trim() === "") {\n      continue;\n    }\n    const at = content.indexOf(fragment);\n    if (at !== -1) {\n      const first = content.slice(0, at).split("\\n").length;\n      const count = fragment.split("\\n").length;\n      for (let line = first; line < first + count && line <= lines.length; line++) {\n        written.set(line, lines[line - 1] ?? "");\n      }\n      continue;\n    }\n    for (const wanted of fragment.split("\\n")) {\n      const trimmed = wanted.trim();\n      if (trimmed === "") {\n        continue;\n      }\n      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);\n      if (index !== -1) {\n        written.set(index + 1, lines[index] ?? "");\n      }\n    }\n  }\n  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text]) => ({ line, text }));\n}\n',
+  "handlers.ts": '/**\n * How a detector says what it reacts to.\n *\n *     onWrite({\n *       globs: ["**\\/*.dart", "!**\\/*.g.dart"],\n *       *detect(event) {\n *         for (const written of event.written) {\n *           if (/\\blate\\b/.test(written.text)) {\n *             yield { line: written.line };\n *           }\n *         }\n *       },\n *     });\n *\n *     onPrompt({\n *       *detect(event) {\n *         yield* mentioned(event, ["late keyword", "late final"]);\n *       },\n *     });\n *\n * Each call takes one object. Its `detect` is a generator method, the star\n * in front of the name. It yields a finding for each thing it found, and\n * passes on what a helper returns with `yield*`.\n *\n * A detector file calls these at its top level. The build loads the file once\n * to learn which handlers it has and which files they want, so a host knows\n * without starting an isolate that an edit to a Python file is none of a Dart\n * principle\'s business. For that reason a call inside a function, an `if` or\n * another handler does not count.\n *\n * This file holds the one piece of state a detector has: its handlers. Each\n * detector is bundled with its own copy and runs in a fresh isolate.\n */\nimport { matchesGlobs } from "./glob.ts";\nimport type { CommandEvent, Ctx, DeleteEvent, EventName, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, RemovedLine, TextFinding, WriteEvent, WrittenLine } from "./index.ts";\n\n/**\n * `F`, with every field that `Allowed` does not have turned into an error.\n *\n * A handler written inline has its return type inferred, and TypeScript lets\n * an inferred object carry extra fields. This is what makes `yield { line: 1 }`\n * in a prompt handler, or a misspelled field anywhere, fail to compile.\n */\ntype Only<F, Allowed> = F extends unknown ? F & { [K in Exclude<keyof F, keyof Allowed>]: never } : never;\n\n/**\n * A handler of an event with lines: it yields findings that may name a line.\n * It may also return written or removed lines as they are, each of which is a\n * finding on its line.\n *\n * The first half of the union is what lets one handler yield a finding for\n * the file, `{}`, next to findings with a line.\n */\ntype FileHandler<E, F> = (event: E) => Findings<Only<F, Finding>> | Findings<Only<F, Finding> | WrittenLine | RemovedLine>;\n/** A handler of a prompt or a command: its findings have no line to name. */\ntype TextHandler<E, F> = (event: E) => Findings<Only<F, TextFinding>>;\n\n/** What `onWrite`, `onRead` and `onDelete` take: which files, and what to look for in them. */\nexport interface FileOptions<E, F> {\n  /**\n   * Patterns for the path from the project root: `**`, `*`, `?` and `{a,b}`.\n   * A pattern starting with `!` takes files out again. Without a pattern that\n   * selects, `detect` runs on every file.\n   */\n  globs?: readonly string[];\n  /** Yields a finding for each thing it found in the event. */\n  detect: FileHandler<E, F>;\n}\n\n/** What `onPrompt` and `onCommand` take. */\nexport interface TextOptions<E, F> {\n  /** Yields a finding for each thing it found in the event. */\n  detect: TextHandler<E, F>;\n}\n\n/** What `onOutput` takes. */\nexport interface OutputOptions<F> {\n  /** Yields a finding for each thing it found in what the command printed. */\n  detect: FileHandler<OutputEvent, F>;\n}\n\n/** A handler as the build sees it: its event and the files it wants. */\nexport interface Registered {\n  event: EventName;\n  /** Empty on the events that carry no file. */\n  globs: string[];\n}\n\ninterface Registration extends Registered {\n  handler: (event: never) => Findings<Finding>;\n}\n\nconst registered: Registration[] = [];\n/** True once the file has been loaded. A handler registered after that was never seen by the build. */\nlet sealed = false;\n\nfunction register(event: EventName, options: unknown): void {\n  const name = `on${event[0]?.toUpperCase() ?? ""}${event.slice(1)}`;\n  if (sealed) {\n    throw new Error(`${name}() was called while a handler ran. Register handlers at the top level of detector.ts.`);\n  }\n  const { globs, detect } = (typeof options === "object" && options !== null ? options : {}) as { globs?: unknown; detect?: unknown };\n  if (typeof detect !== "function") {\n    throw new Error(`${name}() takes an object with a detect function: ${name}({ *detect(event) { ... } })`);\n  }\n  // What is not a list of patterns is kept as it is, for the build to refuse with a message for the author.\n  registered.push({ event, globs: (Array.isArray(globs) ? [...globs] : (globs ?? [])) as string[], handler: detect as Registration["handler"] });\n}\n\n/** Runs when the agent wrote or edited a file. `event.written` holds the lines it wrote, `event.removed` the lines it removed. */\nexport function onWrite<F extends Finding>(options: FileOptions<WriteEvent, F>): void {\n  register("write", options);\n}\n\n/** Runs when the agent read a file. It did not write this code, so judge the place, not the author. */\nexport function onRead<F extends Finding>(options: FileOptions<ReadEvent, F>): void {\n  register("read", options);\n}\n\n/** Runs when the agent deleted a file. `event.file` is the file as it was, and every line of it is in `event.removed`. */\nexport function onDelete<F extends Finding>(options: FileOptions<DeleteEvent, F>): void {\n  register("delete", options);\n}\n\n/** Runs when the user typed a message, and when the agent briefed a subagent. */\nexport function onPrompt<F extends TextFinding>(options: TextOptions<PromptEvent, F>): void {\n  register("prompt", options);\n}\n\n/** Runs before the agent runs a shell command. */\nexport function onCommand<F extends TextFinding>(options: TextOptions<CommandEvent, F>): void {\n  register("command", options);\n}\n\n/** Runs after a shell command, on what it printed. */\nexport function onOutput<F extends Finding>(options: OutputOptions<F>): void {\n  register("output", options);\n}\n\n/** What the build reads: the handlers the detector file registered while it loaded. */\nexport function __handlers(): Registered[] {\n  return registered.map(({ handler: _, ...rest }) => rest);\n}\n\n/** The event as the handlers of its kind get it. */\nfunction eventOf(ctx: Ctx): unknown {\n  const base = { event: ctx.event, text: ctx.text, lines: ctx.file?.lines ?? ctx.text.split("\\n"), project: ctx.project };\n  if (!ctx.file) {\n    const text = { ...base, cwd: ctx.cwd ?? ctx.project ?? "/" };\n    return ctx.command === null ? text : { ...text, command: ctx.command };\n  }\n  const { written, removed, ...file } = ctx.file;\n  if (ctx.event === "read") {\n    return { ...base, file };\n  }\n  // A detector of an older API is handed an event without removed lines, and gets none.\n  if (removed === undefined) {\n    return { ...base, file, written };\n  }\n  const removedLines: RemovedLine[] = removed.map((line) => ({ line: line.line, text: line.text, removed: true }));\n  if (ctx.event === "delete") {\n    return { ...base, file, removed: removedLines };\n  }\n  return { ...base, file, written, removed: removedLines };\n}\n\n/**\n * What the host calls inside the isolate: runs every handler that wants this\n * event and collects what they yield, up to `limit` findings and one more, so\n * the host can tell that there were too many.\n */\nexport function __dispatch(ctx: Ctx, limit: number): unknown[] {\n  sealed = true;\n  const out: unknown[] = [];\n  let event: unknown;\n  for (const { event: kind, globs, handler } of registered) {\n    if (kind !== ctx.event || (ctx.file && !matchesGlobs(ctx.file.relativePath, globs))) {\n      continue;\n    }\n    const found = (handler as (event: unknown) => unknown)((event ??= eventOf(ctx)));\n    if (found === null || found === undefined) {\n      continue;\n    }\n    if (typeof (found as { [Symbol.iterator]?: unknown })[Symbol.iterator] !== "function" || typeof found === "string") {\n      throw new Error(`a handler has to return findings: a generator, a list, or nothing. This one returned ${typeof found === "object" ? "an object" : String(found)}.`);\n    }\n    for (const finding of found as Iterable<unknown>) {\n      out.push(asFinding(finding));\n      if (out.length > limit) {\n        return out;\n      }\n    }\n  }\n  return out;\n}\n\n/**\n * What a handler yielded, reduced to what a finding is. A written or removed\n * line that was returned as it is becomes a finding on its line: its text\n * stays here.\n */\nfunction asFinding(found: unknown): unknown {\n  if (typeof found !== "object" || found === null || Array.isArray(found)) {\n    return found;\n  }\n  const { line, endLine, match, file, depth, removed } = found as Record<string, unknown>;\n  return { line, endLine, match, file, depth, removed };\n}\n',
+  "index.ts": '/**\n * Everything a detector may import, next to `node:fs` and `node:path`.\n *\n * A detector runs inside an isolate with no network and no process. It can\n * read files and cannot change any. This module is bundled into it at publish\n * time, so it must stay free of Node imports and of any state. The one piece\n * of state a detector has, the handlers it registered, lives in `handlers.ts`.\n */\n\n/**\n * The version of the detector API this SDK is: the event a detector is handed\n * and what it may ask the host for.\n *\n * A principle records the version it was built against, and a host runs each\n * detector against the version it was built for. So the API changes by adding\n * a version here, with the host\'s step back to the one before. Changing what\n * an existing version means would break principles that are already released.\n *\n * - 1: one `detect(ctx)` with `file.path` relative. No longer run.\n * - 2: `file.path` absolute, `file.relativePath`, `file.isNew`, `project`, and\n *   reading files through `node:fs` and `node:path`. No longer run.\n * - 3: handlers in place of `detect`: `onWrite`, `onRead`, `onPrompt`,\n *   `onCommand` and `onOutput`, each with its own typed event, and globs on\n *   the file handlers. A finding names a line or a match and carries no text\n *   of its own. Added the `output` event, and a prompt is also what the agent\n *   hands to a subagent.\n * - 4: `event.removed` on a write, the lines the agent removed, and the\n *   `delete` event with `onDelete`, for a file the agent deleted. A finding\n *   with `removed: true` names a removed line.\n *\n * A detector says which one it was written against by where it imports from:\n * `@wellactually/sdk/v4`. Each version has its own file next to this one. A\n * principle is then handed the event of that version for as long as it is\n * run, also when it is uploaded again after the API has moved on. This file\n * itself is what the host imports, not a detector.\n */\nexport const API_VERSION = 4;\n\nexport { matchesGlob, matchesGlobs } from "./glob.ts";\n\n/**\n * What happened in the session.\n *\n * - `write`: the agent wrote or edited a file.\n * - `read`: the agent read a file. It did not write this code.\n * - `delete`: the agent deleted a file.\n * - `prompt`: the user typed a message, or the agent briefed a subagent.\n * - `command`: the agent is about to run a shell command.\n * - `output`: a shell command ran, and this is what it printed.\n */\nexport type EventName = "write" | "read" | "delete" | "prompt" | "command" | "output";\n\nexport const EVENTS: readonly EventName[] = ["write", "read", "delete", "prompt", "command", "output"];\n\n/** The events that carry a file, and so the ones a handler can have globs for. */\nexport const FILE_EVENTS: readonly EventName[] = ["write", "read", "delete"];\n\n/** A line the agent wrote or removed in this event, as the host records it. */\nexport interface Written {\n  /** 1-based line in the file: after the change for a written line, before it for a removed one. */\n  line: number;\n  /** The line as written or as it was, untrimmed. */\n  text: string;\n}\n\n/** A line the agent wrote in this event, as a handler of `onWrite` gets it. */\nexport type WrittenLine = Written;\n\n/** A line the agent removed in this event, as a handler of `onWrite` or `onDelete` gets it. */\nexport interface RemovedLine {\n  /** 1-based line it had in the file before the change. The file now may hold other text there, or end before it. */\n  line: number;\n  /** The line as it was, untrimmed. */\n  text: string;\n  /**\n   * Always true. A removed line that a handler yields as it is is a finding\n   * on the line that was removed, and this is what says so.\n   */\n  removed: true;\n}\n\n/** The file of a `write` or `read` event. */\nexport interface File {\n  /** Absolute path, with forward slashes. Navigate from here with `node:path` and read neighbours with `node:fs`. */\n  path: string;\n  /**\n   * Path from the project root, e.g. "lib/src/config_loader.dart". This is what `globs` are matched against.\n   * Without a project root it is the path from where the session runs, or just the file\'s name.\n   */\n  relativePath: string;\n  /** Basename, e.g. "config_loader.dart". */\n  name: string;\n  /** Extension including the dot, lower case. Empty when there is none. */\n  ext: string;\n  content: string;\n  /** `content` split into lines. */\n  lines: string[];\n  /** The agent created this file with this write. It did not exist before. Always false on `read` and `delete`. */\n  isNew: boolean;\n}\n\n/**\n * An event as the host builds it and hands it to the isolate: one shape for\n * all six. A detector never sees this. Its handlers get the event of their\n * kind, see `WriteEvent` and the others.\n */\nexport interface Ctx {\n  event: EventName;\n  /**\n   * Null when the event carries text instead of a file. On `delete` the file\n   * is as it was before it was deleted, and every line of it is removed.\n   */\n  file: (File & { written: Written[]; removed: Written[] }) | null;\n  /** The file content on `write`, `read` and `delete`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */\n  text: string;\n  /** The command line on `command` and `output`. Null on the others. */\n  command: string | null;\n  /** The folder the session runs in, as an absolute path, on the events without a file. Null on `write`, `read` and `delete`. */\n  cwd: string | null;\n  /**\n   * The root of the project the event happened in, as an absolute path: the\n   * nearest folder upwards with a `.git`. Null when there is none.\n   */\n  project: string | null;\n}\n\n/** What every event has. */\ninterface EventBase {\n  /** The file content on `write`, `read` and `delete`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */\n  text: string;\n  /** `text` split into lines. A finding\'s `line` counts in here. */\n  lines: string[];\n  /**\n   * The root of the project the event happened in, as an absolute path: the\n   * nearest folder upwards with a `.git`. Null when there is none, which is\n   * normal, so do not rely on it. To find a `pubspec.yaml` or a\n   * `package.json`, walk up from `file.path` instead.\n   */\n  project: string | null;\n}\n\n/** The agent wrote or edited a file. */\nexport interface WriteEvent extends EventBase {\n  event: "write";\n  file: File;\n  /** The lines the agent wrote. Code that was there before is not in here. */\n  written: WrittenLine[];\n  /**\n   * The lines the agent removed, with the line each had before. A line it\n   * changed is removed as it was and written as it is now. Empty when the\n   * host cannot tell what the file was before, as for a new file.\n   */\n  removed: RemovedLine[];\n}\n\n/** The agent read a file. It wrote none of it. */\nexport interface ReadEvent extends EventBase {\n  event: "read";\n  file: File;\n}\n\n/** The agent deleted a file. `file` is as it was, and every line of it is in `removed`. */\nexport interface DeleteEvent extends EventBase {\n  event: "delete";\n  file: File;\n  /** Every line of the file, the same as `file.lines`. A handler that judges removed lines serves `onWrite` and `onDelete` alike. */\n  removed: RemovedLine[];\n}\n\n/** What an event without a file has in its place: where the session is. */\ninterface TextEventBase extends EventBase {\n  /**\n   * The folder the session runs in, as an absolute path. Start here to look\n   * at the project with `node:fs`, e.g. `findUp("pubspec.yaml", event.cwd)`.\n   */\n  cwd: string;\n}\n\n/** The user typed a message, or the agent briefed a subagent. A request for work that has not happened yet. */\nexport interface PromptEvent extends TextEventBase {\n  event: "prompt";\n}\n\n/** The agent is about to run a shell command. */\nexport interface CommandEvent extends TextEventBase {\n  event: "command";\n  /** The command line. The same as `text`. */\n  command: string;\n}\n\n/** A shell command ran. `text` is what it printed. */\nexport interface OutputEvent extends TextEventBase {\n  event: "output";\n  /** The command line that printed it. */\n  command: string;\n}\n\n/** An event that carries a file, for a helper that serves `onWrite`, `onRead` and `onDelete` alike. */\nexport type FileEvent = WriteEvent | ReadEvent | DeleteEvent;\n\n/**\n * How much of the advice a finding deserves.\n *\n * A word match established a topic and asks for a `pointer`: title and summary.\n * Code that breaks the principle asks for `full`: the whole advice text.\n */\nexport type Depth = "pointer" | "full";\n\n/**\n * What a handler of `onPrompt` or `onCommand` yields. Nothing in it is\n * required: `yield {}` fires the principle and says nothing more.\n */\nexport interface TextFinding {\n  /**\n   * The exact text that triggered: the keyword in a prompt, a piece of a line.\n   * It has to occur word for word in the event, within the lines the finding\n   * names when it names some, and may not span lines. The agent is shown it.\n   * A match that does not occur is left out, and the finding still fires.\n   */\n  match?: string;\n  /**\n   * Another file the finding points at: the jpg that should be a webp, the\n   * test that already exists. A path from the project root, or an absolute\n   * one. The agent is told the file. `line` and `match` stay about the event.\n   * It has to be a file or folder that exists, or occur word for word in the\n   * event. Any other path is left out, and the finding still fires.\n   */\n  file?: string;\n  /** Omitted means `full`. */\n  depth?: Depth;\n}\n\n/**\n * What a handler of `onWrite`, `onRead`, `onDelete` or `onOutput` yields.\n * Nothing in it is required.\n *\n * A finding with a `line` points at that line, and the host quotes it to the\n * agent. A finding carries no text of its own.\n *\n * A finding without a `line` points at the file: `yield {}` in `onWrite` or\n * `onRead` says the file itself is the problem, for its name, its place or\n * something it lacks. Do not pick a first line to stand in for it. In\n * `onOutput` it fires the principle and says nothing more.\n *\n * A finding with a `file` points at another file than the one of the event:\n * `yield { line: written.line, file: "assets/hero.jpg" }`.\n *\n * A finding with `removed: true` names a line the agent removed, by the line\n * it had before: `yield { line: removed.line, removed: true }`, or the removed\n * line itself, `yield removed`.\n */\nexport interface Finding extends TextFinding {\n  /** 1-based line of the event\'s text: of the file, or of what a command printed. */\n  line?: number;\n  /** The last line, when the finding spans several. Needs `line`. */\n  endLine?: number;\n  /**\n   * `line` and `endLine` name lines the agent removed, by the line each had\n   * before, and `match` occurs in them. Every line from `line` to `endLine`\n   * has to be in `event.removed`. Needs `line`.\n   */\n  removed?: boolean;\n}\n\n/** What a handler returns: a generator or any other iterable of findings, or nothing. */\nexport type Findings<F = Finding> = Iterable<F> | null | undefined | void;\n\nconst WORD_CHAR = /[A-Za-z0-9_$]/;\n\n/**\n * Index of `word` in `text` where it stands alone, or -1.\n * `findWord("isolate", "late")` is -1; `findWord("late final x", "late")` is 0.\n */\nexport function findWord(text: string, word: string, from = 0): number {\n  let at = text.indexOf(word, from);\n  while (at !== -1) {\n    const before = at === 0 ? "" : (text[at - 1] ?? "");\n    const after = text[at + word.length] ?? "";\n    if (!WORD_CHAR.test(before) && !WORD_CHAR.test(after)) {\n      return at;\n    }\n    at = text.indexOf(word, at + 1);\n  }\n  return -1;\n}\n\n/**\n * A pointer finding for the first of `names` that the event\'s text mentions.\n *\n * A name counts where it stands alone, in any case, and with or without the\n * separators people put inside names: `rxdart` also finds rx_dart, rx-dart\n * and RxDart. A space in a name stands for any whitespace.\n *\n * This is a name check for a named technology, not a keyword cloud.\n * Pass the few phrases that can only mean your topic.\n *\n *     onPrompt({\n *       *detect(event) {\n *         yield* mentioned(event, ["late keyword", "late final"]);\n *       },\n *     });\n */\nexport function mentioned(event: { text: string }, names: readonly string[]): TextFinding[] {\n  for (const name of names) {\n    const letters = [...name.toLowerCase().replaceAll(/[_\\-.]/g, "")];\n    if (letters.length === 0) {\n      continue;\n    }\n    const body = letters.map((letter) => (letter === " " ? "\\\\s+" : letter.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&"))).join("[_\\\\-.]?");\n    // Any letter ends a word, not just ASCII: "Pr\xFCfe" must not read as "pr" and "fe".\n    const match = new RegExp(`(?<![\\\\p{L}\\\\p{N}_$.\\\\-])${body}(?![\\\\p{L}\\\\p{N}_$\\\\-])`, "iu").exec(event.text);\n    if (match) {\n      // A match may not span lines, and a name with a space in it can. Then the finding goes without one.\n      return [match[0].includes("\\n") ? { depth: "pointer" } : { match: match[0], depth: "pointer" }];\n    }\n  }\n  return [];\n}\n\n/** 1-based line of a character offset in `text`. */\nexport function lineAt(text: string, offset: number): number {\n  let line = 1;\n  for (let i = 0; i < offset && i < text.length; i++) {\n    if (text[i] === "\\n") {\n      line++;\n    }\n  }\n  return line;\n}\n\nexport interface CodeSyntax {\n  /** Starts a comment that runs to the end of the line. */\n  lineComment?: string;\n  /** Opens and closes a block comment. */\n  blockComment?: readonly [string, string];\n  /** Characters that open and close a string literal. */\n  quotes?: readonly string[];\n}\n\n/** Comments and strings as written in C, Dart, Java, JavaScript, Kotlin, Swift and friends. */\nexport const C_LIKE: CodeSyntax = {\n  lineComment: "//",\n  blockComment: ["/*", "*/"],\n  quotes: [\'"\', "\'", "`"],\n};\n\n/** Comments and strings as written in Python, Ruby, shell and YAML. */\nexport const HASH_LIKE: CodeSyntax = {\n  lineComment: "#",\n  quotes: [\'"\', "\'"],\n};\n\n/**\n * `text` with comments and string contents replaced by spaces.\n *\n * Positions and line breaks are preserved, so an offset or line found in the\n * result points at the same place in the original. Use it to keep a keyword\n * inside a comment or a string from counting as code.\n */\nexport function blankCommentsAndStrings(text: string, syntax: CodeSyntax = C_LIKE): string {\n  const out: string[] = [];\n  const quotes = syntax.quotes ?? [];\n  let i = 0;\n  while (i < text.length) {\n    const char = text[i] ?? "";\n    if (syntax.lineComment && text.startsWith(syntax.lineComment, i)) {\n      while (i < text.length && text[i] !== "\\n") {\n        out.push(" ");\n        i++;\n      }\n      continue;\n    }\n    if (syntax.blockComment && text.startsWith(syntax.blockComment[0], i)) {\n      const close = text.indexOf(syntax.blockComment[1], i + syntax.blockComment[0].length);\n      const end = close === -1 ? text.length : close + syntax.blockComment[1].length;\n      for (; i < end; i++) {\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n      }\n      continue;\n    }\n    if (quotes.includes(char)) {\n      out.push(char);\n      i++;\n      while (i < text.length && text[i] !== char) {\n        if (text[i] === "\\\\" && i + 1 < text.length) {\n          out.push(" ");\n          i++;\n        }\n        out.push(text[i] === "\\n" ? "\\n" : " ");\n        i++;\n      }\n      if (i < text.length) {\n        out.push(char);\n        i++;\n      }\n      continue;\n    }\n    out.push(char);\n    i++;\n  }\n  return out.join("");\n}\n\n/** The project root of every event a test builds. It is made up, and the same in every runner. */\nexport const TEST_ROOT = "/project";\n\n/** The lines a write changed. */\nexport interface Change {\n  /** Defaults to every line of the file. */\n  written?: Written[];\n  /** Defaults to none. */\n  removed?: Written[];\n}\n\nfunction removedOf(event: "write" | "read" | "delete", change: Change, allLines: Written[]): Written[] {\n  if (event === "delete") {\n    return allLines;\n  }\n  if (event === "read") {\n    return [];\n  }\n  return change.removed ?? [];\n}\n\n/** Where an event happened. A test leaves it out and gets `TEST_ROOT`. */\nexport interface Where {\n  /** The repository root, or null when the file is in none. */\n  root?: string | null;\n  /** The file\'s absolute path, when it is not simply `root/relativePath`. */\n  absolute?: string;\n  isNew?: boolean;\n}\n\n/**\n * The event for a file the agent wrote, read or deleted.\n *\n * On `write`, `written` defaults to every line: a new file is written whole.\n * On `read` nothing was written or removed, whatever is passed. On `delete`\n * `content` is the file as it was, and every line of it is removed.\n */\nexport function fileCtx(event: "write" | "read" | "delete", relativePath: string, content: string, change: Change = {}, where: Where = {}): Ctx {\n  const relative = relativePath.replaceAll("\\\\", "/").replace(/^\\.?\\/+/, "");\n  const root = where.root === undefined ? TEST_ROOT : where.root;\n  const path = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\\\", "/");\n  const name = path.slice(path.lastIndexOf("/") + 1);\n  const dot = name.lastIndexOf(".");\n  const lines = content.split("\\n");\n  const allLines = lines.map((text, index) => ({ line: index + 1, text }));\n  return {\n    event,\n    file: {\n      path,\n      relativePath: relative,\n      name,\n      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",\n      content,\n      lines,\n      written: event === "write" ? (change.written ?? allLines) : [],\n      removed: removedOf(event, change, allLines),\n      isNew: event === "write" && where.isNew === true,\n    },\n    text: content,\n    command: null,\n    cwd: null,\n    project: root,\n  };\n}\n\n/**\n * The event for text: a prompt, a command about to run, or what a command printed.\n * `command` is the command line an `output` belongs to, and `cwd` the folder\n * the session runs in, which is the project root unless said otherwise.\n */\nexport function textCtx(event: "prompt" | "command" | "output", text: string, root: string | null = TEST_ROOT, command = "", cwd: string = root ?? "/"): Ctx {\n  return {\n    event,\n    file: null,\n    text,\n    command: event === "prompt" ? null : event === "command" ? text : command,\n    cwd,\n    project: root,\n  };\n}\n\n/**\n * The lines of `content` the agent just wrote, given the text it inserted.\n *\n * The file after the edit is the truth. A fragment is found there as a whole\n * first; when it is not, for instance because a formatter ran, its lines are\n * matched one by one.\n */\nexport function locateWritten(content: string, fragments: readonly string[]): Written[] {\n  const lines = content.split("\\n");\n  const written = new Map<number, string>();\n  for (const fragment of fragments) {\n    if (fragment.trim() === "") {\n      continue;\n    }\n    const at = content.indexOf(fragment);\n    if (at !== -1) {\n      const first = content.slice(0, at).split("\\n").length;\n      const count = fragment.split("\\n").length;\n      for (let line = first; line < first + count && line <= lines.length; line++) {\n        written.set(line, lines[line - 1] ?? "");\n      }\n      continue;\n    }\n    for (const wanted of fragment.split("\\n")) {\n      const trimmed = wanted.trim();\n      if (trimmed === "") {\n        continue;\n      }\n      const index = lines.findIndex((line, lineIndex) => !written.has(lineIndex + 1) && line.trim() === trimmed);\n      if (index !== -1) {\n        written.set(index + 1, lines[index] ?? "");\n      }\n    }\n  }\n  return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text]) => ({ line, text }));\n}\n',
   "path.ts": '/**\n * What `node:path` resolves to inside the isolate: the POSIX half of it.\n *\n * Every path a detector sees has forward slashes, on every system, so this is\n * all it needs. It is string logic and never asks the host for anything.\n */\n\ninterface WithCwd {\n  __cwd?: string;\n}\n\nexport const sep = "/";\nexport const delimiter = ":";\n\n/** The project root, which is what a relative path is relative to. */\nfunction cwd(): string {\n  return (globalThis as WithCwd).__cwd ?? "/";\n}\n\nexport function isAbsolute(path: string): boolean {\n  return path.startsWith("/") || /^[A-Za-z]:\\//.test(path);\n}\n\nexport function normalize(path: string): string {\n  if (path === "") {\n    return ".";\n  }\n  const absolute = path.startsWith("/");\n  const out: string[] = [];\n  for (const part of path.split("/")) {\n    if (part === "" || part === ".") {\n      continue;\n    }\n    if (part === ".." && out.length > 0 && out.at(-1) !== "..") {\n      out.pop();\n      continue;\n    }\n    if (part === ".." && absolute) {\n      continue;\n    }\n    out.push(part);\n  }\n  const joined = out.join("/");\n  if (absolute) {\n    return `/${joined}`;\n  }\n  return joined === "" ? "." : joined;\n}\n\nexport function join(...parts: string[]): string {\n  return normalize(parts.filter((part) => part !== "").join("/"));\n}\n\nexport function resolve(...parts: string[]): string {\n  let resolved = "";\n  for (let index = parts.length - 1; index >= 0 && !isAbsolute(resolved); index--) {\n    const part = parts[index] ?? "";\n    if (part !== "") {\n      resolved = resolved === "" ? part : `${part}/${resolved}`;\n    }\n  }\n  if (!isAbsolute(resolved)) {\n    resolved = resolved === "" ? cwd() : `${cwd()}/${resolved}`;\n  }\n  const normalized = normalize(resolved);\n  return normalized.length > 1 && normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;\n}\n\nexport function dirname(path: string): string {\n  const trimmed = path.length > 1 ? path.replace(/\\/+$/, "") : path;\n  const slash = trimmed.lastIndexOf("/");\n  if (slash === -1) {\n    return ".";\n  }\n  return slash === 0 ? "/" : trimmed.slice(0, slash);\n}\n\nexport function basename(path: string, suffix = ""): string {\n  const trimmed = path.replace(/\\/+$/, "");\n  const name = trimmed.slice(trimmed.lastIndexOf("/") + 1);\n  return suffix !== "" && name.endsWith(suffix) && name !== suffix ? name.slice(0, -suffix.length) : name;\n}\n\nexport function extname(path: string): string {\n  const name = basename(path);\n  const dot = name.lastIndexOf(".");\n  return dot > 0 ? name.slice(dot) : "";\n}\n\nexport function relative(from: string, to: string): string {\n  const a = resolve(from).split("/").filter(Boolean);\n  const b = resolve(to).split("/").filter(Boolean);\n  let shared = 0;\n  while (shared < a.length && shared < b.length && a[shared] === b[shared]) {\n    shared++;\n  }\n  return [...a.slice(shared).map(() => ".."), ...b.slice(shared)].join("/");\n}\n\nexport interface ParsedPath {\n  root: string;\n  dir: string;\n  base: string;\n  ext: string;\n  name: string;\n}\n\nexport function parse(path: string): ParsedPath {\n  const base = basename(path);\n  const ext = extname(path);\n  const dir = dirname(path);\n  return { root: path.startsWith("/") ? "/" : "", dir: dir === "." && !path.includes("/") ? "" : dir, base, ext, name: ext === "" ? base : base.slice(0, -ext.length) };\n}\n\nconst path = { sep, delimiter, isAbsolute, normalize, join, resolve, dirname, basename, extname, relative, parse };\n\nexport const posix = path;\nexport default path;\n',
-  "test.ts": '/**\n * The test framework for a principle, as it runs inside the isolate.\n *\n * A test builds the event a detector receives and asks what the detector\n * says about it:\n *\n *     test("fires on a late field", () => {\n *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1 }]);\n *     });\n *\n * On an author\'s machine the same file runs under vitest, where `test` and\n * `expect` are vitest\'s and `detect` comes from `test.node.ts`. Here, in\n * `wellactually test`, the browser editor and the registry, `vitest` resolves\n * to this file\'s small copy of that API. Either way `detect` does not call\n * the detector directly. It asks the host, which runs the real detector the\n * way the hook does and keeps a record, so the registry knows what was shown\n * to fire and what was shown to stay quiet.\n */\nimport type { Ctx, Finding } from "./index.ts";\nimport type { DetectOptions } from "./events.ts";\n\nexport { command, edit, output, prompt, read, source, write, type DetectOptions } from "./events.ts";\n\ninterface Host {\n  __detect?: (call: string) => string;\n  __begin?: (test: string) => void;\n}\n\nconst host = globalThis as Host;\n\n/**\n * What the detector reports for an event: the findings that passed the host\'s checks.\n *\n * It is empty when no handler of the detector wants the event, exactly as in\n * a session. It throws when the detector fails or reports something the host\n * would drop, so a test cannot pass on a broken detector.\n */\nexport function detect(event: Ctx, options: DetectOptions = {}): Finding[] {\n  if (!host.__detect) {\n    throw new Error("detect() only works inside a principle\'s test run.");\n  }\n  const answer = JSON.parse(host.__detect(JSON.stringify({ event, options }))) as { findings?: Finding[]; error?: string };\n  if (answer.error !== undefined) {\n    throw new Error(answer.error);\n  }\n  return answer.findings ?? [];\n}\n\ninterface Registered {\n  file: string;\n  name: string;\n  run: () => unknown;\n}\n\nconst MAX_TESTS = 100;\nconst registered: Registered[] = [];\nconst groups: string[] = [];\nlet currentFile = "";\n\n/** Groups tests under a name. */\nexport function describe(name: string, body: () => void): void {\n  groups.push(name);\n  try {\n    body();\n  } finally {\n    groups.pop();\n  }\n}\n\nfunction register(name: string, run: () => unknown): void {\n  registered.push({ file: currentFile, name: [...groups, name].join(" > "), run });\n}\n\nfunction each<Row>(rows: readonly Row[]) {\n  return (name: string, body: (row: Row) => unknown): void => {\n    for (const row of rows) {\n      const shown = typeof row === "string" ? row : JSON.stringify(row);\n      register(name.includes("%s") ? name.replace("%s", shown) : `${name} (${shown})`, () => body(row));\n    }\n  };\n}\n\n/** Declares one test. `test.each(rows)(name, body)` declares one per row; `%s` in the name is the row. */\nexport const test = Object.assign(register, { each });\nexport const it = test;\n\nfunction show(value: unknown): string {\n  return value === undefined ? "undefined" : JSON.stringify(value, null, 2);\n}\n\n/** Deep equality that ignores properties set to undefined, as a finding without a line has no `line`. */\nfunction equal(a: unknown, b: unknown): boolean {\n  if (a === b) {\n    return true;\n  }\n  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) {\n    return false;\n  }\n  const left = a as Record<string, unknown>;\n  const right = b as Record<string, unknown>;\n  const keys = new Set([...Object.keys(left), ...Object.keys(right)].filter((key) => left[key] !== undefined || right[key] !== undefined));\n  if (Array.isArray(a) && a.length !== (b as unknown[]).length) {\n    return false;\n  }\n  return [...keys].every((key) => equal(left[key], right[key]));\n}\n\n/** Whether `actual` has everything `expected` has. Arrays must match item by item. */\nfunction matches(actual: unknown, expected: unknown): boolean {\n  if (typeof expected !== "object" || expected === null) {\n    return equal(actual, expected);\n  }\n  if (typeof actual !== "object" || actual === null || Array.isArray(actual) !== Array.isArray(expected)) {\n    return false;\n  }\n  if (Array.isArray(expected)) {\n    return (actual as unknown[]).length === expected.length && expected.every((item, index) => matches((actual as unknown[])[index], item));\n  }\n  return Object.entries(expected).every(([key, value]) => matches((actual as Record<string, unknown>)[key], value));\n}\n\nexport interface Expectation {\n  /** Deeply equal. */\n  toEqual(expected: unknown): void;\n  /** Deeply equal. Here it is the same as `toEqual`. */\n  toStrictEqual(expected: unknown): void;\n  /** The same value. */\n  toBe(expected: unknown): void;\n  toHaveLength(length: number): void;\n  /** An array holding `item` itself, or a string holding the text. */\n  toContain(item: unknown): void;\n  /** An array holding an item deeply equal to `item`. */\n  toContainEqual(item: unknown): void;\n  /** Has everything `expected` has, and may have more. */\n  toMatchObject(expected: unknown): void;\n  toBeTruthy(): void;\n  toBeFalsy(): void;\n  toBeNull(): void;\n  toBeUndefined(): void;\n  toBeDefined(): void;\n  /** A function that throws. With `message`, the error has to contain it. */\n  toThrow(message?: string): void;\n  not: Expectation;\n}\n\nfunction expectation(actual: unknown, negated: boolean): Expectation {\n  const check = (passed: boolean, what: string, expected?: unknown): void => {\n    if (passed === negated) {\n      throw new Error(`Expected ${negated ? "not " : ""}${what}${expected === undefined ? "" : `\\n${show(expected)}`}\\nReceived\\n${show(actual)}`);\n    }\n  };\n  const thrown = (): string | null => {\n    try {\n      (actual as () => unknown)();\n      return null;\n    } catch (error) {\n      return error instanceof Error ? error.message : String(error);\n    }\n  };\n  const matchers: Expectation = {\n    toEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toStrictEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toBe: (expected) => check(Object.is(actual, expected), "to be", expected),\n    toHaveLength: (length) => check((actual as { length?: unknown } | null)?.length === length, "length", length),\n    toContain: (item) => check(typeof actual === "string" ? actual.includes(String(item)) : Array.isArray(actual) && actual.includes(item), "to contain", item),\n    toContainEqual: (item) => check(Array.isArray(actual) && actual.some((candidate) => equal(candidate, item)), "to contain", item),\n    toMatchObject: (expected) => check(matches(actual, expected), "to match", expected),\n    toBeTruthy: () => check(Boolean(actual), "a truthy value"),\n    toBeFalsy: () => check(!actual, "a falsy value"),\n    toBeNull: () => check(actual === null, "null"),\n    toBeUndefined: () => check(actual === undefined, "undefined"),\n    toBeDefined: () => check(actual !== undefined, "a defined value"),\n    toThrow: (message) => {\n      const error = thrown();\n      check(error !== null && (message === undefined || error.includes(message)), message === undefined ? "to throw" : "to throw an error containing", message);\n    },\n    get not() {\n      return expectation(actual, !negated);\n    },\n  };\n  // A test also runs under vitest, which knows many more matchers. One that is\n  // missing here must say so, or it fails on the registry as "not a function".\n  return new Proxy(matchers, {\n    get(target, name, receiver) {\n      if (typeof name === "string" && !(name in target)) {\n        throw new Error(\n          `expect().${name} is not available when the registry runs the tests. Use one of: ${Object.keys(target).filter((key) => key !== "not").join(", ")}.`,\n        );\n      }\n      return Reflect.get(target, name, receiver);\n    },\n  });\n}\n\nexport function expect(actual: unknown): Expectation {\n  return expectation(actual, false);\n}\n\n/** Called by the runner before a test file is loaded, so its tests carry its name. */\nexport function __file(name: string): void {\n  currentFile = name;\n}\n\n/** Called by the runner once every test file is loaded. Returns the results as JSON. */\nexport function __run(): string {\n  if (registered.length > MAX_TESTS) {\n    throw new Error(`a principle may hold at most ${MAX_TESTS} tests, this one has ${registered.length}`);\n  }\n  const results = registered.map((entry) => {\n    host.__begin?.(JSON.stringify({ file: entry.file, name: entry.name }));\n    try {\n      const returned = entry.run();\n      if (typeof (returned as { then?: unknown } | null)?.then === "function") {\n        throw new Error("A test must not be async. detect() answers immediately.");\n      }\n      return { file: entry.file, name: entry.name, passed: true, message: "" };\n    } catch (error) {\n      return { file: entry.file, name: entry.name, passed: false, message: error instanceof Error ? error.message : String(error) };\n    }\n  });\n  return JSON.stringify(results);\n}\n',
-  "v3.ts": '/**\n * Detector API 3: what a detector written against it imports.\n *\n *     import { onPrompt, onWrite, mentioned } from "@wellactually/sdk/v3";\n *\n * The path is the declaration. A principle whose files import from here is\n * built against version 3 and is handed the events of version 3 for as long\n * as that version is run, also when it is uploaded again after the API has\n * moved on. Its tests import `@wellactually/sdk/v3/test`.\n *\n * In version 3 a detector registers a handler per event, with `onWrite`,\n * `onRead`, `onPrompt`, `onCommand` and `onOutput`. Each handler gets the\n * event of its kind and yields findings. It can read files through `node:fs`.\n */\nexport type { CommandEvent, Depth, EventName, File, FileEvent, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, TextFinding, WriteEvent, WrittenLine } from "./index.ts";\nexport { EVENTS, findWord, lineAt, mentioned } from "./index.ts";\nexport { matchesGlob, matchesGlobs } from "./glob.ts";\nexport type { FileOptions } from "./handlers.ts";\nexport { findUp } from "./find.ts";\nexport { onCommand, onOutput, onPrompt, onRead, onWrite } from "./handlers.ts";\n',
+  "test.ts": '/**\n * The test framework for a principle, as it runs inside the isolate.\n *\n * A test builds the event a detector receives and asks what the detector\n * says about it:\n *\n *     test("fires on a late field", () => {\n *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1 }]);\n *     });\n *\n * On an author\'s machine the same file runs under vitest, where `test` and\n * `expect` are vitest\'s and `detect` comes from `test.node.ts`. Here, in\n * `wellactually test`, the browser editor and the registry, `vitest` resolves\n * to this file\'s small copy of that API. Either way `detect` does not call\n * the detector directly. It asks the host, which runs the real detector the\n * way the hook does and keeps a record, so the registry knows what was shown\n * to fire and what was shown to stay quiet.\n */\nimport type { Ctx, Finding } from "./index.ts";\nimport type { DetectOptions } from "./events.ts";\n\nexport { command, deleted, edit, output, prompt, read, source, write, type DetectOptions, type EditChange } from "./events.ts";\n\ninterface Host {\n  __detect?: (call: string) => string;\n  __begin?: (test: string) => void;\n}\n\nconst host = globalThis as Host;\n\n/**\n * What the detector reports for an event: the findings that passed the host\'s checks.\n *\n * It is empty when no handler of the detector wants the event, exactly as in\n * a session. It throws when the detector fails or reports something the host\n * would drop, so a test cannot pass on a broken detector.\n */\nexport function detect(event: Ctx, options: DetectOptions = {}): Finding[] {\n  if (!host.__detect) {\n    throw new Error("detect() only works inside a principle\'s test run.");\n  }\n  const answer = JSON.parse(host.__detect(JSON.stringify({ event, options }))) as { findings?: Finding[]; error?: string };\n  if (answer.error !== undefined) {\n    throw new Error(answer.error);\n  }\n  return answer.findings ?? [];\n}\n\ninterface Registered {\n  file: string;\n  name: string;\n  run: () => unknown;\n}\n\nconst MAX_TESTS = 100;\nconst registered: Registered[] = [];\nconst groups: string[] = [];\nlet currentFile = "";\n\n/** Groups tests under a name. */\nexport function describe(name: string, body: () => void): void {\n  groups.push(name);\n  try {\n    body();\n  } finally {\n    groups.pop();\n  }\n}\n\nfunction register(name: string, run: () => unknown): void {\n  registered.push({ file: currentFile, name: [...groups, name].join(" > "), run });\n}\n\nfunction each<Row>(rows: readonly Row[]) {\n  return (name: string, body: (row: Row) => unknown): void => {\n    for (const row of rows) {\n      const shown = typeof row === "string" ? row : JSON.stringify(row);\n      register(name.includes("%s") ? name.replace("%s", shown) : `${name} (${shown})`, () => body(row));\n    }\n  };\n}\n\n/** Declares one test. `test.each(rows)(name, body)` declares one per row; `%s` in the name is the row. */\nexport const test = Object.assign(register, { each });\nexport const it = test;\n\nfunction show(value: unknown): string {\n  return value === undefined ? "undefined" : JSON.stringify(value, null, 2);\n}\n\n/** Deep equality that ignores properties set to undefined, as a finding without a line has no `line`. */\nfunction equal(a: unknown, b: unknown): boolean {\n  if (a === b) {\n    return true;\n  }\n  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) {\n    return false;\n  }\n  const left = a as Record<string, unknown>;\n  const right = b as Record<string, unknown>;\n  const keys = new Set([...Object.keys(left), ...Object.keys(right)].filter((key) => left[key] !== undefined || right[key] !== undefined));\n  if (Array.isArray(a) && a.length !== (b as unknown[]).length) {\n    return false;\n  }\n  return [...keys].every((key) => equal(left[key], right[key]));\n}\n\n/** Whether `actual` has everything `expected` has. Arrays must match item by item. */\nfunction matches(actual: unknown, expected: unknown): boolean {\n  if (typeof expected !== "object" || expected === null) {\n    return equal(actual, expected);\n  }\n  if (typeof actual !== "object" || actual === null || Array.isArray(actual) !== Array.isArray(expected)) {\n    return false;\n  }\n  if (Array.isArray(expected)) {\n    return (actual as unknown[]).length === expected.length && expected.every((item, index) => matches((actual as unknown[])[index], item));\n  }\n  return Object.entries(expected).every(([key, value]) => matches((actual as Record<string, unknown>)[key], value));\n}\n\nexport interface Expectation {\n  /** Deeply equal. */\n  toEqual(expected: unknown): void;\n  /** Deeply equal. Here it is the same as `toEqual`. */\n  toStrictEqual(expected: unknown): void;\n  /** The same value. */\n  toBe(expected: unknown): void;\n  toHaveLength(length: number): void;\n  /** An array holding `item` itself, or a string holding the text. */\n  toContain(item: unknown): void;\n  /** An array holding an item deeply equal to `item`. */\n  toContainEqual(item: unknown): void;\n  /** Has everything `expected` has, and may have more. */\n  toMatchObject(expected: unknown): void;\n  toBeTruthy(): void;\n  toBeFalsy(): void;\n  toBeNull(): void;\n  toBeUndefined(): void;\n  toBeDefined(): void;\n  /** A function that throws. With `message`, the error has to contain it. */\n  toThrow(message?: string): void;\n  not: Expectation;\n}\n\nfunction expectation(actual: unknown, negated: boolean): Expectation {\n  const check = (passed: boolean, what: string, expected?: unknown): void => {\n    if (passed === negated) {\n      throw new Error(`Expected ${negated ? "not " : ""}${what}${expected === undefined ? "" : `\\n${show(expected)}`}\\nReceived\\n${show(actual)}`);\n    }\n  };\n  const thrown = (): string | null => {\n    try {\n      (actual as () => unknown)();\n      return null;\n    } catch (error) {\n      return error instanceof Error ? error.message : String(error);\n    }\n  };\n  const matchers: Expectation = {\n    toEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toStrictEqual: (expected) => check(equal(actual, expected), "to equal", expected),\n    toBe: (expected) => check(Object.is(actual, expected), "to be", expected),\n    toHaveLength: (length) => check((actual as { length?: unknown } | null)?.length === length, "length", length),\n    toContain: (item) => check(typeof actual === "string" ? actual.includes(String(item)) : Array.isArray(actual) && actual.includes(item), "to contain", item),\n    toContainEqual: (item) => check(Array.isArray(actual) && actual.some((candidate) => equal(candidate, item)), "to contain", item),\n    toMatchObject: (expected) => check(matches(actual, expected), "to match", expected),\n    toBeTruthy: () => check(Boolean(actual), "a truthy value"),\n    toBeFalsy: () => check(!actual, "a falsy value"),\n    toBeNull: () => check(actual === null, "null"),\n    toBeUndefined: () => check(actual === undefined, "undefined"),\n    toBeDefined: () => check(actual !== undefined, "a defined value"),\n    toThrow: (message) => {\n      const error = thrown();\n      check(error !== null && (message === undefined || error.includes(message)), message === undefined ? "to throw" : "to throw an error containing", message);\n    },\n    get not() {\n      return expectation(actual, !negated);\n    },\n  };\n  // A test also runs under vitest, which knows many more matchers. One that is\n  // missing here must say so, or it fails on the registry as "not a function".\n  return new Proxy(matchers, {\n    get(target, name, receiver) {\n      if (typeof name === "string" && !(name in target)) {\n        throw new Error(\n          `expect().${name} is not available when the registry runs the tests. Use one of: ${Object.keys(target).filter((key) => key !== "not").join(", ")}.`,\n        );\n      }\n      return Reflect.get(target, name, receiver);\n    },\n  });\n}\n\nexport function expect(actual: unknown): Expectation {\n  return expectation(actual, false);\n}\n\n/** Called by the runner before a test file is loaded, so its tests carry its name. */\nexport function __file(name: string): void {\n  currentFile = name;\n}\n\n/** Called by the runner once every test file is loaded. Returns the results as JSON. */\nexport function __run(): string {\n  if (registered.length > MAX_TESTS) {\n    throw new Error(`a principle may hold at most ${MAX_TESTS} tests, this one has ${registered.length}`);\n  }\n  const results = registered.map((entry) => {\n    host.__begin?.(JSON.stringify({ file: entry.file, name: entry.name }));\n    try {\n      const returned = entry.run();\n      if (typeof (returned as { then?: unknown } | null)?.then === "function") {\n        throw new Error("A test must not be async. detect() answers immediately.");\n      }\n      return { file: entry.file, name: entry.name, passed: true, message: "" };\n    } catch (error) {\n      return { file: entry.file, name: entry.name, passed: false, message: error instanceof Error ? error.message : String(error) };\n    }\n  });\n  return JSON.stringify(results);\n}\n',
+  "v3.ts": '/**\n * Detector API 3: what a detector written against it imports.\n *\n *     import { onPrompt, onWrite, mentioned } from "@wellactually/sdk/v3";\n *\n * The path is the declaration. A principle whose files import from here is\n * built against version 3 and is handed the events of version 3 for as long\n * as that version is run, also when it is uploaded again after the API has\n * moved on. Its tests import `@wellactually/sdk/v3/test`.\n *\n * In version 3 a detector registers a handler per event, with `onWrite`,\n * `onRead`, `onPrompt`, `onCommand` and `onOutput`. Each handler gets the\n * event of its kind and yields findings. It can read files through `node:fs`.\n *\n * The events of version 3 are frozen here as they were. Version 4 added\n * removed lines and deleted files, which a detector of version 3 never sees.\n */\nimport type { File, ReadEvent, TextFinding, WrittenLine } from "./index.ts";\nimport { onCommand as onCommandNow, onOutput as onOutputNow, onPrompt as onPromptNow, onRead as onReadNow, onWrite as onWriteNow, type FileOptions } from "./handlers.ts";\n\nexport type { CommandEvent, Depth, File, Findings, OutputEvent, PromptEvent, ReadEvent, TextFinding, WrittenLine } from "./index.ts";\nexport { findWord, lineAt, mentioned } from "./index.ts";\nexport { matchesGlob, matchesGlobs } from "./glob.ts";\nexport type { FileOptions } from "./handlers.ts";\nexport { findUp } from "./find.ts";\n\n/** What happened in the session, as version 3 knows it. */\nexport type EventName = "write" | "read" | "prompt" | "command" | "output";\n\nexport const EVENTS: readonly EventName[] = ["write", "read", "prompt", "command", "output"];\n\n/** The agent wrote or edited a file. */\nexport interface WriteEvent {\n  event: "write";\n  file: File;\n  /** The file content. */\n  text: string;\n  /** `text` split into lines. A finding\'s `line` counts in here. */\n  lines: string[];\n  /** The root of the project, the nearest folder upwards with a `.git`, or null. */\n  project: string | null;\n  /** The lines the agent wrote. Code that was there before is not in here. */\n  written: WrittenLine[];\n}\n\n/** An event that carries a file, for a helper that serves `onWrite` and `onRead` alike. */\nexport type FileEvent = WriteEvent | ReadEvent;\n\n/** What a handler of `onWrite`, `onRead` or `onOutput` yields. Nothing in it is required. */\nexport interface Finding extends TextFinding {\n  /** 1-based line of the event\'s text: of the file, or of what a command printed. */\n  line?: number;\n  /** The last line, when the finding spans several. Needs `line`. */\n  endLine?: number;\n}\n\n/** Runs when the agent wrote or edited a file. `event.written` holds the lines it wrote. */\nexport const onWrite: <F extends Finding>(options: FileOptions<WriteEvent, F>) => void = onWriteNow as never;\n\n/** Runs when the agent read a file. It did not write this code, so judge the place, not the author. */\nexport const onRead: <F extends Finding>(options: FileOptions<ReadEvent, F>) => void = onReadNow;\n\n/** Runs when the user typed a message, and when the agent briefed a subagent. */\nexport const onPrompt: typeof onPromptNow = onPromptNow;\n\n/** Runs before the agent runs a shell command. */\nexport const onCommand: typeof onCommandNow = onCommandNow;\n\n/** Runs after a shell command, on what it printed. */\nexport const onOutput: typeof onOutputNow = onOutputNow;\n\n',
+  "v4.ts": '/**\n * Detector API 4: what a detector written against it imports.\n *\n *     import { onDelete, onPrompt, onWrite, mentioned } from "@wellactually/sdk/v4";\n *\n * The path is the declaration. A principle whose files import from here is\n * built against version 4 and is handed the events of version 4 for as long\n * as that version is run, also when it is uploaded again after the API has\n * moved on. Its tests import `@wellactually/sdk/v4/test`.\n *\n * In version 4 a detector registers a handler per event, with `onWrite`,\n * `onRead`, `onDelete`, `onPrompt`, `onCommand` and `onOutput`. Each handler\n * gets the event of its kind and yields findings. A write knows the lines\n * the agent removed as well as the ones it wrote. It can read files through\n * `node:fs`.\n */\nexport type { CommandEvent, DeleteEvent, Depth, EventName, File, FileEvent, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, RemovedLine, TextFinding, WriteEvent, WrittenLine } from "./index.ts";\nexport { EVENTS, findWord, lineAt, mentioned } from "./index.ts";\nexport { matchesGlob, matchesGlobs } from "./glob.ts";\nexport type { FileOptions } from "./handlers.ts";\nexport { findUp } from "./find.ts";\nexport { onCommand, onDelete, onOutput, onPrompt, onRead, onWrite } from "./handlers.ts";\n',
   "vitest.ts": "/**\n * What `vitest` resolves to when a principle's tests run inside the isolate.\n *\n * An author runs the tests with vitest itself. The registry cannot: it runs\n * code from strangers, and only inside the isolate. So it gives the tests the\n * part of vitest's API a detector test needs. An import of anything else\n * fails the build with the name that is missing.\n */\nexport { describe, expect, it, test } from \"./test.ts\";\n"
 };
 
@@ -12295,7 +12306,16 @@ function unsupported(api) {
   }
   return null;
 }
-var DOWNGRADE = {};
+var DOWNGRADE = {
+  // Version 4 added the lines a write removed and the `delete` event. A detector of version 3 has no handler for a deletion, so it is never asked about one.
+  4: (ctx) => {
+    if (ctx.file === null) {
+      return ctx;
+    }
+    const { removed: _, ...file2 } = ctx.file;
+    return { ...ctx, file: file2 };
+  }
+};
 function ctxFor(api, ctx) {
   let event = ctx;
   for (let version2 = API_VERSION; version2 > api; version2--) {
@@ -12686,6 +12706,21 @@ function existingFile(file2, ctx, project) {
   const exists = absolute === ctx.file?.path || project !== null && project.stat(absolute) !== null;
   return exists ? fromRoot(absolute, ctx.project) : null;
 }
+function everyLine(first, last, textOn) {
+  for (let line = first; line <= last; line++) {
+    if (textOn(line) === void 0) {
+      return false;
+    }
+  }
+  return true;
+}
+function linesFrom(first, last, textOn) {
+  const texts = [];
+  for (let line = first; line <= last; line++) {
+    texts.push(textOn(line) ?? "");
+  }
+  return texts;
+}
 function hasLines(ctx) {
   return ctx.file !== null || ctx.event === "output";
 }
@@ -12702,6 +12737,7 @@ function validateFindings(json2, ctx, project = null) {
     return { findings, dropped: ["the detector did not return a list of findings"] };
   }
   const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  const removed = new Map((ctx.file?.removed ?? []).map((line) => [line.line, line.text]));
   for (const raw of parsed) {
     if (findings.length >= MAX_FINDINGS) {
       dropped.push(`more than ${MAX_FINDINGS} findings; the rest were dropped`);
@@ -12713,21 +12749,40 @@ function validateFindings(json2, ctx, project = null) {
     }
     const candidate = raw;
     const finding = {};
+    const onRemoved = candidate.removed === true;
+    if (candidate.removed !== void 0 && typeof candidate.removed !== "boolean") {
+      dropped.push(`the removed of a finding, which is true or false: ${quoted(candidate.removed)}`);
+    } else if (onRemoved && candidate.line === void 0) {
+      dropped.push("the removed of a finding without a line");
+    }
+    const textOn = (line) => {
+      if (onRemoved) {
+        return removed.get(line);
+      }
+      return lines[line - 1];
+    };
     if (candidate.line !== void 0) {
       const line = candidate.line;
       if (!hasLines(ctx)) {
         dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
-      } else if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lines.length) {
-        dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+      } else if (typeof line !== "number" || !Number.isInteger(line) || textOn(line) === void 0) {
+        if (onRemoved) {
+          dropped.push(`line ${quoted(line)} of a finding, which the agent did not remove`);
+        } else {
+          dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+        }
       } else {
         finding.line = line;
+        if (onRemoved) {
+          finding.removed = true;
+        }
       }
     }
     if (candidate.endLine !== void 0) {
       const endLine = candidate.endLine;
       if (finding.line === void 0) {
         dropped.push("the endLine of a finding without a line");
-      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || endLine > lines.length) {
+      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || !everyLine(finding.line, endLine, textOn)) {
         dropped.push(`endLine ${quoted(endLine)} of a finding on line ${finding.line}`);
       } else if (endLine > finding.line) {
         finding.endLine = endLine;
@@ -12735,7 +12790,7 @@ function validateFindings(json2, ctx, project = null) {
     }
     if (candidate.match !== void 0) {
       const match = typeof candidate.match === "string" ? candidate.match.trim() : "";
-      const scope = finding.line === void 0 ? [ctx.text] : lines.slice(finding.line - 1, finding.endLine ?? finding.line);
+      const scope = finding.line === void 0 ? [ctx.text, ...removed.values()] : linesFrom(finding.line, finding.endLine ?? finding.line, textOn);
       if (match === "") {
         dropped.push("an empty match");
       } else if (match.includes("\n")) {
@@ -13026,7 +13081,7 @@ function answerDetect(built, files, call2, run, record2 = () => {
   const { event, options } = typeof call2 === "object" && call2 !== null ? call2 : {};
   const ctx = eventCtx(event);
   if (!ctx) {
-    return { error: "detect() needs an event from write(), edit(), read(), prompt(), command() or output()" };
+    return { error: "detect() needs an event from write(), edit(), read(), deleted(), prompt(), command() or output()" };
   }
   const fixture = options?.project;
   if (fixture !== void 0 && typeof fixture !== "string") {
@@ -13036,7 +13091,7 @@ function answerDetect(built, files, call2, run, record2 = () => {
   if (projectFiles === null) {
     return { error: `detect(): the principle has no folder "${fixture}" to use as the project` };
   }
-  if (ctx.file) {
+  if (ctx.file && ctx.event !== "delete") {
     projectFiles[ctx.file.relativePath] = ctx.file.content;
   }
   const recorded = {
@@ -13090,7 +13145,7 @@ function eventCtx(raw) {
     return typeof event.text === "string" && typeof event.command === "string" ? textCtx("output", event.text, void 0, event.command) : null;
   }
   const relativePath = event.file?.relativePath;
-  if (event.event !== "write" && event.event !== "read" || typeof relativePath !== "string" || typeof event.file?.content !== "string") {
+  if (event.event !== "write" && event.event !== "read" && event.event !== "delete" || typeof relativePath !== "string" || typeof event.file?.content !== "string") {
     return null;
   }
   if (relativePath === "" || relativePath.split("/").includes("..")) {
@@ -13098,7 +13153,8 @@ function eventCtx(raw) {
   }
   const lines = event.file.content.split("\n");
   const written = (Array.isArray(event.file.written) ? event.file.written : []).map((entry) => entry?.line).filter((line) => typeof line === "number" && Number.isInteger(line) && line >= 1 && line <= lines.length).map((line) => ({ line, text: lines[line - 1] ?? "" }));
-  return fileCtx(event.event, relativePath, event.file.content, written, { isNew: event.file.isNew === true });
+  const removed = (Array.isArray(event.file.removed) ? event.file.removed : []).map((entry) => entry).filter((entry) => typeof entry?.line === "number" && Number.isInteger(entry.line) && entry.line >= 1 && typeof entry.text === "string" && !entry.text.includes("\n")).map((entry) => ({ line: entry.line, text: entry.text }));
+  return fileCtx(event.event, relativePath, event.file.content, { written, removed }, { isNew: event.file.isNew === true });
 }
 function hasDetector(manifest) {
   return !Array.isArray(manifest.handlers) || manifest.handlers.length > 0;
@@ -13432,12 +13488,20 @@ function describePlace(ctx, finding) {
   if (finding.line === void 0) {
     return match;
   }
-  const lines = ctx.file?.lines ?? ctx.text.split("\n");
-  const text2 = (lines[finding.line - 1] ?? "").trim();
+  const text2 = lineText(ctx, finding).trim();
   const quoted2 = text2.length > MAX_QUOTED_LENGTH ? `${text2.slice(0, MAX_QUOTED_LENGTH)}\u2026` : text2;
-  const where = finding.endLine === void 0 ? `line ${finding.line}` : `lines ${finding.line}-${finding.endLine}`;
+  const kind = finding.removed === true ? "removed line" : "line";
+  const where = finding.endLine === void 0 ? `${kind} ${finding.line}` : `${kind}s ${finding.line}-${finding.endLine}`;
   const named = match !== null && finding.match !== text2 ? `${where}, ${match}` : where;
   return quoted2 === "" ? named : `${named}: ${quoted2}`;
+}
+function lineText(ctx, finding) {
+  if (finding.removed === true) {
+    const removed = ctx.file?.removed.find((line) => line.line === finding.line);
+    return removed?.text ?? "";
+  }
+  const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  return lines[(finding.line ?? 1) - 1] ?? "";
 }
 
 // packages/cli/src/board/board.ts
@@ -13546,6 +13610,7 @@ async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ ne
 }
 var OPENERS = {
   write: "You just changed this file, so fixing it belongs in the change you are already making. Parts of the file you did not touch are not yours to clean up unless that is the task.",
+  delete: "You just deleted this file, so what the advice says about it belongs in the change you are already making.",
   read: "You only read this file. You did not write this code, so cleaning it up is not your job. Apply the advice to whatever you do change.",
   prompt: "This is about what was just asked for. No code was inspected and nothing is known to be wrong. Treat it as a recommendation while you work.",
   command: "This is about the command you are about to run.",
@@ -14786,131 +14851,14 @@ import fs12 from "node:fs";
 import path14 from "node:path";
 
 // packages/cli/src/hook/payload.ts
-import path9 from "node:path";
-var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "MultiEdit"]);
-var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "exec_command"]);
-var SUBAGENT_TOOLS = /* @__PURE__ */ new Set(["Task", "Agent"]);
-var MAX_OUTPUT_LENGTH = 2e5;
-function printed(response) {
-  if (typeof response === "string") {
-    return response;
-  }
-  return [response?.stdout, response?.stderr, response?.output].filter((part) => typeof part === "string" && part !== "").join("\n");
-}
-function eventsOf(payload, readFile, turn) {
-  const event = payload.hook_event_name ?? "";
-  const tool = payload.tool_name ?? "";
-  const input2 = payload.tool_input ?? {};
-  const cwd = payload.cwd ?? process.cwd();
-  const sessionRoot = () => {
-    const root = projectRootOf(cwd);
-    return root === null ? null : toPosix(root);
-  };
-  const file2 = (kind, absolute2, content2, written, isNew = false) => {
-    const { relativePath, where } = locate(absolute2, cwd);
-    return fileCtx(kind, relativePath, content2, written, { ...where, isNew });
-  };
-  if (event === "UserPromptSubmit") {
-    return payload.prompt ? [textCtx("prompt", payload.prompt, sessionRoot(), "", toPosix(cwd))] : [];
-  }
-  if (event === "PreToolUse" && SHELL_TOOLS.has(tool)) {
-    const command = input2.command ?? input2.cmd;
-    return command ? [textCtx("command", command, sessionRoot(), "", toPosix(cwd))] : [];
-  }
-  if (event === "PreToolUse" && SUBAGENT_TOOLS.has(tool)) {
-    return input2.prompt ? [textCtx("prompt", input2.prompt, sessionRoot(), "", toPosix(cwd))] : [];
-  }
-  if (event !== "PostToolUse") {
-    return [];
-  }
-  if (SHELL_TOOLS.has(tool)) {
-    const command = input2.command ?? input2.cmd ?? "";
-    const writes = (turn?.writes ?? []).flatMap(({ file: absolute2, written, isNew }) => {
-      const content2 = readFile(absolute2);
-      return content2 === null ? [] : [file2("write", absolute2, content2, written, isNew)];
-    });
-    const text2 = printed(payload.tool_response).slice(0, MAX_OUTPUT_LENGTH);
-    return text2.trim() === "" ? writes : [...writes, textCtx("output", text2, sessionRoot(), command, toPosix(cwd))];
-  }
-  if (tool === "apply_patch") {
-    return patchedFiles(input2.command ?? input2.patch ?? "").flatMap(({ file: patched, added, isNew }) => {
-      const absolute2 = path9.resolve(cwd, patched);
-      const content2 = readFile(absolute2) ?? (isNew ? added.join("\n") : null);
-      return content2 === null || added.length === 0 ? [] : [file2("write", absolute2, content2, locateWritten(content2, added), isNew)];
-    });
-  }
-  if (!input2.file_path) {
-    return [];
-  }
-  const absolute = path9.resolve(cwd, input2.file_path);
-  const content = readFile(absolute);
-  if (content === null) {
-    return [];
-  }
-  if (tool === "Read") {
-    return [file2("read", absolute, content)];
-  }
-  if (tool === "Write") {
-    const response = typeof payload.tool_response === "string" ? null : payload.tool_response;
-    const created = response?.type === "create" || response !== null && response !== void 0 && "originalFile" in response && response.originalFile === null;
-    return [file2("write", absolute, content, void 0, created)];
-  }
-  if (!EDIT_TOOLS.has(tool)) {
-    return [];
-  }
-  const fragments = tool === "Edit" ? [input2.new_string ?? ""] : (input2.edits ?? []).map((edit) => edit.new_string ?? "");
-  return [file2("write", absolute, content, locateWritten(content, fragments))];
-}
-function locate(absolute, cwd) {
-  const root = projectRootOf(path9.dirname(absolute));
-  if (root !== null) {
-    return { relativePath: toPosix(path9.relative(root, absolute)), where: { root: toPosix(root), absolute: toPosix(absolute) } };
-  }
-  const fromSession = path9.relative(cwd, absolute);
-  const outside = fromSession.startsWith("..") || path9.isAbsolute(fromSession);
-  return { relativePath: outside ? path9.basename(absolute) : toPosix(fromSession), where: { root: null, absolute: toPosix(absolute) } };
-}
-function patchedFiles(patch) {
-  const files = [];
-  let current2 = null;
-  let run = [];
-  const endRun = () => {
-    if (current2 && run.length > 0) {
-      current2.added.push(run.join("\n"));
-    }
-    run = [];
-  };
-  for (const line of patch.split("\n")) {
-    const header = /^\*\*\* (Add|Update|Delete) File: (.+)$/.exec(line);
-    if (header) {
-      endRun();
-      current2 = header[1] === "Delete" ? null : { file: (header[2] ?? "").trim(), added: [], isNew: header[1] === "Add" };
-      if (current2) {
-        files.push(current2);
-      }
-      continue;
-    }
-    const moved = /^\*\*\* Move to: (.+)$/.exec(line);
-    if (moved && current2) {
-      current2.file = (moved[1] ?? "").trim();
-      continue;
-    }
-    if (current2 && line.startsWith("+")) {
-      run.push(line.slice(1));
-      continue;
-    }
-    endRun();
-  }
-  endRun();
-  return files;
-}
+import path10 from "node:path";
 
 // packages/cli/src/hook/turn.ts
-import { execFileSync as execFileSync2 } from "node:child_process";
+import { execFileSync as execFileSync2, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs8 from "node:fs";
 import os4 from "node:os";
-import path10 from "node:path";
+import path9 from "node:path";
 var GIT_TIMEOUT_MS = 3e3;
 var STALE_LOCK_MS = 3e4;
 function snapshotRepos(sessionId, dirs) {
@@ -14943,7 +14891,7 @@ function ensureSnapshot(sessionId, dir) {
 function absorbWrites(sessionId, files) {
   const byRoot = /* @__PURE__ */ new Map();
   for (const file2 of files) {
-    const root = gitRootOf(path10.dirname(file2));
+    const root = gitRootOf(path9.dirname(file2));
     if (root !== null) {
       byRoot.set(root, [...byRoot.get(root) ?? [], file2]);
     }
@@ -14960,7 +14908,7 @@ function absorbWrites(sessionId, files) {
         if (repo === null) {
           return;
         }
-        const tree = writeTree(repo, ["add", "--all", "--", ...written.map((file2) => path10.relative(root, file2))]);
+        const tree = writeTree(repo, ["add", "--all", "--", ...written.map((file2) => path9.relative(root, file2))]);
         writeBaseline(sessionId, { ...baseline, tree });
       })
     );
@@ -14968,7 +14916,7 @@ function absorbWrites(sessionId, files) {
 }
 function diffRepos(sessionId, cwd) {
   ensureSnapshot(sessionId, cwd);
-  const result = { writes: [], roots: [], failures: [] };
+  const result = { writes: [], deletes: [], roots: [], failures: [] };
   for (const root of knownRoots(sessionId)) {
     const baseline = readBaseline(sessionId, root);
     if (baseline === null) {
@@ -14983,7 +14931,7 @@ function diffRepos(sessionId, cwd) {
         const tree = writeTree(repo, ["add", "--all"]);
         const head = headOf(repo);
         const fromHistory = head === baseline.head || baseline.head === null || head === null ? /* @__PURE__ */ new Set() : new Set(git(repo, ["diff", "--name-only", "--no-renames", baseline.head, head]).split("\n"));
-        const patch = tree === baseline.tree ? "" : git(repo, ["diff-tree", "-r", "-p", "-U0", "--no-renames", "--no-ext-diff", "--no-color", "--diff-filter=AM", baseline.tree, tree]);
+        const patch = tree === baseline.tree ? "" : git(repo, ["diff-tree", "-r", "-p", "-U0", "--no-renames", "--no-ext-diff", "--no-color", "--diff-filter=AMD", baseline.tree, tree]);
         writeBaseline(sessionId, { root, tree, head });
         return parsePatch(patch).filter((change) => !fromHistory.has(change.path));
       });
@@ -14992,7 +14940,18 @@ function diffRepos(sessionId, cwd) {
         continue;
       }
       result.roots.push(root);
-      result.writes.push(...done.filter((change) => change.written.length > 0).map((change) => ({ file: path10.join(root, change.path), written: change.written, isNew: change.isNew })));
+      for (const change of done) {
+        const file2 = path9.join(root, change.path);
+        if (change.isDeleted) {
+          if (change.removed.length > 0) {
+            result.deletes.push({ file: file2, content: change.removed.map((line) => line.text).join("\n") });
+          }
+          continue;
+        }
+        if (change.written.length > 0 || change.removed.length > 0) {
+          result.writes.push({ file: file2, written: change.written, removed: change.removed, isNew: change.isNew });
+        }
+      }
     } catch (error62) {
       result.failures.push({ root, reason: error62 instanceof Error ? error62.message : String(error62) });
     }
@@ -15012,7 +14971,7 @@ function sweepSnapshots(now = Date.now()) {
   }
   let removed = 0;
   for (const name of names) {
-    const dir = path10.join(turnsDir(), name);
+    const dir = path9.join(turnsDir(), name);
     try {
       if (now - fs8.statSync(dir).mtimeMs > SNAPSHOT_MAX_AGE_MS) {
         fs8.rmSync(dir, { recursive: true, force: true });
@@ -15026,35 +14985,111 @@ function sweepSnapshots(now = Date.now()) {
 function parsePatch(patch) {
   const files = [];
   let current2 = null;
+  let inHunk = false;
   let line = 0;
+  let oldLine = 0;
   for (const text2 of patch.split("\n")) {
     if (text2.startsWith("diff --git ")) {
-      current2 = { path: "", written: [], isNew: false };
+      current2 = { path: "", written: [], removed: [], isNew: false, isDeleted: false };
       files.push(current2);
+      inHunk = false;
       continue;
     }
     if (current2 === null) {
       continue;
     }
-    if (text2.startsWith("new file mode")) {
+    if (!inHunk && text2.startsWith("new file mode")) {
       current2.isNew = true;
       continue;
     }
-    if (text2.startsWith("+++ ")) {
-      current2.path = unquote(text2.slice(4)).replace(/^b\//, "");
+    if (!inHunk && text2.startsWith("deleted file mode")) {
+      current2.isDeleted = true;
       continue;
     }
-    const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(text2);
+    if (!inHunk && text2.startsWith("--- ")) {
+      current2.path = unquote(text2.slice(4)).replace(/^a\//, "");
+      continue;
+    }
+    if (!inHunk && text2.startsWith("+++ ")) {
+      const named = unquote(text2.slice(4));
+      if (named !== "/dev/null") {
+        current2.path = named.replace(/^b\//, "");
+      }
+      continue;
+    }
+    const hunk = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(text2);
     if (hunk) {
-      line = Number(hunk[1]);
+      inHunk = true;
+      oldLine = Number(hunk[1]);
+      line = Number(hunk[2]);
+      continue;
+    }
+    if (!inHunk) {
       continue;
     }
     if (text2.startsWith("+")) {
       current2.written.push({ line, text: text2.slice(1) });
       line++;
+      continue;
+    }
+    if (text2.startsWith("-")) {
+      current2.removed.push({ line: oldLine, text: text2.slice(1) });
+      oldLine++;
     }
   }
   return files.filter((file2) => file2.path !== "" && file2.path !== "/dev/null");
+}
+function removedLines(before, after) {
+  if (before === after) {
+    return [];
+  }
+  const dir = fs8.mkdtempSync(path9.join(os4.tmpdir(), "wellactually-"));
+  try {
+    const old = path9.join(dir, "before");
+    const now = path9.join(dir, "after");
+    fs8.writeFileSync(old, before);
+    fs8.writeFileSync(now, after);
+    const diff = spawnSync("git", ["diff", "--no-index", "-U0", "--no-color", "--no-ext-diff", "--text", "--", old, now], {
+      cwd: dir,
+      encoding: "utf8",
+      timeout: GIT_TIMEOUT_MS,
+      maxBuffer: 64 * 1024 * 1024,
+      env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: os4.devNull },
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+    if (diff.status !== 1 || typeof diff.stdout !== "string") {
+      return [];
+    }
+    return parsePatch(diff.stdout)[0]?.removed ?? [];
+  } finally {
+    fs8.rmSync(dir, { recursive: true, force: true });
+  }
+}
+function snapshotContent(sessionId, file2) {
+  const root = gitRootOf(path9.dirname(file2));
+  if (root === null) {
+    return null;
+  }
+  const baseline = readBaseline(sessionId, root);
+  if (baseline === null) {
+    return null;
+  }
+  const repo = repoOf(sessionId, root);
+  if (repo === null) {
+    return null;
+  }
+  try {
+    return execFileSync2("git", ["cat-file", "blob", `${baseline.tree}:${toPosix(path9.relative(root, file2))}`], {
+      cwd: root,
+      env: repo.env,
+      encoding: "utf8",
+      timeout: GIT_TIMEOUT_MS,
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+  } catch {
+    return null;
+  }
 }
 function unquote(text2) {
   if (!text2.startsWith('"')) {
@@ -15082,8 +15117,8 @@ function unquote(text2) {
 }
 function repoOf(sessionId, root) {
   const dir = repoDir(sessionId, root);
-  const objects = path10.join(dir, "objects");
-  const index = path10.join(dir, "index");
+  const objects = path9.join(dir, "objects");
+  const index = path9.join(dir, "index");
   let gitObjects;
   let gitIndex;
   try {
@@ -15128,15 +15163,15 @@ function git(repo, args) {
   }).trimEnd();
 }
 function gitRootOf(dir) {
-  let current2 = path10.resolve(dir);
+  let current2 = path9.resolve(dir);
   while (true) {
-    if (current2 === os4.homedir() || current2 === path10.parse(current2).root) {
+    if (current2 === os4.homedir() || current2 === path9.parse(current2).root) {
       return null;
     }
-    if (fs8.existsSync(path10.join(current2, ".git"))) {
+    if (fs8.existsSync(path9.join(current2, ".git"))) {
       return current2;
     }
-    current2 = path10.dirname(current2);
+    current2 = path9.dirname(current2);
   }
 }
 function withLock(sessionId, root, work) {
@@ -15145,7 +15180,7 @@ function withLock(sessionId, root, work) {
   }
   const dir = repoDir(sessionId, root);
   fs8.mkdirSync(dir, { recursive: true });
-  const lock = path10.join(dir, "lock");
+  const lock = path9.join(dir, "lock");
   try {
     fs8.mkdirSync(lock);
   } catch {
@@ -15163,7 +15198,7 @@ function withLock(sessionId, root, work) {
     return work();
   } catch (error62) {
     if (error62.code === "ETIMEDOUT" || error62.signal === "SIGTERM") {
-      fs8.writeFileSync(path10.join(dir, "slow"), "");
+      fs8.writeFileSync(path9.join(dir, "slow"), "");
       throw new Error(`git took longer than ${GIT_TIMEOUT_MS} ms, so this session no longer looks at it`);
     }
     throw error62;
@@ -15172,7 +15207,7 @@ function withLock(sessionId, root, work) {
   }
 }
 function isSlow(sessionId, root) {
-  return fs8.existsSync(path10.join(repoDir(sessionId, root), "slow"));
+  return fs8.existsSync(path9.join(repoDir(sessionId, root), "slow"));
 }
 function knownRoots(sessionId) {
   let names;
@@ -15181,13 +15216,13 @@ function knownRoots(sessionId) {
   } catch {
     return [];
   }
-  return names.map((name) => readJson2(path10.join(sessionDir(sessionId), name, "baseline.json"))?.root).filter((root) => typeof root === "string").sort();
+  return names.map((name) => readJson2(path9.join(sessionDir(sessionId), name, "baseline.json"))?.root).filter((root) => typeof root === "string").sort();
 }
 function readBaseline(sessionId, root) {
-  return readJson2(path10.join(repoDir(sessionId, root), "baseline.json"));
+  return readJson2(path9.join(repoDir(sessionId, root), "baseline.json"));
 }
 function writeBaseline(sessionId, baseline) {
-  const file2 = path10.join(repoDir(sessionId, baseline.root), "baseline.json");
+  const file2 = path9.join(repoDir(sessionId, baseline.root), "baseline.json");
   fs8.writeFileSync(`${file2}.tmp`, JSON.stringify(baseline));
   fs8.renameSync(`${file2}.tmp`, file2);
   const now = /* @__PURE__ */ new Date();
@@ -15201,13 +15236,160 @@ function readJson2(file2) {
   }
 }
 function turnsDir() {
-  return path10.join(boardHome(), "turns");
+  return path9.join(boardHome(), "turns");
 }
 function sessionDir(sessionId) {
-  return path10.join(turnsDir(), sessionId.replace(/[^A-Za-z0-9_-]/g, "_"));
+  return path9.join(turnsDir(), sessionId.replace(/[^A-Za-z0-9_-]/g, "_"));
 }
 function repoDir(sessionId, root) {
-  return path10.join(sessionDir(sessionId), createHash("sha256").update(root).digest("hex").slice(0, 16));
+  return path9.join(sessionDir(sessionId), createHash("sha256").update(root).digest("hex").slice(0, 16));
+}
+
+// packages/cli/src/hook/payload.ts
+var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "MultiEdit"]);
+var SHELL_TOOLS = /* @__PURE__ */ new Set(["Bash", "exec_command"]);
+var SUBAGENT_TOOLS = /* @__PURE__ */ new Set(["Task", "Agent"]);
+var MAX_OUTPUT_LENGTH = 2e5;
+function printed(response) {
+  if (typeof response === "string") {
+    return response;
+  }
+  return [response?.stdout, response?.stderr, response?.output].filter((part) => typeof part === "string" && part !== "").join("\n");
+}
+function eventsOf(payload, readFile, turn, readBefore = () => null) {
+  const event = payload.hook_event_name ?? "";
+  const tool = payload.tool_name ?? "";
+  const input2 = payload.tool_input ?? {};
+  const cwd = payload.cwd ?? process.cwd();
+  const sessionRoot = () => {
+    const root = projectRootOf(cwd);
+    return root === null ? null : toPosix(root);
+  };
+  const file2 = (kind, absolute2, content2, change = {}, isNew = false) => {
+    const { relativePath, where } = locate(absolute2, cwd);
+    return fileCtx(kind, relativePath, content2, change, { ...where, isNew });
+  };
+  const response = typeof payload.tool_response === "string" ? null : payload.tool_response;
+  const before = (absolute2) => {
+    if (typeof response?.originalFile === "string") {
+      return response.originalFile;
+    }
+    return readBefore(absolute2);
+  };
+  const removedFrom = (absolute2, content2) => {
+    const was = before(absolute2);
+    if (was === null) {
+      return [];
+    }
+    return removedLines(was, content2);
+  };
+  if (event === "UserPromptSubmit") {
+    return payload.prompt ? [textCtx("prompt", payload.prompt, sessionRoot(), "", toPosix(cwd))] : [];
+  }
+  if (event === "PreToolUse" && SHELL_TOOLS.has(tool)) {
+    const command = input2.command ?? input2.cmd;
+    return command ? [textCtx("command", command, sessionRoot(), "", toPosix(cwd))] : [];
+  }
+  if (event === "PreToolUse" && SUBAGENT_TOOLS.has(tool)) {
+    return input2.prompt ? [textCtx("prompt", input2.prompt, sessionRoot(), "", toPosix(cwd))] : [];
+  }
+  if (event !== "PostToolUse") {
+    return [];
+  }
+  if (SHELL_TOOLS.has(tool)) {
+    const command = input2.command ?? input2.cmd ?? "";
+    const writes = (turn?.writes ?? []).flatMap(({ file: absolute2, written, removed, isNew }) => {
+      const content2 = readFile(absolute2);
+      return content2 === null ? [] : [file2("write", absolute2, content2, { written, removed }, isNew)];
+    });
+    const deletes = (turn?.deletes ?? []).map(({ file: absolute2, content: content2 }) => file2("delete", absolute2, content2));
+    const text2 = printed(payload.tool_response).slice(0, MAX_OUTPUT_LENGTH);
+    return text2.trim() === "" ? [...writes, ...deletes] : [...writes, ...deletes, textCtx("output", text2, sessionRoot(), command, toPosix(cwd))];
+  }
+  if (tool === "apply_patch") {
+    return patchedFiles(input2.command ?? input2.patch ?? "").flatMap(({ file: patched, from, added, isNew, isDeleted }) => {
+      const absolute2 = path10.resolve(cwd, patched);
+      if (isDeleted) {
+        const was2 = readBefore(absolute2);
+        return was2 === null ? [] : [file2("delete", absolute2, was2)];
+      }
+      const content2 = readFile(absolute2) ?? (isNew ? added.join("\n") : null);
+      if (content2 === null) {
+        return [];
+      }
+      const was = isNew ? null : readBefore(path10.resolve(cwd, from));
+      const removed = was === null ? [] : removedLines(was, content2);
+      if (added.length === 0 && removed.length === 0) {
+        return [];
+      }
+      return [file2("write", absolute2, content2, { written: locateWritten(content2, added), removed }, isNew)];
+    });
+  }
+  if (!input2.file_path) {
+    return [];
+  }
+  const absolute = path10.resolve(cwd, input2.file_path);
+  const content = readFile(absolute);
+  if (content === null) {
+    return [];
+  }
+  if (tool === "Read") {
+    return [file2("read", absolute, content)];
+  }
+  if (tool === "Write") {
+    const created = response?.type === "create" || response !== null && response !== void 0 && "originalFile" in response && response.originalFile === null;
+    if (created) {
+      return [file2("write", absolute, content, {}, true)];
+    }
+    return [file2("write", absolute, content, { removed: removedFrom(absolute, content) })];
+  }
+  if (!EDIT_TOOLS.has(tool)) {
+    return [];
+  }
+  const fragments = tool === "Edit" ? [input2.new_string ?? ""] : (input2.edits ?? []).map((edit) => edit.new_string ?? "");
+  return [file2("write", absolute, content, { written: locateWritten(content, fragments), removed: removedFrom(absolute, content) })];
+}
+function locate(absolute, cwd) {
+  const root = projectRootOf(path10.dirname(absolute));
+  if (root !== null) {
+    return { relativePath: toPosix(path10.relative(root, absolute)), where: { root: toPosix(root), absolute: toPosix(absolute) } };
+  }
+  const fromSession = path10.relative(cwd, absolute);
+  const outside = fromSession.startsWith("..") || path10.isAbsolute(fromSession);
+  return { relativePath: outside ? path10.basename(absolute) : toPosix(fromSession), where: { root: null, absolute: toPosix(absolute) } };
+}
+function patchedFiles(patch) {
+  const files = [];
+  let current2 = null;
+  let run = [];
+  const endRun = () => {
+    if (current2 && run.length > 0) {
+      current2.added.push(run.join("\n"));
+    }
+    run = [];
+  };
+  for (const line of patch.split("\n")) {
+    const header = /^\*\*\* (Add|Update|Delete) File: (.+)$/.exec(line);
+    if (header) {
+      endRun();
+      const named = (header[2] ?? "").trim();
+      current2 = { file: named, from: named, added: [], isNew: header[1] === "Add", isDeleted: header[1] === "Delete" };
+      files.push(current2);
+      continue;
+    }
+    const moved = /^\*\*\* Move to: (.+)$/.exec(line);
+    if (moved && current2) {
+      current2.file = (moved[1] ?? "").trim();
+      continue;
+    }
+    if (current2 && line.startsWith("+")) {
+      run.push(line.slice(1));
+      continue;
+    }
+    endRun();
+  }
+  endRun();
+  return files;
 }
 
 // packages/cli/src/hook/hook-log.ts
@@ -15585,10 +15767,10 @@ async function runHook(stdin, log, frame2 = frameEvents) {
   if (log && turn && turn.failures.length > 0) {
     log.repos = turn.failures;
   }
-  const all = eventsOf(payload, readText2, turn);
+  const all = eventsOf(payload, readText2, turn, (file2) => readSnapshot(payload, file2));
   const events = all.filter((ctx) => boardOffIn(ctx.file ? path14.dirname(ctx.file.path) : payload.cwd ?? process.cwd()) === null);
   if (event === "PostToolUse" && payload.session_id && !SHELL_TOOLS2.has(payload.tool_name ?? "")) {
-    const written = events.flatMap((ctx) => ctx.event === "write" && ctx.file ? [ctx.file.path] : []);
+    const written = events.flatMap((ctx) => (ctx.event === "write" || ctx.event === "delete") && ctx.file ? [ctx.file.path] : []);
     if (written.length > 0) {
       absorbWrites(payload.session_id, written);
     }
@@ -15624,6 +15806,7 @@ async function runEvents(payload, events, lockfile, pool, frame2, log) {
       event: ctx.event,
       file: ctx.file?.path,
       written: ctx.event === "write" ? ctx.file?.written.map((written) => written.line) : void 0,
+      removed: ctx.event === "write" && ctx.file && ctx.file.removed.length > 0 ? ctx.file.removed.map((removed) => removed.line) : void 0,
       command: excerpt(ctx.command),
       text: ctx.file ? void 0 : excerpt(ctx.event === "command" ? null : ctx.text),
       detectors: run.detectors.map((detector) => ({
@@ -15704,6 +15887,16 @@ function workerFile() {
   const main2 = process.argv[1];
   const beside = [path14.join(path14.dirname(main2), "wellactually-worker.mjs"), path14.join(path14.dirname(main2), "worker.ts")];
   return beside.find((file2) => fs12.existsSync(file2)) ?? main2;
+}
+function readSnapshot(payload, file2) {
+  if (!payload.session_id || process.env.WELLACTUALLY_GIT === "0" || payload.hook_event_name !== "PostToolUse") {
+    return null;
+  }
+  const content = snapshotContent(payload.session_id, file2);
+  if (content === null || content.length > MAX_FILE_BYTES2 || content.includes("\0")) {
+    return null;
+  }
+  return content;
 }
 function readText2(file2) {
   let stat;
@@ -45030,25 +45223,25 @@ The name of the directory is the principle's id.
 - detector.ts: registers a handler per event it reacts to, at the top level of the file:
   \`onWrite({ globs: ["**/*.ts", "!**/*.d.ts"], *detect(event) { for (const written of event.written) { if (/\\benum\\b/.test(written.text)) { yield { line: written.line }; } } } });\`
   Each call takes one object: \`globs\` where the event has a file, and \`detect\`. Write it over several lines, \`globs\` and \`*detect(event) {\` each on their own line, with plain if statements. The star makes \`detect\` a generator method, because an arrow function cannot yield.
-  The handlers are \`onWrite\` (the agent wrote a file), \`onRead\` (it read one), \`onPrompt\` (the user typed, or the agent briefed a subagent), \`onCommand\` (a shell command is about to run) and \`onOutput\` (what a command printed). A detector registers as many as it needs, also several for one event.
-  \`onWrite\` and \`onRead\` take globs for the path from the project root: \`**\`, \`*\`, \`?\`, \`{a,b}\`, and a leading \`!\` excludes. Without globs the handler runs on every file.
-  Each handler gets the event of its kind. All have \`event.text\`, \`event.lines\` and \`event.project\`. Write and read have \`event.file\` (\`path\` absolute, \`relativePath\` from the project root, \`name\`, \`ext\`, \`content\`, \`lines\`, \`isNew\`). Write has \`event.written\`, the lines the agent wrote as \`{ line, text }\`: judge those, not the whole file. \`text\` is the line as it is in the file, comments and strings included, so skip a comment line yourself where it matters: \`if (written.text.trim().startsWith("//")) { continue; }\`. Command and output have \`event.command\`.
+  The handlers are \`onWrite\` (the agent wrote a file), \`onRead\` (it read one), \`onPrompt\` (the user typed, or the agent briefed a subagent), \`onCommand\` (a shell command is about to run) and \`onOutput\` (what a command printed), and \`onDelete\` (it deleted a file). A detector registers as many as it needs, also several for one event.
+  \`onWrite\`, \`onRead\` and \`onDelete\` take globs for the path from the project root: \`**\`, \`*\`, \`?\`, \`{a,b}\`, and a leading \`!\` excludes. Without globs the handler runs on every file.
+  Each handler gets the event of its kind. All have \`event.text\`, \`event.lines\` and \`event.project\`. Write, read and delete have \`event.file\` (\`path\` absolute, \`relativePath\` from the project root, \`name\`, \`ext\`, \`content\`, \`lines\`, \`isNew\`). Write has \`event.written\`, the lines the agent wrote as \`{ line, text }\`: judge those, not the whole file. \`text\` is the line as it is in the file, comments and strings included, so skip a comment line yourself where it matters: \`if (written.text.trim().startsWith("//")) { continue; }\`. Write also has \`event.removed\`, the lines the agent removed as \`{ line, text, removed: true }\`, where \`line\` is the line it had before. A changed line is removed as it was and written as it is. On delete \`event.file\` is the file as it was, and every line of it is in \`event.removed\`, so one helper over \`event.removed\` serves \`onWrite\` and \`onDelete\`. Command and output have \`event.command\`.
   Prompt, command and output have \`event.cwd\`, the folder the session runs in. To keep a prompt handler to one kind of project, look from there: \`onPrompt({ *detect(event) { if (findUp("pubspec.yaml", event.cwd)) { yield* mentioned(event, ["riverpod"]); } } })\`. \`findUp(name, from)\` from the SDK returns the nearest file of that name upwards, or null.
-  A handler yields findings. A helper that returns a list of them is passed on with \`yield*\`. A finding is \`{ line?, endLine?, match?, file?, depth? }\` and nothing in it is required.
+  A handler yields findings. A helper that returns a list of them is passed on with \`yield*\`. A finding is \`{ line?, endLine?, match?, file?, depth?, removed? }\` and nothing in it is required.
   A finding without a \`line\` in \`onWrite\` or \`onRead\` points at the file: \`yield {}\` says the file itself is the problem, for its name, its place or something it lacks. Never pick a first line to stand in for the file. Elsewhere \`yield {}\` just fires.
   \`file\` points at another file than the one of the event, as a path from the project root or an absolute one: \`yield { line: written.line, file: "assets/hero.jpg" }\` for a jpg that should be a webp. \`line\` and \`match\` stay about the event. The file has to exist or occur verbatim in the event, or it is left out and the finding still fires.
-  \`line\` is the 1-based line of the file, or of what a command printed. The agent is shown that line, quoted by the host, so a finding carries no text of its own. \`endLine\` is for a finding that spans lines. Prompt and command findings have no line.
+  \`line\` is the 1-based line of the file, or of what a command printed. The agent is shown that line, quoted by the host, so a finding carries no text of its own. \`endLine\` is for a finding that spans lines. Prompt and command findings have no line. \`removed: true\` says \`line\` and \`endLine\` name removed lines by the line they had before, and the host quotes them from \`event.removed\`: \`yield removed\` or \`yield { line: removed.line, removed: true }\`.
   \`match\` is the exact text that triggered: the keyword in a prompt, a piece of a line. It must occur verbatim in the event, on the named line when there is one, and may not span lines. A match that does not is left out and the finding still fires. Text read from another file cannot be a match.
   \`depth: "pointer"\` shows only the summary, for a word that matched while nothing is known to be wrong. \`mentioned(event, ["some phrase"])\` from the SDK returns that for a prompt. It finds a name where it stands alone, in any case and with or without separators (rxdart, rx_dart, RxDart).
-  It imports from \`@wellactually/sdk/v3\`. The v3 in the path is the detector API version it is written against, and its tests import from the same version. Keep the path as scaffold wrote it; what follows describes version 3.
-  It runs in an isolate without network or process. It may import @wellactually/sdk/v3, node:fs, node:path, its own relative files, and packages from npm. A package needs an entry in a package.json in the principle folder, \`{ "dependencies": { "yaml": "^2.9.1" } }\`, and has to be installed with npm install. Its code is copied into the principle on publish, at the version that is installed then. A package may also come from a repository, \`"dart-kit": "github:owner/dart-kit#main"\`, and may then be TypeScript. Only plain JavaScript works: a package that needs Node or WebAssembly fails at build time. The bundle may be 1 MB. The licence of every package goes into the bundle. MIT, ISC, BSD, Apache-2.0 and the like pass by themselves when the package has its licence file. Any other licence, or none, has to be approved by the human when they publish, so prefer packages with a permissive licence.
+  It imports from \`@wellactually/sdk/v4\`. The v4 in the path is the detector API version it is written against, and its tests import from the same version. Keep the path as scaffold wrote it; what follows describes version 4. A principle on v3 keeps working, without \`event.removed\` and \`onDelete\`; to use them, import from v4 in every file.
+  It runs in an isolate without network or process. It may import @wellactually/sdk/v4, node:fs, node:path, its own relative files, and packages from npm. A package needs an entry in a package.json in the principle folder, \`{ "dependencies": { "yaml": "^2.9.1" } }\`, and has to be installed with npm install. Its code is copied into the principle on publish, at the version that is installed then. A package may also come from a repository, \`"dart-kit": "github:owner/dart-kit#main"\`, and may then be TypeScript. Only plain JavaScript works: a package that needs Node or WebAssembly fails at build time. The bundle may be 1 MB. The licence of every package goes into the bundle. MIT, ISC, BSD, Apache-2.0 and the like pass by themselves when the package has its licence file. Any other licence, or none, has to be approved by the human when they publish, so prefer packages with a permissive licence.
   It can read other files with node:fs (readFileSync, existsSync, statSync, readdirSync; text only, read-only, sync only). Walk up from event.file.path to find a pubspec.yaml or package.json. event.project is the git root or null, do not rely on it.
 - *.test.ts: the tests. Any number of files, each complete on its own, with the source it tests written inline.
   A test builds the event a detector receives and checks what the detector reports:
   \`expect(detect(write("lib/a.dart", content))).toEqual([{ line: 2 }])\`.
-  Events come from \`write(path, content)\`, \`edit(path, contentAfterTheEdit, { written })\`, \`read(path, content)\`, \`prompt(text)\`, \`command(text)\` and \`output(command, text)\`.
-  \`edit\` is how to show that code which was already there is left alone: only \`written\` counts as written.
-  Import \`test\`, \`describe\` and \`expect\` from vitest, and the events, \`detect\` and \`source\` from @wellactually/sdk/v3/test.
+  Events come from \`write(path, content)\`, \`edit(path, contentAfterTheEdit, { written, removed, before })\`, \`read(path, content)\`, \`deleted(path, contentItHeld)\`, \`prompt(text)\`, \`command(text)\` and \`output(command, text)\`.
+  \`edit\` is how to show that code which was already there is left alone: only \`written\` counts as written. \`removed\` is the text the agent took out, found in \`before\`, the file as it was, which gives each removed line its number.
+  Import \`test\`, \`describe\` and \`expect\` from vitest, and the events, \`detect\` and \`source\` from @wellactually/sdk/v4/test.
   For a detector that reads other files, put a small project into the principle, e.g. fixtures/flutter_app/pubspec.yaml, and pass it: \`detect(write("lib/a.dart", content), { project: "fixtures/flutter_app" })\`.
   The project sits at a made-up root, so never assert on absolute paths. \`write(path, content, { isNew: true })\` is a write that created the file.
   The tests are ordinary vitest files. Where the repository has vitest and @wellactually/sdk installed, npm test runs them. run_tests always works and also checks the publish gates.

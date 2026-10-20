@@ -220,6 +220,7 @@ export async function runBoard(
 
 const OPENERS: Record<Ctx["event"], string> = {
   write: "You just changed this file, so fixing it belongs in the change you are already making. Parts of the file you did not touch are not yours to clean up unless that is the task.",
+  delete: "You just deleted this file, so what the advice says about it belongs in the change you are already making.",
   read: "You only read this file. You did not write this code, so cleaning it up is not your job. Apply the advice to whatever you do change.",
   prompt: "This is about what was just asked for. No code was inspected and nothing is known to be wrong. Treat it as a recommendation while you work.",
   command: "This is about the command you are about to run.",

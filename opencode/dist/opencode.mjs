@@ -134,7 +134,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs3 = require2("node:fs");
+    var fs2 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -3678,11 +3678,10 @@ var init_module_ES6BEMUI = __esm({
 });
 
 // packages/cli/src/agents/opencode.ts
-import fs2 from "node:fs";
 import path3 from "node:path";
 
 // packages/sdk/src/index.ts
-var API_VERSION = 3;
+var API_VERSION = 4;
 
 // packages/core/src/node.ts
 import { createRequire } from "node:module";
@@ -3782,12 +3781,48 @@ async function loadEsbuild() {
 // packages/cli/src/board/files.ts
 var MAX_READ_BYTES = 512 * 1024;
 
+// packages/cli/src/board/board.ts
+var SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+
+// packages/cli/src/hook/turn.ts
+var SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // packages/cli/src/agents/bridge.ts
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path2 from "node:path";
 import { fileURLToPath } from "node:url";
 var HOOK_TIMEOUT_MS = 1e4;
+var MAX_BEFORE_BYTES = 512 * 1024;
+function contentBefore(file) {
+  let stat;
+  try {
+    stat = fs.statSync(file);
+  } catch {
+    return null;
+  }
+  if (!stat.isFile() || stat.size > MAX_BEFORE_BYTES) {
+    return void 0;
+  }
+  try {
+    const content = fs.readFileSync(file, "utf8");
+    if (content.includes("\0")) {
+      return void 0;
+    }
+    return content;
+  } catch {
+    return void 0;
+  }
+}
+function fileResponse(before2) {
+  if (before2 === null) {
+    return { type: "create", originalFile: null };
+  }
+  if (before2 === void 0) {
+    return { type: "update" };
+  }
+  return { type: "update", originalFile: before2 };
+}
 function pluginRoot() {
   return path2.resolve(path2.dirname(fileURLToPath(import.meta.url)), "..");
 }
@@ -3881,8 +3916,8 @@ var Pending = class {
   advice = /* @__PURE__ */ new Map();
   add(callId, text) {
     if (text !== "") {
-      const before = this.advice.get(callId);
-      this.advice.set(callId, before ? `${before}
+      const before2 = this.advice.get(callId);
+      this.advice.set(callId, before2 ? `${before2}
 
 ${text}` : text);
     }
@@ -3924,7 +3959,7 @@ function str(value) {
 function fileOf(input) {
   return str(input.path) ?? str(input.filePath);
 }
-function opencodePayload(call, cwd, output, existed) {
+function opencodePayload(call, cwd, output, before2) {
   const base = { session_id: call.sessionID, tool_use_id: call.callID, cwd };
   const { tool, input } = call;
   if (output === void 0) {
@@ -3952,26 +3987,30 @@ function opencodePayload(call, cwd, output, existed) {
     return { ...post, tool_name: "Read", tool_input: { file_path: file } };
   }
   if (tool === "write") {
-    return { ...post, tool_name: "Write", tool_input: { file_path: file }, tool_response: { type: existed === false ? "create" : "update" } };
+    return { ...post, tool_name: "Write", tool_input: { file_path: file }, tool_response: fileResponse(before2) };
   }
   if (tool === "edit") {
-    return { ...post, tool_name: "Edit", tool_input: { file_path: file, new_string: str(input.newString) ?? str(input.new_string) ?? "" } };
+    return { ...post, tool_name: "Edit", tool_input: { file_path: file, new_string: str(input.newString) ?? str(input.new_string) ?? "" }, tool_response: fileResponse(before2) };
   }
   if (tool === "multiedit" && Array.isArray(input.edits)) {
     const edits = input.edits.map((edit) => ({ new_string: str(edit.newString) ?? str(edit.new_string) ?? "" }));
-    return { ...post, tool_name: "MultiEdit", tool_input: { file_path: file, edits } };
+    return { ...post, tool_name: "MultiEdit", tool_input: { file_path: file, edits }, tool_response: fileResponse(before2) };
   }
   return null;
 }
-function exists(call, cwd) {
-  const file = call.tool === "write" ? fileOf(call.input) : void 0;
-  return file === void 0 ? void 0 : fs2.existsSync(path3.resolve(cwd, file));
+var FILE_TOOLS = /* @__PURE__ */ new Set(["write", "edit", "multiedit"]);
+function before(call, cwd) {
+  const file = FILE_TOOLS.has(call.tool) ? fileOf(call.input) : void 0;
+  if (file === void 0) {
+    return void 0;
+  }
+  return contentBefore(path3.resolve(cwd, file));
 }
 var Calls = class {
   pending = new Pending();
-  existed = /* @__PURE__ */ new Map();
+  was = /* @__PURE__ */ new Map();
   async before(call, cwd) {
-    this.existed.set(call.callID, exists(call, cwd));
+    this.was.set(call.callID, before(call, cwd));
     const payload = opencodePayload(call, cwd);
     if (payload) {
       this.pending.add(call.callID, await callHook(payload));
@@ -3979,10 +4018,10 @@ var Calls = class {
   }
   /** The advice for a call that ran, including what was held from before it ran. */
   async after(call, cwd, output) {
-    const existed = this.existed.get(call.callID);
-    this.existed.delete(call.callID);
+    const was = this.was.get(call.callID);
+    this.was.delete(call.callID);
     const held = this.pending.take(call.callID);
-    const payload = opencodePayload(call, cwd, output, existed);
+    const payload = opencodePayload(call, cwd, output, was);
     const advice = payload ? await callHook(payload) : "";
     return [held, advice].filter((text) => text !== "").join("\n\n");
   }
