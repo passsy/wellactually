@@ -22,13 +22,23 @@ export interface DetectOptions {
 export declare function write(path: string, content: string, options?: {
     isNew?: boolean;
 }): Ctx;
+/** What `edit` takes besides the file after the edit. */
+export interface EditChange {
+    /** The text the agent put in, as one piece or several. */
+    written?: string | readonly string[];
+    /** The text the agent took out, as one piece or several. Needs `before`, where it is found. */
+    removed?: string | readonly string[];
+    /** The file as it was before the edit. A removed line has the line it had there. */
+    before?: string;
+}
 /**
- * The agent edited a file. `content` is the file after the edit and
- * `change.written` is the text the agent put in, as one piece or several.
+ * The agent edited a file. `content` is the file after the edit,
+ * `change.written` is the text the agent put in, and `change.removed` the
+ * text it took out of `change.before`.
  */
-export declare function edit(path: string, content: string, change: {
-    written: string | readonly string[];
-}): Ctx;
+export declare function edit(path: string, content: string, change: EditChange): Ctx;
+/** The agent deleted this file. `content` is what it held. Every line of it counts as removed. */
+export declare function deleted(path: string, content: string): Ctx;
 /** The agent read this file. It wrote none of it. */
 export declare function read(path: string, content: string): Ctx;
 /** The user typed this, or the agent handed it to a subagent. */

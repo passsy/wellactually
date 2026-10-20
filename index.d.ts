@@ -23,37 +23,53 @@
  *   the file handlers. A finding names a line or a match and carries no text
  *   of its own. Added the `output` event, and a prompt is also what the agent
  *   hands to a subagent.
+ * - 4: `event.removed` on a write, the lines the agent removed, and the
+ *   `delete` event with `onDelete`, for a file the agent deleted. A finding
+ *   with `removed: true` names a removed line.
  *
  * A detector says which one it was written against by where it imports from:
- * `@wellactually/sdk/v3`. Each version has its own file next to this one. A
+ * `@wellactually/sdk/v4`. Each version has its own file next to this one. A
  * principle is then handed the event of that version for as long as it is
  * run, also when it is uploaded again after the API has moved on. This file
  * itself is what the host imports, not a detector.
  */
-export declare const API_VERSION = 3;
+export declare const API_VERSION = 4;
 export { matchesGlob, matchesGlobs } from "./glob.js";
 /**
  * What happened in the session.
  *
  * - `write`: the agent wrote or edited a file.
  * - `read`: the agent read a file. It did not write this code.
+ * - `delete`: the agent deleted a file.
  * - `prompt`: the user typed a message, or the agent briefed a subagent.
  * - `command`: the agent is about to run a shell command.
  * - `output`: a shell command ran, and this is what it printed.
  */
-export type EventName = "write" | "read" | "prompt" | "command" | "output";
+export type EventName = "write" | "read" | "delete" | "prompt" | "command" | "output";
 export declare const EVENTS: readonly EventName[];
 /** The events that carry a file, and so the ones a handler can have globs for. */
 export declare const FILE_EVENTS: readonly EventName[];
-/** A line the agent wrote in this event, as the host records it. */
+/** A line the agent wrote or removed in this event, as the host records it. */
 export interface Written {
-    /** 1-based line in the file. */
+    /** 1-based line in the file: after the change for a written line, before it for a removed one. */
     line: number;
-    /** The line as written, untrimmed. */
+    /** The line as written or as it was, untrimmed. */
     text: string;
 }
 /** A line the agent wrote in this event, as a handler of `onWrite` gets it. */
 export type WrittenLine = Written;
+/** A line the agent removed in this event, as a handler of `onWrite` or `onDelete` gets it. */
+export interface RemovedLine {
+    /** 1-based line it had in the file before the change. The file now may hold other text there, or end before it. */
+    line: number;
+    /** The line as it was, untrimmed. */
+    text: string;
+    /**
+     * Always true. A removed line that a handler yields as it is is a finding
+     * on the line that was removed, and this is what says so.
+     */
+    removed: true;
+}
 /** The file of a `write` or `read` event. */
 export interface File {
     /** Absolute path, with forward slashes. Navigate from here with `node:path` and read neighbours with `node:fs`. */
@@ -70,25 +86,29 @@ export interface File {
     content: string;
     /** `content` split into lines. */
     lines: string[];
-    /** The agent created this file with this write. It did not exist before. Always false on `read`. */
+    /** The agent created this file with this write. It did not exist before. Always false on `read` and `delete`. */
     isNew: boolean;
 }
 /**
  * An event as the host builds it and hands it to the isolate: one shape for
- * all five. A detector never sees this. Its handlers get the event of their
+ * all six. A detector never sees this. Its handlers get the event of their
  * kind, see `WriteEvent` and the others.
  */
 export interface Ctx {
     event: EventName;
-    /** Null when the event carries text instead of a file. */
+    /**
+     * Null when the event carries text instead of a file. On `delete` the file
+     * is as it was before it was deleted, and every line of it is removed.
+     */
     file: (File & {
         written: Written[];
+        removed: Written[];
     }) | null;
-    /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */
+    /** The file content on `write`, `read` and `delete`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */
     text: string;
     /** The command line on `command` and `output`. Null on the others. */
     command: string | null;
-    /** The folder the session runs in, as an absolute path, on the events without a file. Null on `write` and `read`. */
+    /** The folder the session runs in, as an absolute path, on the events without a file. Null on `write`, `read` and `delete`. */
     cwd: string | null;
     /**
      * The root of the project the event happened in, as an absolute path: the
@@ -98,7 +118,7 @@ export interface Ctx {
 }
 /** What every event has. */
 interface EventBase {
-    /** The file content on `write` and `read`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */
+    /** The file content on `write`, `read` and `delete`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */
     text: string;
     /** `text` split into lines. A finding's `line` counts in here. */
     lines: string[];
@@ -116,11 +136,24 @@ export interface WriteEvent extends EventBase {
     file: File;
     /** The lines the agent wrote. Code that was there before is not in here. */
     written: WrittenLine[];
+    /**
+     * The lines the agent removed, with the line each had before. A line it
+     * changed is removed as it was and written as it is now. Empty when the
+     * host cannot tell what the file was before, as for a new file.
+     */
+    removed: RemovedLine[];
 }
 /** The agent read a file. It wrote none of it. */
 export interface ReadEvent extends EventBase {
     event: "read";
     file: File;
+}
+/** The agent deleted a file. `file` is as it was, and every line of it is in `removed`. */
+export interface DeleteEvent extends EventBase {
+    event: "delete";
+    file: File;
+    /** Every line of the file, the same as `file.lines`. A handler that judges removed lines serves `onWrite` and `onDelete` alike. */
+    removed: RemovedLine[];
 }
 /** What an event without a file has in its place: where the session is. */
 interface TextEventBase extends EventBase {
@@ -146,8 +179,8 @@ export interface OutputEvent extends TextEventBase {
     /** The command line that printed it. */
     command: string;
 }
-/** An event that carries a file, for a helper that serves `onWrite` and `onRead` alike. */
-export type FileEvent = WriteEvent | ReadEvent;
+/** An event that carries a file, for a helper that serves `onWrite`, `onRead` and `onDelete` alike. */
+export type FileEvent = WriteEvent | ReadEvent | DeleteEvent;
 /**
  * How much of the advice a finding deserves.
  *
@@ -179,8 +212,8 @@ export interface TextFinding {
     depth?: Depth;
 }
 /**
- * What a handler of `onWrite`, `onRead` or `onOutput` yields. Nothing in it
- * is required.
+ * What a handler of `onWrite`, `onRead`, `onDelete` or `onOutput` yields.
+ * Nothing in it is required.
  *
  * A finding with a `line` points at that line, and the host quotes it to the
  * agent. A finding carries no text of its own.
@@ -192,12 +225,22 @@ export interface TextFinding {
  *
  * A finding with a `file` points at another file than the one of the event:
  * `yield { line: written.line, file: "assets/hero.jpg" }`.
+ *
+ * A finding with `removed: true` names a line the agent removed, by the line
+ * it had before: `yield { line: removed.line, removed: true }`, or the removed
+ * line itself, `yield removed`.
  */
 export interface Finding extends TextFinding {
     /** 1-based line of the event's text: of the file, or of what a command printed. */
     line?: number;
     /** The last line, when the finding spans several. Needs `line`. */
     endLine?: number;
+    /**
+     * `line` and `endLine` name lines the agent removed, by the line each had
+     * before, and `match` occurs in them. Every line from `line` to `endLine`
+     * has to be in `event.removed`. Needs `line`.
+     */
+    removed?: boolean;
 }
 /** What a handler returns: a generator or any other iterable of findings, or nothing. */
 export type Findings<F = Finding> = Iterable<F> | null | undefined | void;
@@ -249,6 +292,13 @@ export declare const HASH_LIKE: CodeSyntax;
 export declare function blankCommentsAndStrings(text: string, syntax?: CodeSyntax): string;
 /** The project root of every event a test builds. It is made up, and the same in every runner. */
 export declare const TEST_ROOT = "/project";
+/** The lines a write changed. */
+export interface Change {
+    /** Defaults to every line of the file. */
+    written?: Written[];
+    /** Defaults to none. */
+    removed?: Written[];
+}
 /** Where an event happened. A test leaves it out and gets `TEST_ROOT`. */
 export interface Where {
     /** The repository root, or null when the file is in none. */
@@ -258,12 +308,13 @@ export interface Where {
     isNew?: boolean;
 }
 /**
- * The event for a file the agent wrote or read.
+ * The event for a file the agent wrote, read or deleted.
  *
  * On `write`, `written` defaults to every line: a new file is written whole.
- * On `read` nothing was written, whatever is passed.
+ * On `read` nothing was written or removed, whatever is passed. On `delete`
+ * `content` is the file as it was, and every line of it is removed.
  */
-export declare function fileCtx(event: "write" | "read", relativePath: string, content: string, written?: Written[], where?: Where): Ctx;
+export declare function fileCtx(event: "write" | "read" | "delete", relativePath: string, content: string, change?: Change, where?: Where): Ctx;
 /**
  * The event for text: a prompt, a command about to run, or what a command printed.
  * `command` is the command line an `output` belongs to, and `cwd` the folder

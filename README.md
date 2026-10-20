@@ -38,14 +38,14 @@ npx vitest run rules/avoid-late
 A detector imports the SDK from the detector API version it is written against.
 
 ```ts
-import { onWrite } from "@wellactually/sdk/v3";
+import { onWrite } from "@wellactually/sdk/v4";
 ```
 
 A test builds the principle it is in and runs its real detector in the real sandbox.
 
 ```ts
 import { expect, test } from "vitest";
-import { detect, write } from "@wellactually/sdk/v3/test";
+import { detect, write } from "@wellactually/sdk/v4/test";
 
 test("fires on a late field", () => {
   expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1 }]);
@@ -54,10 +54,10 @@ test("fires on a late field", () => {
 
 ## Versions
 
-This is version 0.9.5.
+This is version 0.10.0.
 The lockfile of your repository pins the commit it installed.
 `npm update @wellactually/sdk` moves to the newest.
 The API is still changing.
-That is why the version is part of the import path: `@wellactually/sdk/v3` and `@wellactually/sdk/v3/test`.
-A principle that imports v3 keeps getting the event of v3, also after newer versions exist, and the types under that path stay the types of v3.
-This package has `v3`.
+That is why the version is part of the import path: `@wellactually/sdk/v4` and `@wellactually/sdk/v4/test`.
+A principle that imports v4 keeps getting the event of v4, also after newer versions exist, and the types under that path stay the types of v4.
+This package has `v3` and `v4`.

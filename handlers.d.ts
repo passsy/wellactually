@@ -1,4 +1,4 @@
-import type { CommandEvent, Ctx, EventName, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, TextFinding, WriteEvent, WrittenLine } from "./index.js";
+import type { CommandEvent, Ctx, DeleteEvent, EventName, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, RemovedLine, TextFinding, WriteEvent, WrittenLine } from "./index.js";
 /**
  * `F`, with every field that `Allowed` does not have turned into an error.
  *
@@ -11,15 +11,16 @@ type Only<F, Allowed> = F extends unknown ? F & {
 } : never;
 /**
  * A handler of an event with lines: it yields findings that may name a line.
- * It may also return written lines as they are, each of which is a finding on its line.
+ * It may also return written or removed lines as they are, each of which is a
+ * finding on its line.
  *
  * The first half of the union is what lets one handler yield a finding for
  * the file, `{}`, next to findings with a line.
  */
-type FileHandler<E, F> = (event: E) => Findings<Only<F, Finding>> | Findings<Only<F, Finding> | WrittenLine>;
+type FileHandler<E, F> = (event: E) => Findings<Only<F, Finding>> | Findings<Only<F, Finding> | WrittenLine | RemovedLine>;
 /** A handler of a prompt or a command: its findings have no line to name. */
 type TextHandler<E, F> = (event: E) => Findings<Only<F, TextFinding>>;
-/** What `onWrite` and `onRead` take: which files, and what to look for in them. */
+/** What `onWrite`, `onRead` and `onDelete` take: which files, and what to look for in them. */
 export interface FileOptions<E, F> {
     /**
      * Patterns for the path from the project root: `**`, `*`, `?` and `{a,b}`.
@@ -46,10 +47,12 @@ export interface Registered {
     /** Empty on the events that carry no file. */
     globs: string[];
 }
-/** Runs when the agent wrote or edited a file. `event.written` holds the lines it wrote. */
+/** Runs when the agent wrote or edited a file. `event.written` holds the lines it wrote, `event.removed` the lines it removed. */
 export declare function onWrite<F extends Finding>(options: FileOptions<WriteEvent, F>): void;
 /** Runs when the agent read a file. It did not write this code, so judge the place, not the author. */
 export declare function onRead<F extends Finding>(options: FileOptions<ReadEvent, F>): void;
+/** Runs when the agent deleted a file. `event.file` is the file as it was, and every line of it is in `event.removed`. */
+export declare function onDelete<F extends Finding>(options: FileOptions<DeleteEvent, F>): void;
 /** Runs when the user typed a message, and when the agent briefed a subagent. */
 export declare function onPrompt<F extends TextFinding>(options: TextOptions<PromptEvent, F>): void;
 /** Runs before the agent runs a shell command. */

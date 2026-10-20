@@ -1,12 +1,12 @@
 // packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
 function matchesGlob(path, pattern) {
-  let regex = cache.get(pattern);
-  if (!regex) {
-    regex = globToRegExp(pattern);
-    cache.set(pattern, regex);
+  let matcher = cache.get(pattern);
+  if (!matcher) {
+    matcher = compile(pattern);
+    cache.set(pattern, matcher);
   }
-  return regex.test(path);
+  return matcher(path);
 }
 function matchesGlobs(path, globs) {
   const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
@@ -16,49 +16,148 @@ function matchesGlobs(path, globs) {
   const included = globs.filter((glob) => !glob.startsWith("!"));
   return included.length === 0 || included.some((glob) => matchesGlob(path, glob));
 }
-function globToRegExp(pattern) {
-  const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
-  let source = "";
-  let braceDepth = 0;
+function parse(pattern) {
+  const anchored = [...pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`];
+  const root = [];
+  const open = [];
+  const current = () => open.at(-1)?.at(-1) ?? root;
   for (let i = 0; i < anchored.length; i++) {
     const char = anchored[i] ?? "";
     if (char === "*" && anchored[i + 1] === "*") {
       const slashAfter = anchored[i + 2] === "/";
-      source += slashAfter ? "(?:.*/)?" : ".*";
+      current().push({ kind: slashAfter ? "folders" : "any" });
       i += slashAfter ? 2 : 1;
       continue;
     }
-    switch (char) {
-      case "*":
-        source += "[^/]*";
-        break;
-      case "?":
-        source += "[^/]";
-        break;
-      case "{":
-        braceDepth++;
-        source += "(?:";
-        break;
-      case "}":
-        if (braceDepth > 0) {
-          braceDepth--;
-          source += ")";
-          break;
-        }
-        source += "\\}";
-        break;
-      case ",":
-        source += braceDepth > 0 ? "|" : ",";
-        break;
-      default:
-        source += char.replace(/[.+^$()|[\]\\]/g, "\\$&");
+    if (char === "*") {
+      current().push({ kind: "star" });
+    } else if (char === "?") {
+      current().push({ kind: "one" });
+    } else if (char === "{") {
+      open.push([[]]);
+    } else if (char === "}" && open.length > 0) {
+      const options = open.pop();
+      current().push({ kind: "either", options });
+    } else if (char === "," && open.length > 0) {
+      open.at(-1)?.push([]);
+    } else {
+      current().push({ kind: "char", char });
     }
   }
-  return new RegExp(`^${source}$`);
+  while (open.length > 0) {
+    const [first = [], ...rest] = open.pop();
+    current().push({ kind: "char", char: "{" }, ...first, ...rest.flatMap((option) => [{ kind: "char", char: "," }, ...option]));
+  }
+  return root;
+}
+var anyChar = () => true;
+var notSlash = (char) => char !== "/";
+function compile(pattern) {
+  const states = [{ moves: [], free: [] }];
+  const add = () => states.push({ moves: [], free: [] }) - 1;
+  const state = (index) => states[index];
+  const sequence = (pieces, next) => {
+    let after = next;
+    for (let i = pieces.length - 1; i >= 0; i--) {
+      after = piece(pieces[i], after);
+    }
+    return after;
+  };
+  const piece = (it, next) => {
+    const at = add();
+    switch (it.kind) {
+      case "char":
+        state(at).moves.push({ takes: (char) => char === it.char, to: next });
+        break;
+      case "one":
+        state(at).moves.push({ takes: notSlash, to: next });
+        break;
+      case "star":
+        state(at).moves.push({ takes: notSlash, to: at });
+        state(at).free.push(next);
+        break;
+      case "any":
+        state(at).moves.push({ takes: anyChar, to: at });
+        state(at).free.push(next);
+        break;
+      case "folders": {
+        const inside = add();
+        state(at).free.push(next, inside);
+        state(inside).moves.push({ takes: anyChar, to: inside }, { takes: (char) => char === "/", to: next });
+        break;
+      }
+      case "either":
+        for (const option of it.options) {
+          state(at).free.push(sequence(option, next));
+        }
+        break;
+    }
+    return at;
+  };
+  const start = sequence(parse(pattern), 0);
+  const reach = (from) => {
+    const seen = /* @__PURE__ */ new Set();
+    const stack = [...from];
+    while (stack.length > 0) {
+      const index = stack.pop();
+      if (!seen.has(index)) {
+        seen.add(index);
+        stack.push(...state(index).free);
+      }
+    }
+    return seen;
+  };
+  return (path) => {
+    let now = reach([start]);
+    for (const char of path) {
+      const next = [];
+      for (const index of now) {
+        for (const move of state(index).moves) {
+          if (move.takes(char)) {
+            next.push(move.to);
+          }
+        }
+      }
+      if (next.length === 0) {
+        return false;
+      }
+      now = reach(next);
+    }
+    return now.has(0);
+  };
+}
+
+// packages/sdk/src/handlers.ts
+var registered = [];
+var sealed = false;
+function register(event, options) {
+  const name = `on${event[0]?.toUpperCase() ?? ""}${event.slice(1)}`;
+  if (sealed) {
+    throw new Error(`${name}() was called while a handler ran. Register handlers at the top level of detector.ts.`);
+  }
+  const { globs, detect } = typeof options === "object" && options !== null ? options : {};
+  if (typeof detect !== "function") {
+    throw new Error(`${name}() takes an object with a detect function: ${name}({ *detect(event) { ... } })`);
+  }
+  registered.push({ event, globs: Array.isArray(globs) ? [...globs] : globs ?? [], handler: detect });
+}
+function onWrite(options) {
+  register("write", options);
+}
+function onRead(options) {
+  register("read", options);
+}
+function onPrompt(options) {
+  register("prompt", options);
+}
+function onCommand(options) {
+  register("command", options);
+}
+function onOutput(options) {
+  register("output", options);
 }
 
 // packages/sdk/src/index.ts
-var EVENTS = ["write", "read", "prompt", "command", "output"];
 var WORD_CHAR = /[A-Za-z0-9_$]/;
 function findWord(text, word, from = 0) {
   let at = text.indexOf(word, from);
@@ -171,35 +270,13 @@ function findUp(name, from) {
   }
 }
 
-// packages/sdk/src/handlers.ts
-var registered = [];
-var sealed = false;
-function register(event, options) {
-  const name = `on${event[0]?.toUpperCase() ?? ""}${event.slice(1)}`;
-  if (sealed) {
-    throw new Error(`${name}() was called while a handler ran. Register handlers at the top level of detector.ts.`);
-  }
-  const { globs, detect } = typeof options === "object" && options !== null ? options : {};
-  if (typeof detect !== "function") {
-    throw new Error(`${name}() takes an object with a detect function: ${name}({ *detect(event) { ... } })`);
-  }
-  registered.push({ event, globs: Array.isArray(globs) ? [...globs] : globs ?? [], handler: detect });
-}
-function onWrite(options) {
-  register("write", options);
-}
-function onRead(options) {
-  register("read", options);
-}
-function onPrompt(options) {
-  register("prompt", options);
-}
-function onCommand(options) {
-  register("command", options);
-}
-function onOutput(options) {
-  register("output", options);
-}
+// packages/sdk/src/v3.ts
+var EVENTS = ["write", "read", "prompt", "command", "output"];
+var onWrite2 = onWrite;
+var onRead2 = onRead;
+var onPrompt2 = onPrompt;
+var onCommand2 = onCommand;
+var onOutput2 = onOutput;
 export {
   EVENTS,
   findUp,
@@ -208,9 +285,9 @@ export {
   matchesGlob,
   matchesGlobs,
   mentioned,
-  onCommand,
-  onOutput,
-  onPrompt,
-  onRead,
-  onWrite
+  onCommand2 as onCommand,
+  onOutput2 as onOutput,
+  onPrompt2 as onPrompt,
+  onRead2 as onRead,
+  onWrite2 as onWrite
 };

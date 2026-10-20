@@ -3682,9 +3682,13 @@ var init_module_ES6BEMUI = __esm({
 // packages/sdk/src/test.node.ts
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import { createRequire as createRequire2 } from "node:module";
+import path2 from "node:path";
+import { fileURLToPath } from "node:url";
+
+// packages/core/src/node.ts
 import { createRequire } from "node:module";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 // node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
 var variant = { type: "sync", importFFI: () => Promise.resolve().then(() => (init_ffi(), ffi_exports)).then((mod) => mod.QuickJSFFI), importModuleLoader: () => Promise.resolve().then(() => (init_emscripten_module_Q67P5WYC(), emscripten_module_Q67P5WYC_exports)).then((mod) => mod.default) };
@@ -3708,7 +3712,7 @@ function shouldInterruptAfterDeadline(deadline) {
   };
 }
 
-// packages/core/src/engines.ts
+// packages/core/src/build/engines.ts
 var engines = null;
 var quickjs = null;
 function setEngines(next) {
@@ -3741,84 +3745,164 @@ function loadSandbox() {
 
 // packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path2, pattern) {
-  let regex = cache.get(pattern);
-  if (!regex) {
-    regex = globToRegExp(pattern);
-    cache.set(pattern, regex);
+function matchesGlob(path3, pattern) {
+  let matcher = cache.get(pattern);
+  if (!matcher) {
+    matcher = compile(pattern);
+    cache.set(pattern, matcher);
   }
-  return regex.test(path2);
+  return matcher(path3);
 }
-function matchesGlobs(path2, globs) {
+function matchesGlobs(path3, globs) {
   const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
-  if (excluded.some((glob) => matchesGlob(path2, glob))) {
+  if (excluded.some((glob) => matchesGlob(path3, glob))) {
     return false;
   }
   const included = globs.filter((glob) => !glob.startsWith("!"));
-  return included.length === 0 || included.some((glob) => matchesGlob(path2, glob));
+  return included.length === 0 || included.some((glob) => matchesGlob(path3, glob));
 }
-function globToRegExp(pattern) {
-  const anchored = pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`;
-  let source2 = "";
-  let braceDepth = 0;
+function parse(pattern) {
+  const anchored = [...pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`];
+  const root = [];
+  const open = [];
+  const current2 = () => open.at(-1)?.at(-1) ?? root;
   for (let i = 0; i < anchored.length; i++) {
     const char = anchored[i] ?? "";
     if (char === "*" && anchored[i + 1] === "*") {
       const slashAfter = anchored[i + 2] === "/";
-      source2 += slashAfter ? "(?:.*/)?" : ".*";
+      current2().push({ kind: slashAfter ? "folders" : "any" });
       i += slashAfter ? 2 : 1;
       continue;
     }
-    switch (char) {
-      case "*":
-        source2 += "[^/]*";
-        break;
-      case "?":
-        source2 += "[^/]";
-        break;
-      case "{":
-        braceDepth++;
-        source2 += "(?:";
-        break;
-      case "}":
-        if (braceDepth > 0) {
-          braceDepth--;
-          source2 += ")";
-          break;
-        }
-        source2 += "\\}";
-        break;
-      case ",":
-        source2 += braceDepth > 0 ? "|" : ",";
-        break;
-      default:
-        source2 += char.replace(/[.+^$()|[\]\\]/g, "\\$&");
+    if (char === "*") {
+      current2().push({ kind: "star" });
+    } else if (char === "?") {
+      current2().push({ kind: "one" });
+    } else if (char === "{") {
+      open.push([[]]);
+    } else if (char === "}" && open.length > 0) {
+      const options = open.pop();
+      current2().push({ kind: "either", options });
+    } else if (char === "," && open.length > 0) {
+      open.at(-1)?.push([]);
+    } else {
+      current2().push({ kind: "char", char });
     }
   }
-  return new RegExp(`^${source2}$`);
+  while (open.length > 0) {
+    const [first = [], ...rest] = open.pop();
+    current2().push({ kind: "char", char: "{" }, ...first, ...rest.flatMap((option) => [{ kind: "char", char: "," }, ...option]));
+  }
+  return root;
+}
+var anyChar = () => true;
+var notSlash = (char) => char !== "/";
+function compile(pattern) {
+  const states = [{ moves: [], free: [] }];
+  const add = () => states.push({ moves: [], free: [] }) - 1;
+  const state = (index) => states[index];
+  const sequence = (pieces, next) => {
+    let after = next;
+    for (let i = pieces.length - 1; i >= 0; i--) {
+      after = piece(pieces[i], after);
+    }
+    return after;
+  };
+  const piece = (it, next) => {
+    const at = add();
+    switch (it.kind) {
+      case "char":
+        state(at).moves.push({ takes: (char) => char === it.char, to: next });
+        break;
+      case "one":
+        state(at).moves.push({ takes: notSlash, to: next });
+        break;
+      case "star":
+        state(at).moves.push({ takes: notSlash, to: at });
+        state(at).free.push(next);
+        break;
+      case "any":
+        state(at).moves.push({ takes: anyChar, to: at });
+        state(at).free.push(next);
+        break;
+      case "folders": {
+        const inside = add();
+        state(at).free.push(next, inside);
+        state(inside).moves.push({ takes: anyChar, to: inside }, { takes: (char) => char === "/", to: next });
+        break;
+      }
+      case "either":
+        for (const option of it.options) {
+          state(at).free.push(sequence(option, next));
+        }
+        break;
+    }
+    return at;
+  };
+  const start = sequence(parse(pattern), 0);
+  const reach = (from) => {
+    const seen = /* @__PURE__ */ new Set();
+    const stack = [...from];
+    while (stack.length > 0) {
+      const index = stack.pop();
+      if (!seen.has(index)) {
+        seen.add(index);
+        stack.push(...state(index).free);
+      }
+    }
+    return seen;
+  };
+  return (path3) => {
+    let now = reach([start]);
+    for (const char of path3) {
+      const next = [];
+      for (const index of now) {
+        for (const move of state(index).moves) {
+          if (move.takes(char)) {
+            next.push(move.to);
+          }
+        }
+      }
+      if (next.length === 0) {
+        return false;
+      }
+      now = reach(next);
+    }
+    return now.has(0);
+  };
 }
 
 // packages/sdk/src/index.ts
-var API_VERSION = 3;
+var API_VERSION = 4;
 var TEST_ROOT = "/project";
-function fileCtx(event, relativePath, content, written, where = {}) {
+function removedOf(event, change, allLines) {
+  if (event === "delete") {
+    return allLines;
+  }
+  if (event === "read") {
+    return [];
+  }
+  return change.removed ?? [];
+}
+function fileCtx(event, relativePath, content, change = {}, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === void 0 ? TEST_ROOT : where.root;
-  const path2 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
-  const name = path2.slice(path2.lastIndexOf("/") + 1);
+  const path3 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
+  const name = path3.slice(path3.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
   const allLines = lines.map((text, index) => ({ line: index + 1, text }));
   return {
     event,
     file: {
-      path: path2,
+      path: path3,
       relativePath: relative,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
       content,
       lines,
-      written: event === "read" ? [] : written ?? allLines,
+      written: event === "write" ? change.written ?? allLines : [],
+      removed: removedOf(event, change, allLines),
       isNew: event === "write" && where.isNew === true
     },
     text: content,
@@ -3867,12 +3951,23 @@ function locateWritten(content, fragments) {
   return [...written.entries()].sort(([a], [b]) => a - b).map(([line, text]) => ({ line, text }));
 }
 
-// packages/core/src/project.ts
+// packages/core/src/build/licenses.ts
+var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
+var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
+var RULE = "-".repeat(72);
+
+// packages/core/src/build/bundle.ts
+var BUNDLE_GLOBAL = "__principle";
+var MAX_BUNDLE_BYTES = 1024 * 1024;
+var SDK = "@wellactually/sdk";
+var SDK_NOW = `${SDK}/v${API_VERSION}`;
+
+// packages/core/src/detector/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path2) {
+function normalizeAbsolute(path3) {
   const out = [];
-  for (const part of path2.split("/")) {
+  for (const part of path3.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -3885,15 +3980,15 @@ function normalizeAbsolute(path2) {
   return `/${out.join("/")}`;
 }
 function mapProject(root, files) {
-  const relative = (path2) => path2 === root ? "" : path2.startsWith(`${root}/`) ? path2.slice(root.length + 1) : null;
+  const relative = (path3) => path3 === root ? "" : path3.startsWith(`${root}/`) ? path3.slice(root.length + 1) : null;
   const isDir = (inside) => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));
   return {
-    read: (path2) => {
-      const inside = relative(path2);
+    read: (path3) => {
+      const inside = relative(path3);
       return inside === null ? null : files[inside] ?? null;
     },
-    stat: (path2) => {
-      const inside = relative(path2);
+    stat: (path3) => {
+      const inside = relative(path3);
       if (inside === null) {
         return null;
       }
@@ -3903,8 +3998,8 @@ function mapProject(root, files) {
       }
       return isDir(inside) ? { kind: "dir", size: 0 } : null;
     },
-    list: (path2) => {
-      const inside = relative(path2);
+    list: (path3) => {
+      const inside = relative(path3);
       if (inside === null || inside in files || !isDir(inside)) {
         return null;
       }
@@ -3941,24 +4036,24 @@ function fsHost(cwd, project) {
     if (++calls > MAX_FS_CALLS) {
       return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
     }
-    const path2 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    const path3 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
     if (op === "stat") {
-      const stat = project.stat(path2);
+      const stat = project.stat(path3);
       return stat ? { stat } : missing;
     }
     if (op === "list") {
-      const entries = project.list(path2);
+      const entries = project.list(path3);
       if (entries) {
         return { entries };
       }
-      return project.stat(path2) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      return project.stat(path3) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
     }
-    const text = project.read(path2);
+    const text = project.read(path3);
     if (text === null) {
-      return project.stat(path2)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+      return project.stat(path3)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
     }
     bytes += text.length;
     if (bytes > MAX_FS_BYTES) {
@@ -3969,7 +4064,7 @@ function fsHost(cwd, project) {
   return (request) => JSON.stringify(answer(request));
 }
 
-// packages/core/src/api.ts
+// packages/core/src/detector/api.ts
 var MIN_API_VERSION = 3;
 function apiOf(manifest) {
   return manifest.api ?? 1;
@@ -3986,7 +4081,16 @@ function unsupported(api) {
   }
   return null;
 }
-var DOWNGRADE = {};
+var DOWNGRADE = {
+  // Version 4 added the lines a write removed and the `delete` event. A detector of version 3 has no handler for a deletion, so it is never asked about one.
+  4: (ctx) => {
+    if (ctx.file === null) {
+      return ctx;
+    }
+    const { removed: _, ...file } = ctx.file;
+    return { ...ctx, file };
+  }
+};
 function ctxFor(api, ctx) {
   let event = ctx;
   for (let version = API_VERSION; version > api; version--) {
@@ -4005,33 +4109,23 @@ function environmentFor(api, ctx, project) {
     functions: { __fs: fsHost(ctx.project ?? "/", project) }
   };
 }
-var SDK = "@wellactually/sdk";
-var current = `"${SDK}/v${API_VERSION}"`;
-
-// packages/core/src/licenses.ts
-var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
-var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
-var RULE = "-".repeat(72);
-
-// packages/core/src/bundle.ts
-var BUNDLE_GLOBAL = "__principle";
-var MAX_BUNDLE_BYTES = 1024 * 1024;
 var SDK2 = "@wellactually/sdk";
-var SDK_NOW = `${SDK2}/v${API_VERSION}`;
+var current = `"${SDK2}/v${API_VERSION}"`;
 
-// packages/core/src/ctx.ts
+// packages/core/src/detector/ctx.ts
 function applies(manifest, ctx) {
   const file = ctx.file;
   return (manifest.handlers ?? []).some((handler) => handler.event === ctx.event && (!file || matchesGlobs(file.relativePath, handler.globs)));
 }
 
-// packages/core/src/sandbox.ts
+// packages/core/src/detector/sandbox.ts
 var DEFAULT_LIMITS = {
   ms: 100,
   memoryBytes: 32 * 1024 * 1024
 };
 var MAX_FINDINGS = 20;
 var MAX_MATCH_LENGTH = 300;
+var MAX_THROWN_LENGTH = 1e3;
 var RUN = `JSON.stringify(${BUNDLE_GLOBAL}.run(JSON.parse(__ctx), ${MAX_FINDINGS}))`;
 var LOAD_LIMITS = { ...DEFAULT_LIMITS, ms: 2e3 };
 var HANDLERS = `JSON.stringify(${BUNDLE_GLOBAL}.handlers())`;
@@ -4042,7 +4136,7 @@ function evaluateIn(QuickJS, script, environment, limits) {
   runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + limits.ms));
   const vm = runtime.newContext();
   let json = null;
-  let error = null;
+  let failure = { error: null };
   try {
     for (const [name, value] of Object.entries(environment.strings)) {
       const handle = vm.newString(value);
@@ -4056,19 +4150,29 @@ function evaluateIn(QuickJS, script, environment, limits) {
     }
     const result = vm.evalCode(script, "detector.js");
     if (result.error) {
-      error = describeError(vm.dump(result.error), limits);
-      result.error.dispose();
+      const dumped = vm.dump(result.error);
+      if (result.error.alive) {
+        result.error.dispose();
+      }
+      failure = describeError(dumped, limits);
     } else {
       json = vm.getString(result.value);
       result.value.dispose();
     }
   } catch (thrown) {
-    error = describeError(thrown, limits);
+    failure = describeError(thrown, limits);
   } finally {
-    vm.dispose();
-    runtime.dispose();
+    try {
+      vm.dispose();
+      runtime.dispose();
+    } catch (thrown) {
+      json = null;
+      if (failure.error === null) {
+        failure = describeError(thrown, limits);
+      }
+    }
   }
-  return { json, error };
+  return { json, ...failure };
 }
 async function detectorRunner() {
   const QuickJS = await loadSandbox();
@@ -4080,29 +4184,51 @@ function runDetectorIn(QuickJS, bundle, ctx, limits, project, api) {
     return { findings: [], error: refused, dropped: [], ms: 0 };
   }
   const started = performance.now();
-  const { json, error } = evaluateIn(QuickJS, `${bundle}
+  try {
+    const { json, error, thrown } = evaluateIn(QuickJS, `${bundle}
 ;${RUN}`, environmentFor(api, ctx, project), limits);
-  const ms = performance.now() - started;
-  if (json === null) {
-    return { findings: [], error: error ?? "the detector returned nothing", dropped: [], ms };
+    const ms = performance.now() - started;
+    if (json === null) {
+      return { findings: [], error: error ?? "the detector returned nothing", ...thrown === void 0 ? {} : { thrown }, dropped: [], ms };
+    }
+    const { findings, dropped } = validateFindings(json, ctx, project);
+    return { findings, error: null, dropped, ms };
+  } catch {
+    return { findings: [], error: "the host could not make sense of what the detector did", dropped: [], ms: performance.now() - started };
   }
-  const { findings, dropped } = validateFindings(json, ctx, project);
-  return { findings, error: null, dropped, ms };
 }
 var TEST_LIMITS = {
   ms: 5e3,
   memoryBytes: 64 * 1024 * 1024
 };
+function jsonOf(value) {
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return "a value that is not text";
+  }
+}
+function textOf(value) {
+  return typeof value === "string" ? value : jsonOf(value);
+}
+function quoted(value) {
+  const text = jsonOf(value);
+  return text.length > 60 ? `${text.slice(0, 60)}\u2026` : text;
+}
+function forAuthor(error, thrown) {
+  return thrown ?? error;
+}
 function describeError(dumped, limits) {
-  const message = typeof dumped === "object" && dumped !== null && "message" in dumped ? String(dumped.message) : String(dumped);
+  const message = typeof dumped === "object" && dumped !== null && "message" in dumped ? textOf(dumped.message) : textOf(dumped);
   if (message.includes("interrupted")) {
-    return `the detector ran longer than ${limits.ms} ms and was stopped`;
+    return { error: `the detector ran longer than ${limits.ms} ms and was stopped` };
   }
   if (message.includes("out of memory")) {
-    return `the detector used more than ${limits.memoryBytes / 1024 / 1024} MB and was stopped`;
+    return { error: `the detector used more than ${limits.memoryBytes / 1024 / 1024} MB and was stopped` };
   }
-  const name = typeof dumped === "object" && dumped !== null && "name" in dumped ? `${String(dumped.name)}: ` : "";
-  return `${name}${message}`;
+  const name = typeof dumped === "object" && dumped !== null && "name" in dumped ? `${textOf(dumped.name)}: ` : "";
+  const thrown = `${name}${message}`;
+  return { error: "the detector threw an error", thrown: thrown.length > MAX_THROWN_LENGTH ? `${thrown.slice(0, MAX_THROWN_LENGTH)}\u2026` : thrown };
 }
 function fromRoot(file, root) {
   if (root !== null && file.startsWith(`${root}/`)) {
@@ -4115,6 +4241,21 @@ function existingFile(file, ctx, project) {
   const absolute = normalizeAbsolute(file.startsWith("/") ? file : `${base}/${file}`);
   const exists = absolute === ctx.file?.path || project !== null && project.stat(absolute) !== null;
   return exists ? fromRoot(absolute, ctx.project) : null;
+}
+function everyLine(first, last, textOn) {
+  for (let line = first; line <= last; line++) {
+    if (textOn(line) === void 0) {
+      return false;
+    }
+  }
+  return true;
+}
+function linesFrom(first, last, textOn) {
+  const texts = [];
+  for (let line = first; line <= last; line++) {
+    texts.push(textOn(line) ?? "");
+  }
+  return texts;
 }
 function hasLines(ctx) {
   return ctx.file !== null || ctx.event === "output";
@@ -4132,6 +4273,7 @@ function validateFindings(json, ctx, project = null) {
     return { findings, dropped: ["the detector did not return a list of findings"] };
   }
   const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  const removed = new Map((ctx.file?.removed ?? []).map((line) => [line.line, line.text]));
   for (const raw of parsed) {
     if (findings.length >= MAX_FINDINGS) {
       dropped.push(`more than ${MAX_FINDINGS} findings; the rest were dropped`);
@@ -4143,29 +4285,48 @@ function validateFindings(json, ctx, project = null) {
     }
     const candidate = raw;
     const finding = {};
+    const onRemoved = candidate.removed === true;
+    if (candidate.removed !== void 0 && typeof candidate.removed !== "boolean") {
+      dropped.push(`the removed of a finding, which is true or false: ${quoted(candidate.removed)}`);
+    } else if (onRemoved && candidate.line === void 0) {
+      dropped.push("the removed of a finding without a line");
+    }
+    const textOn = (line) => {
+      if (onRemoved) {
+        return removed.get(line);
+      }
+      return lines[line - 1];
+    };
     if (candidate.line !== void 0) {
       const line = candidate.line;
       if (!hasLines(ctx)) {
         dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
-      } else if (typeof line !== "number" || !Number.isInteger(line) || line < 1 || line > lines.length) {
-        dropped.push(`line ${String(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+      } else if (typeof line !== "number" || !Number.isInteger(line) || textOn(line) === void 0) {
+        if (onRemoved) {
+          dropped.push(`line ${quoted(line)} of a finding, which the agent did not remove`);
+        } else {
+          dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+        }
       } else {
         finding.line = line;
+        if (onRemoved) {
+          finding.removed = true;
+        }
       }
     }
     if (candidate.endLine !== void 0) {
       const endLine = candidate.endLine;
       if (finding.line === void 0) {
         dropped.push("the endLine of a finding without a line");
-      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || endLine > lines.length) {
-        dropped.push(`endLine ${String(endLine)} of a finding on line ${finding.line}`);
+      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || !everyLine(finding.line, endLine, textOn)) {
+        dropped.push(`endLine ${quoted(endLine)} of a finding on line ${finding.line}`);
       } else if (endLine > finding.line) {
         finding.endLine = endLine;
       }
     }
     if (candidate.match !== void 0) {
       const match = typeof candidate.match === "string" ? candidate.match.trim() : "";
-      const scope = finding.line === void 0 ? [ctx.text] : lines.slice(finding.line - 1, finding.endLine ?? finding.line);
+      const scope = finding.line === void 0 ? [ctx.text, ...removed.values()] : linesFrom(finding.line, finding.endLine ?? finding.line, textOn);
       if (match === "") {
         dropped.push("an empty match");
       } else if (match.includes("\n")) {
@@ -4199,7 +4360,7 @@ function validateFindings(json, ctx, project = null) {
     }
     if (candidate.depth !== void 0) {
       if (candidate.depth !== "pointer" && candidate.depth !== "full") {
-        dropped.push(`the unknown depth ${JSON.stringify(candidate.depth)}`);
+        dropped.push(`the unknown depth ${quoted(candidate.depth)}`);
       } else {
         finding.depth = candidate.depth;
       }
@@ -4209,7 +4370,10 @@ function validateFindings(json, ctx, project = null) {
   return { findings, dropped };
 }
 
-// packages/core/src/principle.ts
+// packages/core/src/principle/advice-length.ts
+var encoder = new TextEncoder();
+
+// packages/core/src/principle/principle.ts
 var MAX_TOTAL_BYTES = 512 * 1024;
 var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 var MAX_SHOWN_TEXT = 4e3;
@@ -4218,7 +4382,7 @@ function answerDetect(built, files, call, run2, record = () => {
   const { event, options } = typeof call === "object" && call !== null ? call : {};
   const ctx = eventCtx(event);
   if (!ctx) {
-    return { error: "detect() needs an event from write(), edit(), read(), prompt(), command() or output()" };
+    return { error: "detect() needs an event from write(), edit(), read(), deleted(), prompt(), command() or output()" };
   }
   const fixture = options?.project;
   if (fixture !== void 0 && typeof fixture !== "string") {
@@ -4228,7 +4392,7 @@ function answerDetect(built, files, call, run2, record = () => {
   if (projectFiles === null) {
     return { error: `detect(): the principle has no folder "${fixture}" to use as the project` };
   }
-  if (ctx.file) {
+  if (ctx.file && ctx.event !== "delete") {
     projectFiles[ctx.file.relativePath] = ctx.file.content;
   }
   const recorded = {
@@ -4249,7 +4413,7 @@ function answerDetect(built, files, call, run2, record = () => {
   const result = run2(built.bundle, ctx, mapProject(TEST_ROOT, projectFiles), apiOf(built.manifest));
   recorded.ms = result.ms;
   if (result.error) {
-    return { error: `The detector failed: ${result.error}` };
+    return { error: `The detector failed: ${forAuthor(result.error, result.thrown)}` };
   }
   if (result.dropped.length > 0) {
     return { error: `The host would leave out ${result.dropped.join("; ")}.` };
@@ -4282,7 +4446,7 @@ function eventCtx(raw) {
     return typeof event.text === "string" && typeof event.command === "string" ? textCtx("output", event.text, void 0, event.command) : null;
   }
   const relativePath = event.file?.relativePath;
-  if (event.event !== "write" && event.event !== "read" || typeof relativePath !== "string" || typeof event.file?.content !== "string") {
+  if (event.event !== "write" && event.event !== "read" && event.event !== "delete" || typeof relativePath !== "string" || typeof event.file?.content !== "string") {
     return null;
   }
   if (relativePath === "" || relativePath.split("/").includes("..")) {
@@ -4290,49 +4454,77 @@ function eventCtx(raw) {
   }
   const lines = event.file.content.split("\n");
   const written = (Array.isArray(event.file.written) ? event.file.written : []).map((entry) => entry?.line).filter((line) => typeof line === "number" && Number.isInteger(line) && line >= 1 && line <= lines.length).map((line) => ({ line, text: lines[line - 1] ?? "" }));
-  return fileCtx(event.event, relativePath, event.file.content, written, { isNew: event.file.isNew === true });
+  const removed = (Array.isArray(event.file.removed) ? event.file.removed : []).map((entry) => entry).filter((entry) => typeof entry?.line === "number" && Number.isInteger(entry.line) && entry.line >= 1 && typeof entry.text === "string" && !entry.text.includes("\n")).map((entry) => ({ line: entry.line, text: entry.text }));
+  return fileCtx(event.event, relativePath, event.file.content, { written, removed }, { isNew: event.file.isNew === true });
 }
 
-// packages/core/src/fs.ts
-var MAX_READ_BYTES = 512 * 1024;
-
-// packages/core/src/probe.ts
-var MAX_FILE_BYTES = 512 * 1024;
+// packages/core/src/build/fs.ts
+var readFrom = /* @__PURE__ */ new Set();
 
 // packages/core/src/node.ts
 var sandbox = null;
 setEngines({
   // Loaded on first use. The hook only runs detectors and never builds one,
   // and the plugin's single-file bundle cannot carry esbuild's native binary.
-  build: async (options) => {
-    let esbuild;
-    try {
-      esbuild = await import("esbuild");
-    } catch {
-      throw new Error(
-        "Building a principle needs esbuild, which the installed plugin does not carry. Use the command from a checkout of https://github.com/passsy/wellactually: `npm install && npm link -w wellactually`."
-      );
-    }
-    return esbuild.build(options);
-  },
+  build: async (options) => (await loadEsbuild()).build(options),
   // The build with the WebAssembly inlined, so the isolate also loads from a single bundled file.
   quickjs: () => sandbox ??= newQuickJSWASMModuleFromVariant(src_default)
 });
+async function loadEsbuild() {
+  try {
+    return await import("esbuild");
+  } catch {
+    for (const dir of [...readFrom].reverse()) {
+      try {
+        return createRequire(path.join(dir, "package.json"))("esbuild");
+      } catch {
+      }
+    }
+    throw new Error(
+      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev github:passsy/wellactually#sdk vitest`."
+    );
+  }
+}
 
 // packages/sdk/src/events.ts
-function write(path2, content, options = {}) {
-  return fileCtx("write", path2, content, void 0, { isNew: options.isNew === true });
+function write(path3, content, options = {}) {
+  return fileCtx("write", path3, content, {}, { isNew: options.isNew === true });
 }
-function edit(path2, content, change) {
-  const fragments = typeof change.written === "string" ? [change.written] : change.written;
-  const written = locateWritten(content, fragments);
-  if (written.length === 0) {
-    throw new Error(`edit("${path2}"): the written text does not occur in the file. Pass the file as it is after the edit.`);
+function edit(path3, content, change) {
+  const written = locateWritten(content, piecesOf(change.written));
+  const removedPieces = piecesOf(change.removed);
+  if (written.length === 0 && removedPieces.length === 0) {
+    throw new Error(`edit("${path3}"): pass the text the agent wrote as written, or the text it removed as removed.`);
   }
-  return fileCtx("write", path2, content, written);
+  if (change.written !== void 0 && written.length === 0) {
+    throw new Error(`edit("${path3}"): the written text does not occur in the file. Pass the file as it is after the edit.`);
+  }
+  if (removedPieces.length === 0) {
+    return fileCtx("write", path3, content, { written });
+  }
+  if (change.before === void 0) {
+    throw new Error(`edit("${path3}"): pass the file as it was before the edit as before, so the removed lines have their line numbers.`);
+  }
+  const removed = locateWritten(change.before, removedPieces);
+  if (removed.length === 0) {
+    throw new Error(`edit("${path3}"): the removed text does not occur in before. Pass the file as it was before the edit.`);
+  }
+  return fileCtx("write", path3, content, { written, removed });
 }
-function read(path2, content) {
-  return fileCtx("read", path2, content);
+function piecesOf(text) {
+  if (text === void 0) {
+    return [];
+  }
+  if (typeof text === "string") {
+    return [text];
+  }
+  return text;
+}
+function deleted(path3, content) {
+  return fileCtx("delete", path3, content);
+}
+function read(path3, content) {
+  return fileCtx("read", path3, content);
 }
 function prompt(text) {
   return textCtx("prompt", text);
@@ -4363,7 +4555,7 @@ var run = (bundle, ctx, project, api) => {
   return first.error?.includes("ran longer than") ? runOnce(bundle, ctx, project, api) : first;
 };
 var beside = fileURLToPath(new URL("./build-principle.mjs", import.meta.url));
-var builder = fs.existsSync(beside) ? beside : createRequire(import.meta.url).resolve("@wellactually/core/build-principle");
+var builder = fs.existsSync(beside) ? beside : createRequire2(import.meta.url).resolve("@wellactually/core/build-principle");
 var self = fileURLToPath(import.meta.url);
 var prepared = /* @__PURE__ */ new Map();
 function callers() {
@@ -4381,11 +4573,11 @@ function callers() {
   return files;
 }
 function principleDirOf(file) {
-  for (let dir = path.dirname(file); ; dir = path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, "principle.md"))) {
+  for (let dir = path2.dirname(file); ; dir = path2.dirname(dir)) {
+    if (fs.existsSync(path2.join(dir, "principle.md"))) {
       return dir;
     }
-    if (dir === path.dirname(dir)) {
+    if (dir === path2.dirname(dir)) {
       return null;
     }
   }
@@ -4397,7 +4589,7 @@ function prepare(dir) {
   }
   const out = JSON.parse(execFileSync(process.execPath, [builder, dir], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }));
   if ("error" in out) {
-    throw new Error(`${path.basename(dir)} does not build: ${out.error}`);
+    throw new Error(`${path2.basename(dir)} does not build: ${out.error}`);
   }
   prepared.set(dir, out);
   return out;
@@ -4416,6 +4608,7 @@ function detect(event, options = {}) {
 }
 export {
   command,
+  deleted,
   detect,
   edit,
   output,

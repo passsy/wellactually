@@ -1,6 +1,6 @@
 import type { DetectOptions } from "./events.js";
 import type { Ctx, Finding } from "./index.js";
-export { command, edit, output, prompt, read, source, write, type DetectOptions } from "./events.js";
+export { command, deleted, edit, output, prompt, read, source, write, type DetectOptions, type EditChange } from "./events.js";
 /**
  * What the detector reports for an event: the findings that passed the host's checks.
  *
