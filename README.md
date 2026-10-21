@@ -149,7 +149,7 @@ A principle written against `v3` keeps running as it was.
 
 | Path              | What it is                                                                            |
 | ----------------- | ------------------------------------------------------------------------------------- |
-| `hooks`, `skills` | The plugin: when the hook runs, and the `login` and `sync` skills.                    |
+| `hooks`, `skills` | The plugin: when the hook runs, and the skills such as `login`, `sync` and `audit`.   |
 | `dist`            | The command as one file, built from `packages/cli`. The plugin runs it.               |
 | `opencode`        | The plugin for OpenCode, with its own copy of the command and the skills.             |
 | `packages/core`   | Builds, checks and runs principles: the isolate, the bundler and the tests.           |
