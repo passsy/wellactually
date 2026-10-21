@@ -163,7 +163,7 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
       : "";
 
   // One block for the whole call, small enough that the host shows all of it.
-  const framed = frame(fired, shown, ADVICE_BUDGET - adviceBytes(notice));
+  const framed = frame(fired, shown, ADVICE_BUDGET - adviceBytes(notice), payload.agent ?? agentOf(process.env));
   if (framed.text) {
     parts.push(framed.text);
   }

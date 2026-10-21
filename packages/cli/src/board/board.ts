@@ -6,6 +6,7 @@ import { ADVICE_BUDGET, adviceBytes, apiOf, applies, DEFAULT_LIMITS, type Detect
 import { describeFinding } from "../hook/finding.ts";
 import type { DetectorPool } from "./pool.ts";
 import { diskFiles } from "./files.ts";
+import type { Agent } from "../update.ts";
 
 /** One principle the hook runs: from the advisory board on the registry, or `local/slug` added from a directory. */
 export interface LockfileEntry {
@@ -231,10 +232,27 @@ const OPENERS: Record<Ctx["event"], string> = {
 const PREAMBLE =
   "Each principle below is advice from an expert the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.";
 
-// The tool's full name depends on the host, which prefixes it with the plugin
-// and the server. Naming the suffix lets an agent find it when tools are loaded on demand.
-const RATING =
-  'Once you know how a principle\'s advice went, you may tell its expert: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command. Leave the rating out of your answer, and out of your report when you are a subagent.';
+// Each host prefixes the tool with the plugin or the server. Claude Code and
+// Codex load MCP tools on demand, and Codex and OpenCode call them from a script
+// in code mode, so the exact call saves the agent a search it tends to skip.
+const RATE_TOOL: Record<Agent, string> = {
+  "claude-code": 'mcp__plugin_wellactually_wellactually__rate_principle (not loaded? ToolSearch "select:" and that name)',
+  codex: "mcp__wellactually__rate_principle (from a script: tools.mcp__wellactually__rate_principle)",
+  opencode: "wellactually_rate_principle (from a script: tools.wellactually.rate_principle)",
+  "opencode-1": "wellactually_rate_principle",
+  pi: "wellactually_rate_principle",
+};
+const ANY_RATE_TOOL = 'the MCP tool whose name ends in "rate_principle" (not loaded? search your tools for that word)';
+
+/** The request to rate, naming the tool as `agent` calls it, with the call for `id` as the example. */
+function rating(agent: Agent | undefined, id: string): string {
+  const tool = agent ? RATE_TOOL[agent] : ANY_RATE_TOOL;
+  return [
+    "Rate each principle above once you know how its advice went: up if it helped, down if it was wrong or unclear, not_applicable if it fired on something it is not about.",
+    `Call ${tool} with { "id": "${id}", "rating": "up" }, not a shell command.`,
+    "Leave the rating out of your answer, and out of your report when you are a subagent.",
+  ].join(" ");
+}
 
 /** The principles that fired on one event. */
 export interface EventFirings {
@@ -269,8 +287,9 @@ export function frame(ctx: Ctx, firings: Firing[], alreadyShown: ReadonlySet<str
  * with their full advice. Every principle is listed with its summary first;
  * full advice is added in order while it fits, and what did not fit explains
  * itself on a later event. Events that do not fit even with summaries are left out.
+ * `agent` decides how the request to rate names the tool, or describes it when unknown.
  */
-export function frameEvents(events: EventFirings[], alreadyShown: ReadonlySet<string> = new Set(), budget: number = ADVICE_BUDGET): Framed {
+export function frameEvents(events: EventFirings[], alreadyShown: ReadonlySet<string> = new Set(), budget: number = ADVICE_BUDGET, agent?: Agent): Framed {
   const firing = events.filter((event) => event.firings.length > 0);
   // Full advice is due once per principle: not seen this session and not given to an earlier event of this call.
   const due = new Set<Firing>();
@@ -290,7 +309,7 @@ export function frameEvents(events: EventFirings[], alreadyShown: ReadonlySet<st
   for (const event of firing) {
     const next = [...shown, event];
     // Counting the line about what is left out keeps it within the budget too.
-    const fits = (): boolean => adviceBytes(render(next, full, firing.length - next.length)) <= budget;
+    const fits = (): boolean => adviceBytes(render(next, full, agent, firing.length - next.length)) <= budget;
     for (const item of event.firings) {
       if (due.has(item)) {
         full.add(item);
@@ -306,13 +325,13 @@ export function frameEvents(events: EventFirings[], alreadyShown: ReadonlySet<st
   }
   const left = firing.length - shown.length;
   return {
-    text: render(shown, full, left),
+    text: render(shown, full, agent, left),
     full: new Set([...full].map((item) => item.principle.hash)),
     shown,
   };
 }
 
-function render(events: EventFirings[], full: ReadonlySet<Firing>, left = 0): string {
+function render(events: EventFirings[], full: ReadonlySet<Firing>, agent: Agent | undefined, left = 0): string {
   if (events.length === 0) {
     return "";
   }
@@ -343,8 +362,9 @@ function render(events: EventFirings[], full: ReadonlySet<Firing>, left = 0): st
   if (left > 0) {
     lines.push(`Principles also fired on ${left} more ${left === 1 ? "file" : "files"} of this change. They are left out to keep this short and come back when those files change again.`, "");
   }
-  if (events.some(({ firings }) => firings.some(({ principle }) => !principle.id.startsWith("local/")))) {
-    lines.push(RATING);
+  const rated = events.flatMap(({ firings }) => firings).find(({ principle }) => !principle.id.startsWith("local/"));
+  if (rated) {
+    lines.push(rating(agent, rated.principle.id));
   }
   lines.push("</wellactually>");
   return lines.join("\n");

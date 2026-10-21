@@ -39,7 +39,7 @@ function fileOf(input: Record<string, unknown>): string | undefined {
  * when it was not there, undefined when that is not known.
  */
 export function opencodePayload(call: OpencodeCall, cwd: string, output?: string, before?: string | null): HookPayload | null {
-  const base = { session_id: call.sessionID, tool_use_id: call.callID, cwd };
+  const base = { agent: "opencode" as const, session_id: call.sessionID, tool_use_id: call.callID, cwd };
   const { tool, input } = call;
   if (output === undefined) {
     if (SHELL_TOOLS.has(tool) && str(input.command)) {
@@ -114,11 +114,11 @@ class Calls {
 }
 
 function sessionStart(sessionID: string, cwd: string): void {
-  void callHook({ hook_event_name: "SessionStart", session_id: sessionID, cwd });
+  void callHook({ agent: "opencode", hook_event_name: "SessionStart", session_id: sessionID, cwd });
 }
 
 function compacted(sessionID: string, cwd: string): void {
-  void callHook({ hook_event_name: "PostCompact", session_id: sessionID, cwd });
+  void callHook({ agent: "opencode", hook_event_name: "PostCompact", session_id: sessionID, cwd });
 }
 
 /** The MCP server, started by OpenCode the way the other agents start it. */
@@ -198,7 +198,7 @@ async function setup(ctx: V2Context): Promise<() => void> {
   });
 
   await ctx.session.hook("prompt", async (event) => {
-    const advice = await callHook({ hook_event_name: "UserPromptSubmit", session_id: event.sessionID, prompt: event.prompt?.text ?? "", cwd });
+    const advice = await callHook({ agent: "opencode", hook_event_name: "UserPromptSubmit", session_id: event.sessionID, prompt: event.prompt?.text ?? "", cwd });
     if (advice !== "") {
       // A synthetic message reaches the model with the prompt and stays in the session, like Claude Code's added context.
       await ctx.session.synthetic({ sessionID: event.sessionID, text: advice });
@@ -278,7 +278,7 @@ async function server(input: V1Input): Promise<Record<string, unknown>> {
     },
     "chat.message": async (hook: { sessionID: string; messageID?: string }, output: { message: { id: string }; parts: Record<string, unknown>[] }) => {
       const prompt = output.parts.map((part) => (part.type === "text" && typeof part.text === "string" && !part.synthetic ? part.text : "")).join("\n");
-      const advice = await callHook({ hook_event_name: "UserPromptSubmit", session_id: hook.sessionID, prompt, cwd });
+      const advice = await callHook({ agent: "opencode", hook_event_name: "UserPromptSubmit", session_id: hook.sessionID, prompt, cwd });
       if (advice !== "") {
         // A synthetic part goes to the model but is not shown as the user's text.
         output.parts.push({

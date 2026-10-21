@@ -138,6 +138,17 @@ describe("what the agent is shown", () => {
     expect(text).toContain('title="Avoid late">\nMake it nullable.\n</principle>');
   });
 
+  test("names the rating tool as the agent calls it, with the call for a principle that fired", () => {
+    const firings = [{ ctx: file, firings: [{ principle, findings: [{ line: 2 }] }] }];
+    const call = `{ "id": "${principle.id}", "rating": "up" }`;
+    expect(frameEvents(firings, new Set(), 9000, "claude-code").text).toContain('ToolSearch "select:" and that name');
+    expect(frameEvents(firings, new Set(), 9000, "codex").text).toContain("tools.mcp__wellactually__rate_principle");
+    expect(frameEvents(firings, new Set(), 9000, "opencode").text).toContain("tools.wellactually.rate_principle");
+    expect(frameEvents(firings, new Set(), 9000, "pi").text).toContain("Call wellactually_rate_principle with");
+    expect(frameEvents(firings, new Set(), 9000).text).toContain('whose name ends in "rate_principle"');
+    expect(frameEvents(firings, new Set(), 9000).text).toContain(call);
+  });
+
   test("puts the files of one change in one block, with the preamble and the rating said once", () => {
     const other = fileCtx("write", "lib/user.dart", "class User {\n  late String name;\n}");
     const { text, full, shown } = frameEvents([
