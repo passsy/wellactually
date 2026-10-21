@@ -39,6 +39,7 @@ import {
 import { logHookFailure, runHook, startInBackground } from "./hook/hook.ts";
 import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
+import { audit, renderAudit } from "./audit/audit.ts";
 import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "./registry/client.ts";
 
@@ -77,6 +78,10 @@ Your advisory board
   wellactually disable <id> [--global]  Switch one principle off in this project, or everywhere with --global
   wellactually enable <id> [--global]   Switch it on again
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
+  wellactually audit                    Look back at recent agent sessions: did the hooks run, what fired, what was rated
+        --hours <n>              ... this far back, 24 by default
+        --agent <claude-code|codex|opencode> ... only this agent's sessions
+        --session <id>           ... only the session whose id starts with this
 
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
@@ -104,6 +109,8 @@ async function main(): Promise<number> {
       registry: { type: "string" },
       global: { type: "boolean", default: false },
       agent: { type: "string" },
+      hours: { type: "string" },
+      session: { type: "string" },
     },
   });
   const print = (data: unknown, rendered: string): void => {
@@ -308,6 +315,21 @@ async function main(): Promise<number> {
           ? "Reporting is on: every few minutes, the hook sends how often each principle fired, as a count per day. No file, prompt or finding is sent."
           : "Reporting is off: nothing about what fires on this machine is sent.",
       );
+      return 0;
+    }
+    case "audit": {
+      const hours = values.hours === undefined ? 24 : Number(values.hours);
+      if (!(hours > 0)) {
+        console.error("--hours is a number of hours, such as 24.");
+        return 2;
+      }
+      const agent = values.agent;
+      if (agent !== undefined && agent !== "claude-code" && agent !== "codex" && agent !== "opencode") {
+        console.error("--agent is claude-code, codex or opencode.");
+        return 2;
+      }
+      const report = await audit({ hours, agent, session: values.session, cwd: process.cwd() });
+      print(report, renderAudit(report));
       return 0;
     }
     case "list": {

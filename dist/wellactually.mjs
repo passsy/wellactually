@@ -164,7 +164,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs14 = require2("node:fs");
+    var fs17 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -6936,8 +6936,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path17) {
-      let input2 = path17;
+    function removeDotSegments(path20) {
+      let input2 = path20;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -7346,8 +7346,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path17 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path17 && path17 !== "/" ? path17 : void 0;
+        const path20 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path20 && path20 !== "/" ? path20 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7511,7 +7511,7 @@ var require_fast_uri = __commonJS({
         normalizeString(uri, options);
       } else if (typeof uri === "object") {
         uri = /** @type {T} */
-        parse4(serialize(uri, options), options);
+        parse5(serialize(uri, options), options);
       }
       return uri;
     }
@@ -7551,8 +7551,8 @@ var require_fast_uri = __commonJS({
     function resolveComponent(base, relative, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
-        base = parse4(serialize(base, options), options);
-        relative = parse4(serialize(relative, options), options);
+        base = parse5(serialize(base, options), options);
+        relative = parse5(serialize(relative, options), options);
       }
       options = options || {};
       if (!options.tolerant && relative.scheme) {
@@ -7851,7 +7851,7 @@ var require_fast_uri = __commonJS({
       }
       return { parsed, malformedAuthorityOrPort, malformedPercentEncoding, malformedSchemeSpecific, malformedHost, malformedScheme };
     }
-    function parse4(uri, opts) {
+    function parse5(uri, opts) {
       return parseWithStatus(uri, opts).parsed;
     }
     function normalizeString(uri, opts) {
@@ -7888,7 +7888,7 @@ var require_fast_uri = __commonJS({
       resolveComponent,
       equal,
       serialize,
-      parse: parse4
+      parse: parse5
     };
     module.exports = fastUri;
     module.exports.default = fastUri;
@@ -10860,12 +10860,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs14, exportName) {
+    function addFormats(ajv, list, fs17, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs14[f]);
+        ajv.addFormat(f, fs17[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10874,7 +10874,7 @@ var require_dist = __commonJS({
 });
 
 // packages/cli/src/main.ts
-import path16 from "node:path";
+import path19 from "node:path";
 import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
@@ -10942,21 +10942,21 @@ import path from "node:path";
 
 // packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path17, pattern) {
+function matchesGlob(path20, pattern) {
   let matcher = cache.get(pattern);
   if (!matcher) {
     matcher = compile(pattern);
     cache.set(pattern, matcher);
   }
-  return matcher(path17);
+  return matcher(path20);
 }
-function matchesGlobs(path17, globs) {
+function matchesGlobs(path20, globs) {
   const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
-  if (excluded.some((glob) => matchesGlob(path17, glob))) {
+  if (excluded.some((glob) => matchesGlob(path20, glob))) {
     return false;
   }
   const included = globs.filter((glob) => !glob.startsWith("!"));
-  return included.length === 0 || included.some((glob) => matchesGlob(path17, glob));
+  return included.length === 0 || included.some((glob) => matchesGlob(path20, glob));
 }
 function parse(pattern) {
   const anchored = [...pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`];
@@ -11049,9 +11049,9 @@ function compile(pattern) {
     }
     return seen;
   };
-  return (path17) => {
+  return (path20) => {
     let now = reach([start]);
-    for (const char of path17) {
+    for (const char of path20) {
       const next = [];
       for (const index of now) {
         for (const move of state(index).moves) {
@@ -11134,15 +11134,15 @@ function removedOf(event, change, allLines) {
 function fileCtx(event, relativePath, content, change = {}, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === void 0 ? TEST_ROOT : where.root;
-  const path17 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
-  const name = path17.slice(path17.lastIndexOf("/") + 1);
+  const path20 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
+  const name = path20.slice(path20.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
   const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
   return {
     event,
     file: {
-      path: path17,
+      path: path20,
       relativePath: relative,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
@@ -11564,8 +11564,8 @@ function isExactVersion(version2) {
   return EXACT_VERSION.test(version2);
 }
 var PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
-function isPackageFile(path17) {
-  return path17.startsWith(PACKAGE_DIR);
+function isPackageFile(path20) {
+  return path20.startsWith(PACKAGE_DIR);
 }
 function readPins(files) {
   const source = files["package.json"];
@@ -11603,11 +11603,11 @@ function splitSpecifier(specifier) {
   }
   return { name, subpath: parts.slice(count2).join("/") };
 }
-function packageOf(path17) {
-  if (!isPackageFile(path17)) {
+function packageOf(path20) {
+  if (!isPackageFile(path20)) {
     return null;
   }
-  return splitSpecifier(path17.slice(PACKAGE_DIR.length))?.name ?? null;
+  return splitSpecifier(path20.slice(PACKAGE_DIR.length))?.name ?? null;
 }
 async function readPackageJson(read2, name) {
   const source = await read2(`${PACKAGE_DIR}${name}/package.json`);
@@ -11715,9 +11715,9 @@ async function resolveInPackage(read2, importer, relative) {
   return probe(read2, joined);
 }
 var SUFFIXES = ["", ".js", ".mjs", ".cjs", ".ts", ".json", "/index.js", "/index.mjs", "/index.cjs", "/index.ts"];
-async function probe(read2, path17) {
+async function probe(read2, path20) {
   for (const suffix of SUFFIXES) {
-    const candidate = `${path17}${suffix}`;
+    const candidate = `${path20}${suffix}`;
     if (suffix === "" && !/\.[a-z]+$/.test(candidate)) {
       continue;
     }
@@ -11836,14 +11836,14 @@ function declaredLicense(json2) {
 }
 function carriedPackages(files) {
   const packages = [];
-  for (const path17 of Object.keys(files).sort()) {
-    const name = packageOf(path17);
-    if (name === null || path17 !== `${PACKAGE_DIR}${name}/package.json`) {
+  for (const path20 of Object.keys(files).sort()) {
+    const name = packageOf(path20);
+    if (name === null || path20 !== `${PACKAGE_DIR}${name}/package.json`) {
       continue;
     }
     let json2;
     try {
-      json2 = JSON.parse(files[path17] ?? "");
+      json2 = JSON.parse(files[path20] ?? "");
     } catch {
       throw new PackageError(`the package.json of ${name} is not valid JSON`);
     }
@@ -11929,9 +11929,9 @@ function testFiles(files) {
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
 }
-function normalize(path17) {
+function normalize(path20) {
   const out = [];
-  for (const part of path17.split("/")) {
+  for (const part of path20.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -11943,9 +11943,9 @@ function normalize(path17) {
   }
   return out.join("/");
 }
-function dirname(path17) {
-  const slash = path17.lastIndexOf("/");
-  return slash === -1 ? "" : path17.slice(0, slash);
+function dirname(path20) {
+  const slash = path20.lastIndexOf("/");
+  return slash === -1 ? "" : path20.slice(0, slash);
 }
 async function vendorPackages(files, source) {
   let pins;
@@ -11961,8 +11961,8 @@ async function vendorPackages(files, source) {
   await buildDetector(files, source, fetched);
   await buildTestBundle(files, source, fetched);
   const names = /* @__PURE__ */ new Set();
-  for (const path17 of Object.keys(fetched)) {
-    const name = packageOf(path17);
+  for (const path20 of Object.keys(fetched)) {
+    const name = packageOf(path20);
     if (name !== null) {
       names.add(name);
     }
@@ -12012,21 +12012,21 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
     throw new BundleError(error62.message);
   }
   const missing = /* @__PURE__ */ new Set();
-  const read2 = async (path17) => {
-    const own2 = files[path17] ?? fetched[path17];
+  const read2 = async (path20) => {
+    const own2 = files[path20] ?? fetched[path20];
     if (own2 !== void 0) {
       return own2;
     }
-    const name = packageOf(path17);
-    if (name === null || source === void 0 || missing.has(path17)) {
+    const name = packageOf(path20);
+    if (name === null || source === void 0 || missing.has(path20)) {
       return null;
     }
-    const text2 = await source(name, pins[name] ?? null, path17.slice(PACKAGE_DIR.length + name.length + 1));
+    const text2 = await source(name, pins[name] ?? null, path20.slice(PACKAGE_DIR.length + name.length + 1));
     if (text2 === null) {
-      missing.add(path17);
+      missing.add(path20);
       return null;
     }
-    fetched[path17] = text2;
+    fetched[path20] = text2;
     return text2;
   };
   const virtual = {
@@ -12190,9 +12190,9 @@ function formatMessage(message) {
 // packages/core/src/detector/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path17) {
+function normalizeAbsolute(path20) {
   const out = [];
-  for (const part of path17.split("/")) {
+  for (const part of path20.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -12205,15 +12205,15 @@ function normalizeAbsolute(path17) {
   return `/${out.join("/")}`;
 }
 function mapProject(root, files) {
-  const relative = (path17) => path17 === root ? "" : path17.startsWith(`${root}/`) ? path17.slice(root.length + 1) : null;
+  const relative = (path20) => path20 === root ? "" : path20.startsWith(`${root}/`) ? path20.slice(root.length + 1) : null;
   const isDir = (inside) => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));
   return {
-    read: (path17) => {
-      const inside = relative(path17);
+    read: (path20) => {
+      const inside = relative(path20);
       return inside === null ? null : files[inside] ?? null;
     },
-    stat: (path17) => {
-      const inside = relative(path17);
+    stat: (path20) => {
+      const inside = relative(path20);
       if (inside === null) {
         return null;
       }
@@ -12223,8 +12223,8 @@ function mapProject(root, files) {
       }
       return isDir(inside) ? { kind: "dir", size: 0 } : null;
     },
-    list: (path17) => {
-      const inside = relative(path17);
+    list: (path20) => {
+      const inside = relative(path20);
       if (inside === null || inside in files || !isDir(inside)) {
         return null;
       }
@@ -12261,24 +12261,24 @@ function fsHost(cwd, project) {
     if (++calls > MAX_FS_CALLS) {
       return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
     }
-    const path17 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    const path20 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
     if (op === "stat") {
-      const stat = project.stat(path17);
+      const stat = project.stat(path20);
       return stat ? { stat } : missing;
     }
     if (op === "list") {
-      const entries = project.list(path17);
+      const entries = project.list(path20);
       if (entries) {
         return { entries };
       }
-      return project.stat(path17) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      return project.stat(path20) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
     }
-    const text2 = project.read(path17);
+    const text2 = project.read(path20);
     if (text2 === null) {
-      return project.stat(path17)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+      return project.stat(path20)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
     }
     bytes += text2.length;
     if (bytes > MAX_FS_BYTES) {
@@ -16325,8 +16325,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path17, errorMaps, issueData } = params;
-  const fullPath = [...path17, ...issueData.path || []];
+  const { data, path: path20, errorMaps, issueData } = params;
+  const fullPath = [...path20, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -16441,11 +16441,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path17, key) {
+  constructor(parent, value, path20, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path17;
+    this._path = path20;
     this._key = key;
   }
   get path() {
@@ -20399,10 +20399,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path17) {
-  if (!path17)
+function getElementAtPath(obj, path20) {
+  if (!path20)
     return obj;
-  return path17.reduce((acc, key) => acc?.[key], obj);
+  return path20.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -20742,11 +20742,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path17, issues) {
+function prefixIssues(path20, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path17);
+    iss.path.unshift(path20);
     return iss;
   });
 }
@@ -21196,16 +21196,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path17 = []) => {
+  const processError = (error63, path20 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path17, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path20, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path20, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path20, ...issue2.path]);
       } else {
-        const fullpath = [...path17, ...issue2.path];
+        const fullpath = [...path20, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -21244,17 +21244,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path17 = []) => {
+  const processError = (error63, path20 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path17, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path20, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path20, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path20, ...issue2.path]);
       } else {
-        const fullpath = [...path17, ...issue2.path];
+        const fullpath = [...path20, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -21293,8 +21293,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path17 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path17) {
+  const path20 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path20) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -21428,18 +21428,18 @@ var validateAsync = async (schema, value, _ctx) => {
   return result.issues.length === 0;
 };
 var _encode = (_Err) => {
-  const parse4 = _parse(_Err);
+  const parse5 = _parse(_Err);
   const fn = (schema, value, _ctx, _params) => {
     const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
-    return parse4(schema, value, ctx, finalizeParams(fn, _params));
+    return parse5(schema, value, ctx, finalizeParams(fn, _params));
   };
   return fn;
 };
 var encode = /* @__PURE__ */ _encode($ZodRealError);
 var _decode = (_Err) => {
-  const parse4 = _parse(_Err);
+  const parse5 = _parse(_Err);
   const fn = (schema, value, _ctx, _params) => {
-    return parse4(schema, value, _ctx, finalizeParams(fn, _params));
+    return parse5(schema, value, _ctx, finalizeParams(fn, _params));
   };
   return fn;
 };
@@ -36809,11 +36809,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path17) {
-  if (path17.length === 0) {
+function getDotPath(path20) {
+  if (path20.length === 0) {
     return "object root";
   }
-  return path17.reduce((acc, seg, index) => {
+  return path20.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -39040,13 +39040,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path17 = ref.slice(1).split("/").filter(Boolean);
-  if (path17.length === 0) {
+  const path20 = ref.slice(1).split("/").filter(Boolean);
+  if (path20.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path17[0] === defsKey) {
-    const key = path17[1] === void 0 ? void 0 : decodeJSONPointerSegment(path17[1]);
+  if (path20[0] === defsKey) {
+    const key = path20[1] === void 0 ? void 0 : decodeJSONPointerSegment(path20[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -45512,6 +45512,920 @@ ${report}`);
   });
 }
 
+// packages/cli/src/audit/audit.ts
+import fs16 from "node:fs";
+import path18 from "node:path";
+
+// packages/cli/src/audit/setup.ts
+import fs15 from "node:fs";
+import os7 from "node:os";
+import path17 from "node:path";
+
+// packages/cli/src/audit/transcripts.ts
+import fs14 from "node:fs";
+import os6 from "node:os";
+import path16 from "node:path";
+var OPEN = "<wellactually>\n";
+var CLOSE = "</wellactually>";
+function emptyConversation(agent, session, source, updated) {
+  return { agent, session, parent: null, source, cwd: null, started: null, updated, model: null, advice: 0, principles: {}, cut: 0, asked: 0, ratings: [], rateTool: null, plugin: null, hookRuns: null, hookFailures: [] };
+}
+function countAdvice(conversation, text2) {
+  let from = text2.indexOf(OPEN);
+  while (from !== -1) {
+    const next = text2.indexOf(OPEN, from + OPEN.length);
+    const end = text2.indexOf(CLOSE, from);
+    const block = end !== -1 && (next === -1 || end < next) ? text2.slice(from, end) : text2.slice(from, next === -1 ? void 0 : next);
+    conversation.advice++;
+    if (end === -1 || next !== -1 && end > next) {
+      conversation.cut++;
+    }
+    if (block.includes("rate_principle")) {
+      conversation.asked++;
+    }
+    for (const match of block.matchAll(/<principle id="([^"]+)"/g)) {
+      const id = match[1];
+      conversation.principles[id] = (conversation.principles[id] ?? 0) + 1;
+    }
+    from = next;
+  }
+}
+function short(text2) {
+  if (!text2) {
+    return null;
+  }
+  const line = text2.trim().replace(/\s+/g, " ");
+  return line.length > 200 ? `${line.slice(0, 200)}\u2026` : line;
+}
+function recordedBy(reply) {
+  if (reply === null) {
+    return null;
+  }
+  return reply.startsWith("Recorded ");
+}
+function textOf2(content) {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    return content.map((part) => typeof part === "string" ? part : typeof part?.text === "string" ? part.text : "").join("\n");
+  }
+  return "";
+}
+function ratingsInCode(code) {
+  const found = [];
+  for (const match of code.matchAll(/rate_principle\s*\(\s*(\{[^}]*\})/g)) {
+    const args = match[1];
+    found.push({ id: /\bid\s*:\s*["'`]([^"'`]+)/.exec(args)?.[1] ?? null, rating: /\brating\s*:\s*["'`]([^"'`]+)/.exec(args)?.[1] ?? null });
+  }
+  return found;
+}
+function earlier(timestamp, since) {
+  return typeof timestamp === "string" && Date.parse(timestamp) < since;
+}
+function readLines(file2) {
+  let source;
+  try {
+    source = fs14.readFileSync(file2, "utf8");
+  } catch {
+    return [];
+  }
+  const lines = [];
+  for (const line of source.split("\n")) {
+    if (!line.trim()) {
+      continue;
+    }
+    try {
+      lines.push(JSON.parse(line));
+    } catch {
+    }
+  }
+  return lines;
+}
+function recentFiles(dir, since, depth, skip = () => false) {
+  const found = [];
+  let names;
+  try {
+    names = fs14.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return found;
+  }
+  for (const entry of names) {
+    if (skip(entry.name)) {
+      continue;
+    }
+    const file2 = path16.join(dir, entry.name);
+    if (entry.isDirectory() && depth > 0) {
+      found.push(...recentFiles(file2, since, depth - 1, skip));
+    } else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+      try {
+        if (fs14.statSync(file2).mtimeMs >= since) {
+          found.push(file2);
+        }
+      } catch {
+      }
+    }
+  }
+  return found;
+}
+function claudeHome(env = process.env) {
+  return env.CLAUDE_CONFIG_DIR ?? path16.join(os6.homedir(), ".claude");
+}
+function codexHome(env = process.env) {
+  return env.CODEX_HOME ?? path16.join(os6.homedir(), ".codex");
+}
+function opencodeDatabase(env = process.env) {
+  const data = env.XDG_DATA_HOME ?? path16.join(os6.homedir(), ".local", "share");
+  return path16.join(data, "opencode", "opencode.db");
+}
+function readClaudeConversation(file2, since = 0) {
+  const updated = fs14.statSync(file2).mtime.toISOString();
+  const conversation = emptyConversation("claude-code", path16.basename(file2, ".jsonl"), file2, updated);
+  conversation.hookRuns = 0;
+  const calls = /* @__PURE__ */ new Map();
+  for (const line of readLines(file2)) {
+    if (!line || typeof line !== "object") {
+      continue;
+    }
+    conversation.started ??= typeof line.timestamp === "string" ? line.timestamp : null;
+    conversation.cwd ??= typeof line.cwd === "string" ? line.cwd : null;
+    if (earlier(line.timestamp, since)) {
+      continue;
+    }
+    if (line.type === "attachment" && line.attachment) {
+      const attachment = line.attachment;
+      if (attachment.type === "hook_additional_context") {
+        countAdvice(conversation, textOf2(attachment.content));
+      } else if (typeof attachment.type === "string" && attachment.type.startsWith("hook_") && typeof attachment.command === "string" && attachment.command.includes("wellactually")) {
+        conversation.hookRuns++;
+        if (attachment.type !== "hook_success" || typeof attachment.exitCode === "number" && attachment.exitCode !== 0) {
+          conversation.hookFailures.push(short(`${attachment.hookName ?? attachment.hookEvent ?? "hook"}: ${attachment.stderr || attachment.content || attachment.type}`) ?? attachment.type);
+        }
+      } else if (JSON.stringify(attachment).includes("wellactually__rate_principle")) {
+        conversation.rateTool = true;
+      }
+      continue;
+    }
+    const content = line.message?.content;
+    if (line.type === "assistant") {
+      conversation.model = typeof line.message?.model === "string" && line.message.model !== "<synthetic>" ? line.message.model : conversation.model;
+      for (const part of Array.isArray(content) ? content : []) {
+        if (part?.type === "tool_use" && typeof part.name === "string" && part.name.endsWith("rate_principle")) {
+          conversation.rateTool = true;
+          const call2 = { id: part.input?.id ?? null, rating: part.input?.rating ?? null, recorded: null, reply: null };
+          calls.set(part.id, call2);
+          conversation.ratings.push(call2);
+        }
+      }
+    } else if (line.type === "user") {
+      for (const part of Array.isArray(content) ? content : []) {
+        const call2 = part?.type === "tool_result" ? calls.get(part.tool_use_id) : void 0;
+        if (call2) {
+          call2.reply = short(textOf2(part.content));
+          call2.recorded = recordedBy(call2.reply);
+        }
+      }
+    }
+  }
+  return conversation;
+}
+function readCodexConversation(file2, since = 0) {
+  const updated = fs14.statSync(file2).mtime.toISOString();
+  const id = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/.exec(file2)?.[1] ?? path16.basename(file2, ".jsonl");
+  const conversation = emptyConversation("codex", id, file2, updated);
+  const items = [];
+  const functionCalls = /* @__PURE__ */ new Map();
+  let listed = false;
+  let unlisted = false;
+  let disabled = false;
+  for (const line of readLines(file2)) {
+    const payload = line?.payload;
+    if (!payload) {
+      continue;
+    }
+    if (line.type === "session_meta") {
+      conversation.session = typeof payload.id === "string" ? payload.id : conversation.session;
+      conversation.parent = typeof payload.session_id === "string" && payload.session_id !== conversation.session ? payload.session_id : null;
+      conversation.cwd = typeof payload.cwd === "string" ? payload.cwd : conversation.cwd;
+      conversation.started = typeof payload.timestamp === "string" ? payload.timestamp : conversation.started;
+    } else if (line.type === "turn_context") {
+      conversation.model = typeof payload.model === "string" ? payload.model : conversation.model;
+      conversation.cwd ??= typeof payload.cwd === "string" ? payload.cwd : null;
+      if (Array.isArray(payload.disabled_plugin_ids) && payload.disabled_plugin_ids.some((id2) => typeof id2 === "string" && id2.startsWith("wellactually@"))) {
+        disabled = true;
+      }
+    } else if (line.type === "world_state" && payload.state) {
+      conversation.model = typeof payload.state.model === "string" ? payload.state.model : conversation.model;
+      const skills = JSON.stringify(payload.state.host_skills ?? "");
+      if (/[\\/]wellactually[\\/][^\\/"]+[\\/]skills\b/.test(skills)) {
+        listed = true;
+      } else if (skills.includes("Skill roots")) {
+        unlisted = true;
+      }
+    } else if (earlier(line.timestamp, since)) {
+      continue;
+    } else if (line.type === "response_item" && payload.type === "message" && payload.role === "developer") {
+      const text2 = textOf2(payload.content);
+      if (text2.trimStart().startsWith(OPEN.trim())) {
+        countAdvice(conversation, text2);
+      }
+    } else if (line.type === "response_item" && payload.type === "function_call" && typeof payload.name === "string" && payload.name.endsWith("rate_principle")) {
+      let args = {};
+      try {
+        args = JSON.parse(payload.arguments);
+      } catch {
+      }
+      const call2 = { id: args.id ?? null, rating: args.rating ?? null, recorded: null, reply: null };
+      functionCalls.set(payload.call_id, call2);
+    } else if (line.type === "response_item" && payload.type === "function_call_output" && functionCalls.has(payload.call_id)) {
+      const call2 = functionCalls.get(payload.call_id);
+      call2.reply = short(typeof payload.output === "string" ? payload.output : textOf2(payload.output?.content ?? payload.output));
+      call2.recorded = recordedBy(call2.reply);
+    } else if (line.type === "event_msg" && payload.type === "item_completed" && payload.item?.type === "McpToolCall" && payload.item.tool === "rate_principle") {
+      const item = payload.item;
+      const reply = short(textOf2(item.result?.content) || item.error?.message || (typeof item.error === "string" ? item.error : null));
+      items.push({ id: item.arguments?.id ?? null, rating: item.arguments?.rating ?? null, recorded: recordedBy(reply), reply });
+    }
+  }
+  if (listed && !disabled) {
+    conversation.plugin = true;
+  } else if (disabled || unlisted) {
+    conversation.plugin = false;
+  }
+  conversation.ratings = items.length > 0 ? items : [...functionCalls.values()];
+  if (conversation.ratings.length > 0) {
+    conversation.rateTool = true;
+  }
+  return conversation;
+}
+function recentClaudeConversations(since, env = process.env) {
+  return recentFiles(path16.join(claudeHome(env), "projects"), since, 1).map((file2) => readClaudeConversation(file2, since));
+}
+function recentCodexConversations(since, env = process.env) {
+  return recentFiles(path16.join(codexHome(env), "sessions"), since, 3).map((file2) => readCodexConversation(file2, since));
+}
+async function recentOpencodeConversations(since, env = process.env) {
+  const file2 = opencodeDatabase(env);
+  if (!fs14.existsSync(file2)) {
+    return [];
+  }
+  let sqlite;
+  try {
+    const emit = process.emitWarning;
+    process.emitWarning = () => {
+    };
+    try {
+      sqlite = await import("node:sqlite");
+    } finally {
+      process.emitWarning = emit;
+    }
+  } catch {
+    return null;
+  }
+  const db = new sqlite.DatabaseSync(file2, { readOnly: true });
+  try {
+    const tables = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => row.name));
+    const found = [];
+    if (tables.has("session_v2") && tables.has("session_message")) {
+      for (const session of db.prepare("SELECT id, directory, time_created, time_updated FROM session_v2 WHERE time_updated >= ?").all(since)) {
+        const messages = db.prepare("SELECT type, data FROM session_message WHERE session_id = ? AND time_created >= ? ORDER BY seq").all(session.id, since);
+        found.push(readOpencodeV2(session, messages, file2));
+      }
+    }
+    if (tables.has("session") && tables.has("part")) {
+      for (const session of db.prepare("SELECT id, directory, time_created, time_updated FROM session WHERE time_updated >= ?").all(since)) {
+        const parts = db.prepare("SELECT data FROM part WHERE session_id = ? AND time_created >= ? ORDER BY time_created").all(session.id, since);
+        found.push(readOpencodeV1(session, parts, file2));
+      }
+    }
+    return found;
+  } finally {
+    db.close();
+  }
+}
+function opencodeConversation(session, source) {
+  const conversation = emptyConversation("opencode", session.id, source, new Date(Number(session.time_updated)).toISOString());
+  conversation.cwd = typeof session.directory === "string" ? session.directory : null;
+  conversation.started = new Date(Number(session.time_created)).toISOString();
+  return conversation;
+}
+function parse4(data) {
+  try {
+    return JSON.parse(String(data));
+  } catch {
+    return null;
+  }
+}
+function opencodeTool(conversation, name, state) {
+  const answer = textOf2(state?.content ?? state?.output ?? state?.error);
+  countAdvice(conversation, answer);
+  const reply = short(answer);
+  if (name.endsWith("rate_principle")) {
+    conversation.rateTool = true;
+    const args = state?.input ?? {};
+    conversation.ratings.push({ id: args.id ?? null, rating: args.rating ?? null, recorded: recordedBy(reply), reply });
+    return;
+  }
+  const nested = Array.isArray(state?.metadata?.toolCalls) ? state.metadata.toolCalls : null;
+  const calls = nested ? nested.filter((call2) => typeof call2?.tool === "string" && call2.tool.endsWith("rate_principle")).map((call2) => ({ id: call2.input?.id ?? null, rating: call2.input?.rating ?? null })) : ratingsInCode(typeof state?.input?.code === "string" ? state.input.code : "");
+  for (const call2 of calls) {
+    conversation.rateTool = true;
+    const recorded = answer.includes(`Recorded ${call2.rating} for ${call2.id}`);
+    conversation.ratings.push({ ...call2, recorded, reply });
+  }
+}
+function readOpencodeV2(session, messages, source) {
+  const conversation = opencodeConversation(session, source);
+  for (const message of messages) {
+    const data = parse4(message.data);
+    if (!data) {
+      continue;
+    }
+    if (message.type === "synthetic" || message.type === "system") {
+      countAdvice(conversation, textOf2(data.text ?? data.content));
+    } else if (message.type === "assistant") {
+      conversation.model = typeof data.model?.id === "string" ? data.model.id : conversation.model;
+      for (const part of Array.isArray(data.content) ? data.content : []) {
+        if (part?.type === "tool" && typeof part.name === "string") {
+          opencodeTool(conversation, part.name, part.state);
+        }
+      }
+    }
+  }
+  return conversation;
+}
+function readOpencodeV1(session, parts, source) {
+  const conversation = opencodeConversation(session, source);
+  for (const row of parts) {
+    const part = parse4(row.data);
+    if (part?.type === "text" && part.synthetic) {
+      countAdvice(conversation, textOf2(part.text));
+    } else if (part?.type === "tool" && typeof part.tool === "string") {
+      opencodeTool(conversation, part.tool, part.state);
+    }
+  }
+  return conversation;
+}
+
+// packages/cli/src/audit/setup.ts
+function readText3(file2) {
+  try {
+    return fs15.readFileSync(file2, "utf8");
+  } catch {
+    return null;
+  }
+}
+function readJson3(file2) {
+  const text2 = readText3(file2);
+  if (text2 === null) {
+    return null;
+  }
+  try {
+    return JSON.parse(text2);
+  } catch {
+    try {
+      return JSON.parse(text2.replace(/^\s*\/\/.*$/gm, "").replace(/,(\s*[}\]])/g, "$1"));
+    } catch {
+      return null;
+    }
+  }
+}
+function claudeSetup(env = process.env) {
+  const home = claudeHome(env);
+  const setup = { agent: "claude-code", present: fs15.existsSync(home), enabled: null, version: null, notes: [] };
+  if (!setup.present) {
+    return setup;
+  }
+  const settings = readJson3(path17.join(home, "settings.json"));
+  const enabled = Object.entries(settings?.enabledPlugins ?? {}).filter(([key]) => key.startsWith("wellactually@"));
+  if (enabled.length > 0) {
+    setup.enabled = enabled.some(([, on]) => on === true);
+  } else {
+    setup.enabled = false;
+  }
+  const installed = readJson3(path17.join(home, "plugins", "installed_plugins.json"));
+  const installs = Object.entries(installed?.plugins ?? {}).filter(([key]) => key.startsWith("wellactually@")).flatMap(([, list]) => Array.isArray(list) ? list : []);
+  const user = installs.find((install) => install.scope === "user") ?? installs[0];
+  setup.version = user?.version ?? null;
+  if (installs.length === 0) {
+    setup.notes.push("The plugin is not installed in Claude Code.");
+  } else if (!setup.enabled) {
+    setup.notes.push("The plugin is installed but not enabled in Claude Code's user settings. A project's own settings can still enable it there.");
+  }
+  return setup;
+}
+var CODEX_EVENTS = ["session_start", "user_prompt_submit", "pre_tool_use", "post_tool_use", "post_compact", "session_end"];
+function codexSetup(env = process.env) {
+  const home = codexHome(env);
+  const setup = { agent: "codex", present: fs15.existsSync(home), enabled: null, version: null, notes: [] };
+  if (!setup.present) {
+    return setup;
+  }
+  const config2 = readText3(path17.join(home, "config.toml")) ?? "";
+  const plugin = /^\[plugins\."(wellactually@[^"]+)"\]\s*$([\s\S]*?)(?=^\[|(?![\s\S]))/m.exec(config2);
+  if (plugin) {
+    setup.enabled = !/^\s*enabled\s*=\s*false\s*$/m.test(plugin[2]);
+  } else {
+    setup.enabled = false;
+  }
+  try {
+    const cache2 = path17.join(home, "plugins", "cache");
+    for (const marketplace of fs15.readdirSync(cache2)) {
+      const dir = path17.join(cache2, marketplace, "wellactually");
+      if (fs15.existsSync(dir)) {
+        setup.version = fs15.readdirSync(dir).sort(compareVersions).pop() ?? null;
+      }
+    }
+  } catch {
+  }
+  const trusted = /* @__PURE__ */ new Set();
+  for (const match of config2.matchAll(/^\[hooks\.state\."wellactually@[^"]*:hooks\/hooks\.json:([a-z_]+):[^"]*"\]\s*$([\s\S]*?)(?=^\[|(?![\s\S]))/gm)) {
+    if (/trusted_hash\s*=/.test(match[2])) {
+      trusted.add(match[1]);
+    }
+  }
+  setup.trusted = CODEX_EVENTS.filter((event) => trusted.has(event));
+  setup.untrusted = CODEX_EVENTS.filter((event) => !trusted.has(event));
+  if (!plugin) {
+    setup.notes.push("The plugin is not installed in Codex.");
+  } else if (!setup.enabled) {
+    setup.notes.push("The plugin is installed but switched off in Codex's config.toml.");
+  }
+  if (plugin && setup.untrusted.length > 0) {
+    setup.notes.push(
+      setup.trusted.length === 0 ? "None of the plugin's hooks is trusted. Codex does not run them until the user trusts them in `/hooks`, and says nothing about it." : `These hooks of the plugin are not trusted, so Codex does not run them: ${setup.untrusted.join(", ")}. The user trusts them in \`/hooks\`.`
+    );
+  }
+  return setup;
+}
+function compareVersions(a, b) {
+  const left = a.split(/[.+-]/).map(Number);
+  const right = b.split(/[.+-]/).map(Number);
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    const difference = (left[i] || 0) - (right[i] || 0);
+    if (difference !== 0) {
+      return difference;
+    }
+  }
+  return 0;
+}
+function opencodeNamesPlugin(env, cwd) {
+  const home = path17.join(env.XDG_CONFIG_HOME ?? path17.join(os7.homedir(), ".config"), "opencode");
+  const files = ["opencode.json", "opencode.jsonc"].flatMap((name) => [path17.join(home, name), path17.join(cwd, name), path17.join(cwd, ".opencode", name)]);
+  for (const file2 of files) {
+    const json2 = readJson3(file2);
+    const plugins = [...Array.isArray(json2?.plugin) ? json2.plugin : [], ...Array.isArray(json2?.plugins) ? json2.plugins : []];
+    if (plugins.some((plugin) => JSON.stringify(plugin).includes("wellactually"))) {
+      return true;
+    }
+  }
+  return false;
+}
+function opencodeSetup(env = process.env, cwd = process.cwd()) {
+  const config2 = env.XDG_CONFIG_HOME ?? path17.join(os7.homedir(), ".config");
+  const home = path17.join(config2, "opencode");
+  const data = path17.join(env.XDG_DATA_HOME ?? path17.join(os7.homedir(), ".local", "share"), "opencode");
+  const setup = { agent: "opencode", present: fs15.existsSync(home) || fs15.existsSync(data), enabled: null, version: null, notes: [] };
+  if (!setup.present) {
+    return setup;
+  }
+  const named = opencodeNamesPlugin(env, cwd);
+  setup.enabled = named;
+  if (!named) {
+    setup.notes.push("No opencode.json in ~/.config/opencode or in this folder names the plugin. It is installed with `opencode plugin add 'github:passsy/wellactually#path:opencode'`.");
+  }
+  return setup;
+}
+
+// packages/cli/src/audit/audit.ts
+var RATE_HINT = "Rating is up to the agent, which is asked to rate once it knows how the advice went. Agents often leave it out.";
+async function audit(options) {
+  const env = options.env ?? process.env;
+  const now = options.now ?? Date.now();
+  const since = now - options.hours * 60 * 60 * 1e3;
+  const home = boardHome();
+  const config2 = readConfig();
+  const lockfile = readLockfile();
+  const { entries, files, from } = readHookLog(path18.join(home, "logs"), since);
+  const unreadable = [];
+  const conversations = [];
+  const wants = (agent) => options.agent === void 0 || options.agent === agent;
+  if (wants("claude-code")) {
+    conversations.push(...recentClaudeConversations(since, env));
+  }
+  if (wants("codex")) {
+    conversations.push(...recentCodexConversations(since, env));
+  }
+  if (wants("opencode")) {
+    try {
+      const opencode = await recentOpencodeConversations(since, env);
+      if (opencode === null) {
+        unreadable.push("OpenCode: its sessions are in a SQLite database, which this Node cannot open. Node 22.5 or newer can.");
+      } else {
+        conversations.push(...opencode);
+      }
+    } catch (error62) {
+      unreadable.push(`OpenCode: could not read its database: ${error62.message}`);
+    }
+  }
+  const byId = /* @__PURE__ */ new Map();
+  const own2 = conversations.filter((conversation) => conversation.parent === null);
+  const subagents = conversations.filter((conversation) => conversation.parent !== null);
+  for (const conversation of [...own2, ...subagents]) {
+    const id = conversation.parent ?? conversation.session;
+    const known = byId.get(id);
+    if (known?.conversation) {
+      mergeInto(known.conversation, conversation);
+      if (conversation.updated > known.updated) {
+        known.updated = conversation.updated;
+      }
+      continue;
+    }
+    byId.set(id, {
+      agent: conversation.agent,
+      session: id,
+      cwd: conversation.cwd,
+      started: conversation.started,
+      updated: conversation.updated,
+      model: conversation.model,
+      source: conversation.source,
+      hooks: null,
+      conversation: { ...conversation, session: id, parent: null },
+      findings: []
+    });
+  }
+  for (const entry of entries) {
+    if (!entry.session) {
+      continue;
+    }
+    let session = byId.get(entry.session);
+    if (!session) {
+      const agent = agentOfEntry(entry);
+      if (!wants(agent)) {
+        continue;
+      }
+      session = { agent, session: entry.session, cwd: entry.cwd ?? null, started: null, updated: entry.time, model: null, source: entry.transcript ?? null, hooks: null, conversation: null, findings: [] };
+      byId.set(entry.session, session);
+    }
+    session.hooks = addEntry(session.hooks, entry);
+    if (entry.time > session.updated) {
+      session.updated = entry.time;
+    }
+  }
+  const setups = [claudeSetup(env), codexSetup(env), opencodeSetup(env, options.cwd)].filter((setup) => setup.present && (options.agent === void 0 || setup.agent === options.agent));
+  const logOn = env.WELLACTUALLY_HOOK_LOG !== "0";
+  const sessions = [...byId.values()].filter((session) => !options.session || session.session.startsWith(options.session)).filter((session) => session.hooks !== null || isRelevant(session.conversation)).sort((a, b) => b.updated.localeCompare(a.updated));
+  for (const session of sessions) {
+    session.findings = explain(session, { env, logFrom: from, logOn, setups, boardSize: lockfile.entries.length, stats: config2.stats });
+  }
+  return {
+    version: CLIENT_VERSION,
+    since: new Date(since).toISOString(),
+    home,
+    signedIn: Boolean(config2.token),
+    stats: config2.stats,
+    board: { principles: lockfile.entries.length, enabled: lockfile.entries.filter((entry) => entry.enabled).length, syncedAt: lockfile.syncedAt ?? null },
+    log: { on: logOn, files, from },
+    offProjects: readList(path18.join(home, "disabled.json"), "projects"),
+    offPrinciples: readList(path18.join(home, "disabled.json"), "disabled"),
+    hookCrashes: hookCrashes(path18.join(home, "hook.log"), since),
+    setups,
+    summary: summarize(sessions),
+    unreadable,
+    sessions
+  };
+}
+function summarize(sessions) {
+  const summary = [];
+  for (const session of sessions) {
+    let line = summary.find((candidate) => candidate.agent === session.agent);
+    if (!line) {
+      line = { agent: session.agent, sessions: 0, advised: 0, rated: 0, ratings: 0 };
+      summary.push(line);
+    }
+    line.sessions++;
+    const ratings = session.conversation?.ratings.length ?? 0;
+    line.ratings += ratings;
+    if ((session.conversation?.advice ?? 0) > 0) {
+      line.advised++;
+      if (ratings > 0) {
+        line.rated++;
+      }
+    }
+  }
+  return summary;
+}
+function mergeInto(into, from) {
+  into.advice += from.advice;
+  into.cut += from.cut;
+  into.asked += from.asked;
+  for (const [id, count2] of Object.entries(from.principles)) {
+    into.principles[id] = (into.principles[id] ?? 0) + count2;
+  }
+  into.ratings.push(...from.ratings);
+  into.rateTool = into.rateTool === true || from.rateTool === true ? true : into.rateTool ?? from.rateTool;
+  into.plugin = into.plugin === true || from.plugin === true ? true : into.plugin ?? from.plugin;
+  into.hookFailures.push(...from.hookFailures);
+  if (from.hookRuns !== null) {
+    into.hookRuns = (into.hookRuns ?? 0) + from.hookRuns;
+  }
+}
+function isRelevant(conversation) {
+  if (!conversation) {
+    return false;
+  }
+  return conversation.advice > 0 || conversation.ratings.length > 0 || (conversation.hookRuns ?? 0) > 0 || conversation.started !== null;
+}
+function agentOfEntry(entry) {
+  const transcript = entry.transcript ?? "";
+  if (/[\\/]\.codex[\\/]/.test(transcript)) {
+    return "codex";
+  }
+  if (/[\\/]\.pi[\\/]/.test(transcript)) {
+    return "pi";
+  }
+  if ((entry.session ?? "").startsWith("ses_")) {
+    return "opencode";
+  }
+  if (transcript === "" && /^[0-9a-f]{8}-[0-9a-f]{4}-7/.test(entry.session ?? "")) {
+    return "codex";
+  }
+  return "claude-code";
+}
+function readHookLog(dir, since) {
+  let names;
+  try {
+    names = fs16.readdirSync(dir).filter((name) => /^hooks-.*\.jsonl$/.test(name)).sort();
+  } catch {
+    return { entries: [], files: 0, from: null };
+  }
+  const entries = [];
+  let from = null;
+  for (const name of names) {
+    const hour = /^hooks-(\d{4}-\d{2}-\d{2}T\d{2})\.jsonl$/.exec(name)?.[1];
+    if (hour && from === null) {
+      from = `${hour}:00:00.000Z`;
+    }
+    if (hour && Date.parse(`${hour}:59:59.999Z`) < since) {
+      continue;
+    }
+    let text2;
+    try {
+      text2 = fs16.readFileSync(path18.join(dir, name), "utf8");
+    } catch {
+      continue;
+    }
+    for (const line of text2.split("\n")) {
+      if (!line.trim()) {
+        continue;
+      }
+      try {
+        const entry = JSON.parse(line);
+        if (Date.parse(entry.time) >= since) {
+          entries.push(entry);
+        }
+      } catch {
+      }
+    }
+  }
+  return { entries, files: names.length, from };
+}
+function addEntry(summary, entry) {
+  const into = summary ?? { calls: {}, shown: 0, transcript: null, fired: {}, notes: {}, skipped: {}, errors: {}, first: entry.time, last: entry.time };
+  into.calls[entry.hook] = (into.calls[entry.hook] ?? 0) + 1;
+  into.transcript ??= entry.transcript ?? null;
+  if (entry.shown > 0) {
+    into.shown++;
+  }
+  if (entry.note) {
+    into.notes[entry.note] = (into.notes[entry.note] ?? 0) + 1;
+  }
+  for (const event of entry.events ?? []) {
+    for (const detector of event.detectors ?? []) {
+      if ((detector.findings ?? []).length > 0) {
+        into.fired[detector.id] = (into.fired[detector.id] ?? 0) + 1;
+      }
+      if (detector.error || detector.thrown) {
+        into.errors[detector.id] = detector.error ?? detector.thrown ?? "";
+      }
+    }
+    for (const skipped of event.skipped ?? []) {
+      into.skipped[skipped.id] = skipped.reason;
+    }
+  }
+  if (entry.time < into.first) {
+    into.first = entry.time;
+  }
+  if (entry.time > into.last) {
+    into.last = entry.time;
+  }
+  return into;
+}
+function explain(session, context) {
+  const findings = [];
+  const hooks = session.hooks;
+  const conversation = session.conversation;
+  const setup = context.setups.find((candidate) => candidate.agent === session.agent);
+  if (hooks) {
+    const calls = Object.values(hooks.calls).reduce((sum, count2) => sum + count2, 0);
+    findings.push(`The hooks ran ${times(calls)}: ${Object.entries(hooks.calls).map(([hook, count2]) => `${hook} ${count2}`).join(", ")}.`);
+  } else if (conversation?.hookRuns) {
+    findings.push(`Claude Code ran the plugin's hooks ${times(conversation.hookRuns)}, but the hook log has no line for this session${context.logOn ? ", so it was likely turned off with WELLACTUALLY_HOOK_LOG=0 where the agent ran" : ", because WELLACTUALLY_HOOK_LOG=0 turns it off"}.`);
+  } else if (conversation && conversation.advice > 0) {
+    findings.push("The hooks ran, since advice reached the agent, but the hook log has no line for this session. They wrote to the log of another WELLACTUALLY_HOME, or the log was turned off with WELLACTUALLY_HOOK_LOG=0 where the agent ran.");
+  } else if (context.logFrom && session.started && session.started < context.logFrom && session.updated < context.logFrom) {
+    findings.push("The hook log does not reach back to this session, it keeps one day.");
+  } else {
+    findings.push(`The hooks did not run in this session. ${whyNoHooks(session, setup, context)}`);
+  }
+  if (!conversation && hooks && session.agent !== "opencode") {
+    findings.push(
+      hooks.transcript ? `Its conversation file ${fs16.existsSync(hooks.transcript) ? "has nothing from this time" : "is gone"}, so what the agent read and rated is not known.` : "The agent kept no conversation file for it, as for a short background session, so what it read and rated is not known."
+    );
+  }
+  if (conversation && conversation.hookFailures.length > 0) {
+    findings.push(`${conversation.hookFailures.length === 1 ? "One hook run" : `${conversation.hookFailures.length} hook runs`} failed, the first: ${conversation.hookFailures[0]}`);
+  }
+  if (hooks) {
+    const fired = Object.entries(hooks.fired);
+    if (fired.length > 0) {
+      findings.push(`Detectors fired: ${fired.map(([id, count2]) => `${id} (${count2})`).join(", ")}.`);
+    } else if (Object.keys(hooks.calls).some((hook) => hook !== "SessionStart" && hook !== "SessionEnd" && hook !== "PostCompact")) {
+      const reasons = Object.entries(hooks.notes).filter(([note]) => !note.startsWith("started the background sync") && !note.startsWith("forgot") && !note.startsWith("noted the model"));
+      findings.push(
+        reasons.length > 0 ? `No detector fired. The hook said: ${reasons.map(([note, count2]) => `${note} (${count2})`).join("; ")}.` : "No detector fired: the detectors ran on what the agent did and found nothing they are about."
+      );
+    }
+    const errors = Object.entries(hooks.errors);
+    if (errors.length > 0) {
+      findings.push(`Detectors that failed: ${errors.map(([id, error62]) => `${id}: ${error62}`).join("; ")}.`);
+    }
+    const budget = Object.keys(hooks.notes).find((note) => note.startsWith("left out"));
+    if (budget) {
+      findings.push(`Some advice was left out to stay within the size the agent shows in full: ${budget}.`);
+    }
+  }
+  const advice = conversation ? conversation.advice : hooks ? hooks.shown : 0;
+  const principles = conversation ? Object.keys(conversation.principles) : [];
+  if (conversation && conversation.advice > 0) {
+    findings.push(`Advice reached the agent ${times(conversation.advice)}${principles.length > 0 ? `, from ${principles.join(", ")}` : ""}.`);
+  } else if (!conversation && hooks && hooks.shown > 0) {
+    findings.push(`The hook gave the agent advice ${times(hooks.shown)}. Its conversation was not found, so what it read is not known.`);
+  } else if (conversation && hooks && hooks.shown > 0) {
+    findings.push(`The hook gave advice ${times(hooks.shown)}, but none of it is in the conversation. The agent did not show it to the model.`);
+  } else if (hooks && Object.keys(hooks.fired).length > 0) {
+    findings.push("No advice reached the agent: what fired had been shown in this session before, or the agent did not take the hook's answer.");
+  }
+  if (conversation && conversation.cut > 0) {
+    findings.push(`${conversation.cut === 1 ? "One block of advice was" : `${conversation.cut} blocks of advice were`} cut off before their end by the agent, so the model did not read all of them.`);
+  }
+  const ratings = conversation?.ratings ?? [];
+  if (ratings.length > 0) {
+    findings.push(`The agent rated ${times(ratings.length)}: ${ratings.map(describeRating).join("; ")}.`);
+    const unrecorded = ratings.filter((rating) => rating.recorded === false);
+    if (unrecorded.length > 0) {
+      findings.push(`${unrecorded.length === 1 ? "One rating was" : `${unrecorded.length} ratings were`} not recorded. The server said: ${unrecorded[0]?.reply ?? "nothing"}`);
+    }
+    const unrated = principles.filter((id) => !ratings.some((rating) => rating.id === id));
+    if (unrated.length > 0) {
+      findings.push(`Not rated: ${unrated.join(", ")}.`);
+    }
+  } else if (advice > 0 && conversation) {
+    findings.push(`The agent rated none of the advice. ${whyNoRating(session, context)}`);
+  }
+  return findings;
+}
+function times(count2) {
+  return count2 === 1 ? "once" : `${count2} times`;
+}
+function describeRating(rating) {
+  const outcome = rating.recorded === true ? "recorded" : rating.recorded === false ? "not recorded" : "no answer recorded";
+  return `${rating.id ?? "?"} ${rating.rating ?? "?"} (${outcome})`;
+}
+function whyNoHooks(session, setup, context) {
+  if (!context.logOn) {
+    return "The hook log is turned off with WELLACTUALLY_HOOK_LOG=0, so this is not known for sure.";
+  }
+  if (session.agent === "codex" && session.conversation?.plugin === false) {
+    return "Codex did not load the plugin in this session: it was not installed or was switched off.";
+  }
+  if (session.agent === "opencode") {
+    if (session.cwd && !fs16.existsSync(session.cwd) && !opencodeNamesPlugin(context.env, session.cwd)) {
+      return "Its folder is gone, so whether an opencode.json there named the plugin is not known. The global one does not.";
+    }
+    if (session.cwd && !opencodeNamesPlugin(context.env, session.cwd)) {
+      return "No opencode.json names the plugin, neither the global one nor the project's, so OpenCode did not load it.";
+    }
+    return "The plugin is in opencode.json, so OpenCode likely could not start it: it starts the hook with `node`, which needs Node 20 or newer on the PATH. It also ran the hooks with another WELLACTUALLY_HOME when one was set for it.";
+  }
+  if (setup?.enabled === false) {
+    return setup.notes[0] ?? "The plugin is not enabled.";
+  }
+  if (session.agent === "codex" && setup?.untrusted && setup.untrusted.length > 0) {
+    return `Codex runs a plugin's hooks only once they are trusted in \`/hooks\`, and ${setup.untrusted.join(", ")} are not.`;
+  }
+  if (session.agent === "codex") {
+    return "The hooks are trusted now, so they were likely not yet when this session ran, or the session ran before the plugin was installed. Codex also asks again after an update changed a hook.";
+  }
+  return "The plugin may have been installed or enabled after this session started. A running session picks up a new plugin only after a restart.";
+}
+function whyNoRating(session, context) {
+  const principles = Object.keys(session.conversation?.principles ?? {});
+  if (principles.length > 0 && principles.every((id) => id.startsWith("local/"))) {
+    return "All of it came from local principles, which belong to no registry, so the agent is not asked to rate them.";
+  }
+  if (session.conversation && session.conversation.asked === 0) {
+    return "None of the advice it read asked it to rate, so the request was cut off or left out.";
+  }
+  if (session.conversation?.rateTool === false) {
+    return `rate_principle was not among the agent's tools, so it could not rate. ${RATE_HINT}`;
+  }
+  if (session.agent === "codex" && session.conversation?.plugin === false) {
+    return "Codex did not load the plugin, so its MCP server and rate_principle were missing.";
+  }
+  if (!context.stats) {
+    return `Reporting is turned off on this machine, so even a rating would not have been sent. ${RATE_HINT}`;
+  }
+  return RATE_HINT;
+}
+function readList(file2, key) {
+  try {
+    const json2 = JSON.parse(fs16.readFileSync(file2, "utf8"));
+    const list = Array.isArray(json2) ? json2 : json2?.[key];
+    return Array.isArray(list) ? list.filter((item) => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+function hookCrashes(file2, since) {
+  let text2;
+  try {
+    text2 = fs16.readFileSync(file2, "utf8");
+  } catch {
+    return [];
+  }
+  return text2.split("\n").filter((line) => /^\d{4}-\d{2}-\d{2}T/.test(line) && Date.parse(line.slice(0, 24)) >= since).map((line) => line.length > 300 ? `${line.slice(0, 300)}\u2026` : line);
+}
+function isQuiet(session) {
+  return session.hooks !== null && Object.keys(session.hooks.fired).length === 0 && session.hooks.shown === 0 && (session.conversation?.advice ?? 0) === 0 && (session.conversation?.ratings.length ?? 0) === 0 && Object.keys(session.hooks.errors).length === 0;
+}
+var AGENT_NAMES = { "claude-code": "Claude Code", codex: "Codex", opencode: "OpenCode", pi: "pi" };
+function renderAudit(report, limit = 15) {
+  const lines = [];
+  lines.push(`Well Actually ${report.version}, looking back to ${report.since}.`);
+  lines.push(
+    `Advisory board: ${report.board.principles} principles, ${report.board.enabled} enabled${report.board.syncedAt ? `, last synced ${report.board.syncedAt}` : ", never synced"}. ${report.signedIn ? "Signed in." : "Not signed in, so nothing syncs and no rating is sent."}${report.stats ? "" : " Reporting is off, so ratings are not sent."}`
+  );
+  lines.push(report.log.on ? report.log.files > 0 ? `Hook log: ${report.log.files} files in ${report.home}/logs, from ${report.log.from}.` : `Hook log: empty, no hook has run in the last day.` : "Hook log: turned off with WELLACTUALLY_HOOK_LOG=0 in this shell.");
+  if (report.offProjects.length > 0) {
+    lines.push(`Switched off in: ${report.offProjects.join(", ")}.`);
+  }
+  if (report.offPrinciples.length > 0) {
+    lines.push(`Principles switched off everywhere: ${report.offPrinciples.join(", ")}.`);
+  }
+  if (report.hookCrashes.length > 0) {
+    lines.push(`The hook crashed ${times(report.hookCrashes.length)}, the last: ${report.hookCrashes[report.hookCrashes.length - 1]}`);
+  }
+  for (const setup of report.setups) {
+    const state = setup.enabled === null ? "unknown" : setup.enabled ? "installed and enabled" : "not enabled";
+    const trust = setup.trusted ? `, hooks trusted: ${setup.trusted.length === 0 ? "none" : setup.trusted.join(", ")}` : "";
+    lines.push(`${AGENT_NAMES[setup.agent]}: plugin ${state}${setup.version ? ` (${setup.version})` : ""}${trust}.${setup.notes.length > 0 ? ` ${setup.notes.join(" ")}` : ""}`);
+  }
+  for (const note of report.unreadable) {
+    lines.push(note);
+  }
+  for (const line of report.summary) {
+    lines.push(
+      `${AGENT_NAMES[line.agent]}: ${line.sessions === 1 ? "one session" : `${line.sessions} sessions`}, advice reached the agent in ${line.advised}${line.advised > 0 ? `, and it rated in ${line.rated} of them` : ""}.`
+    );
+  }
+  lines.push("");
+  const quiet = report.sessions.filter(isQuiet);
+  const shown = report.sessions.filter((session) => !isQuiet(session));
+  if (report.sessions.length === 0) {
+    lines.push("No session in this time.");
+  }
+  for (const session of shown.slice(0, limit)) {
+    const where = session.cwd ? ` in ${session.cwd}` : "";
+    lines.push(`${AGENT_NAMES[session.agent]} ${session.session}${where}, last active ${session.updated}${session.model ? `, ${session.model}` : ""}`);
+    if (session.source) {
+      lines.push(`  ${session.source}`);
+    }
+    for (const finding of session.findings) {
+      lines.push(`  - ${finding}`);
+    }
+    lines.push("");
+  }
+  if (shown.length > limit) {
+    lines.push(`And ${shown.length - limit} older sessions like these. --session <id> shows one, --json all.`);
+  }
+  if (quiet.length > 0) {
+    const more = shown.length > 0 ? " more" : "";
+    lines.push(`In ${quiet.length === 1 ? `one${more} session` : `${quiet.length}${more} sessions`} the hooks ran and no detector fired.`);
+  }
+  return lines.join("\n").trimEnd();
+}
+
 // packages/cli/src/main.ts
 var HELP = `wellactually: author principles and run your advisory board
 
@@ -45548,6 +46462,10 @@ Your advisory board
   wellactually disable <id> [--global]  Switch one principle off in this project, or everywhere with --global
   wellactually enable <id> [--global]   Switch it on again
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
+  wellactually audit                    Look back at recent agent sessions: did the hooks run, what fired, what was rated
+        --hours <n>              ... this far back, 24 by default
+        --agent <claude-code|codex|opencode> ... only this agent's sessions
+        --session <id>           ... only the session whose id starts with this
 
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
@@ -45573,7 +46491,9 @@ async function main() {
       output: { type: "string" },
       registry: { type: "string" },
       global: { type: "boolean", default: false },
-      agent: { type: "string" }
+      agent: { type: "string" },
+      hours: { type: "string" },
+      session: { type: "string" }
     }
   });
   const print = (data, rendered) => {
@@ -45750,7 +46670,7 @@ and confirm the code ${start.user_code}`);
         console.error("usage: wellactually update-notice --agent <opencode|opencode-1|pi>");
         return 2;
       }
-      const update = updateNotice(agent, void 0, void 0, path16.resolve(path16.dirname(process.argv[1]), ".."));
+      const update = updateNotice(agent, void 0, void 0, path19.resolve(path19.dirname(process.argv[1]), ".."));
       if (update.stale) {
         startInBackground("check-update");
       }
@@ -45773,6 +46693,21 @@ and confirm the code ${start.user_code}`);
       console.log(
         readConfig().stats ? "Reporting is on: every few minutes, the hook sends how often each principle fired, as a count per day. No file, prompt or finding is sent." : "Reporting is off: nothing about what fires on this machine is sent."
       );
+      return 0;
+    }
+    case "audit": {
+      const hours = values.hours === void 0 ? 24 : Number(values.hours);
+      if (!(hours > 0)) {
+        console.error("--hours is a number of hours, such as 24.");
+        return 2;
+      }
+      const agent = values.agent;
+      if (agent !== void 0 && agent !== "claude-code" && agent !== "codex" && agent !== "opencode") {
+        console.error("--agent is claude-code, codex or opencode.");
+        return 2;
+      }
+      const report = await audit({ hours, agent, session: values.session, cwd: process.cwd() });
+      print(report, renderAudit(report));
       return 0;
     }
     case "list": {
@@ -45850,7 +46785,7 @@ Added ${result.id} to this machine's advisory board.` : renderReport(result));
       }
       log.ms = Math.round(performance.now() - started);
       if (process.env.WELLACTUALLY_HOOK_LOG !== "0") {
-        scheduleHookLog(path16.join(boardHome(), "logs"), log);
+        scheduleHookLog(path19.join(boardHome(), "logs"), log);
       }
       return 0;
     }
