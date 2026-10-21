@@ -12,6 +12,8 @@ export interface HookPayload {
   agent_id?: string;
   /** Claude Code's record of the session, with the model of every message. */
   transcript_path?: string;
+  /** Set by the plugins for agents without hooks of their own, which run the hook through a bridge. */
+  agent?: "opencode" | "pi";
   /** Claude Code's id of the tool call, which an MCP server is told too. */
   tool_use_id?: string;
   cwd?: string;
@@ -247,3 +249,4 @@ function patchedFiles(patch: string): PatchedFile[] {
   endRun();
   return files;
 }
+

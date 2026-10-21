@@ -37,7 +37,7 @@ export function piText(content: unknown): string {
  * `before` is the file the call writes as it was before the call ran: null
  * when it was not there, undefined when that is not known.
  */
-export function piPayload(call: PiCall, base: { session_id: string; cwd: string; transcript_path?: string }, output?: string, before?: string | null): HookPayload | null {
+export function piPayload(call: PiCall, base: Pick<HookPayload, "agent" | "session_id" | "cwd" | "transcript_path">, output?: string, before?: string | null): HookPayload | null {
   const { toolName: tool, input } = call;
   const common = { ...base, tool_use_id: call.toolCallId };
   if (output === undefined) {
@@ -90,7 +90,8 @@ export default async function wellactually(pi: PiApi): Promise<void> {
   const root = pluginRoot();
   // The skills run the command by the plugin's path; pi's shell inherits this process's environment.
   process.env.CLAUDE_PLUGIN_ROOT = root;
-  const base = (ctx: PiContext): { session_id: string; cwd: string; transcript_path?: string } => ({
+  const base = (ctx: PiContext): Pick<HookPayload, "agent" | "session_id" | "cwd" | "transcript_path"> => ({
+    agent: "pi",
     session_id: ctx.sessionManager.getSessionId(),
     cwd: ctx.cwd,
     transcript_path: ctx.sessionManager.getSessionFile(),
