@@ -13617,11 +13617,26 @@ var OPENERS = {
   output: "This is about what the command you ran printed."
 };
 var PREAMBLE = "Each principle below is advice from an expert the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.";
-var RATING = `Once you know how a principle's advice went, you may tell its expert: up, down, or not_applicable when it fired on something it is not about. Use the MCP tool whose name ends in "rate_principle" (search your tools for that word if it is not loaded). It is not a shell command. Leave the rating out of your answer, and out of your report when you are a subagent.`;
+var RATE_TOOL = {
+  "claude-code": 'mcp__plugin_wellactually_wellactually__rate_principle (not loaded? ToolSearch "select:" and that name)',
+  codex: "mcp__wellactually__rate_principle (from a script: tools.mcp__wellactually__rate_principle)",
+  opencode: "wellactually_rate_principle (from a script: tools.wellactually.rate_principle)",
+  "opencode-1": "wellactually_rate_principle",
+  pi: "wellactually_rate_principle"
+};
+var ANY_RATE_TOOL = 'the MCP tool whose name ends in "rate_principle" (not loaded? search your tools for that word)';
+function rating(agent, id) {
+  const tool = agent ? RATE_TOOL[agent] : ANY_RATE_TOOL;
+  return [
+    "Rate each principle above once you know how its advice went: up if it helped, down if it was wrong or unclear, not_applicable if it fired on something it is not about.",
+    `Call ${tool} with { "id": "${id}", "rating": "up" }, not a shell command.`,
+    "Leave the rating out of your answer, and out of your report when you are a subagent."
+  ].join(" ");
+}
 function frame(ctx, firings, alreadyShown = /* @__PURE__ */ new Set()) {
   return frameEvents([{ ctx, firings }], alreadyShown, Number.POSITIVE_INFINITY).text;
 }
-function frameEvents(events, alreadyShown = /* @__PURE__ */ new Set(), budget = ADVICE_BUDGET) {
+function frameEvents(events, alreadyShown = /* @__PURE__ */ new Set(), budget = ADVICE_BUDGET, agent) {
   const firing = events.filter((event) => event.firings.length > 0);
   const due = /* @__PURE__ */ new Set();
   const seen = new Set(alreadyShown);
@@ -13637,7 +13652,7 @@ function frameEvents(events, alreadyShown = /* @__PURE__ */ new Set(), budget = 
   const full = /* @__PURE__ */ new Set();
   for (const event of firing) {
     const next = [...shown, event];
-    const fits = () => adviceBytes(render2(next, full, firing.length - next.length)) <= budget;
+    const fits = () => adviceBytes(render2(next, full, agent, firing.length - next.length)) <= budget;
     for (const item of event.firings) {
       if (due.has(item)) {
         full.add(item);
@@ -13653,12 +13668,12 @@ function frameEvents(events, alreadyShown = /* @__PURE__ */ new Set(), budget = 
   }
   const left = firing.length - shown.length;
   return {
-    text: render2(shown, full, left),
+    text: render2(shown, full, agent, left),
     full: new Set([...full].map((item) => item.principle.hash)),
     shown
   };
 }
-function render2(events, full, left = 0) {
+function render2(events, full, agent, left = 0) {
   if (events.length === 0) {
     return "";
   }
@@ -13688,8 +13703,9 @@ function render2(events, full, left = 0) {
   if (left > 0) {
     lines.push(`Principles also fired on ${left} more ${left === 1 ? "file" : "files"} of this change. They are left out to keep this short and come back when those files change again.`, "");
   }
-  if (events.some(({ firings }) => firings.some(({ principle }) => !principle.id.startsWith("local/")))) {
-    lines.push(RATING);
+  const rated = events.flatMap(({ firings }) => firings).find(({ principle }) => !principle.id.startsWith("local/"));
+  if (rated) {
+    lines.push(rating(agent, rated.principle.id));
   }
   lines.push("</wellactually>");
   return lines.join("\n");
@@ -14408,7 +14424,7 @@ async function fetchHistory(id) {
   }
   return await response.json();
 }
-async function ratePrinciple(id, rating, rater = { agent: null, model: null }) {
+async function ratePrinciple(id, rating2, rater = { agent: null, model: null }) {
   if (id.startsWith("local/")) {
     return `${id} is a local principle. It belongs to no registry, so there is nobody to send a rating to.`;
   }
@@ -14420,11 +14436,11 @@ async function ratePrinciple(id, rating, rater = { agent: null, model: null }) {
     return `${id} is not on this advisory board. Use the id from the <principle id="..."> tag you were shown.`;
   }
   requireToken();
-  const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, rating, ...rater.agent && { agent: rater.agent }, ...rater.model && { model: rater.model } } });
+  const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, rating: rating2, ...rater.agent && { agent: rater.agent }, ...rater.model && { model: rater.model } } });
   if (!response.ok) {
     throw await failure(response);
   }
-  return `Recorded ${rating} for ${id}@${entry.version}. Thank you.`;
+  return `Recorded ${rating2} for ${id}@${entry.version}. Thank you.`;
 }
 
 // packages/cli/src/commands.ts
@@ -15615,7 +15631,7 @@ import path13 from "node:path";
 // packages/cli/package.json
 var package_default = {
   name: "wellactually",
-  version: "0.10.0",
+  version: "0.10.1",
   type: "module",
   description: "The wellactually command and its MCP server",
   bin: {
@@ -15833,7 +15849,7 @@ async function runEvents(payload, events, lockfile, pool, frame2, log) {
     ...newFailures.map(([id, error62]) => `- ${id}: ${error62}`),
     "</wellactually-notice>"
   ].join("\n") : "";
-  const framed = frame2(fired, shown, ADVICE_BUDGET - adviceBytes(notice));
+  const framed = frame2(fired, shown, ADVICE_BUDGET - adviceBytes(notice), payload.agent ?? agentOf2(process.env));
   if (framed.text) {
     parts.push(framed.text);
   }
@@ -45429,9 +45445,9 @@ ${report}`);
         rating: external_exports.enum(["up", "down", "not_applicable"]).describe("up, down or not_applicable")
       }
     },
-    async ({ id, rating }, extra) => {
+    async ({ id, rating: rating2 }, extra) => {
       try {
-        return text(await ratePrinciple(id, rating, await raterOf(server.server.getClientVersion()?.name, extra._meta)));
+        return text(await ratePrinciple(id, rating2, await raterOf(server.server.getClientVersion()?.name, extra._meta)));
       } catch (error62) {
         if (error62 instanceof RegistryError) {
           return text(`The rating was not recorded: ${error62.message} Carry on with your task.`);

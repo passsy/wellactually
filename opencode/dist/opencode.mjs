@@ -3960,7 +3960,7 @@ function fileOf(input) {
   return str(input.path) ?? str(input.filePath);
 }
 function opencodePayload(call, cwd, output, before2) {
-  const base = { session_id: call.sessionID, tool_use_id: call.callID, cwd };
+  const base = { agent: "opencode", session_id: call.sessionID, tool_use_id: call.callID, cwd };
   const { tool, input } = call;
   if (output === void 0) {
     if (SHELL_TOOLS.has(tool) && str(input.command)) {
@@ -4027,10 +4027,10 @@ var Calls = class {
   }
 };
 function sessionStart(sessionID, cwd) {
-  void callHook({ hook_event_name: "SessionStart", session_id: sessionID, cwd });
+  void callHook({ agent: "opencode", hook_event_name: "SessionStart", session_id: sessionID, cwd });
 }
 function compacted(sessionID, cwd) {
-  void callHook({ hook_event_name: "PostCompact", session_id: sessionID, cwd });
+  void callHook({ agent: "opencode", hook_event_name: "PostCompact", session_id: sessionID, cwd });
 }
 function mcpCommand(root) {
   const { file, args } = command(root);
@@ -4087,7 +4087,7 @@ async function setup(ctx) {
     };
   });
   await ctx.session.hook("prompt", async (event) => {
-    const advice = await callHook({ hook_event_name: "UserPromptSubmit", session_id: event.sessionID, prompt: event.prompt?.text ?? "", cwd });
+    const advice = await callHook({ agent: "opencode", hook_event_name: "UserPromptSubmit", session_id: event.sessionID, prompt: event.prompt?.text ?? "", cwd });
     if (advice !== "") {
       await ctx.session.synthetic({ sessionID: event.sessionID, text: advice });
     }
@@ -4154,7 +4154,7 @@ async function server(input) {
     },
     "chat.message": async (hook, output) => {
       const prompt = output.parts.map((part) => part.type === "text" && typeof part.text === "string" && !part.synthetic ? part.text : "").join("\n");
-      const advice = await callHook({ hook_event_name: "UserPromptSubmit", session_id: hook.sessionID, prompt, cwd });
+      const advice = await callHook({ agent: "opencode", hook_event_name: "UserPromptSubmit", session_id: hook.sessionID, prompt, cwd });
       if (advice !== "") {
         output.parts.push({
           id: `prt_wellactually${Date.now().toString(36)}`,

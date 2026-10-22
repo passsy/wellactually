@@ -4067,6 +4067,7 @@ async function wellactually(pi) {
   const root = pluginRoot();
   process.env.CLAUDE_PLUGIN_ROOT = root;
   const base = (ctx) => ({
+    agent: "pi",
     session_id: ctx.sessionManager.getSessionId(),
     cwd: ctx.cwd,
     transcript_path: ctx.sessionManager.getSessionFile()
