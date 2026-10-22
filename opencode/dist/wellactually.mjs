@@ -15631,7 +15631,7 @@ import path13 from "node:path";
 // packages/cli/package.json
 var package_default = {
   name: "wellactually",
-  version: "0.10.1",
+  version: "0.10.2",
   type: "module",
   description: "The wellactually command and its MCP server",
   bin: {
