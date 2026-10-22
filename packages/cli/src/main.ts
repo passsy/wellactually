@@ -39,6 +39,7 @@ import {
 import { logHookFailure, runHook, startInBackground } from "./hook/hook.ts";
 import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
+import { planReview, renderPlan } from "./review.ts";
 import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "./registry/client.ts";
 
@@ -78,6 +79,11 @@ Your advisory board
   wellactually enable <id> [--global]   Switch it on again
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
 
+Review
+  wellactually review [target]          Prepare a review of a change against your advisory board: the diff, every principle and where the detectors fired
+                                 target: nothing for local changes (or the branch against the default branch), base...head, base..head, or a ref
+        --out <dir>              ... into this directory instead of a new temporary one
+
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
   wellactually mcp                      Serve the authoring commands as an MCP server
@@ -107,6 +113,7 @@ async function main(): Promise<number> {
       registry: { type: "string" },
       global: { type: "boolean", default: false },
       agent: { type: "string" },
+      out: { type: "string" },
     },
   });
   const print = (data: unknown, rendered: string): void => {
@@ -352,6 +359,11 @@ async function main(): Promise<number> {
         console.error((error as Error).message);
         return 1;
       }
+    }
+    case "review": {
+      const plan = await planReview(process.cwd(), positionals[0], values.out);
+      print(plan, renderPlan(plan));
+      return 0;
     }
     case "add": {
       const result = await addLocal(positionals[0] ?? ".");

@@ -52,7 +52,7 @@ for (const file of ["wellactually.mjs", "wellactually-worker.mjs", "wellactually
 }
 fs.renameSync(path.join(root, "dist/opencode.mjs"), path.join(opencode, "dist/opencode.mjs"));
 fs.renameSync(path.join(root, "dist/opencode-tui.mjs"), path.join(opencode, "dist/tui.mjs"));
-// OpenCode and pi know a skill by its name alone, and login, sync, disable, enable and audit
+// OpenCode and pi know a skill by its name alone, and login, sync, disable, enable, audit and review
 // are names other skills have too. Their copies are called wellactually-login and so on.
 // OpenCode 1 offers a skill as a slash command only when its metadata asks for it.
 // OpenCode 2 has no such command and loads a skill the user mentions with @.

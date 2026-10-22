@@ -170,6 +170,7 @@ export const PARALLEL_FROM = 14;
  * detector cannot read, slow down or break another's. With a `pool` and
  * enough detectors they run on several threads, otherwise one after another.
  * The result is the same either way, in the order of the advisory board.
+ * A hook call gets `BOARD_BUDGET_MS`; a review, which nobody waits on per file, gets longer.
  */
 export async function runBoard(
   ctx: Ctx,
@@ -177,12 +178,13 @@ export async function runBoard(
   off: ReadonlySet<string> = new Set(),
   pool: DetectorPool | null = null,
   parallelFrom: number = PARALLEL_FROM,
+  budgetMs: number = BOARD_BUDGET_MS,
 ): Promise<BoardRun> {
   const disk = diskFiles();
   const started = performance.now();
   const run: BoardRun = { firings: [], failures: [], detectors: [], skipped: [], ms: 0 };
   const applying: CachedPrinciple[] = [];
-  const skipped = `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it`;
+  const skipped = `skipped, the advisory board used its ${budgetMs} ms budget before reaching it`;
 
   for (const entry of lockfile.entries) {
     // Off on the website, or switched off on this machine for this project or everywhere.
@@ -209,12 +211,12 @@ export async function runBoard(
   let results: DetectorRun[];
   if (pool !== null && applying.length >= parallelFrom) {
     const tasks = applying.map((principle) => ({ bundle: principle.bundle, api: apiOf(principle.manifest) }));
-    results = await pool.run(ctx, tasks, started + BOARD_BUDGET_MS, skipped);
+    results = await pool.run(ctx, tasks, started + budgetMs, skipped);
   } else {
     results = [];
     for (const principle of applying) {
       results.push(
-        performance.now() - started > BOARD_BUDGET_MS
+        performance.now() - started > budgetMs
           ? { findings: [], error: skipped, dropped: [], ms: 0 }
           : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk, apiOf(principle.manifest)),
       );
