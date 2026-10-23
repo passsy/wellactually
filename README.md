@@ -123,6 +123,18 @@ No path, file content, prompt, command or finding is sent.
 The daily look for a newer release of the plugin is a plain download from GitHub and sends nothing.
 Ask your agent to switch reporting off, and it turns both off.
 
+## Review a change
+
+The `review` skill reviews your local changes, a branch or a pull request against your advisory board.
+
+- The detectors run on the lines the change added and removed, so their hits arrive anchored to a line before any model reads the diff.
+- Every principle gets a verdict, also the ones without a detector: a finding, followed, or not applicable.
+  The agent leaves out only what cannot apply to the project, such as Flutter advice in a Rust tool, and says so.
+- Each finding is checked again by an agent that did not raise it, and names the principle it breaks.
+- The report ends with what was covered, such as "96 principles: 4 with findings, 11 followed, 63 not applicable, 18 out of scope".
+
+It runs in the agent you work in, as `/wellactually:review` in Claude Code and `$wellactually:review` in Codex, and needs nothing on the machine but the plugin and a synced advisory board.
+
 ## Write a principle
 
 A principle is a directory, and its name is the principle's id:
