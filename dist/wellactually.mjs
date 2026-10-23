@@ -13525,17 +13525,25 @@ function writeJson(file2, value) {
 `, { mode: 384 });
   fs3.renameSync(temporary, file2);
 }
+function tokenFromEnvironment() {
+  return process.env.WELLACTUALLY_TOKEN?.trim() || null;
+}
+function readStoredConfig() {
+  return readJson(path4.join(boardHome(), "config.json"));
+}
 function readConfig() {
-  const stored = readJson(path4.join(boardHome(), "config.json"));
+  const stored = readStoredConfig();
   return {
     registry: process.env.WELLACTUALLY_REGISTRY ?? stored?.registry ?? DEFAULT_REGISTRY,
-    token: stored?.token ?? null,
+    token: tokenFromEnvironment() ?? stored?.token ?? null,
     handle: stored?.handle ?? null,
     stats: stored?.stats ?? true
   };
 }
 function writeConfig(config2) {
-  writeJson(path4.join(boardHome(), "config.json"), config2);
+  const environment = tokenFromEnvironment();
+  const token = environment !== null && config2.token === environment ? readStoredConfig()?.token ?? null : config2.token;
+  writeJson(path4.join(boardHome(), "config.json"), { ...config2, token });
 }
 function readLockfile() {
   return readJson(path4.join(boardHome(), "board.json")) ?? { syncedAt: null, entries: [] };
@@ -14255,6 +14263,9 @@ function retryAfterMs(response) {
 }
 async function failure(response) {
   if (response.status === 401) {
+    if (tokenFromEnvironment()) {
+      return new RegistryError("the registry refused the token in WELLACTUALLY_TOKEN. It was revoked or is mistyped. Create a new one on your advisory board on the website.", 401);
+    }
     return new RegistryError("not signed in, or the token was revoked. Sign in with the plugin's login skill.");
   }
   const body = await response.json().catch(() => null);
@@ -45555,7 +45566,10 @@ Integration
   wellactually update-notice --agent <opencode|opencode-1|pi> Print what to tell the user about a newer release
   wellactually check-update             Look up the newest release on GitHub
 
-Every authoring command takes --json.`;
+Every authoring command takes --json.
+
+On a CI runner or a cloud agent, set WELLACTUALLY_TOKEN to a token created on your
+advisory board on the website instead of signing in, and run \`wellactually sync\` first.`;
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
   const { values, positionals } = parseArgs({
@@ -45731,10 +45745,10 @@ and confirm the code ${start.user_code}`);
     }
     case "logout":
       logout();
-      console.log("Signed out.");
+      console.log(tokenFromEnvironment() ? "Signed out. WELLACTUALLY_TOKEN is still set, so this machine still signs in with it." : "Signed out.");
       return 0;
     case "whoami":
-      console.log(`${await whoami()} on ${readConfig().registry}`);
+      console.log(`${await whoami()} on ${readConfig().registry}${tokenFromEnvironment() ? ", with the token in WELLACTUALLY_TOKEN" : ""}`);
       return 0;
     case "sync": {
       const result = await sync();

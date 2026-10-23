@@ -65,18 +65,34 @@ function writeJson(file: string, value: unknown): void {
   fs.renameSync(temporary, file);
 }
 
+/**
+ * The token in WELLACTUALLY_TOKEN, or null. It stands in for a login on a machine
+ * that starts fresh every run, such as a CI runner or a cloud agent, which keeps
+ * a token created on the website as a secret.
+ */
+export function tokenFromEnvironment(): string | null {
+  return process.env.WELLACTUALLY_TOKEN?.trim() || null;
+}
+
+function readStoredConfig(): Partial<Config> | null {
+  return readJson<Partial<Config>>(path.join(boardHome(), "config.json"));
+}
+
 export function readConfig(): Config {
-  const stored = readJson<Partial<Config>>(path.join(boardHome(), "config.json"));
+  const stored = readStoredConfig();
   return {
     registry: process.env.WELLACTUALLY_REGISTRY ?? stored?.registry ?? DEFAULT_REGISTRY,
-    token: stored?.token ?? null,
+    token: tokenFromEnvironment() ?? stored?.token ?? null,
     handle: stored?.handle ?? null,
     stats: stored?.stats ?? true,
   };
 }
 
+/** Stores the config. A token from WELLACTUALLY_TOKEN stays a secret of the environment and is never written to disk. */
 export function writeConfig(config: Config): void {
-  writeJson(path.join(boardHome(), "config.json"), config);
+  const environment = tokenFromEnvironment();
+  const token = environment !== null && config.token === environment ? (readStoredConfig()?.token ?? null) : config.token;
+  writeJson(path.join(boardHome(), "config.json"), { ...config, token });
 }
 
 export function readLockfile(): Lockfile {

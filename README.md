@@ -72,6 +72,15 @@ pi install git:github.com/passsy/wellactually
 
 Then open pi and type `/skill:wellactually-login`.
 
+### CI and cloud agents
+
+A CI runner or a cloud agent starts on a fresh machine every run, where nobody can confirm a login code.
+Create a token on [your advisory board](https://wellactually.dev/advisory-board) under connected machines, and store it as the secret `WELLACTUALLY_TOKEN` where the agent runs.
+The plugin and the `wellactually` command then sign in with it and never write it to disk.
+Run `wellactually sync`, or the plugin's sync skill, at the start of the run, so the advisory board is there before the agent works.
+Ratings the agent gives reach the experts as they do from your own machine.
+Revoke the token on the website to stop it.
+
 When a newer release of the plugin is out, it tells you at the start of a session, at most once a day, with the command that updates it in your agent.
 Set `WELLACTUALLY_UPDATE_CHECK=0` to turn that off.
 

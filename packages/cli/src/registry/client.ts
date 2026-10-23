@@ -1,5 +1,5 @@
 import { hashPrinciple, type BoardPrinciple, type CheckReport, type PrincipleFiles, type ReleasedBundle } from "@wellactually/core/node";
-import { hasCached, readConfig, readLockfile, writeCached, writeConfig, writeLockfile } from "../board/board.ts";
+import { hasCached, readConfig, readLockfile, tokenFromEnvironment, writeCached, writeConfig, writeLockfile } from "../board/board.ts";
 import { drainDetections } from "../board/detections.ts";
 import type { Rater } from "./rater.ts";
 
@@ -56,6 +56,9 @@ function retryAfterMs(response: Response): number {
 
 async function failure(response: Response): Promise<RegistryError> {
   if (response.status === 401) {
+    if (tokenFromEnvironment()) {
+      return new RegistryError("the registry refused the token in WELLACTUALLY_TOKEN. It was revoked or is mistyped. Create a new one on your advisory board on the website.", 401);
+    }
     return new RegistryError("not signed in, or the token was revoked. Sign in with the plugin's login skill.");
   }
   const body = (await response.json().catch(() => null)) as { error?: string } | null;
