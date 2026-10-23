@@ -361,6 +361,11 @@ async function main(): Promise<number> {
       }
     }
     case "review": {
+      // On a fresh machine the session-start sync runs in the background and may not be done yet. A review waits for it.
+      if (readLockfile().syncedAt === null && readConfig().token !== null) {
+        const synced = await sync();
+        console.error(`Downloaded the advisory board first: ${synced.entries.length} principles.`);
+      }
       const plan = await planReview(process.cwd(), positionals[0], values.out);
       print(plan, renderPlan(plan));
       return 0;

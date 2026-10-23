@@ -33,7 +33,8 @@ The command writes the review to a directory it prints:
 - `plan.json`: all of it as JSON.
 
 When the change is empty or the advisory board has no principles, say so and stop.
-When the command says there is no advisory board on this machine, the user signs in with the login skill first.
+The command downloads the advisory board first when this machine has never synced it, as on a fresh CI runner with `WELLACTUALLY_TOKEN` set.
+When it says there is no advisory board on this machine, the user signs in with the login skill first, or sets `WELLACTUALLY_TOKEN` on a CI runner.
 When it says no detector saw a file, such as a binary or a very large one, check that file by reading it, and say so in the report.
 
 ## 2. Plan

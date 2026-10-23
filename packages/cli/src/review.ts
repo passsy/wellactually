@@ -501,7 +501,7 @@ export function renderPlan(plan: ReviewPlan): string {
     lines.push("The change is empty: there is nothing to review.");
   }
   if (plan.principles.length === 0 && plan.skipped.length === 0) {
-    lines.push("No advisory board on this machine. Sign in with the login skill, or download it with the sync skill, and run the review again.");
+    lines.push("No advisory board on this machine. Sign in with the login skill, or on a CI runner set WELLACTUALLY_TOKEN to a token from the website, and run the review again.");
   }
   for (const { file, reason } of plan.omitted) {
     lines.push(`Not in diff.patch: ${file}, ${reason}.`);
