@@ -67,3 +67,42 @@ test("a sync of an empty advisory board lists the experts to add, with their pag
     ].join("\n"),
   );
 });
+
+test("a token in WELLACTUALLY_TOKEN signs in without a login and is never written to disk", async () => {
+  vi.stubEnv("WELLACTUALLY_TOKEN", "ci-token");
+  try {
+    const fetch = vi.fn(async (_url: URL, _init: RequestInit) => Response.json({ entries: [] }));
+    vi.stubGlobal("fetch", fetch);
+
+    await sync();
+    writeConfig({ ...readConfig(), stats: false });
+
+    expect(new Headers(fetch.mock.calls[0]?.[1].headers).get("authorization")).toBe("Bearer ci-token");
+    const stored = JSON.parse(fs.readFileSync(path.join(process.env.WELLACTUALLY_HOME!, "config.json"), "utf8")) as { token: string | null; stats: boolean };
+    expect(stored).toMatchObject({ token: null, stats: false });
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test("a token in WELLACTUALLY_TOKEN wins over a login, which stays stored", async () => {
+  writeConfig({ ...readConfig(), token: "login-token", handle: "passsy" });
+  vi.stubEnv("WELLACTUALLY_TOKEN", "ci-token");
+  try {
+    expect(readConfig().token).toBe("ci-token");
+    writeConfig(readConfig());
+  } finally {
+    vi.unstubAllEnvs();
+  }
+  expect(readConfig().token).toBe("login-token");
+});
+
+test("a revoked WELLACTUALLY_TOKEN says where to get a new one", async () => {
+  vi.stubEnv("WELLACTUALLY_TOKEN", "revoked");
+  try {
+    vi.stubGlobal("fetch", async () => Response.json({ error: "Not signed in." }, { status: 401 }));
+    await expect(sync()).rejects.toThrow("WELLACTUALLY_TOKEN");
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});

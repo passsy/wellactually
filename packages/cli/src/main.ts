@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
 import { approvalKey, describeReview, type PackageInfo } from "@wellactually/core/node";
 import { scaffold } from "./board/files.ts";
-import { boardHome, readConfig, readCached, readLockfile, writeConfig } from "./board/board.ts";
+import { boardHome, readConfig, readCached, readLockfile, tokenFromEnvironment, writeConfig } from "./board/board.ts";
 import { serveDetectors } from "./board/pool.ts";
 import { boardOffIn, switchedOff, switchPrinciple, switchProject } from "./board/switches.ts";
 import {
@@ -84,7 +84,10 @@ Integration
   wellactually update-notice --agent <opencode|opencode-1|pi> Print what to tell the user about a newer release
   wellactually check-update             Look up the newest release on GitHub
 
-Every authoring command takes --json.`;
+Every authoring command takes --json.
+
+On a CI runner or a cloud agent, set WELLACTUALLY_TOKEN to a token created on your
+advisory board on the website instead of signing in, and run \`wellactually sync\` first.`;
 
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
@@ -260,10 +263,10 @@ async function main(): Promise<number> {
     }
     case "logout":
       logout();
-      console.log("Signed out.");
+      console.log(tokenFromEnvironment() ? "Signed out. WELLACTUALLY_TOKEN is still set, so this machine still signs in with it." : "Signed out.");
       return 0;
     case "whoami":
-      console.log(`${await whoami()} on ${readConfig().registry}`);
+      console.log(`${await whoami()} on ${readConfig().registry}${tokenFromEnvironment() ? ", with the token in WELLACTUALLY_TOKEN" : ""}`);
       return 0;
     case "sync": {
       const result = await sync();
