@@ -16,9 +16,9 @@ Put every principle in scope, or out of scope with a one-line reason.
 - Out of scope means the principle cannot apply to this project, whatever the change is: Flutter advice in a Rust command-line tool, client-side advice in a backend-only service.
   Never put a principle out of scope because the change looks unrelated to it.
   Checking it costs the reviewer one line.
-- The tags say what a principle is for.
-  A framework tag, such as `flutter`, `react` or `nextjs`, puts it out of scope when the project does not use that framework.
-  A language tag, such as `dart` or `typescript`, does not by itself: when the summary is about an idea that carries over to the project's languages, such as global state or early returns, it stays in scope.
+- The tags decide.
+  A principle tagged with a language or framework, such as `dart`, `flutter` or `typescript`, is written for it, and is out of scope when the project uses none of the languages and frameworks it is tagged with, even when its idea would carry over.
+  A tag that names a topic, such as `documentation` or `enum`, says nothing about scope.
 - A principle without tags is judged by its title and summary.
 - A principle whose detector fired in this change is in scope.
 - When you are not sure, it is in scope.
