@@ -6,7 +6,7 @@ Discover tools by capability, such as `start_review`, `list_findings`, `create_f
 Use the schemas the host exposes; do not run a made-up shell substitute or hand-edit the MCP's storage.
 When the tools are absent or fail, retain the JSON results and report tracking as unavailable.
 
-## Initialize, in the router
+## Initialize, in the coordinator
 
 Read `plan.json` and use its absolute `root` as `repo` on every MCP call.
 Choose one stable `target` for this review: `pr-<number>` for a pull request, otherwise the branch or range under review, or `local-changes` for a working tree review.
@@ -16,12 +16,9 @@ Do not invent PR facts from a local branch name.
 
 ## Investigate, in reviewers, testers and verifiers
 
-Read `tracking.json` and existing findings for that repo and target.
-Check for duplicates and newer human notes before drawing conclusions.
-Use observations for a question passed to another worker when that capability is available.
-Write candidates and evidence to the stage JSON; the report worker alone creates or updates durable findings after verification, so parallel workers do not race to record the same problem.
+Write candidates and evidence to stage JSON. Do not read prior reviews or another concurrent worker's results. The coordinator alone reconciles durable findings after verification, so parallel workers do not race to record the same problem.
 
-## Record, in the report worker
+## Record, in the coordinator
 
 List existing findings again before writing.
 For each verified finding that stands, create it once or update the matching existing finding.

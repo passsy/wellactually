@@ -12,15 +12,17 @@ Read `<dir>/steps/findings.md` for shared findings tracking.
 - The findings of one change set, when you were given a set such as `set-01`: the files in `<dir>/verdicts/` whose job is that set, such as `set-01.json`, `set-01-g2.json` or `testing-set-01.json`, and its diff in `<dir>/sets/set-01/`.
 - The crossing pass, when you were given `crossing`: `<dir>/verdicts/crossing.json` and `<dir>/verdicts/testing-crossing.json`.
 
-Read the diff of what you verify first: `<dir>/diff/` for the whole review, `<dir>/sets/<set>/` for a set.
+Read `task.md` for original requirements when present, then the diff of what you verify: `<dir>/diff/` for the whole review, `<dir>/sets/<set>/` for a set.
 For committed targets, read source at `target.head` rather than assuming the user has checked it out.
+For an ordinary change aim to finish in about 2 minutes: inspect the specific assertions, assumptions and production path of each candidate rather than repeat a general review. Reuse retained probe output when credible; reproduce when necessary to resolve disputed evidence. Do not rerun a broad suite by default. Disclose any unverified assumptions.
+
 Then read the advice of the principle each finding names, `<dir>/principles/<id>.md` with the `/` of the id as `__`, and the code in the repository named by `root` in `<dir>/plan.json`.
 
 ## Challenge an empty candidate set
 
-When your unit has zero candidates across investigation, review and testing, do not merely write an empty verification array.
-Independently inspect the unit's diff and real callers first, before reading its investigation and test results.
-Develop your own failure hypothesis against the stated problem, trace or run a discriminating counterexample, then compare with the existing maps and their dispositions.
+When your unit has zero candidates across review and testing, do not merely write an empty verification array.
+Independently inspect the unit's diff and real callers first, before reading its test results.
+Develop your own failure hypothesis against the stated problem, trace or run a discriminating counterexample, then compare with the existing probe dispositions.
 Write `<dir>/challenges/<unit>.md` with the hypothesis, production path, exact evidence or command, result and limitations.
 If the unit has no executable behavior, challenge an observable contract or requirement instead and explain why execution is inapplicable.
 Promote any independently discovered supported defect with full finding fields, `scope`, evidence and `promoted: true`; otherwise explain what was actually ruled out.

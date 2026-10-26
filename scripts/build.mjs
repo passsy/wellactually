@@ -65,6 +65,9 @@ for (const name of fs.readdirSync(skills)) {
   const copy = path.join(opencode, "skills", `wellactually-${name}`);
   fs.mkdirSync(copy, { recursive: true });
   fs.writeFileSync(path.join(copy, "SKILL.md"), fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1\nmetadata:\n  opencode/slash: \"true\""));
+  if (fs.existsSync(path.join(skills, name, "scripts"))) {
+    fs.cpSync(path.join(skills, name, "scripts"), path.join(copy, "scripts"), { recursive: true });
+  }
   // A skill that comes in several files, such as review with its steps, needs the rest of them beside it.
   for (const file of fs.readdirSync(path.join(skills, name))) {
     if (file !== "SKILL.md" && file.endsWith(".md")) {

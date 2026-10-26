@@ -6,14 +6,15 @@ Read source at that reviewed version: for a non-null `target.head` that differs 
 For a working-tree target, include its uncommitted and untracked contents.
 Keep the reviewed working tree unchanged.
 You may write probes and execute local checks as described in `<dir>/steps/testing.md`.
-Read `<dir>/steps/findings.md` for shared findings tracking.
+Do not read other reviewers' or testers' verdicts. You run concurrently with an independent tester. Write only your own verdict file.
+Prioritize concrete consequential defects; do not manufacture advisory findings to fill a quota. Aim to finish in about 5 minutes for an ordinary change, but disclose unfinished checks rather than claiming completion.
 
 ## Your job
 
 Find your job by its id in `<dir>/jobs.json`: its `parts` are the diff you read, its `principles` the ids you give a verdict.
 The crossing pass has no entry there: see the end of this file.
 
-1. Read `<dir>/context.md`, `<dir>/blind.md`, `<dir>/map.md` and the relevant `investigation/<unit>.json`, then every part of your job in full, in order.
+1. Read `task.md` for original requirements when present, `plan.json`, `project.md` and every part of your job in full, in order. Establish the intended contract from the task and base source, then challenge whether the chosen implementation satisfies it. Trace state/resource ownership, notification, failure and retirement paths where relevant; no separate design document or inventory is required.
    Each part fits in one read.
 2. Then read the advice of each of your principles in full: `<dir>/principles/<id>.md`, with the `/` of the id written as `__`, such as `principles/ana__no-todo.md` for `ana/no-todo`.
 3. Inspect surrounding code, callers, implementations, schemas and tests wherever needed to judge the consequences of the change, including unchanged files outside your assigned diff.
@@ -83,6 +84,6 @@ Answer only with `done` and the number of verdicts you wrote.
 ## The crossing pass
 
 After a change was cut into change sets, one reviewer checks what crosses them.
-Read `<dir>/map.md` and the `crossing` list in `<dir>/sets.json`, and check each item in the repository: do both sides agree, does the name match, does every caller handle the new case.
+Read the `crossing` list in `<dir>/sets.json`, and check each item in the repository: do both sides agree, does the name match, does every caller handle the new case.
 Write `<dir>/verdicts/crossing.json` with `"job": "crossing"`, no `verdicts`, and what you found in `outside`, or with the id of the principle it breaks as `principle` on the finding.
 Answer only with `done` and the number of findings.

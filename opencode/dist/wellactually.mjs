@@ -45961,8 +45961,6 @@ async function planReview(cwd, spec, dir, lockfile = readLockfile()) {
   fs14.writeFileSync(path16.join(out, "principles.md"), renderIndex(plan));
   fs14.writeFileSync(path16.join(out, "plan.json"), `${JSON.stringify(plan, null, 2)}
 `);
-  fs14.writeFileSync(path16.join(out, "baseline.json"), `${JSON.stringify({ root: toPosix(root), base: target.base }, null, 2)}
-`);
   return plan;
 }
 function renderIndex(plan) {
@@ -46006,7 +46004,7 @@ function renderPlan(plan) {
 function adviceTokens(dir, file2) {
   return tokensOf(fs14.statSync(path16.join(dir, file2)).size);
 }
-var STEP_FILES = ["context.md", "blind.md", "investigation.md", "router.md", "splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md", "report.md"];
+var STEP_FILES = ["splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md"];
 function stepsSource() {
   let dir = path16.dirname(fileURLToPath(import.meta.url));
   for (let depth = 0; depth < 5; depth++) {
@@ -46039,7 +46037,11 @@ function readJson3(dir, file2) {
 }
 function routeReview(dir, budget = DEFAULT_BUDGET) {
   const plan = readJson3(dir, "plan.json");
-  const scope = readJson3(dir, "scope.json");
+  const scope = fs14.existsSync(path16.join(dir, "scope.json")) ? readJson3(dir, "scope.json") : { inScope: plan.principles.map((principle) => principle.id), outOfScope: [] };
+  if (!fs14.existsSync(path16.join(dir, "scope.json"))) {
+    fs14.writeFileSync(path16.join(dir, "scope.json"), `${JSON.stringify(scope, null, 2)}
+`);
+  }
   const byId = new Map(plan.principles.map((principle) => [principle.id, principle]));
   const placed = /* @__PURE__ */ new Set([...scope.inScope, ...scope.outOfScope.map((out) => out.id)]);
   const kept = [...scope.inScope.filter((id) => byId.has(id)), ...plan.principles.filter((principle) => !placed.has(principle.id)).map((principle) => principle.id)];
@@ -46186,10 +46188,28 @@ function checkReview(dir, stage) {
       problems.push(`${file2} is missing or unreadable`);
     }
   };
-  requireText("context.md");
-  requireText("blind.md");
+  if (fs14.existsSync(path16.join(dir, "plan.json")) && fs14.existsSync(path16.join(dir, "scope.json"))) {
+    const plan = load("plan.json");
+    const scope = load("scope.json");
+    if (plan !== null && scope !== null) {
+      const excluded = new Set(scope.outOfScope.map((entry) => entry.id));
+      for (const principle of plan.principles) {
+        if (excluded.has(principle.id)) {
+          continue;
+        }
+        for (const unit of units.filter((unit2) => unit2 !== "crossing")) {
+          if (!jobs.some((job) => (job.set ?? "all") === unit && job.principles.includes(principle.id))) {
+            problems.push(`jobs.json is missing principle ${principle.id} in ${unit}`);
+          }
+        }
+      }
+    }
+  }
   const findingScopes = ["introduced", "newly_exposed", "incomplete_fix", "pre_existing"];
   const checkScope = (finding, file2) => {
+    if (finding !== null && typeof finding === "object" && finding.evidence === "proven" && !finding.provenTest) {
+      problems.push(`${file2} has a proven finding without provenTest reproduction evidence`);
+    }
     if (finding === null || typeof finding !== "object" || !findingScopes.includes(finding.scope)) {
       problems.push(`${file2} has a finding without a valid scope`);
     }
@@ -46248,23 +46268,6 @@ function checkReview(dir, stage) {
   }
   if (route.route === "sets") {
     verdicts("crossing", "crossing", [], "crossing");
-  }
-  for (const unit of units) {
-    const file2 = `investigation/${unit}.json`;
-    const investigation = load(file2);
-    if (investigation !== null) {
-      if (investigation.unit !== unit || typeof investigation.designComparison !== "string" || investigation.designComparison.trim() === "") {
-        problems.push(`${file2} needs unit "${unit}" and a designComparison`);
-      }
-      for (const field of ["ownership", "coverage", "hypotheses"]) {
-        if (!Array.isArray(investigation[field]) || investigation[field].length === 0 || investigation[field].some((entry) => typeof entry !== "string" || entry.trim() === "")) {
-          problems.push(`${file2} needs a nonempty ${field} inventory with evidence or an explicit inapplicable reason`);
-        }
-      }
-    }
-    const stem = `investigation-${unit}`;
-    expectedFiles.add(stem);
-    verdicts(stem, unit, [], unit);
   }
   if (through >= 1) {
     for (const unit of units) {

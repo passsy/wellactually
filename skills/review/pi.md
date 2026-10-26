@@ -5,7 +5,7 @@ Tell the user that before you start, because the advice and the diff will fill t
 
 Do every step yourself, in the order of the skill, one job at a time:
 
-- Before each step, and before each job of a step, read its step file again, because its rules matter more than what you remember of them.
+- Read each worker instruction once before doing that job.
 - Write each job's result to its file before you start the next job.
   When the conversation is compacted, the verdicts already written are safe: read `jobs.json` and the files in `verdicts/` to see which jobs are done, and go on with the next.
 - Read only what the current job names, then go on to the next job.
