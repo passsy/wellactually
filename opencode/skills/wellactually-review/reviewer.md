@@ -12,7 +12,7 @@ The crossing pass has no entry there: see the end of this file.
 1. Read `<dir>/map.md`, then every part of your job in full, in order.
    Each part fits in one read.
 2. Then read the advice of each of your principles in full: `<dir>/principles/<id>.md`, with the `/` of the id written as `__`, such as `principles/ana__no-todo.md` for `ana/no-todo`.
-3. Read the code around the change in the repository where you need it.
+3. Read the code around the change in the repository where you need it, the lines you need rather than whole files, because your context has room for your job and little more.
 
 ## Verdicts
 

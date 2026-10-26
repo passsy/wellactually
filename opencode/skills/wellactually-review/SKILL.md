@@ -57,7 +57,7 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" review --route <dir>
 ```
 
 It decides from the size of the advice and the diff, never from how much room a model thinks it has.
-Pass `--budget 1m` only when the user says their model has a window of a million tokens.
+Pass `--budget` only when the user names one, such as `--budget 1m` for a model with a window of a million tokens.
 It prints `Route: single` or `Route: sets`.
 
 ## 3. Cut into change sets, for `Route: sets` only
@@ -89,8 +89,8 @@ With change sets it is one per set, and one for the crossing pass: "Read `<dir>/
 ## 6. Report
 
 Start one subagent with the review model: "Read `<dir>/steps/report.md` and write the report of the review in `<dir>`."
-It also tells each principle's expert how it went.
-Then read `<dir>/report.md` and give it to the user as it is.
+It also tells each principle's expert how it went, and answers with the report.
+Give that report to the user as it is.
 
 Do not fix anything, and do not post to the pull request, unless the user asks for that.
 

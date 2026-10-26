@@ -1,7 +1,7 @@
 # Write the report of a review
 
 You write the report of a finished review, in the review directory you were given, `<dir>`.
-Change no file except the two you write.
+Change no file except `findings.json`.
 
 ## Read
 
@@ -34,7 +34,7 @@ When the tool says the machine is not signed in, as on a CI runner without a tok
 
 ## Report
 
-Write `<dir>/report.md` for the user:
+Answer with the report for the user, as Markdown, and nothing else:
 
 1. The findings that stand, ordered by priority and then by evidence.
    Each names its place as `file:line`, the principle, the problem and the fix, in a sentence or two each.
@@ -43,5 +43,3 @@ Write `<dir>/report.md` for the user:
 3. One line of coverage, such as "63 principles: 4 with findings, 11 followed, 48 not applicable; 33 out of scope".
 4. The out-of-scope principles with their reasons, the files left out with their reasons, and the principles left out with their reasons.
 5. The review directory, so the user can open `findings.json`.
-
-Answer only with `done`.
