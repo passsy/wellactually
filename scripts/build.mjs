@@ -62,9 +62,15 @@ for (const name of fs.readdirSync(skills)) {
   if (!fs.existsSync(source)) {
     continue;
   }
-  const copy = path.join(opencode, "skills", `wellactually-${name}`, "SKILL.md");
-  fs.mkdirSync(path.dirname(copy), { recursive: true });
-  fs.writeFileSync(copy, fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1\nmetadata:\n  opencode/slash: \"true\""));
+  const copy = path.join(opencode, "skills", `wellactually-${name}`);
+  fs.mkdirSync(copy, { recursive: true });
+  fs.writeFileSync(path.join(copy, "SKILL.md"), fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1\nmetadata:\n  opencode/slash: \"true\""));
+  // A skill that comes in several files, such as review with its steps, needs the rest of them beside it.
+  for (const file of fs.readdirSync(path.join(skills, name))) {
+    if (file !== "SKILL.md" && file.endsWith(".md")) {
+      fs.copyFileSync(path.join(skills, name, file), path.join(copy, file));
+    }
+  }
 }
 
 console.log(`built dist: ${[outfile, worker, logWriter, ...plugins].map((file) => path.basename(file)).join(", ")}, and copied the command and the skills into opencode`);

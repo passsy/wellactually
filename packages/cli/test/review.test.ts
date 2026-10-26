@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 import { API_VERSION } from "@wellactually/sdk";
 import { buildBundle } from "@wellactually/core/node";
 import { writeCached } from "../src/board/board.ts";
-import { planReview, renderPlan, resolveTarget } from "../src/review.ts";
+import { buildSets, packDiff, parseBudget, planReview, renderPlan, resolveTarget, routeReview } from "../src/review.ts";
 
 function repo(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-repo-"));
@@ -85,7 +85,7 @@ describe("planning a review", () => {
     // Nothing the review could not look at passes for a clean result.
     expect(plan.unchecked).toEqual([{ file: "image.bin", reason: "binary" }]);
     expect(plan.omitted).toEqual([{ file: "package-lock.json", reason: "a lockfile" }]);
-    expect(renderPlan(plan)).toContain("No detector saw image.bin: binary.");
+    expect(renderPlan(plan)).toContain("1 file left out as generated, 1 file no detector could read, 2 principles left out, each with its reason in plan.json.");
     expect(plan.principles.map(({ id, detector, hits }) => ({ id, detector, hits: hits.map(({ file, line }) => `${file}:${line}`) }))).toEqual([
       { id: "ana/no-todo", detector: true, hits: ["a.ts:2", "new.ts:1"] },
       { id: "ana/server", detector: false, hits: [] },
@@ -118,5 +118,93 @@ describe("planning a review", () => {
     expect(plan.files.map((file) => file.path)).toEqual([".wellactually.json", "b.ts"]);
     expect(plan.principles.map((principle) => principle.id)).toEqual(["ana/no-todo"]);
     expect(plan.skipped).toContainEqual({ id: "ana/server", reason: "switched off with the disable skill" });
+  });
+});
+
+function block(file: string, hunks: number, lines = 10): { file: string; text: string } {
+  const body = Array.from({ length: hunks }, (_, hunk) => `@@ -${hunk * 100 + 1},0 +${hunk * 100 + 1},${lines} @@\n${Array.from({ length: lines }, (_, line) => `+line ${line}\n`).join("")}`).join("");
+  return { file, text: `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n${body}` };
+}
+
+describe("cutting the diff into parts", () => {
+  test("a small change stays one part", () => {
+    expect(packDiff([block("a/x.ts", 1), block("b/y.ts", 1)], 10_000).map((part) => part.map((piece) => piece.file))).toEqual([["a/x.ts", "b/y.ts"]]);
+  });
+
+  test("a folder that fits stays together, even when files of another folder sort between", () => {
+    const blocks = [block("web/a.ts", 4), block("media/b.ts", 4), block("web/c.ts", 4), block("media/d.ts", 4)];
+    const media = Buffer.byteLength(blocks[1]!.text) + Buffer.byteLength(blocks[3]!.text);
+    const parts = packDiff(blocks, media);
+    expect(parts.map((part) => part.map((piece) => piece.file))).toEqual([
+      ["media/b.ts", "media/d.ts"],
+      ["web/a.ts", "web/c.ts"],
+    ]);
+  });
+
+  test("only a file too large on its own is split, at its hunks, each piece with the file's header", () => {
+    const big = block("lib/big.ts", 6);
+    const parts = packDiff([big], Math.ceil(Buffer.byteLength(big.text) / 2));
+    expect(parts.length).toBeGreaterThan(1);
+    for (const [piece] of parts) {
+      expect(piece!.text.startsWith("diff --git a/lib/big.ts b/lib/big.ts\n--- a/lib/big.ts\n+++ b/lib/big.ts\n@@ ")).toBe(true);
+    }
+    expect(parts.map(([piece]) => piece!.text.split("@@ -").length - 1).reduce((a, b) => a + b, 0)).toBe(6);
+  });
+
+  test("generated code is left out, boring code is not", async () => {
+    await board();
+    const dir = repo();
+    fs.writeFileSync(path.join(dir, "model.g.dart"), "// GENERATED CODE - DO NOT MODIFY BY HAND\npart of 'model.dart';\n");
+    fs.writeFileSync(path.join(dir, "strings.ts"), Array.from({ length: 300 }, (_, index) => `export const s${index} = "text ${index}";`).join("\n"));
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-out-"));
+    const plan = await planReview(dir, undefined, out, { syncedAt: null, entries });
+    expect(plan.omitted).toEqual([{ file: "model.g.dart", reason: "generated, as its first lines say" }]);
+    expect(plan.parts.flatMap((part) => part.files)).toContain("strings.ts");
+    expect(fs.readFileSync(path.join(out, "diff/index.md"), "utf8")).toContain("strings.ts");
+  });
+});
+
+describe("routing a review", () => {
+  async function prepared(): Promise<string> {
+    await board();
+    const dir = repo();
+    fs.mkdirSync(path.join(dir, "web"));
+    fs.mkdirSync(path.join(dir, "media"));
+    fs.writeFileSync(path.join(dir, "web/page.ts"), "export const page = 1;\n".repeat(200));
+    fs.writeFileSync(path.join(dir, "media/worker.ts"), "export const worker = 1;\n".repeat(200));
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-out-"));
+    await planReview(dir, undefined, out, { syncedAt: null, entries });
+    // The router forgets ana/server: a principle it did not place is checked, not dropped.
+    fs.writeFileSync(path.join(out, "scope.json"), JSON.stringify({ inScope: ["ana/no-todo"], outOfScope: [] }));
+    return out;
+  }
+
+  test("a change that fits beside the advice goes to one reviewer, with every principle the router kept or forgot", async () => {
+    const out = await prepared();
+    const route = routeReview(out, 100_000);
+    expect(route.route).toBe("single");
+    expect(route.jobs).toEqual([{ id: "all", parts: ["diff/part-01.patch"], principles: ["ana/no-todo", "ana/server"], set: null }]);
+    expect(JSON.parse(fs.readFileSync(path.join(out, "jobs.json"), "utf8"))).toEqual(route.jobs);
+  });
+
+  test("a change that does not fit is cut into change sets, and every file must be in exactly one", async () => {
+    const out = await prepared();
+    const route = routeReview(out, 2_000);
+    expect(route.route).toBe("sets");
+    fs.writeFileSync(path.join(out, "sets.json"), JSON.stringify({ sets: [{ name: "web", files: ["web/page.ts"] }] }));
+    expect(() => buildSets(out)).toThrow(/media\/worker.ts is in no set/);
+    fs.writeFileSync(path.join(out, "sets.json"), JSON.stringify({ sets: [{ name: "web", files: ["web/page.ts"] }, { name: "media", files: ["media/worker.ts"] }] }));
+    const jobs = buildSets(out);
+    expect(jobs.map((job) => [job.id, job.set])).toEqual([
+      ["set-01", "set-01"],
+      ["set-02", "set-02"],
+    ]);
+    expect(fs.readFileSync(path.join(out, jobs[1]!.parts[0]!), "utf8")).toContain("media/worker.ts");
+    expect(fs.readFileSync(path.join(out, jobs[1]!.parts[0]!), "utf8")).not.toContain("web/page.ts");
+  });
+
+  test("a budget is written as the user says it", () => {
+    expect([parseBudget("100k"), parseBudget("1m"), parseBudget("250000")]).toEqual([100_000, 1_000_000, 250_000]);
+    expect(() => parseBudget("lots")).toThrow(/no budget/);
   });
 });

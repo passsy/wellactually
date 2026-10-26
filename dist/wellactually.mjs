@@ -5894,20 +5894,20 @@ var require_resolve = __commonJS({
       return false;
     }
     function countKeys(schema) {
-      let count2 = 0;
+      let count3 = 0;
       for (const key in schema) {
         if (key === "$ref")
           return Infinity;
-        count2++;
+        count3++;
         if (SIMPLE_INLINED.has(key))
           continue;
         if (typeof schema[key] == "object") {
-          (0, util_1.eachItem)(schema[key], (sch) => count2 += countKeys(sch));
+          (0, util_1.eachItem)(schema[key], (sch) => count3 += countKeys(sch));
         }
-        if (count2 === Infinity)
+        if (count3 === Infinity)
           return Infinity;
       }
-      return count2;
+      return count3;
     }
     function getFullPath(resolver, id = "", normalize2) {
       if (normalize2 !== false)
@@ -9389,8 +9389,8 @@ var require_contains = __commonJS({
         cxt.result(valid, () => cxt.reset());
         function validateItemsWithCount() {
           const schValid = gen.name("_valid");
-          const count2 = gen.let("count", 0);
-          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count2)));
+          const count3 = gen.let("count", 0);
+          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count3)));
         }
         function validateItems(_valid, block) {
           gen.forRange("i", 0, len, (i) => {
@@ -9403,16 +9403,16 @@ var require_contains = __commonJS({
             block();
           });
         }
-        function checkLimits(count2) {
-          gen.code((0, codegen_1._)`${count2}++`);
+        function checkLimits(count3) {
+          gen.code((0, codegen_1._)`${count3}++`);
           if (max === void 0) {
-            gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true).break());
+            gen.if((0, codegen_1._)`${count3} >= ${min}`, () => gen.assign(valid, true).break());
           } else {
-            gen.if((0, codegen_1._)`${count2} > ${max}`, () => gen.assign(valid, false).break());
+            gen.if((0, codegen_1._)`${count3} > ${max}`, () => gen.assign(valid, false).break());
             if (min === 1)
               gen.assign(valid, true);
             else
-              gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true));
+              gen.if((0, codegen_1._)`${count3} >= ${min}`, () => gen.assign(valid, true));
           }
         }
       }
@@ -11178,8 +11178,8 @@ function locateWritten(content, fragments) {
     const at = content.indexOf(fragment);
     if (at !== -1) {
       const first = content.slice(0, at).split("\n").length;
-      const count2 = fragment.split("\n").length;
-      for (let line = first; line < first + count2 && line <= lines.length; line++) {
+      const count3 = fragment.split("\n").length;
+      for (let line = first; line < first + count3 && line <= lines.length; line++) {
         written.set(line, lines[line - 1] ?? "");
       }
       continue;
@@ -11596,12 +11596,12 @@ function readPins(files) {
 }
 function splitSpecifier(specifier) {
   const parts = specifier.split("/");
-  const count2 = specifier.startsWith("@") ? 2 : 1;
-  const name = parts.slice(0, count2).join("/");
-  if (parts.length < count2 || !PACKAGE_NAME.test(name)) {
+  const count3 = specifier.startsWith("@") ? 2 : 1;
+  const name = parts.slice(0, count3).join("/");
+  if (parts.length < count3 || !PACKAGE_NAME.test(name)) {
     return null;
   }
-  return { name, subpath: parts.slice(count2).join("/") };
+  return { name, subpath: parts.slice(count3).join("/") };
 }
 function packageOf(path18) {
   if (!isPackageFile(path18)) {
@@ -12916,7 +12916,7 @@ var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 var MAX_DETECT_CALLS = 300;
 var MAX_SHOWN_TEXT = 4e3;
 function assertPrincipleFilesSize(files) {
-  let count2 = 0;
+  let count3 = 0;
   let total = 0;
   let packageCount = 0;
   let packageTotal = 0;
@@ -12925,12 +12925,12 @@ function assertPrincipleFilesSize(files) {
       packageCount++;
       packageTotal += byteLength(content);
     } else {
-      count2++;
+      count3++;
       total += byteLength(content);
     }
   }
-  if (count2 > MAX_FILES) {
-    throw new ManifestError(`a principle may hold at most ${MAX_FILES} files, this one has ${count2}`);
+  if (count3 > MAX_FILES) {
+    throw new ManifestError(`a principle may hold at most ${MAX_FILES} files, this one has ${count3}`);
   }
   if (total > MAX_TOTAL_BYTES) {
     throw new ManifestError(`a principle may hold at most ${MAX_TOTAL_BYTES / 1024} KB, this one has ${Math.ceil(total / 1024)} KB`);
@@ -20808,14 +20808,14 @@ function codePointLength(str) {
   const units = str.length;
   if (!highSurrogate.test(str))
     return units;
-  let count2 = units;
+  let count3 = units;
   for (let i = 0; i < units - 1; i++) {
     if ((str.charCodeAt(i) & 64512) === 55296 && (str.charCodeAt(i + 1) & 64512) === 56320) {
-      count2--;
+      count3--;
       i++;
     }
   }
-  return count2;
+  return count3;
 }
 function getLengthableOrigin(input2) {
   if (Array.isArray(input2))
@@ -25170,8 +25170,8 @@ function az_default() {
 }
 
 // node_modules/zod/v4/locales/be.js
-function getBelarusianPlural(count2, one, few, many) {
-  const absCount = Math.abs(count2);
+function getBelarusianPlural(count3, one, few, many) {
+  const absCount = Math.abs(count3);
   const lastDigit = absCount % 10;
   const lastTwoDigits = absCount % 100;
   if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
@@ -27818,8 +27818,8 @@ function hu_default() {
 }
 
 // node_modules/zod/v4/locales/hy.js
-function getArmenianPlural(count2, one, many) {
-  return Math.abs(count2) === 1 ? one : many;
+function getArmenianPlural(count3, one, many) {
+  return Math.abs(count3) === 1 ? one : many;
 }
 function withDefiniteArticle(word) {
   if (!word)
@@ -30557,8 +30557,8 @@ function ro_default() {
 }
 
 // node_modules/zod/v4/locales/ru.js
-function getRussianPlural(count2, one, few, many) {
-  const absCount = Math.abs(count2);
+function getRussianPlural(count3, one, few, many) {
+  const absCount = Math.abs(count3);
   const lastDigit = absCount % 10;
   const lastTwoDigits = absCount % 100;
   if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
@@ -45535,6 +45535,7 @@ import { execFileSync as execFileSync3 } from "node:child_process";
 import fs14 from "node:fs";
 import os6 from "node:os";
 import path16 from "node:path";
+import { fileURLToPath } from "node:url";
 var REVIEW_BUDGET_MS = 1e4;
 var MAX_FILE_BYTES3 = 512 * 1024;
 var MANIFESTS = /* @__PURE__ */ new Set([
@@ -45672,7 +45673,8 @@ function changedFiles(root, target) {
   return files;
 }
 var LOCKFILES = /* @__PURE__ */ new Set(["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "pubspec.lock", "Cargo.lock", "go.sum", "poetry.lock", "uv.lock", "Gemfile.lock", "composer.lock", "Podfile.lock"]);
-var MAX_FILE_DIFF_BYTES = 64 * 1024;
+var GENERATED_HEADER = /GENERATED CODE - DO NOT MODIFY|Code generated .* DO NOT EDIT|@generated\b/;
+var HEADER_LINES = 10;
 function readableDiff(root, target, files) {
   let diff = git2(root, ["-c", "core.quotepath=false", "diff", "--no-color", "--no-ext-diff", "-M", ...rangeArgs(target)]);
   if (target.head === null) {
@@ -45692,31 +45694,104 @@ function readableDiff(root, target, files) {
     }
   }
   const generated = generatedFiles(root, files);
-  const kept = [];
+  const blocks = [];
   const omitted = [];
-  for (const block of diff.split(/^(?=diff --git )/m)) {
-    const name = /^diff --git a\/.* b\/(.*)$/m.exec(block)?.[1];
-    const reason = name === void 0 ? null : omissionOf(name, block, generated);
-    if (name !== void 0 && reason !== null) {
+  for (const text2 of diff.split(/^(?=diff --git )/m)) {
+    const name = /^diff --git a\/.* b\/(.*)$/m.exec(text2)?.[1];
+    if (name === void 0) {
+      continue;
+    }
+    const content = target.head === null ? contentAt(root, null, name) : contentAt(root, target.head, name);
+    const reason = omissionOf(name, content, generated);
+    if (reason !== null) {
       omitted.push({ file: name, reason });
       continue;
     }
-    kept.push(block);
+    blocks.push({ file: name, text: text2 });
   }
-  return { diff: kept.join(""), omitted };
+  return { blocks, omitted };
 }
-function omissionOf(file2, block, generated) {
+function omissionOf(file2, content, generated) {
   if (generated.has(file2)) {
     return "marked linguist-generated";
   }
   if (LOCKFILES.has(path16.posix.basename(file2))) {
     return "a lockfile";
   }
-  const bytes = Buffer.byteLength(block);
-  if (bytes > MAX_FILE_DIFF_BYTES) {
-    return `its diff has ${Math.round(bytes / 1024)} KB, more than ${MAX_FILE_DIFF_BYTES / 1024} KB`;
+  const top = content?.split("\n", HEADER_LINES).join("\n") ?? "";
+  if (GENERATED_HEADER.test(top)) {
+    return "generated, as its first lines say";
   }
   return null;
+}
+var PART_BYTES = 30 * 1024;
+var BYTES_PER_TOKEN = 3;
+function tokensOf(bytes) {
+  return Math.ceil(bytes / BYTES_PER_TOKEN);
+}
+function splitAtHunks(block, max) {
+  const [header, ...hunks] = block.text.split(/^(?=@@ )/m);
+  const pieces = [];
+  let current2 = "";
+  for (const hunk of hunks) {
+    if (current2 !== "" && Buffer.byteLength(header + current2 + hunk) > max) {
+      pieces.push({ file: block.file, text: header + current2 });
+      current2 = "";
+    }
+    current2 += hunk;
+  }
+  pieces.push({ file: block.file, text: header + current2 });
+  return pieces;
+}
+function packDiff(blocks, max = PART_BYTES) {
+  const size = (group) => group.reduce((sum, block) => sum + Buffer.byteLength(block.text), 0);
+  const pack = (members2, depth) => {
+    if (size(members2) <= max) {
+      return [members2];
+    }
+    if (members2.length === 1) {
+      return splitAtHunks(members2[0], max).map((piece) => [piece]);
+    }
+    const children = /* @__PURE__ */ new Map();
+    for (const block of members2) {
+      const segments = block.file.split("/");
+      const key = depth < segments.length - 1 ? `${segments[depth]}/` : segments[depth];
+      children.set(key, [...children.get(key) ?? [], block]);
+    }
+    if (children.size === 1) {
+      return pack(members2, depth + 1);
+    }
+    const groups = [...children.values()].flatMap((child) => pack(child, depth + 1));
+    const merged = [];
+    for (const group of groups) {
+      const last = merged.at(-1);
+      if (last !== void 0 && size(last) + size(group) <= max) {
+        last.push(...group);
+      } else {
+        merged.push([...group]);
+      }
+    }
+    return merged;
+  };
+  const sorted = [...blocks].sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : 0);
+  return sorted.length === 0 ? [] : pack(sorted, 0);
+}
+function writeParts(dir, into, parts) {
+  fs14.mkdirSync(path16.join(dir, into), { recursive: true });
+  const written = [];
+  parts.forEach((part, index2) => {
+    const file2 = `${into}/part-${String(index2 + 1).padStart(2, "0")}.patch`;
+    const text2 = part.map((block) => block.text).join("");
+    fs14.writeFileSync(path16.join(dir, file2), text2);
+    written.push({ file: file2, bytes: Buffer.byteLength(text2), files: [...new Set(part.map((block) => block.file))] });
+  });
+  const index = ["# Parts of the change", "", "Read every part in full. Each holds whole folders or files, or whole hunks of one long file.", ""];
+  for (const part of written) {
+    index.push(`- ${part.file}: ${Math.round(part.bytes / 1024)} KB: ${part.files.join(", ")}`);
+  }
+  fs14.writeFileSync(path16.join(dir, into, "index.md"), `${index.join("\n")}
+`);
+  return written;
 }
 function generatedFiles(root, files) {
   if (files.length === 0) {
@@ -45767,7 +45842,7 @@ function projectFacts(root, target, files) {
     "",
     `Project files: ${manifests.length > 0 ? manifests.join(", ") : "none found"}`,
     "",
-    `File types in the repository: ${common.map(([ext, count2]) => `${ext} ${count2}`).join(", ")}`,
+    `File types in the repository: ${common.map(([ext, count3]) => `${ext} ${count3}`).join(", ")}`,
     "",
     `Files this change touches: ${files.map((file2) => file2.path).join(", ")}`
   ];
@@ -45797,7 +45872,9 @@ async function planReview(cwd, spec, dir, lockfile = readLockfile()) {
   const target = resolveTarget(root, spec);
   const files = changedFiles(root, target);
   const out = dir ?? fs14.mkdtempSync(path16.join(os6.tmpdir(), "wellactually-review-"));
-  fs14.mkdirSync(path16.join(out, "principles"), { recursive: true });
+  for (const sub of ["principles", "verdicts", "verified"]) {
+    fs14.mkdirSync(path16.join(out, sub), { recursive: true });
+  }
   const off = new Set(switchedOff(root).keys());
   const skipped = [];
   const principles = [];
@@ -45863,7 +45940,10 @@ async function planReview(cwd, spec, dir, lockfile = readLockfile()) {
 `);
   }
   const readable = readableDiff(root, target, files);
-  fs14.writeFileSync(path16.join(out, "diff.patch"), readable.diff);
+  const diffText = readable.blocks.map((block) => block.text).join("");
+  fs14.writeFileSync(path16.join(out, "diff.patch"), diffText);
+  const parts = writeParts(out, "diff", packDiff(readable.blocks));
+  copySteps(out);
   fs14.writeFileSync(path16.join(out, "project.md"), projectFacts(root, target, files));
   const plan = {
     root: toPosix(root),
@@ -45874,6 +45954,8 @@ async function planReview(cwd, spec, dir, lockfile = readLockfile()) {
     principles,
     skipped,
     failures,
+    parts,
+    tokens: { diff: tokensOf(Buffer.byteLength(diffText)), advice: principles.reduce((sum, principle) => sum + adviceTokens(out, principle.file), 0) },
     dir: toPosix(out)
   };
   fs14.writeFileSync(path16.join(out, "principles.md"), renderIndex(plan));
@@ -45890,19 +45972,17 @@ function renderIndex(plan) {
   return `${lines.join("\n")}
 `;
 }
+function count2(n, one, many = `${one}s`) {
+  return `${n} ${n === 1 ? one : many}`;
+}
 function renderPlan(plan) {
   const hits = plan.principles.reduce((sum, principle) => sum + principle.hits.length, 0);
   const fired = plan.principles.filter((principle) => principle.hits.length > 0).length;
-  const detectorless = plan.principles.filter((principle) => !principle.detector).length;
   const lines = [
     `Review of ${plan.target.label} in ${plan.root}`,
-    `${plan.files.length} changed files, ${plan.principles.length} principles (${detectorless} without a detector), ${hits} detector hits from ${fired} principles.`,
-    `Written to ${plan.dir}:`,
-    "  diff.patch      the change",
-    "  project.md      what the project is",
-    "  principles.md   one line per principle",
-    "  principles/     each principle's full advice, with its detector hits",
-    "  plan.json       all of it as JSON"
+    `${count2(plan.files.length, "changed file")} in ${count2(plan.parts.length, "part")}, about ${plan.tokens.diff} tokens of diff.`,
+    `${count2(plan.principles.length, "principle")}, about ${plan.tokens.advice} tokens of advice, ${count2(hits, "detector hit")} from ${count2(fired, "principle")}.`,
+    `Review directory: ${plan.dir}`
   ];
   if (plan.files.length === 0) {
     lines.push("The change is empty: there is nothing to review.");
@@ -45910,19 +45990,152 @@ function renderPlan(plan) {
   if (plan.principles.length === 0 && plan.skipped.length === 0) {
     lines.push("No advisory board on this machine. Sign in with the login skill, or on a CI runner set WELLACTUALLY_TOKEN to a token from the website, and run the review again.");
   }
-  for (const { file: file2, reason } of plan.omitted) {
-    lines.push(`Not in diff.patch: ${file2}, ${reason}.`);
-  }
-  for (const { file: file2, reason } of plan.unchecked) {
-    lines.push(`No detector saw ${file2}: ${reason}.`);
-  }
-  if (plan.skipped.length > 0) {
-    lines.push(`Left out: ${plan.skipped.map((skip) => `${skip.id} (${skip.reason})`).join(", ")}`);
-  }
-  for (const failure3 of plan.failures) {
-    lines.push(`Detector of ${failure3.id} failed on ${failure3.file}: ${failure3.error}`);
+  const notes = [
+    plan.omitted.length > 0 ? `${count2(plan.omitted.length, "file")} left out as generated` : null,
+    plan.unchecked.length > 0 ? `${count2(plan.unchecked.length, "file")} no detector could read` : null,
+    plan.skipped.length > 0 ? `${count2(plan.skipped.length, "principle")} left out` : null,
+    plan.failures.length > 0 ? `${count2(plan.failures.length, "detector failure")}` : null
+  ].filter((note) => note !== null);
+  if (notes.length > 0) {
+    lines.push(`${notes.join(", ")}, each with its reason in plan.json.`);
   }
   return lines.join("\n");
+}
+function adviceTokens(dir, file2) {
+  return tokensOf(fs14.statSync(path16.join(dir, file2)).size);
+}
+var STEP_FILES = ["router.md", "splitter.md", "reviewer.md", "verifier.md", "report.md"];
+function stepsSource() {
+  let dir = path16.dirname(fileURLToPath(import.meta.url));
+  for (let depth = 0; depth < 5; depth++) {
+    for (const candidate of ["skills/review", "skills/wellactually-review"]) {
+      if (fs14.existsSync(path16.join(dir, candidate, "reviewer.md"))) {
+        return path16.join(dir, candidate);
+      }
+    }
+    dir = path16.dirname(dir);
+  }
+  return null;
+}
+function copySteps(out) {
+  const source = stepsSource();
+  if (source === null) {
+    return;
+  }
+  fs14.mkdirSync(path16.join(out, "steps"), { recursive: true });
+  for (const file2 of STEP_FILES) {
+    fs14.copyFileSync(path16.join(source, file2), path16.join(out, "steps", file2));
+  }
+}
+var DEFAULT_BUDGET = 1e5;
+function readJson3(dir, file2) {
+  const full = path16.join(dir, file2);
+  if (!fs14.existsSync(full)) {
+    throw new Error(`${file2} is missing in ${dir}. Run the step that writes it first.`);
+  }
+  return JSON.parse(fs14.readFileSync(full, "utf8"));
+}
+function routeReview(dir, budget = DEFAULT_BUDGET) {
+  const plan = readJson3(dir, "plan.json");
+  const scope = readJson3(dir, "scope.json");
+  const byId = new Map(plan.principles.map((principle) => [principle.id, principle]));
+  const placed = /* @__PURE__ */ new Set([...scope.inScope, ...scope.outOfScope.map((out) => out.id)]);
+  const kept = [...scope.inScope.filter((id) => byId.has(id)), ...plan.principles.filter((principle) => !placed.has(principle.id)).map((principle) => principle.id)];
+  const groups = [];
+  let groupTokens = 0;
+  for (const id of kept) {
+    const tokens = adviceTokens(dir, byId.get(id).file);
+    const last = groups.at(-1);
+    if (last === void 0 || groupTokens + tokens > budget / 2) {
+      groups.push([id]);
+      groupTokens = tokens;
+    } else {
+      last.push(id);
+      groupTokens += tokens;
+    }
+  }
+  const advice = kept.reduce((sum, id) => sum + adviceTokens(dir, byId.get(id).file), 0);
+  const largest = Math.max(0, ...groups.map((group) => group.reduce((sum, id) => sum + adviceTokens(dir, byId.get(id).file), 0)));
+  const room = budget - largest;
+  const route = plan.tokens.diff <= room ? "single" : "sets";
+  const jobs = route === "single" ? groups.map((principles, index) => ({ id: groups.length === 1 ? "all" : `all-g${index + 1}`, parts: plan.parts.map((part) => part.file), principles, set: null })) : [];
+  const result = { route, budget, tokens: { diff: plan.tokens.diff, advice }, groups, setBytes: room * BYTES_PER_TOKEN, jobs };
+  fs14.writeFileSync(path16.join(dir, "route.json"), `${JSON.stringify(result, null, 2)}
+`);
+  if (route === "single") {
+    fs14.writeFileSync(path16.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}
+`);
+  }
+  return result;
+}
+function renderRoute(route) {
+  const lines = [`${route.tokens.advice} tokens of advice in ${count2(route.groups.length, "group")}, ${route.tokens.diff} tokens of diff, a budget of ${route.budget} per reviewer.`];
+  if (route.route === "single") {
+    lines.push(`Route: single. ${count2(route.jobs.length, "reviewer")} for the whole change, listed in jobs.json.`);
+  } else {
+    lines.push(`Route: sets. Cut the change into change sets of at most ${Math.floor(route.setBytes / 1024)} KB of diff each, then run the command with --sets.`);
+  }
+  return lines.join("\n");
+}
+function buildSets(dir) {
+  const plan = readJson3(dir, "plan.json");
+  const route = readJson3(dir, "route.json");
+  const chosen = readJson3(dir, "sets.json");
+  const blocks = /* @__PURE__ */ new Map();
+  for (const part of plan.parts) {
+    const text2 = fs14.readFileSync(path16.join(dir, part.file), "utf8");
+    for (const piece of text2.split(/^(?=diff --git )/m)) {
+      const name = /^diff --git a\/.* b\/(.*)$/m.exec(piece)?.[1];
+      if (name !== void 0) {
+        blocks.set(name, [...blocks.get(name) ?? [], { file: name, text: piece }]);
+      }
+    }
+  }
+  const seen = /* @__PURE__ */ new Map();
+  const problems = [];
+  for (const set2 of chosen.sets) {
+    for (const file2 of set2.files) {
+      if (!blocks.has(file2)) {
+        problems.push(`${file2} in "${set2.name}" is not in the diff`);
+      } else if (seen.has(file2)) {
+        problems.push(`${file2} is in "${seen.get(file2)}" and in "${set2.name}"`);
+      } else {
+        seen.set(file2, set2.name);
+      }
+    }
+  }
+  for (const file2 of blocks.keys()) {
+    if (!seen.has(file2)) {
+      problems.push(`${file2} is in no set`);
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`The change sets need fixing:
+- ${problems.join("\n- ")}`);
+  }
+  const jobs = [];
+  chosen.sets.forEach((set2, index) => {
+    const id = `set-${String(index + 1).padStart(2, "0")}`;
+    const parts = writeParts(dir, `sets/${id}`, packDiff(set2.files.flatMap((file2) => blocks.get(file2) ?? [])));
+    route.groups.forEach((principles, group) => {
+      jobs.push({ id: route.groups.length === 1 ? id : `${id}-g${group + 1}`, parts: parts.map((part) => part.file), principles, set: id });
+    });
+  });
+  fs14.writeFileSync(path16.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}
+`);
+  return jobs;
+}
+function renderSets(jobs) {
+  const sets = new Set(jobs.map((job) => job.set)).size;
+  return `${count2(sets, "change set")}, ${count2(jobs.length, "reviewer")} listed in jobs.json.`;
+}
+function parseBudget(text2) {
+  const match = /^(\d+(?:\.\d+)?)\s*([km]?)$/i.exec(text2.trim());
+  if (!match) {
+    throw new Error(`"${text2}" is no budget. Write a number of tokens, such as 100k or 1m.`);
+  }
+  const scale = { "": 1, k: 1e3, m: 1e6 }[match[2].toLowerCase()];
+  return Math.round(Number(match[1]) * scale);
 }
 
 // packages/cli/src/main.ts
@@ -45966,6 +46179,9 @@ Review
   wellactually review [target]          Prepare a review of a change against your advisory board: the diff, every principle and where the detectors fired
                                  target: nothing for local changes (or the branch against the default branch), base...head, base..head, or a ref
         --out <dir>              ... into this directory instead of a new temporary one
+  wellactually review --route <dir>     Pick how a prepared review runs, from the principles in scope.json and a token budget per reviewer
+        --budget <tokens>        ... per reviewer instead of 100k, such as 1m for a model with a 1M window
+  wellactually review --sets <dir>      Build the change sets in sets.json into parts, one reviewer each
 
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
@@ -45995,7 +46211,10 @@ async function main() {
       registry: { type: "string" },
       global: { type: "boolean", default: false },
       agent: { type: "string" },
-      out: { type: "string" }
+      out: { type: "string" },
+      route: { type: "string" },
+      sets: { type: "string" },
+      budget: { type: "string" }
     }
   });
   const print = (data, rendered) => {
@@ -46238,6 +46457,21 @@ and confirm the code ${start.user_code}`);
       }
     }
     case "review": {
+      try {
+        if (values.route !== void 0) {
+          const route = routeReview(values.route, values.budget === void 0 ? void 0 : parseBudget(values.budget));
+          print(route, renderRoute(route));
+          return 0;
+        }
+        if (values.sets !== void 0) {
+          const jobs = buildSets(values.sets);
+          print(jobs, renderSets(jobs));
+          return 0;
+        }
+      } catch (error62) {
+        console.error(error62.message);
+        return 1;
+      }
       if (readLockfile().syncedAt === null && readConfig().token !== null) {
         const synced = await sync();
         console.error(`Downloaded the advisory board first: ${synced.entries.length} principles.`);

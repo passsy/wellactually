@@ -39,7 +39,7 @@ import {
 import { logHookFailure, runHook, startInBackground } from "./hook/hook.ts";
 import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
-import { planReview, renderPlan } from "./review.ts";
+import { buildSets, parseBudget, planReview, renderPlan, renderRoute, renderSets, routeReview } from "./review.ts";
 import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "./registry/client.ts";
 
@@ -83,6 +83,9 @@ Review
   wellactually review [target]          Prepare a review of a change against your advisory board: the diff, every principle and where the detectors fired
                                  target: nothing for local changes (or the branch against the default branch), base...head, base..head, or a ref
         --out <dir>              ... into this directory instead of a new temporary one
+  wellactually review --route <dir>     Pick how a prepared review runs, from the principles in scope.json and a token budget per reviewer
+        --budget <tokens>        ... per reviewer instead of 100k, such as 1m for a model with a 1M window
+  wellactually review --sets <dir>      Build the change sets in sets.json into parts, one reviewer each
 
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
@@ -114,6 +117,9 @@ async function main(): Promise<number> {
       global: { type: "boolean", default: false },
       agent: { type: "string" },
       out: { type: "string" },
+      route: { type: "string" },
+      sets: { type: "string" },
+      budget: { type: "string" },
     },
   });
   const print = (data: unknown, rendered: string): void => {
@@ -361,6 +367,21 @@ async function main(): Promise<number> {
       }
     }
     case "review": {
+      try {
+        if (values.route !== undefined) {
+          const route = routeReview(values.route, values.budget === undefined ? undefined : parseBudget(values.budget));
+          print(route, renderRoute(route));
+          return 0;
+        }
+        if (values.sets !== undefined) {
+          const jobs = buildSets(values.sets);
+          print(jobs, renderSets(jobs));
+          return 0;
+        }
+      } catch (error) {
+        console.error((error as Error).message);
+        return 1;
+      }
       // On a fresh machine the session-start sync runs in the background and may not be done yet. A review waits for it.
       if (readLockfile().syncedAt === null && readConfig().token !== null) {
         const synced = await sync();

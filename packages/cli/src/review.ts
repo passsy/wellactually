@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Ctx, Written } from "@wellactually/sdk";
 import { fileCtx, hasDetector } from "@wellactually/core/node";
 import { describeFinding } from "./hook/finding.ts";
@@ -66,6 +67,10 @@ export interface ReviewPlan {
   skipped: { id: string; reason: string }[];
   /** Detectors that failed on a file of the change. */
   failures: { id: string; file: string; error: string }[];
+  /** The diff in parts a reviewer reads one by one. */
+  parts: DiffPart[];
+  /** The estimated size of what a reviewer reads, in tokens. */
+  tokens: { diff: number; advice: number };
   /** Where the plan, the diff and the advice were written. */
   dir: string;
 }
@@ -232,17 +237,26 @@ export function changedFiles(root: string, target: ReviewTarget): ChangedFile[] 
 
 /** Lockfiles change with every dependency bump and say nothing a reviewer reads line by line. */
 const LOCKFILES = new Set(["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "pubspec.lock", "Cargo.lock", "go.sum", "poetry.lock", "uv.lock", "Gemfile.lock", "composer.lock", "Podfile.lock"]);
-/** A file whose diff is longer than this is generated or bundled, and would crowd out the rest. */
-const MAX_FILE_DIFF_BYTES = 64 * 1024;
+/** What code generators write at the top of what they generate: build_runner and freezed, Go, and the `@generated` convention. */
+const GENERATED_HEADER = /GENERATED CODE - DO NOT MODIFY|Code generated .* DO NOT EDIT|@generated\b/;
+/** How far down a generated header may be. */
+const HEADER_LINES = 10;
+
+/** One file's part of the diff. */
+interface DiffBlock {
+  file: string;
+  text: string;
+}
 
 /**
  * The diff a reviewer reads, with context, untracked files included as new ones.
  *
- * Lockfiles, files marked as generated and files with a very long diff are
- * left out of it and listed in `omitted`. The detectors still see them, when
- * they are text and not too large.
+ * Only generated code is left out of it, and listed in `omitted`: lockfiles,
+ * files marked as generated and files that say so in their first lines.
+ * Boring code can have bugs too. The detectors still see every file, when it
+ * is text and not too large.
  */
-function readableDiff(root: string, target: ReviewTarget, files: ChangedFile[]): { diff: string; omitted: ReviewPlan["omitted"] } {
+function readableDiff(root: string, target: ReviewTarget, files: ChangedFile[]): { blocks: DiffBlock[]; omitted: ReviewPlan["omitted"] } {
   let diff = git(root, ["-c", "core.quotepath=false", "diff", "--no-color", "--no-ext-diff", "-M", ...rangeArgs(target)]);
   if (target.head === null) {
     const tracked = new Set(git(root, ["-c", "core.quotepath=false", "diff", "--name-only", "-z", ...rangeArgs(target)]).split("\0"));
@@ -262,33 +276,131 @@ function readableDiff(root: string, target: ReviewTarget, files: ChangedFile[]):
     }
   }
   const generated = generatedFiles(root, files);
-  const kept: string[] = [];
+  const blocks: DiffBlock[] = [];
   const omitted: ReviewPlan["omitted"] = [];
-  for (const block of diff.split(/^(?=diff --git )/m)) {
-    const name = /^diff --git a\/.* b\/(.*)$/m.exec(block)?.[1];
-    const reason = name === undefined ? null : omissionOf(name, block, generated);
-    if (name !== undefined && reason !== null) {
+  for (const text of diff.split(/^(?=diff --git )/m)) {
+    const name = /^diff --git a\/.* b\/(.*)$/m.exec(text)?.[1];
+    if (name === undefined) {
+      continue;
+    }
+    const content = target.head === null ? contentAt(root, null, name) : contentAt(root, target.head, name);
+    const reason = omissionOf(name, content, generated);
+    if (reason !== null) {
       omitted.push({ file: name, reason });
       continue;
     }
-    kept.push(block);
+    blocks.push({ file: name, text });
   }
-  return { diff: kept.join(""), omitted };
+  return { blocks, omitted };
 }
 
 /** Why a file's diff is left out of what the reviewer reads, or null when it is kept. */
-function omissionOf(file: string, block: string, generated: ReadonlySet<string>): string | null {
+function omissionOf(file: string, content: string | null, generated: ReadonlySet<string>): string | null {
   if (generated.has(file)) {
     return "marked linguist-generated";
   }
   if (LOCKFILES.has(path.posix.basename(file))) {
     return "a lockfile";
   }
-  const bytes = Buffer.byteLength(block);
-  if (bytes > MAX_FILE_DIFF_BYTES) {
-    return `its diff has ${Math.round(bytes / 1024)} KB, more than ${MAX_FILE_DIFF_BYTES / 1024} KB`;
+  const top = content?.split("\n", HEADER_LINES).join("\n") ?? "";
+  if (GENERATED_HEADER.test(top)) {
+    return "generated, as its first lines say";
   }
   return null;
+}
+
+/** The diff of each part is at most this large, so any agent reads a part in one go: Codex cuts the middle out of output over 10k tokens. */
+export const PART_BYTES = 30 * 1024;
+
+/** A slice of the diff for one read: whole files, or whole hunks of one long file. */
+export interface DiffPart {
+  /** Relative to the review directory. */
+  file: string;
+  bytes: number;
+  files: string[];
+}
+
+/** A diff is about this many bytes per token, a little less than prose, so estimates err on the large side. */
+const BYTES_PER_TOKEN = 3;
+
+export function tokensOf(bytes: number): number {
+  return Math.ceil(bytes / BYTES_PER_TOKEN);
+}
+
+/** A long file's diff cut at its hunks, each piece with the file's header, none larger than `max` unless one hunk is. */
+function splitAtHunks(block: DiffBlock, max: number): DiffBlock[] {
+  const [header, ...hunks] = block.text.split(/^(?=@@ )/m);
+  const pieces: DiffBlock[] = [];
+  let current = "";
+  for (const hunk of hunks) {
+    if (current !== "" && Buffer.byteLength(header + current + hunk) > max) {
+      pieces.push({ file: block.file, text: header + current });
+      current = "";
+    }
+    current += hunk;
+  }
+  pieces.push({ file: block.file, text: header + current });
+  return pieces;
+}
+
+/**
+ * Packs the diff into parts of at most `max` bytes along the folder tree: a
+ * folder that fits stays together, a larger one is split at its subfolders,
+ * and only a single file that is too large is split at its hunks. Neighbours
+ * that fit together share a part, so a small change stays one part.
+ */
+export function packDiff(blocks: DiffBlock[], max: number = PART_BYTES): DiffBlock[][] {
+  const size = (group: DiffBlock[]): number => group.reduce((sum, block) => sum + Buffer.byteLength(block.text), 0);
+  const pack = (members: DiffBlock[], depth: number): DiffBlock[][] => {
+    if (size(members) <= max) {
+      return [members];
+    }
+    if (members.length === 1) {
+      return splitAtHunks(members[0] as DiffBlock, max).map((piece) => [piece]);
+    }
+    // The members of this folder by their next path segment, a file being its own segment.
+    const children = new Map<string, DiffBlock[]>();
+    for (const block of members) {
+      const segments = block.file.split("/");
+      const key = depth < segments.length - 1 ? `${segments[depth]}/` : (segments[depth] as string);
+      children.set(key, [...(children.get(key) ?? []), block]);
+    }
+    if (children.size === 1) {
+      return pack(members, depth + 1);
+    }
+    const groups = [...children.values()].flatMap((child) => pack(child, depth + 1));
+    // Siblings that fit together share a part.
+    const merged: DiffBlock[][] = [];
+    for (const group of groups) {
+      const last = merged.at(-1);
+      if (last !== undefined && size(last) + size(group) <= max) {
+        last.push(...group);
+      } else {
+        merged.push([...group]);
+      }
+    }
+    return merged;
+  };
+  const sorted = [...blocks].sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+  return sorted.length === 0 ? [] : pack(sorted, 0);
+}
+
+/** Writes the parts into `dir/<into>` with an index, and returns them. */
+function writeParts(dir: string, into: string, parts: DiffBlock[][]): DiffPart[] {
+  fs.mkdirSync(path.join(dir, into), { recursive: true });
+  const written: DiffPart[] = [];
+  parts.forEach((part, index) => {
+    const file = `${into}/part-${String(index + 1).padStart(2, "0")}.patch`;
+    const text = part.map((block) => block.text).join("");
+    fs.writeFileSync(path.join(dir, file), text);
+    written.push({ file, bytes: Buffer.byteLength(text), files: [...new Set(part.map((block) => block.file))] });
+  });
+  const index = ["# Parts of the change", "", "Read every part in full. Each holds whole folders or files, or whole hunks of one long file.", ""];
+  for (const part of written) {
+    index.push(`- ${part.file}: ${Math.round(part.bytes / 1024)} KB: ${part.files.join(", ")}`);
+  }
+  fs.writeFileSync(path.join(dir, into, "index.md"), `${index.join("\n")}\n`);
+  return written;
 }
 
 /** The changed files the repository marks as generated with `linguist-generated` in `.gitattributes`, as GitHub reads it. */
@@ -385,7 +497,9 @@ export async function planReview(cwd: string, spec?: string, dir?: string, lockf
   const target = resolveTarget(root, spec);
   const files = changedFiles(root, target);
   const out = dir ?? fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-"));
-  fs.mkdirSync(path.join(out, "principles"), { recursive: true });
+  for (const sub of ["principles", "verdicts", "verified"]) {
+    fs.mkdirSync(path.join(out, sub), { recursive: true });
+  }
 
   const off = new Set(switchedOff(root).keys());
   const skipped: ReviewPlan["skipped"] = [];
@@ -455,7 +569,10 @@ export async function planReview(cwd: string, spec?: string, dir?: string, lockf
   }
 
   const readable = readableDiff(root, target, files);
-  fs.writeFileSync(path.join(out, "diff.patch"), readable.diff);
+  const diffText = readable.blocks.map((block) => block.text).join("");
+  fs.writeFileSync(path.join(out, "diff.patch"), diffText);
+  const parts = writeParts(out, "diff", packDiff(readable.blocks));
+  copySteps(out);
   fs.writeFileSync(path.join(out, "project.md"), projectFacts(root, target, files));
   const plan: ReviewPlan = {
     root: toPosix(root),
@@ -466,6 +583,8 @@ export async function planReview(cwd: string, spec?: string, dir?: string, lockf
     principles,
     skipped,
     failures,
+    parts,
+    tokens: { diff: tokensOf(Buffer.byteLength(diffText)), advice: principles.reduce((sum, principle) => sum + adviceTokens(out, principle.file), 0) },
     dir: toPosix(out),
   };
   fs.writeFileSync(path.join(out, "principles.md"), renderIndex(plan));
@@ -483,19 +602,18 @@ function renderIndex(plan: ReviewPlan): string {
   return `${lines.join("\n")}\n`;
 }
 
+function count(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 export function renderPlan(plan: ReviewPlan): string {
   const hits = plan.principles.reduce((sum, principle) => sum + principle.hits.length, 0);
   const fired = plan.principles.filter((principle) => principle.hits.length > 0).length;
-  const detectorless = plan.principles.filter((principle) => !principle.detector).length;
   const lines = [
     `Review of ${plan.target.label} in ${plan.root}`,
-    `${plan.files.length} changed files, ${plan.principles.length} principles (${detectorless} without a detector), ${hits} detector hits from ${fired} principles.`,
-    `Written to ${plan.dir}:`,
-    "  diff.patch      the change",
-    "  project.md      what the project is",
-    "  principles.md   one line per principle",
-    "  principles/     each principle's full advice, with its detector hits",
-    "  plan.json       all of it as JSON",
+    `${count(plan.files.length, "changed file")} in ${count(plan.parts.length, "part")}, about ${plan.tokens.diff} tokens of diff.`,
+    `${count(plan.principles.length, "principle")}, about ${plan.tokens.advice} tokens of advice, ${count(hits, "detector hit")} from ${count(fired, "principle")}.`,
+    `Review directory: ${plan.dir}`,
   ];
   if (plan.files.length === 0) {
     lines.push("The change is empty: there is nothing to review.");
@@ -503,17 +621,213 @@ export function renderPlan(plan: ReviewPlan): string {
   if (plan.principles.length === 0 && plan.skipped.length === 0) {
     lines.push("No advisory board on this machine. Sign in with the login skill, or on a CI runner set WELLACTUALLY_TOKEN to a token from the website, and run the review again.");
   }
-  for (const { file, reason } of plan.omitted) {
-    lines.push(`Not in diff.patch: ${file}, ${reason}.`);
-  }
-  for (const { file, reason } of plan.unchecked) {
-    lines.push(`No detector saw ${file}: ${reason}.`);
-  }
-  if (plan.skipped.length > 0) {
-    lines.push(`Left out: ${plan.skipped.map((skip) => `${skip.id} (${skip.reason})`).join(", ")}`);
-  }
-  for (const failure of plan.failures) {
-    lines.push(`Detector of ${failure.id} failed on ${failure.file}: ${failure.error}`);
+  const notes = [
+    plan.omitted.length > 0 ? `${count(plan.omitted.length, "file")} left out as generated` : null,
+    plan.unchecked.length > 0 ? `${count(plan.unchecked.length, "file")} no detector could read` : null,
+    plan.skipped.length > 0 ? `${count(plan.skipped.length, "principle")} left out` : null,
+    plan.failures.length > 0 ? `${count(plan.failures.length, "detector failure")}` : null,
+  ].filter((note) => note !== null);
+  if (notes.length > 0) {
+    lines.push(`${notes.join(", ")}, each with its reason in plan.json.`);
   }
   return lines.join("\n");
+}
+
+/** The estimated tokens of a principle's advice file in the review directory. */
+function adviceTokens(dir: string, file: string): number {
+  return tokensOf(fs.statSync(path.join(dir, file)).size);
+}
+
+/** The instructions of each step of the review, which ship beside the review skill. */
+const STEP_FILES = ["router.md", "splitter.md", "reviewer.md", "verifier.md", "report.md"];
+
+/** The folder of the review skill: beside the command in the plugin, or in this repository. */
+function stepsSource(): string | null {
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  for (let depth = 0; depth < 5; depth++) {
+    for (const candidate of ["skills/review", "skills/wellactually-review"]) {
+      if (fs.existsSync(path.join(dir, candidate, "reviewer.md"))) {
+        return path.join(dir, candidate);
+      }
+    }
+    dir = path.dirname(dir);
+  }
+  return null;
+}
+
+/** Copies the step instructions into the review directory, so every subagent finds them next to its inputs. */
+function copySteps(out: string): void {
+  const source = stepsSource();
+  if (source === null) {
+    return;
+  }
+  fs.mkdirSync(path.join(out, "steps"), { recursive: true });
+  for (const file of STEP_FILES) {
+    fs.copyFileSync(path.join(source, file), path.join(out, "steps", file));
+  }
+}
+
+/**
+ * What a reviewer may be handed, by default. An agent starts a subagent with
+ * about 85k tokens of its own system prompt and tools, so its advice and its
+ * diff fit a 200k window with room left for the files it opens.
+ */
+export const DEFAULT_BUDGET = 100_000;
+
+/** One reviewer's work: which parts of the diff it reads, with which principles. */
+export interface ReviewJob {
+  id: string;
+  parts: string[];
+  principles: string[];
+  /** The change set it reviews, or null for the whole change. */
+  set: string | null;
+}
+
+export interface ReviewRoute {
+  route: "single" | "sets";
+  budget: number;
+  tokens: { diff: number; advice: number };
+  /** The principles in groups that each fit half the budget, so every reviewer has room for its diff. */
+  groups: string[][];
+  /** A change set's diff may have this many bytes. */
+  setBytes: number;
+  /** The reviewers to start, when the route is single. With change sets, they come once the sets are built. */
+  jobs: ReviewJob[];
+}
+
+interface Scope {
+  inScope: string[];
+  outOfScope: { id: string; reason: string }[];
+}
+
+function readJson<T>(dir: string, file: string): T {
+  const full = path.join(dir, file);
+  if (!fs.existsSync(full)) {
+    throw new Error(`${file} is missing in ${dir}. Run the step that writes it first.`);
+  }
+  return JSON.parse(fs.readFileSync(full, "utf8")) as T;
+}
+
+/**
+ * Decides how the review runs, from what the reviewers would read and not
+ * from what a model thinks it has room for, which no model can tell.
+ *
+ * The principles the router kept are grouped so a group's advice fits half
+ * the budget. The whole change goes to one reviewer per group when it fits
+ * beside the largest group, else the change is cut into change sets first.
+ */
+export function routeReview(dir: string, budget: number = DEFAULT_BUDGET): ReviewRoute {
+  const plan = readJson<ReviewPlan>(dir, "plan.json");
+  const scope = readJson<Scope>(dir, "scope.json");
+  const byId = new Map(plan.principles.map((principle) => [principle.id, principle]));
+  const placed = new Set([...scope.inScope, ...scope.outOfScope.map((out) => out.id)]);
+  // A principle the router forgot is checked, not dropped.
+  const kept = [...scope.inScope.filter((id) => byId.has(id)), ...plan.principles.filter((principle) => !placed.has(principle.id)).map((principle) => principle.id)];
+  const groups: string[][] = [];
+  let groupTokens = 0;
+  for (const id of kept) {
+    const tokens = adviceTokens(dir, (byId.get(id) as ReviewPrinciple).file);
+    const last = groups.at(-1);
+    if (last === undefined || groupTokens + tokens > budget / 2) {
+      groups.push([id]);
+      groupTokens = tokens;
+    } else {
+      last.push(id);
+      groupTokens += tokens;
+    }
+  }
+  const advice = kept.reduce((sum, id) => sum + adviceTokens(dir, (byId.get(id) as ReviewPrinciple).file), 0);
+  const largest = Math.max(0, ...groups.map((group) => group.reduce((sum, id) => sum + adviceTokens(dir, (byId.get(id) as ReviewPrinciple).file), 0)));
+  const room = budget - largest;
+  const route: ReviewRoute["route"] = plan.tokens.diff <= room ? "single" : "sets";
+  const jobs: ReviewJob[] =
+    route === "single" ? groups.map((principles, index) => ({ id: groups.length === 1 ? "all" : `all-g${index + 1}`, parts: plan.parts.map((part) => part.file), principles, set: null })) : [];
+  const result: ReviewRoute = { route, budget, tokens: { diff: plan.tokens.diff, advice }, groups, setBytes: room * BYTES_PER_TOKEN, jobs };
+  fs.writeFileSync(path.join(dir, "route.json"), `${JSON.stringify(result, null, 2)}\n`);
+  if (route === "single") {
+    fs.writeFileSync(path.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}\n`);
+  }
+  return result;
+}
+
+export function renderRoute(route: ReviewRoute): string {
+  const lines = [`${route.tokens.advice} tokens of advice in ${count(route.groups.length, "group")}, ${route.tokens.diff} tokens of diff, a budget of ${route.budget} per reviewer.`];
+  if (route.route === "single") {
+    lines.push(`Route: single. ${count(route.jobs.length, "reviewer")} for the whole change, listed in jobs.json.`);
+  } else {
+    lines.push(`Route: sets. Cut the change into change sets of at most ${Math.floor(route.setBytes / 1024)} KB of diff each, then run the command with --sets.`);
+  }
+  return lines.join("\n");
+}
+
+interface ChangeSets {
+  sets: { name: string; files: string[]; why?: string }[];
+  crossing?: string[];
+}
+
+/**
+ * Builds the change sets the splitter chose: each set's diff in parts, and
+ * one reviewer per set and principle group in jobs.json. Every file of the
+ * diff must be in exactly one set, so nothing falls between them.
+ */
+export function buildSets(dir: string): ReviewJob[] {
+  const plan = readJson<ReviewPlan>(dir, "plan.json");
+  const route = readJson<ReviewRoute>(dir, "route.json");
+  const chosen = readJson<ChangeSets>(dir, "sets.json");
+  const blocks = new Map<string, DiffBlock[]>();
+  for (const part of plan.parts) {
+    const text = fs.readFileSync(path.join(dir, part.file), "utf8");
+    for (const piece of text.split(/^(?=diff --git )/m)) {
+      const name = /^diff --git a\/.* b\/(.*)$/m.exec(piece)?.[1];
+      if (name !== undefined) {
+        blocks.set(name, [...(blocks.get(name) ?? []), { file: name, text: piece }]);
+      }
+    }
+  }
+  const seen = new Map<string, string>();
+  const problems: string[] = [];
+  for (const set of chosen.sets) {
+    for (const file of set.files) {
+      if (!blocks.has(file)) {
+        problems.push(`${file} in "${set.name}" is not in the diff`);
+      } else if (seen.has(file)) {
+        problems.push(`${file} is in "${seen.get(file)}" and in "${set.name}"`);
+      } else {
+        seen.set(file, set.name);
+      }
+    }
+  }
+  for (const file of blocks.keys()) {
+    if (!seen.has(file)) {
+      problems.push(`${file} is in no set`);
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`The change sets need fixing:\n- ${problems.join("\n- ")}`);
+  }
+  const jobs: ReviewJob[] = [];
+  chosen.sets.forEach((set, index) => {
+    const id = `set-${String(index + 1).padStart(2, "0")}`;
+    const parts = writeParts(dir, `sets/${id}`, packDiff(set.files.flatMap((file) => blocks.get(file) ?? [])));
+    route.groups.forEach((principles, group) => {
+      jobs.push({ id: route.groups.length === 1 ? id : `${id}-g${group + 1}`, parts: parts.map((part) => part.file), principles, set: id });
+    });
+  });
+  fs.writeFileSync(path.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}\n`);
+  return jobs;
+}
+
+export function renderSets(jobs: ReviewJob[]): string {
+  const sets = new Set(jobs.map((job) => job.set)).size;
+  return `${count(sets, "change set")}, ${count(jobs.length, "reviewer")} listed in jobs.json.`;
+}
+
+/** A budget as the user writes it: 100000, 100k or 1m. */
+export function parseBudget(text: string): number {
+  const match = /^(\d+(?:\.\d+)?)\s*([km]?)$/i.exec(text.trim());
+  if (!match) {
+    throw new Error(`"${text}" is no budget. Write a number of tokens, such as 100k or 1m.`);
+  }
+  const scale = { "": 1, k: 1000, m: 1_000_000 }[(match[2] as string).toLowerCase() as "" | "k" | "m"];
+  return Math.round(Number(match[1]) * scale);
 }
