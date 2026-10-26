@@ -125,30 +125,11 @@ Ask your agent to switch reporting off, and it turns both off.
 
 ## Review a change
 
-The `review` skill reviews your local changes, a branch or a pull request against your advisory board.
+The `review` skill checks local changes, branches and pull requests against your advisory board, including principles without detectors.
+Reviewers and an independent tester work in parallel. A separate agent verifies their findings before the report, which includes coverage, test evidence and limitations.
 
-- The detectors run on the lines the change added and removed, so their hits arrive anchored to a line before any model reads the diff.
-- A cheap model leaves out only the principles that cannot apply to the project, such as Flutter advice in a Rust tool, judged by their tags, and says why.
-- Every other principle gets a verdict, also the ones without a detector: a finding, followed, or not applicable.
-- One reviewer reads the whole change when it fits its budget of tokens, 100k by default.
-  A larger change is cut into change sets of files that belong together, one reviewer each, and a last pass checks what crosses them.
-- Only generated code is left out: lockfiles, files marked `linguist-generated`, and files whose first lines say they are generated.
-- Principle reviewers and an independent exploratory tester run concurrently, reading callers and related files beyond the diff when needed.
-  Reviewers challenge design and ownership as part of their work; testers identify meaningful assertion gaps and build focused counterexamples in disposable copies.
-  There are no separate context, blind-design, routing or investigation workers on the ordinary route, and no broad suite replay by default.
-  Demonstrated failures retain commands and output; an argument from code stays reasoned evidence.
-- Each finding is checked again by an agent that did not raise it, and names the principle it breaks.
-  An empty candidate set receives an independent challenge rather than automatic approval.
-  Findings distinguish introduced defects, newly exposed defects, incomplete fixes and unrelated pre-existing observations.
-  Real problems that no principle covers are listed apart.
-- When a findings MCP is available, the review uses it to track verified findings, without making human triage decisions.
-  Intermediate JSON preserves coverage and evidence when that MCP is unavailable.
-- A skill-local script assembles the report mechanically. Completion checks detect missing empty-set challenges, verdicts, test results and unverified findings before the report claims complete coverage.
-- The report ends with what was covered, such as "63 principles: 4 with findings, 11 followed, 48 not applicable; 33 out of scope".
-
-The review runs in subagents, so none of the advice or the diff lands in your conversation, only the report.
-It runs as `/wellactually:review` in Claude Code and `$wellactually:review` in Codex, and needs nothing on the machine but the plugin and a synced advisory board.
-In pi, which has no subagents, it runs in the conversation itself.
+Run `/wellactually:review` in Claude Code or `$wellactually:review` in Codex with a synced advisory board.
+Reviews use subagents where supported.
 
 ## Write a principle
 
