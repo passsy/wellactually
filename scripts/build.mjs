@@ -9,6 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { build } from "esbuild";
+import { syncSkills } from "./sync-skills.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const outfile = path.join(root, "dist/wellactually.mjs");
@@ -52,28 +53,6 @@ for (const file of ["wellactually.mjs", "wellactually-worker.mjs", "wellactually
 }
 fs.renameSync(path.join(root, "dist/opencode.mjs"), path.join(opencode, "dist/opencode.mjs"));
 fs.renameSync(path.join(root, "dist/opencode-tui.mjs"), path.join(opencode, "dist/tui.mjs"));
-// OpenCode and pi know a skill by its name alone, and login, sync, disable, enable, audit and review
-// are names other skills have too. Their copies are called wellactually-login and so on.
-// OpenCode 1 offers a skill as a slash command only when its metadata asks for it.
-// OpenCode 2 has no such command and loads a skill the user mentions with @.
-const skills = path.join(root, "skills");
-for (const name of fs.readdirSync(skills)) {
-  const source = path.join(skills, name, "SKILL.md");
-  if (!fs.existsSync(source)) {
-    continue;
-  }
-  const copy = path.join(opencode, "skills", `wellactually-${name}`);
-  fs.mkdirSync(copy, { recursive: true });
-  fs.writeFileSync(path.join(copy, "SKILL.md"), fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1\nmetadata:\n  opencode/slash: \"true\""));
-  if (fs.existsSync(path.join(skills, name, "scripts"))) {
-    fs.cpSync(path.join(skills, name, "scripts"), path.join(copy, "scripts"), { recursive: true });
-  }
-  // A skill that comes in several files, such as review with its steps, needs the rest of them beside it.
-  for (const file of fs.readdirSync(path.join(skills, name))) {
-    if (file !== "SKILL.md" && file.endsWith(".md")) {
-      fs.copyFileSync(path.join(skills, name, file), path.join(copy, file));
-    }
-  }
-}
+syncSkills(root);
 
 console.log(`built dist: ${[outfile, worker, logWriter, ...plugins].map((file) => path.basename(file)).join(", ")}, and copied the command and the skills into opencode`);
