@@ -589,6 +589,8 @@ export async function planReview(cwd: string, spec?: string, dir?: string, lockf
   };
   fs.writeFileSync(path.join(out, "principles.md"), renderIndex(plan));
   fs.writeFileSync(path.join(out, "plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
+  // Intent and blind-design workers must not see detector snippets or head-version project facts.
+  fs.writeFileSync(path.join(out, "baseline.json"), `${JSON.stringify({ root: toPosix(root), base: target.base }, null, 2)}\n`);
   return plan;
 }
 
@@ -639,7 +641,7 @@ function adviceTokens(dir: string, file: string): number {
 }
 
 /** The instructions of each step of the review, which ship beside the review skill. */
-const STEP_FILES = ["router.md", "splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md", "report.md"];
+const STEP_FILES = ["context.md", "blind.md", "investigation.md", "router.md", "splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md", "report.md"];
 
 /** The folder of the review skill: beside the command in the plugin, or in this repository. */
 function stepsSource(): string | null {
@@ -809,8 +811,10 @@ export function buildSets(dir: string): ReviewJob[] {
   chosen.sets.forEach((set, index) => {
     const id = `set-${String(index + 1).padStart(2, "0")}`;
     const parts = writeParts(dir, `sets/${id}`, packDiff(set.files.flatMap((file) => blocks.get(file) ?? [])));
-    route.groups.forEach((principles, group) => {
-      jobs.push({ id: route.groups.length === 1 ? id : `${id}-g${group + 1}`, parts: parts.map((part) => part.file), principles, set: id });
+    // Even without applicable principles, large changes need per-set discovery and testing.
+    const groups = route.groups.length === 0 ? [[]] : route.groups;
+    groups.forEach((principles, group) => {
+      jobs.push({ id: groups.length === 1 ? id : `${id}-g${group + 1}`, parts: parts.map((part) => part.file), principles, set: id });
     });
   });
   fs.writeFileSync(path.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}\n`);
@@ -855,7 +859,7 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
   }
   const candidates = new Map<string, string[]>();
   const verifiedCandidates = new Map<string, string>();
-  const units = [...new Set(jobs.map((job) => job.set ?? "all"))];
+  const units = jobs.length === 0 ? ["all"] : [...new Set(jobs.map((job) => job.set ?? "all"))];
   if (route.route === "sets") {
     units.push("crossing");
   }
@@ -868,10 +872,31 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
   }
   const load = <T>(file: string): T | null => {
     try {
-      return readJson<T>(dir, file);
+      const value = readJson<T>(dir, file);
+      if (value === null) {
+        throw new Error("must contain an artifact, not null");
+      }
+      return value;
     } catch (error) {
       problems.push(`${file}: ${error instanceof Error ? error.message : String(error)}`);
       return null;
+    }
+  };
+  const requireText = (file: string): void => {
+    try {
+      if (fs.readFileSync(path.join(dir, file), "utf8").trim() === "") {
+        problems.push(`${file} is empty`);
+      }
+    } catch {
+      problems.push(`${file} is missing or unreadable`);
+    }
+  };
+  requireText("context.md");
+  requireText("blind.md");
+  const findingScopes = ["introduced", "newly_exposed", "incomplete_fix", "pre_existing"];
+  const checkScope = (finding: unknown, file: string): void => {
+    if (finding === null || typeof finding !== "object" || !findingScopes.includes((finding as { scope: string }).scope)) {
+      problems.push(`${file} has a finding without a valid scope`);
     }
   };
   const verdicts = (stem: string, unit: string, expected: string[], job: string): void => {
@@ -903,7 +928,10 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
       if (verdict.findings !== undefined && !Array.isArray(verdict.findings)) {
         problems.push(`${file} findings for ${verdict.principle} must be an array`);
       } else {
-        verdict.findings?.forEach((_, index) => refs.push(`${stem}:${verdict.principle}:${index}`));
+        verdict.findings?.forEach((finding, index) => {
+          checkScope(finding, file);
+          refs.push(`${stem}:${verdict.principle}:${index}`);
+        });
       }
     }
     for (const id of expected) {
@@ -911,7 +939,10 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
         problems.push(`${file} is missing principle ${id}`);
       }
     }
-    value.outside.forEach((_, index) => refs.push(`${stem}:outside:${index}`));
+    value.outside.forEach((finding, index) => {
+      checkScope(finding, file);
+      refs.push(`${stem}:outside:${index}`);
+    });
     candidates.set(unit, refs);
   };
   for (const job of jobs) {
@@ -922,6 +953,23 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
   }
   if (route.route === "sets") {
     verdicts("crossing", "crossing", [], "crossing");
+  }
+  for (const unit of units) {
+    const file = `investigation/${unit}.json`;
+    const investigation = load<{ unit: string; designComparison: string; ownership: unknown[]; coverage: unknown[]; hypotheses: unknown[] }>(file);
+    if (investigation !== null) {
+      if (investigation.unit !== unit || typeof investigation.designComparison !== "string" || investigation.designComparison.trim() === "") {
+        problems.push(`${file} needs unit "${unit}" and a designComparison`);
+      }
+      for (const field of ["ownership", "coverage", "hypotheses"] as const) {
+        if (!Array.isArray(investigation[field]) || investigation[field].length === 0 || investigation[field].some((entry) => typeof entry !== "string" || entry.trim() === "")) {
+          problems.push(`${file} needs a nonempty ${field} inventory with evidence or an explicit inapplicable reason`);
+        }
+      }
+    }
+    const stem = `investigation-${unit}`;
+    expectedFiles.add(stem);
+    verdicts(stem, unit, [], unit);
   }
   if (through >= 1) {
     for (const unit of units) {
@@ -959,12 +1007,16 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
         continue;
       }
       const expected = new Set(candidates.get(unit) ?? []);
+      if (expected.size === 0) {
+        requireText(`challenges/${unit}.md`);
+      }
       const seen = new Set<string>();
       for (const [index, entry] of verified.entries()) {
         if (!["confirmed", "plausible", "refuted"].includes(entry.status)) {
           problems.push(`${file} has an invalid verification status`);
         }
         if (entry.promoted === true && !entry.candidate && entry.file && typeof entry.line === "number" && entry.priority && entry.evidence && entry.problem && entry.fix) {
+          checkScope(entry, file);
           verifiedCandidates.set(`${file}:${index}`, entry.status);
           continue;
         }
@@ -1023,6 +1075,7 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
       if (Array.isArray(report.findings) && Array.isArray(report.outside)) {
         const retained = new Set<string>();
         for (const finding of [...report.findings, ...report.outside]) {
+          checkScope(finding, "findings.json");
           const refs = finding.candidates ?? (finding.candidate ? [finding.candidate] : []);
           if (!Array.isArray(refs) || refs.length === 0) {
             problems.push("findings.json has a finding without source candidates");

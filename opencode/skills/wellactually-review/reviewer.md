@@ -13,7 +13,7 @@ Read `<dir>/steps/findings.md` for shared findings tracking.
 Find your job by its id in `<dir>/jobs.json`: its `parts` are the diff you read, its `principles` the ids you give a verdict.
 The crossing pass has no entry there: see the end of this file.
 
-1. Read `<dir>/map.md`, then every part of your job in full, in order.
+1. Read `<dir>/context.md`, `<dir>/blind.md`, `<dir>/map.md` and the relevant `investigation/<unit>.json`, then every part of your job in full, in order.
    Each part fits in one read.
 2. Then read the advice of each of your principles in full: `<dir>/principles/<id>.md`, with the `/` of the id written as `__`, such as `principles/ana__no-todo.md` for `ana/no-todo`.
 3. Inspect surrounding code, callers, implementations, schemas and tests wherever needed to judge the consequences of the change, including unchanged files outside your assigned diff.
@@ -26,7 +26,7 @@ Give every principle of your job exactly one verdict:
 
 - `not_applicable`: the change does nothing the principle is about.
 - `followed`: the change does something the principle is about, and does it right.
-  Name one place where it does, as `file:line` in `where`.
+  Name the relevant locations and behaviors checked, as `file:line` in `where`; one compliant example cannot establish compliance across the whole change.
   When you cannot name one, look through your parts once more for what the principle is about before you decide.
 - `findings`: the change breaks the principle, with one finding per place.
 
@@ -35,8 +35,10 @@ A hit is a candidate, not a finding: confirm it as a finding, or dismiss it with
 
 ## Findings
 
-- Only report what this change introduced: lines it added or removed, or something it should have changed and did not.
-  What was wrong before the change is not a finding.
+- Set `scope` on each finding: `introduced` for a regression or new defect; `newly_exposed` when changed use makes an old defect reachable or materially more consequential; `incomplete_fix` when the stated problem remains unfixed on a relevant path; `pre_existing` for an unrelated old defect discovered while tracing.
+  Compare the base and head behavior and cite the changed trigger or the stated requirement for the first three categories.
+  Keep unrelated `pre_existing` observations separate and do not label them regressions or block this change on them.
+  Location may be an unchanged line when the changed caller or incomplete contract explains relevance.
 - A coverage finding must identify behavior or a failure mode a meaningful test would protect.
   A test that merely asserts a wrapper agrees with the function it directly delegates to adds no independent protection.
 - A finding must be something the principle's advice actually says.
@@ -68,11 +70,11 @@ Write `<dir>/verdicts/<job id>.json`:
       "principle": "id",
       "verdict": "not_applicable | followed | findings",
       "where": "file:line, for followed",
-      "findings": [{ "file": "path", "line": 12, "priority": "p2", "evidence": "reasoned", "problem": "...", "fix": "...", "quote": "...", "fromDetector": false }],
+      "findings": [{ "file": "path", "line": 12, "priority": "p2", "scope": "introduced", "evidence": "reasoned", "problem": "...", "fix": "...", "quote": "...", "fromDetector": false }],
       "dismissed": [{ "file": "path", "line": 12, "reason": "..." }]
     }
   ],
-  "outside": [{ "file": "path", "line": 12, "priority": "p1", "evidence": "proven", "problem": "...", "fix": "..." }]
+  "outside": [{ "file": "path", "line": 12, "priority": "p1", "scope": "introduced", "evidence": "proven", "problem": "...", "fix": "..." }]
 }
 ```
 

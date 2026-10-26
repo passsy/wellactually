@@ -46,7 +46,15 @@ It downloads the advisory board first when this machine has never synced it, as 
 - When the change is empty or the advisory board has no principles, say so and stop.
 - When it says there is no advisory board on this machine, the user signs in with the login skill first, or sets `WELLACTUALLY_TOKEN` on a CI runner.
 
-## 2. Filter
+## 2. Establish intent and design before reading the implementation
+
+Start one subagent with the cheap model: "Read `<dir>/steps/context.md` and establish the problem in `<dir>`."
+Then start a fresh subagent with the review model: "Read `<dir>/steps/blind.md` and propose a solution in `<dir>`."
+The blind worker must not read the patch, changed head source, router map, verdicts or other review results.
+Wait for its `blind.md` before starting workers that read the diff.
+The coordinator supplies the original target URL and user task to the context worker, without any findings from previous reviews.
+
+## 3. Filter
 
 Start one subagent with the cheap model: "Read `<dir>/steps/router.md` and do it for the review in `<dir>`."
 It writes `scope.json`, the principles that can apply to this project, and `map.md`, a map of the change.
@@ -60,7 +68,7 @@ It decides from the size of the advice and the diff, never from how much room a 
 Pass `--budget` only when the user names one, such as `--budget 1m` for a model with a window of a million tokens.
 It prints `Route: single` or `Route: sets`.
 
-## 3. Cut into change sets, for `Route: sets` only
+## 4. Cut into change sets, for `Route: sets` only
 
 Start one subagent with the cheap model: "Read `<dir>/steps/splitter.md` and do it for the review in `<dir>`."
 Then run:
@@ -71,10 +79,18 @@ node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" review --sets <dir>
 
 When it says the change sets need fixing, send its message to the same subagent and run the command again.
 
-## 4. Review
+## 5. Investigate
+
+Start one fresh subagent per review unit with the review model: "Read `<dir>/steps/investigation.md` and investigate unit `<unit>` in `<dir>`."
+Without change sets the unit is `all`; otherwise it is each set id, plus `crossing` for contracts between sets.
+Run these even when no principle applies: discovery also covers defects outside the board.
+They compare the blind design to the actual solution, trace ownership and execution, inventory changed behaviors against tests, and propose falsifiable failure hypotheses.
+Each writes `investigation/<unit>.json` and `verdicts/investigation-<unit>.json` before principle review starts.
+
+## 6. Review
 
 `<dir>/jobs.json` lists the reviewers, each with an `id`.
-When it is empty because every principle is out of scope, skip review, testing and verification workers and write the report with those exclusions.
+When it is empty because every principle is out of scope, skip principle reviewers only; investigation, testing and independent verification still run for `all`.
 Start one subagent per job with the review model, all at once: "Read `<dir>/steps/reviewer.md` and do job `<id>` of the review in `<dir>`."
 After the change sets, start one more: "Read `<dir>/steps/reviewer.md` and do the crossing pass of the review in `<dir>`."
 
@@ -82,7 +98,7 @@ Each answers with how many verdicts it wrote.
 Run `node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" review --check <dir> --stage review`.
 Send missing or invalid outputs back to their workers; after one repair attempt, report any remaining gap as incomplete.
 
-## 5. Test and seek counterexamples
+## 7. Test and seek counterexamples
 
 Start one testing subagent per review unit with the review model: "Read `<dir>/steps/testing.md` and test unit `<unit>` of the review in `<dir>`."
 Without change sets the unit is `all`; otherwise it is each set id, plus `crossing` for contracts between sets.
@@ -91,7 +107,7 @@ Wait for its results before verification.
 Run `node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" review --check <dir> --stage test`.
 Resolve missing results before going on, or report the review as incomplete.
 
-## 6. Verify
+## 8. Verify
 
 Start the verifiers with the review model, all at once.
 Without change sets that is one: "Read `<dir>/steps/verifier.md` and verify the findings of the review in `<dir>`."
@@ -100,7 +116,7 @@ With change sets it is one per set, and one for the crossing pass: "Read `<dir>/
 Run `node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" review --check <dir> --stage verify`.
 Send gaps back to the responsible verifier before reporting a complete review.
 
-## 7. Report
+## 9. Report
 
 Start one subagent with the review model: "Read `<dir>/steps/report.md` and write the report of the review in `<dir>`."
 It also tells each principle's expert how it went, and answers with the report.

@@ -45961,6 +45961,8 @@ async function planReview(cwd, spec, dir, lockfile = readLockfile()) {
   fs14.writeFileSync(path16.join(out, "principles.md"), renderIndex(plan));
   fs14.writeFileSync(path16.join(out, "plan.json"), `${JSON.stringify(plan, null, 2)}
 `);
+  fs14.writeFileSync(path16.join(out, "baseline.json"), `${JSON.stringify({ root: toPosix(root), base: target.base }, null, 2)}
+`);
   return plan;
 }
 function renderIndex(plan) {
@@ -46004,7 +46006,7 @@ function renderPlan(plan) {
 function adviceTokens(dir, file2) {
   return tokensOf(fs14.statSync(path16.join(dir, file2)).size);
 }
-var STEP_FILES = ["router.md", "splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md", "report.md"];
+var STEP_FILES = ["context.md", "blind.md", "investigation.md", "router.md", "splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md", "report.md"];
 function stepsSource() {
   let dir = path16.dirname(fileURLToPath(import.meta.url));
   for (let depth = 0; depth < 5; depth++) {
@@ -46117,8 +46119,9 @@ function buildSets(dir) {
   chosen.sets.forEach((set2, index) => {
     const id = `set-${String(index + 1).padStart(2, "0")}`;
     const parts = writeParts(dir, `sets/${id}`, packDiff(set2.files.flatMap((file2) => blocks.get(file2) ?? [])));
-    route.groups.forEach((principles, group) => {
-      jobs.push({ id: route.groups.length === 1 ? id : `${id}-g${group + 1}`, parts: parts.map((part) => part.file), principles, set: id });
+    const groups = route.groups.length === 0 ? [[]] : route.groups;
+    groups.forEach((principles, group) => {
+      jobs.push({ id: groups.length === 1 ? id : `${id}-g${group + 1}`, parts: parts.map((part) => part.file), principles, set: id });
     });
   });
   fs14.writeFileSync(path16.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}
@@ -46151,7 +46154,7 @@ function checkReview(dir, stage) {
   }
   const candidates = /* @__PURE__ */ new Map();
   const verifiedCandidates = /* @__PURE__ */ new Map();
-  const units = [...new Set(jobs.map((job) => job.set ?? "all"))];
+  const units = jobs.length === 0 ? ["all"] : [...new Set(jobs.map((job) => job.set ?? "all"))];
   if (route.route === "sets") {
     units.push("crossing");
   }
@@ -46164,10 +46167,31 @@ function checkReview(dir, stage) {
   }
   const load = (file2) => {
     try {
-      return readJson3(dir, file2);
+      const value = readJson3(dir, file2);
+      if (value === null) {
+        throw new Error("must contain an artifact, not null");
+      }
+      return value;
     } catch (error62) {
       problems.push(`${file2}: ${error62 instanceof Error ? error62.message : String(error62)}`);
       return null;
+    }
+  };
+  const requireText = (file2) => {
+    try {
+      if (fs14.readFileSync(path16.join(dir, file2), "utf8").trim() === "") {
+        problems.push(`${file2} is empty`);
+      }
+    } catch {
+      problems.push(`${file2} is missing or unreadable`);
+    }
+  };
+  requireText("context.md");
+  requireText("blind.md");
+  const findingScopes = ["introduced", "newly_exposed", "incomplete_fix", "pre_existing"];
+  const checkScope = (finding, file2) => {
+    if (finding === null || typeof finding !== "object" || !findingScopes.includes(finding.scope)) {
+      problems.push(`${file2} has a finding without a valid scope`);
     }
   };
   const verdicts = (stem, unit, expected, job) => {
@@ -46199,7 +46223,10 @@ function checkReview(dir, stage) {
       if (verdict.findings !== void 0 && !Array.isArray(verdict.findings)) {
         problems.push(`${file2} findings for ${verdict.principle} must be an array`);
       } else {
-        verdict.findings?.forEach((_, index) => refs.push(`${stem}:${verdict.principle}:${index}`));
+        verdict.findings?.forEach((finding, index) => {
+          checkScope(finding, file2);
+          refs.push(`${stem}:${verdict.principle}:${index}`);
+        });
       }
     }
     for (const id of expected) {
@@ -46207,7 +46234,10 @@ function checkReview(dir, stage) {
         problems.push(`${file2} is missing principle ${id}`);
       }
     }
-    value.outside.forEach((_, index) => refs.push(`${stem}:outside:${index}`));
+    value.outside.forEach((finding, index) => {
+      checkScope(finding, file2);
+      refs.push(`${stem}:outside:${index}`);
+    });
     candidates.set(unit, refs);
   };
   for (const job of jobs) {
@@ -46218,6 +46248,23 @@ function checkReview(dir, stage) {
   }
   if (route.route === "sets") {
     verdicts("crossing", "crossing", [], "crossing");
+  }
+  for (const unit of units) {
+    const file2 = `investigation/${unit}.json`;
+    const investigation = load(file2);
+    if (investigation !== null) {
+      if (investigation.unit !== unit || typeof investigation.designComparison !== "string" || investigation.designComparison.trim() === "") {
+        problems.push(`${file2} needs unit "${unit}" and a designComparison`);
+      }
+      for (const field of ["ownership", "coverage", "hypotheses"]) {
+        if (!Array.isArray(investigation[field]) || investigation[field].length === 0 || investigation[field].some((entry) => typeof entry !== "string" || entry.trim() === "")) {
+          problems.push(`${file2} needs a nonempty ${field} inventory with evidence or an explicit inapplicable reason`);
+        }
+      }
+    }
+    const stem = `investigation-${unit}`;
+    expectedFiles.add(stem);
+    verdicts(stem, unit, [], unit);
   }
   if (through >= 1) {
     for (const unit of units) {
@@ -46255,12 +46302,16 @@ function checkReview(dir, stage) {
         continue;
       }
       const expected = new Set(candidates.get(unit) ?? []);
+      if (expected.size === 0) {
+        requireText(`challenges/${unit}.md`);
+      }
       const seen = /* @__PURE__ */ new Set();
       for (const [index, entry] of verified.entries()) {
         if (!["confirmed", "plausible", "refuted"].includes(entry.status)) {
           problems.push(`${file2} has an invalid verification status`);
         }
         if (entry.promoted === true && !entry.candidate && entry.file && typeof entry.line === "number" && entry.priority && entry.evidence && entry.problem && entry.fix) {
+          checkScope(entry, file2);
           verifiedCandidates.set(`${file2}:${index}`, entry.status);
           continue;
         }
@@ -46319,6 +46370,7 @@ function checkReview(dir, stage) {
       if (Array.isArray(report.findings) && Array.isArray(report.outside)) {
         const retained = /* @__PURE__ */ new Set();
         for (const finding of [...report.findings, ...report.outside]) {
+          checkScope(finding, "findings.json");
           const refs = finding.candidates ?? (finding.candidate ? [finding.candidate] : []);
           if (!Array.isArray(refs) || refs.length === 0) {
             problems.push("findings.json has a finding without source candidates");

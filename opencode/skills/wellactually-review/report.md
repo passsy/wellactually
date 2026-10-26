@@ -9,6 +9,7 @@ Use the findings MCP when available, following that file; its tool-managed recor
 - `<dir>/plan.json`: the change, the files left out with their reasons, and the principles left out.
 - `<dir>/scope.json`: the principles out of scope, with their reasons.
 - `<dir>/route.json`: how the review ran.
+- `context.md`, `blind.md`, every unit in `investigation/`, the test results and any empty-set challenge in `challenges/`.
 - Every file in `<dir>/verdicts/` and `<dir>/verified/`.
 
 ## Combine
@@ -40,7 +41,7 @@ Write `<dir>/findings.json` with this shape:
 
 `verdicts` has exactly one entry per unique principle assigned across all jobs, merging per-set verdicts.
 `findings` contains the surviving principle findings, and `outside` the surviving findings with no principle.
-Retain source candidate references, location, priority, evidence, verification status, problem, fix, advice quote and reproduction evidence on each finding.
+Retain source candidate references, location, priority, scope, evidence, verification status, problem, fix, advice quote and reproduction evidence on each finding.
 Use `candidate` for one source or `candidates` for an array of sources merged as the same defect.
 Every confirmed or plausible candidate must be represented once; no refuted candidate may survive.
 A promoted verifier finding uses `verified/<unit>.json:<zero-based entry index>` as its source reference.
@@ -68,11 +69,13 @@ When the tool says the machine is not signed in, as on a CI runner without a tok
 
 Answer with the report for the user, as Markdown, and nothing else:
 
-1. The findings that stand, ordered by priority and then by evidence.
+1. The change-relevant findings that stand (`introduced`, `newly_exposed`, `incomplete_fix`), ordered by priority and then by evidence, each explicitly labeled with its scope.
+   Put unrelated `pre_existing` observations in a separate informational section and do not count them as regressions or blockers.
    Each names its place as `file:line`, the principle, the problem and the fix, in a sentence or two each.
    A plausible finding says what it depends on.
 2. The findings outside the board, the same way, under their own heading.
-3. One line of coverage, such as "63 principles: 4 with findings, 11 followed, 48 not applicable; 33 out of scope".
+3. Summarize the problem/design comparison, ownership and branch/test coverage work, including unresolved hypotheses and independent empty-set challenges.
+   One line of principle coverage, such as "63 principles: 4 with findings, 11 followed, 48 not applicable; 33 out of scope".
 4. The out-of-scope principles with their reasons, the files left out with their reasons, and the principles left out with their reasons.
 5. Tests and counterexamples run, with their result, and any unavailable tools or unverified behavior.
 6. The review directory, so the user can open `findings.json`, and the findings MCP target when tracking is available.

@@ -16,11 +16,21 @@ Read the diff of what you verify first: `<dir>/diff/` for the whole review, `<di
 For committed targets, read source at `target.head` rather than assuming the user has checked it out.
 Then read the advice of the principle each finding names, `<dir>/principles/<id>.md` with the `/` of the id as `__`, and the code in the repository named by `root` in `<dir>/plan.json`.
 
+## Challenge an empty candidate set
+
+When your unit has zero candidates across investigation, review and testing, do not merely write an empty verification array.
+Independently inspect the unit's diff and real callers first, before reading its investigation and test results.
+Develop your own failure hypothesis against the stated problem, trace or run a discriminating counterexample, then compare with the existing maps and their dispositions.
+Write `<dir>/challenges/<unit>.md` with the hypothesis, production path, exact evidence or command, result and limitations.
+If the unit has no executable behavior, challenge an observable contract or requirement instead and explain why execution is inapplicable.
+Promote any independently discovered supported defect with full finding fields, `scope`, evidence and `promoted: true`; otherwise explain what was actually ruled out.
+An empty candidate set and an empty verification array alone do not establish a clean review.
+
 ## For each finding
 
 Answer three questions:
 
-1. Is it in the change: did the change add, remove or fail to change that line?
+1. Is its scope accurate: introduced, newly exposed by a changed use, an incomplete fix of the stated problem, or an unrelated pre-existing defect? Compare base and head and check the cited trigger or requirement. A pre-existing observation is separate context, not a regression.
 2. Does the code really do what the finding says?
 3. Does the advice really say what the finding quotes?
    For an outside-board finding, is the defect supported independently of a principle?
@@ -37,9 +47,9 @@ Inspect the testing unit's `<dir>/probes/<unit>/results.md` and reproduce claime
 Check that each reproduction calls the real production path and that a failure is caused by the reviewed change, rather than a broken fixture or missing dependency.
 A test blocked by the environment is a limitation, not evidence of a product defect.
 Keep `status` separate from `evidence`: confirming a reasoned finding does not upgrade it to proven.
-Preserve or correct `evidence` and `provenTest` in the verified entry, and include a stable `candidate` such as `all:outside:0`, `all:expert/rule:0` or `testing-all:outside:0` to identify the source finding by its verdict filename stem, principle id or `outside`, and zero-based finding index.
+Preserve or correct `scope`, `evidence` and `provenTest` in the verified entry, and include a stable `candidate` such as `all:outside:0`, `all:expert/rule:0` or `testing-all:outside:0` to identify the source finding by its verdict filename stem, principle id or `outside`, and zero-based finding index.
 
-A dismissed detector hit that you find is a real finding becomes one, with status `confirmed`.
+A dismissed detector hit or an independent discovery that you find is a real finding becomes one, with status `confirmed`.
 Mark that entry `promoted: true` and include its full finding fields so the report can retain it even though it was absent from the original candidates.
 You may change a finding's priority, with the reason.
 

@@ -133,14 +133,18 @@ The `review` skill reviews your local changes, a branch or a pull request agains
 - One reviewer reads the whole change when it fits its budget of tokens, 100k by default.
   A larger change is cut into change sets of files that belong together, one reviewer each, and a last pass checks what crosses them.
 - Only generated code is left out: lockfiles, files marked `linguist-generated`, and files whose first lines say they are generated.
+- Before seeing the patch, a context worker gathers the problem and a fresh reviewer proposes a design against the base.
+  Investigation compares that design with the actual solution, traces resource ownership and executors, and maps changed behaviors and branches to test assertions.
 - Reviewers inspect callers and related files beyond the diff when needed.
-  Testing agents run relevant checks and build counterexamples in disposable copies, preserving the reviewed working tree.
+  Testing agents challenge uncovered behaviors with focused counterexamples before running existing suites, and build reproductions in disposable copies, preserving the reviewed working tree.
   Demonstrated failures retain their commands and output; an argument from code stays reasoned evidence.
 - Each finding is checked again by an agent that did not raise it, and names the principle it breaks.
+  An empty candidate set receives an independent challenge rather than automatic approval.
+  Findings distinguish introduced defects, newly exposed defects, incomplete fixes and unrelated pre-existing observations.
   Real problems that no principle covers are listed apart.
 - When a findings MCP is available, the review uses it to track verified findings, without making human triage decisions.
   Intermediate JSON preserves coverage and evidence when that MCP is unavailable.
-- Completion checks detect missing verdicts, test results and unverified findings before the report claims complete coverage.
+- Completion checks detect missing intent/design evidence, investigation inventories, empty-set challenges, verdicts, test results and unverified findings before the report claims complete coverage.
 - The report ends with what was covered, such as "63 principles: 4 with findings, 11 followed, 48 not applicable; 33 out of scope".
 
 The review runs in subagents, so none of the advice or the diff lands in your conversation, only the report.

@@ -75,6 +75,10 @@ describe("planning a review", () => {
     const plan = await planReview(dir, undefined, out, { syncedAt: null, entries });
 
     expect(plan.target.head).toBeNull();
+    expect(JSON.parse(fs.readFileSync(path.join(out, "baseline.json"), "utf8"))).toEqual({ root: dir, base: "HEAD" });
+    for (const step of ["context.md", "blind.md", "investigation.md"]) {
+      expect(fs.readFileSync(path.join(out, "steps", step), "utf8")).not.toBe("");
+    }
     expect(plan.files).toEqual([
       { path: "a.ts", status: "modified" },
       { path: "gone.ts", status: "deleted" },
@@ -203,6 +207,14 @@ describe("routing a review", () => {
     expect(fs.readFileSync(path.join(out, jobs[1]!.parts[0]!), "utf8")).not.toContain("web/page.ts");
   });
 
+  test("large changes retain per-set discovery jobs when every principle is out of scope", async () => {
+    const out = await prepared();
+    fs.writeFileSync(path.join(out, "scope.json"), JSON.stringify({ inScope: [], outOfScope: [{ id: "ana/no-todo", reason: "Other stack" }, { id: "ana/server", reason: "Other stack" }] }));
+    expect(routeReview(out, 2_000)).toMatchObject({ route: "sets", groups: [] });
+    fs.writeFileSync(path.join(out, "sets.json"), JSON.stringify({ sets: [{ name: "web", files: ["web/page.ts"] }, { name: "media", files: ["media/worker.ts"] }] }));
+    expect(buildSets(out).map(({ id, principles }) => ({ id, principles }))).toEqual([{ id: "set-01", principles: [] }, { id: "set-02", principles: [] }]);
+  });
+
   test("a budget is written as the user says it", () => {
     expect([parseBudget("100k"), parseBudget("1m"), parseBudget("250000")]).toEqual([100_000, 1_000_000, 250_000]);
     expect(() => parseBudget("lots")).toThrow(/no budget/);
@@ -221,11 +233,15 @@ describe("review completion", () => {
     const job = `${unit}-g1`;
     write("route.json", { route: sets ? "sets" : "single" });
     write("jobs.json", [{ id: job, principles: ["expert/rule"], parts: [], set: sets ? unit : null }]);
+    write("context.md", "Problem and acceptance criteria from the issue and base contract.");
+    write("blind.md", "Independent design against the base with observable invariants.");
     // Distinct findings can share a location; identity must include the source and index.
-    const finding = { file: "a.ts", line: 1, problem: "Broken boundary", fix: "Handle it" };
+    const finding = { file: "a.ts", line: 1, scope: "introduced", problem: "Broken boundary", fix: "Handle it" };
     write(`verdicts/${job}.json`, { job, verdicts: [{ principle: "expert/rule", verdict: "findings", findings: [finding, finding] }], outside: [] });
     const units = sets ? [unit, "crossing"] : [unit];
     for (const id of units) {
+      write(`investigation/${id}.json`, { unit: id, designComparison: "Actual design preserves the base contract", ownership: ["a.ts:1 owner retires state"], coverage: ["a.test.ts:5 asserts the boundary"], hypotheses: ["Boundary production path counterexample handed to tester"] });
+      write(`verdicts/investigation-${id}.json`, { job: id, verdicts: [], outside: [] });
       if (id === "crossing") {
         write("verdicts/crossing.json", { job: id, verdicts: [], outside: [] });
       }
@@ -250,26 +266,55 @@ describe("review completion", () => {
     }
   });
 
-  test("all principles out of scope produces no jobs or testing units and still checks the report", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-out-of-scope-"));
-    const write = (file: string, value: unknown): void => {
-      fs.writeFileSync(path.join(dir, file), JSON.stringify(value));
-    };
+  test("all principles out of scope still requires investigation, testing and an independent empty-set challenge", () => {
+    const { dir, write } = completed();
     const outOfScope = [{ id: "expert/rule", reason: "Different language" }];
     write("plan.json", { principles: [{ id: "expert/rule" }], parts: [], tokens: { diff: 10 } });
     write("scope.json", { inScope: [], outOfScope });
     const route = routeReview(dir);
     expect(route).toMatchObject({ route: "single", groups: [], jobs: [] });
+    fs.unlinkSync(path.join(dir, "verdicts/all-g1.json"));
+    write("verdicts/testing-all.json", { job: "all", verdicts: [], outside: [] });
+    write("verified/all.json", []);
     write("findings.json", { complete: true, verdicts: [], findings: [], outside: [], dismissed: [], outOfScope });
-    for (const stage of ["review", "test", "verify", "report"]) {
-      expect(checkReview(dir, stage)).toEqual({ stage, jobs: 0, units: 0, candidates: 0 });
-    }
+    expect(() => checkReview(dir, "verify")).toThrow(/challenges\/all.md is missing/);
+    write("challenges/all.md", "Independently challenged the boundary via production caller; source trace ruled it out.");
+    expect(checkReview(dir, "report")).toEqual({ stage: "report", jobs: 0, units: 1, candidates: 0 });
+    fs.unlinkSync(path.join(dir, "investigation/all.json"));
+    expect(() => checkReview(dir, "review")).toThrow(/investigation\/all.json is missing/);
     write("route.json", { ...route, route: "sets" });
     expect(() => checkReview(dir, "review")).toThrow(/zero jobs require a single route/);
-    write("route.json", { ...route, groups: [["expert/rule"]] });
-    expect(() => checkReview(dir, "review")).toThrow(/zero jobs require a single route/);
-    write("route.json", { route: "single" });
-    expect(() => checkReview(dir, "review")).toThrow(/zero jobs require a single route/);
+  });
+
+  test("requires intent, blind design and complete investigative inventories before principle review can pass", () => {
+    const { dir, write } = completed();
+    fs.unlinkSync(path.join(dir, "context.md"));
+    write("blind.md", " ");
+    write("investigation/all.json", { unit: "all", designComparison: "", ownership: [], coverage: [""], hypotheses: [] });
+    expect(() => checkReview(dir, "review")).toThrow(/context.md is missing/);
+    expect(() => checkReview(dir, "review")).toThrow(/blind.md is empty/);
+    expect(() => checkReview(dir, "review")).toThrow(/nonempty ownership inventory/);
+    expect(() => checkReview(dir, "review")).toThrow(/nonempty coverage inventory/);
+    expect(() => checkReview(dir, "review")).toThrow(/nonempty hypotheses inventory/);
+    write("investigation/all.json", null);
+    expect(() => checkReview(dir, "review")).toThrow(/must contain an artifact, not null/);
+    fs.unlinkSync(path.join(dir, "verdicts/investigation-all.json"));
+    expect(() => checkReview(dir, "review")).toThrow(/verdicts\/investigation-all.json is missing/);
+  });
+
+  test("investigative candidates reach verification and must survive in the report", () => {
+    const { dir, write } = completed();
+    const finding = { file: "a.ts", line: 1, scope: "newly_exposed", problem: "Old owner now reached after cleanup", fix: "Retire queued work" };
+    write("verdicts/investigation-all.json", { job: "all", verdicts: [], outside: [finding] });
+    expect(() => checkReview(dir, "verify")).toThrow(/missing candidate investigation-all:outside:0/);
+    const entries = JSON.parse(fs.readFileSync(path.join(dir, "verified/all.json"), "utf8"));
+    write("verified/all.json", [...entries, { candidate: "investigation-all:outside:0", status: "confirmed" }]);
+    expect(() => checkReview(dir, "report")).toThrow(/missing surviving candidate investigation-all:outside:0/);
+    const report = JSON.parse(fs.readFileSync(path.join(dir, "findings.json"), "utf8"));
+    write("findings.json", { ...report, outside: [{ ...finding, candidate: "investigation-all:outside:0" }] });
+    expect(() => checkReview(dir, "report")).not.toThrow();
+    write("verdicts/investigation-all.json", { job: "all", verdicts: [], outside: [{ ...finding, scope: undefined }] });
+    expect(() => checkReview(dir, "review")).toThrow(/finding without a valid scope/);
   });
 
   test("rejects missing and duplicate principle verdicts and unfinished jobs", () => {
@@ -314,7 +359,7 @@ describe("review completion", () => {
     const { dir, write } = completed();
     const file = path.join(dir, "verified/all.json");
     const entries = JSON.parse(fs.readFileSync(file, "utf8"));
-    const promoted = { promoted: true, status: "confirmed", file: "a.ts", line: 1, priority: "p2", evidence: "reasoned", problem: "Dismissed hit is real", fix: "Handle it" };
+    const promoted = { promoted: true, scope: "introduced", status: "confirmed", file: "a.ts", line: 1, priority: "p2", evidence: "reasoned", problem: "Dismissed hit is real", fix: "Handle it" };
     write("verified/all.json", [...entries, promoted]);
     expect(() => checkReview(dir, "verify")).not.toThrow();
     write("verified/all.json", [promoted]);
@@ -340,7 +385,7 @@ describe("review completion", () => {
     const { dir, write } = completed();
     const file = path.join(dir, "verified/all.json");
     const entries = JSON.parse(fs.readFileSync(file, "utf8"));
-    const promoted = { promoted: true, status: "confirmed", file: "a.ts", line: 1, priority: "p2", evidence: "reasoned", problem: "Dismissed hit is real", fix: "Handle it" };
+    const promoted = { promoted: true, scope: "introduced", status: "confirmed", file: "a.ts", line: 1, priority: "p2", evidence: "reasoned", problem: "Dismissed hit is real", fix: "Handle it" };
     write("verified/all.json", [...entries, promoted]);
     expect(() => checkReview(dir, "report")).toThrow(/missing surviving candidate verified\/all.json:3/);
     const report = JSON.parse(fs.readFileSync(path.join(dir, "findings.json"), "utf8"));
