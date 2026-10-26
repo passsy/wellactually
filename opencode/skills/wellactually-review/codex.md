@@ -6,7 +6,7 @@ Start principle reviewers and exploratory testers at the same time. Wait for bot
 
 When you have no such tool, follow `pi.md` instead.
 
-The commands show `${CLAUDE_PLUGIN_ROOT}`, which Codex does not set: use the nearest directory above this file that holds `dist/wellactually.mjs` in its place.
+The commands use `<skill>` for the directory containing this skill's `SKILL.md`; its helper is `scripts/review.mjs`.
 
 Workers need repository reading, file writing, shell execution for tests and probes, and the available findings MCP tools.
 Use general-purpose workers rather than a restricted read-only reviewer role.

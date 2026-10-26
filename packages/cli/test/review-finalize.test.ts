@@ -66,6 +66,16 @@ describe("skill-local report finalization", () => {
     expect(() => checkReview(dir, "test")).toThrow(/without provenTest/);
   });
 
+  test("the packaged finalizer works beside its helper without the main plugin command", () => {
+    const { dir } = fixture();
+    const standalone = fs.mkdtempSync(path.join(os.tmpdir(), "review-standalone-"));
+    try {
+      for (const file of ["finalize.mjs", "review.mjs"]) fs.copyFileSync(path.join(path.dirname(script), file), path.join(standalone, file));
+      execFileSync(process.execPath, [path.join(standalone, "finalize.mjs"), dir], { stdio: "pipe" });
+      expect(checkReview(dir, "report")).toMatchObject({ stage: "report" });
+    } finally { fs.rmSync(standalone, { recursive: true, force: true }); }
+  });
+
   test("finalization never upgrades reasoned evidence through confirmation", () => {
     const { write, finish } = fixture();
     write("verified/all.json", [{ candidate: "all:expert/rule:0", status: "confirmed" }, { candidate: "all:expert/rule:1", status: "refuted", proof: "No ordering defect" }, { candidate: "testing-all:outside:0", status: "refuted", proof: "Broken fixture" }]);

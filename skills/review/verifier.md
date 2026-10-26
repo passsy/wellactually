@@ -13,7 +13,7 @@ Read `<dir>/steps/findings.md` for shared findings tracking.
 - The crossing pass, when you were given `crossing`: `<dir>/verdicts/crossing.json` and `<dir>/verdicts/testing-crossing.json`.
 
 Read `task.md` for original requirements when present, then the diff of what you verify: `<dir>/diff/` for the whole review, `<dir>/sets/<set>/` for a set.
-For committed targets, read source at `target.head` rather than assuming the user has checked it out.
+Read selected source from `plan.source`; use the original root for related context. Only fall back to `target.head` for older Git plans without a source snapshot. For a baseline-free snapshot verify current behavior with scope `current`; do not invent base/head comparisons.
 For an ordinary change aim to finish in about 2 minutes: inspect the specific assertions, assumptions and production path of each candidate rather than repeat a general review. Reuse retained probe output when credible; reproduce when necessary to resolve disputed evidence. Do not rerun a broad suite by default. Disclose any unverified assumptions.
 
 Then read the advice of the principle each finding names, `<dir>/principles/<id>.md` with the `/` of the id as `__`, and the code in the repository named by `root` in `<dir>/plan.json`.
@@ -32,7 +32,7 @@ An empty candidate set and an empty verification array alone do not establish a 
 
 Answer three questions:
 
-1. Is its scope accurate: introduced, newly exposed by a changed use, an incomplete fix of the stated problem, or an unrelated pre-existing defect? Compare base and head and check the cited trigger or requirement. A pre-existing observation is separate context, not a regression.
+1. Is its scope accurate for the input mode? A snapshot requires `current`, with no regression claim. For comparisons: introduced, newly exposed by a changed use, an incomplete fix of the stated problem, or an unrelated pre-existing defect? Compare base and head and check the cited trigger or requirement. A pre-existing observation is separate context, not a regression.
 2. Does the code really do what the finding says?
 3. Does the advice really say what the finding quotes?
    For an outside-board finding, is the defect supported independently of a principle?

@@ -100,16 +100,11 @@ export function finalizeReview(dir) {
   return result;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
   try {
     const dir = path.resolve(process.argv[2] ?? ".");
-    let root = path.dirname(fileURLToPath(import.meta.url));
-    while (!fs.existsSync(path.join(root, "dist/wellactually.mjs"))) {
-      const parent = path.dirname(root);
-      if (parent === root) throw new Error("Cannot locate plugin dist/wellactually.mjs");
-      root = parent;
-    }
-    const check = (stage) => execFileSync(process.execPath, [path.join(root, "dist/wellactually.mjs"), "review", "--check", dir, "--stage", stage], { stdio: "pipe" });
+    const helper = path.join(path.dirname(fileURLToPath(import.meta.url)), "review.mjs");
+    const check = (stage) => execFileSync(process.execPath, [helper, "--check", dir, "--stage", stage], { stdio: "pipe" });
     check("verify");
     finalizeReview(dir);
     check("report");

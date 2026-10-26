@@ -10,13 +10,15 @@ When the tools are absent or fail, retain the JSON results and report tracking a
 
 Read `plan.json` and use its absolute `root` as `repo` on every MCP call.
 Choose one stable `target` for this review: `pr-<number>` for a pull request, otherwise the branch or range under review, or `local-changes` for a working tree review.
-Call `start_review` with the base and any known PR facts, and `list_findings` for that target.
+Call `start_review` with a base only when one exists, and any known PR facts, and `list_findings` for that target.
 Write `<dir>/tracking.json` with `repo`, `target` and availability, and retain the same target in every later stage.
 Do not invent PR facts from a local branch name.
 
 ## Investigate, in reviewers, testers and verifiers
 
 Write candidates and evidence to stage JSON. Do not read prior reviews or another concurrent worker's results. The coordinator alone reconciles durable findings after verification, so parallel workers do not race to record the same problem.
+
+For a file/folder/project snapshot, use a descriptive target and do not fabricate Git/PR facts. If the installed findings MCP requires Git or cannot anchor the selected input, record tracking as unavailable and retain the review artifacts. Do not initialize a repository or let optional inbox support block the review.
 
 ## Record, in the coordinator
 

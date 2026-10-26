@@ -53,6 +53,7 @@ for (const file of ["wellactually.mjs", "wellactually-worker.mjs", "wellactually
 }
 fs.renameSync(path.join(root, "dist/opencode.mjs"), path.join(opencode, "dist/opencode.mjs"));
 fs.renameSync(path.join(root, "dist/opencode-tui.mjs"), path.join(opencode, "dist/tui.mjs"));
+await build({ ...shared, entryPoints: [path.join(root, "skills/review/scripts/main.ts")], outfile: path.join(root, "skills/review/scripts/review.mjs") });
 syncSkills(root);
 
 console.log(`built dist: ${[outfile, worker, logWriter, ...plugins].map((file) => path.basename(file)).join(", ")}, and copied the command and the skills into opencode`);

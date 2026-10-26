@@ -373,7 +373,7 @@ describe("review completion", () => {
 
   test("the CLI exits nonzero for incomplete work and reports successful checks", () => {
     const { dir, write } = completed();
-    const command = ["packages/cli/src/main.ts", "review", "--check", dir, "--stage", "verify"];
+    const command = ["skills/review/scripts/main.ts", "--check", dir, "--stage", "verify"];
     expect(execFileSync(process.execPath, command, { encoding: "utf8" })).toContain("Review verify is complete");
     write("verified/all.json", []);
     try {

@@ -1,7 +1,7 @@
 # Test a review unit and seek counterexamples
 
 You test unit `<unit>` of the review in `<dir>`.
-Read `task.md` for original requirements when present, then `plan.json` for the repository and exact target, `project.md`, and the unit's diff parts.
+Read `task.md` for original requirements when present, then `plan.json` for the project, mode and exact target, `project.md`, and the unit's diff parts.
 For `all`, use all diff parts; for a set, use its jobs; for `crossing`, use `sets.json`.
 You run concurrently with principle reviewers. Do not wait for or read their candidates: develop your own hypotheses from production code and existing assertions.
 
@@ -16,8 +16,8 @@ Prefer a few discriminating probes over many broad ones. Aim for about 5 minutes
 Run an existing suite only when it materially resolves a question; suite success alone cannot establish coverage. Do not replay a broad baseline by default.
 Do not spend the whole stage repairing test infrastructure while leaving independent code and probe work undone.
 You may add or modify tests, fixtures and probe scripts in a disposable copy of the reviewed snapshot.
-Use `target.head` for a committed review, even when the user's checkout is on another branch.
-For local changes, include their tracked and untracked contents in that copy; testing only HEAD would test a different change.
+Use `plan.source` as the frozen selected input; copy it into your own probe directory as needed. It includes local uncommitted/untracked work when that is the chosen scope. Obtain unchanged dependencies and context from the original root without modifying them.
+Only use Git revisions for a Git comparison. For older plans without a source snapshot, preserve the recorded target and actual working-tree contents. A snapshot review has no base comparison: use scope `current` and test the present contract.
 Keep the user's source, tests, staging area and branch untouched.
 Do not apply a product fix as part of the review.
 

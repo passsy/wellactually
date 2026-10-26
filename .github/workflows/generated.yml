@@ -23,10 +23,10 @@ jobs:
       - name: Check generated files are committed
         shell: bash
         run: |
-          changes="$(git status --porcelain --untracked-files=all -- dist opencode)"
+          changes="$(git status --porcelain --untracked-files=all -- dist opencode skills/review/scripts/review.mjs)"
           if [ -n "$changes" ]; then
             printf '%s\n' "$changes"
-            git diff --stat -- dist opencode
+            git diff --stat -- dist opencode skills/review/scripts/review.mjs
             echo "::error::Generated files are out of date. Run npm run build and commit the generated files."
             exit 1
           fi

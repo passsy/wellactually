@@ -1,9 +1,10 @@
 # Review a change against principles
 
 You review a change against a set of principles, each the advice of an expert, in the review directory you were given, `<dir>`.
-`<dir>/plan.json` names the repository in `root` and the change in `target`.
-Read source at that reviewed version: for a non-null `target.head` that differs from the checkout, use `git show <head>:<path>` or a disposable checkout of that head.
-For a working-tree target, include its uncommitted and untracked contents.
+`<dir>/plan.json` names the project in `root`, the review mode in `target.kind` and the frozen selected contents in `source`.
+Read selected files from that snapshot (and removed/previous files in `plan.before` when supplied), including uncommitted work. Related callers and context may be read at the original root.
+For older Git-only plans without `source`, use `target.head` when non-null, or the actual local tracked/untracked contents otherwise.
+A `snapshot` reviews present contents without a baseline; `patch` reviews a supplied comparison; `git` uses recorded revisions. No Git commands are required for a snapshot or supplied patch.
 Keep the reviewed working tree unchanged.
 You may write probes and execute local checks as described in `<dir>/steps/testing.md`.
 Do not read other reviewers' or testers' verdicts. You run concurrently with an independent tester. Write only your own verdict file.
@@ -36,7 +37,8 @@ A hit is a candidate, not a finding: confirm it as a finding, or dismiss it with
 
 ## Findings
 
-- Set `scope` on each finding: `introduced` for a regression or new defect; `newly_exposed` when changed use makes an old defect reachable or materially more consequential; `incomplete_fix` when the stated problem remains unfixed on a relevant path; `pre_existing` for an unrelated old defect discovered while tracing.
+- For `target.kind: snapshot`, use `scope: current` for in-scope defects. No baseline exists; do not call them introduced or consign them to unrelated pre-existing observations.
+- For a change review, set `scope` on each finding: `introduced` for a regression or new defect; `newly_exposed` when changed use makes an old defect reachable or materially more consequential; `incomplete_fix` when the stated problem remains unfixed on a relevant path; `pre_existing` for an unrelated old defect discovered while tracing.
   Compare the base and head behavior and cite the changed trigger or the stated requirement for the first three categories.
   Keep unrelated `pre_existing` observations separate and do not label them regressions or block this change on them.
   Location may be an unchanged line when the changed caller or incomplete contract explains relevance.
@@ -46,7 +48,7 @@ A hit is a candidate, not a finding: confirm it as a finding, or dismiss it with
   Quote the sentence of the advice it rests on.
 - Leave out what the project's compiler, linter or formatter would catch, as its configuration shows.
   A principle about formatting or layout is checked like any other when nothing in the project enforces it.
-- Give `file` as the path from the repository root and `line` as the line in that file in the reviewed version, never a line of the patch.
+- Give `file` as the path from the project root and `line` as the line in that file in the reviewed version, never a line of the patch.
 - Priority: p0 breaks production or data, p1 a real bug or a broken contract, p2 a problem a reviewer would block on, p3 worth fixing, p4 a nit.
 - Evidence: proven only with a reproducible failing input, test or observed execution; reasoned when it follows from the code; speculative when it depends on something you could not see.
   For proven findings, include `provenTest` with the exact command, expected and actual result, and the path of the retained reproduction and output.

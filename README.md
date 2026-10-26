@@ -125,7 +125,7 @@ Ask your agent to switch reporting off, and it turns both off.
 
 ## Review a change
 
-The `review` skill checks local changes, branches and pull requests against your advisory board, including principles without detectors.
+The `review` skill checks changes, files, folders and projects against your advisory board, including principles without detectors. Git is optional.
 Reviewers and an independent tester work in parallel. A separate agent verifies their findings before the report, which includes coverage, test evidence and limitations.
 
 Run `/wellactually:review` in Claude Code or `$wellactually:review` in Codex with a synced advisory board.

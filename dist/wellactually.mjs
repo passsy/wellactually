@@ -164,7 +164,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs15 = require2("node:fs");
+    var fs14 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -5894,20 +5894,20 @@ var require_resolve = __commonJS({
       return false;
     }
     function countKeys(schema) {
-      let count3 = 0;
+      let count2 = 0;
       for (const key in schema) {
         if (key === "$ref")
           return Infinity;
-        count3++;
+        count2++;
         if (SIMPLE_INLINED.has(key))
           continue;
         if (typeof schema[key] == "object") {
-          (0, util_1.eachItem)(schema[key], (sch) => count3 += countKeys(sch));
+          (0, util_1.eachItem)(schema[key], (sch) => count2 += countKeys(sch));
         }
-        if (count3 === Infinity)
+        if (count2 === Infinity)
           return Infinity;
       }
-      return count3;
+      return count2;
     }
     function getFullPath(resolver, id = "", normalize2) {
       if (normalize2 !== false)
@@ -6936,8 +6936,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path18) {
-      let input2 = path18;
+    function removeDotSegments(path17) {
+      let input2 = path17;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -7346,8 +7346,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path18 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path18 && path18 !== "/" ? path18 : void 0;
+        const path17 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path17 && path17 !== "/" ? path17 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -9389,8 +9389,8 @@ var require_contains = __commonJS({
         cxt.result(valid, () => cxt.reset());
         function validateItemsWithCount() {
           const schValid = gen.name("_valid");
-          const count3 = gen.let("count", 0);
-          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count3)));
+          const count2 = gen.let("count", 0);
+          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count2)));
         }
         function validateItems(_valid, block) {
           gen.forRange("i", 0, len, (i) => {
@@ -9403,16 +9403,16 @@ var require_contains = __commonJS({
             block();
           });
         }
-        function checkLimits(count3) {
-          gen.code((0, codegen_1._)`${count3}++`);
+        function checkLimits(count2) {
+          gen.code((0, codegen_1._)`${count2}++`);
           if (max === void 0) {
-            gen.if((0, codegen_1._)`${count3} >= ${min}`, () => gen.assign(valid, true).break());
+            gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true).break());
           } else {
-            gen.if((0, codegen_1._)`${count3} > ${max}`, () => gen.assign(valid, false).break());
+            gen.if((0, codegen_1._)`${count2} > ${max}`, () => gen.assign(valid, false).break());
             if (min === 1)
               gen.assign(valid, true);
             else
-              gen.if((0, codegen_1._)`${count3} >= ${min}`, () => gen.assign(valid, true));
+              gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true));
           }
         }
       }
@@ -10860,12 +10860,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs15, exportName) {
+    function addFormats(ajv, list, fs14, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs15[f]);
+        ajv.addFormat(f, fs14[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -10874,7 +10874,7 @@ var require_dist = __commonJS({
 });
 
 // packages/cli/src/main.ts
-import path17 from "node:path";
+import path16 from "node:path";
 import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { isMainThread } from "node:worker_threads";
@@ -10942,21 +10942,21 @@ import path from "node:path";
 
 // packages/sdk/src/glob.ts
 var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path18, pattern) {
+function matchesGlob(path17, pattern) {
   let matcher = cache.get(pattern);
   if (!matcher) {
     matcher = compile(pattern);
     cache.set(pattern, matcher);
   }
-  return matcher(path18);
+  return matcher(path17);
 }
-function matchesGlobs(path18, globs) {
+function matchesGlobs(path17, globs) {
   const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
-  if (excluded.some((glob) => matchesGlob(path18, glob))) {
+  if (excluded.some((glob) => matchesGlob(path17, glob))) {
     return false;
   }
   const included = globs.filter((glob) => !glob.startsWith("!"));
-  return included.length === 0 || included.some((glob) => matchesGlob(path18, glob));
+  return included.length === 0 || included.some((glob) => matchesGlob(path17, glob));
 }
 function parse(pattern) {
   const anchored = [...pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`];
@@ -11049,9 +11049,9 @@ function compile(pattern) {
     }
     return seen;
   };
-  return (path18) => {
+  return (path17) => {
     let now = reach([start]);
-    for (const char of path18) {
+    for (const char of path17) {
       const next = [];
       for (const index of now) {
         for (const move of state(index).moves) {
@@ -11134,15 +11134,15 @@ function removedOf(event, change, allLines) {
 function fileCtx(event, relativePath, content, change = {}, where = {}) {
   const relative = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
   const root = where.root === void 0 ? TEST_ROOT : where.root;
-  const path18 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
-  const name = path18.slice(path18.lastIndexOf("/") + 1);
+  const path17 = (where.absolute ?? `${root ?? ""}/${relative}`).replaceAll("\\", "/");
+  const name = path17.slice(path17.lastIndexOf("/") + 1);
   const dot = name.lastIndexOf(".");
   const lines = content.split("\n");
   const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
   return {
     event,
     file: {
-      path: path18,
+      path: path17,
       relativePath: relative,
       name,
       ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
@@ -11178,8 +11178,8 @@ function locateWritten(content, fragments) {
     const at = content.indexOf(fragment);
     if (at !== -1) {
       const first = content.slice(0, at).split("\n").length;
-      const count3 = fragment.split("\n").length;
-      for (let line = first; line < first + count3 && line <= lines.length; line++) {
+      const count2 = fragment.split("\n").length;
+      for (let line = first; line < first + count2 && line <= lines.length; line++) {
         written.set(line, lines[line - 1] ?? "");
       }
       continue;
@@ -11564,8 +11564,8 @@ function isExactVersion(version2) {
   return EXACT_VERSION.test(version2);
 }
 var PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/;
-function isPackageFile(path18) {
-  return path18.startsWith(PACKAGE_DIR);
+function isPackageFile(path17) {
+  return path17.startsWith(PACKAGE_DIR);
 }
 function readPins(files) {
   const source = files["package.json"];
@@ -11596,18 +11596,18 @@ function readPins(files) {
 }
 function splitSpecifier(specifier) {
   const parts = specifier.split("/");
-  const count3 = specifier.startsWith("@") ? 2 : 1;
-  const name = parts.slice(0, count3).join("/");
-  if (parts.length < count3 || !PACKAGE_NAME.test(name)) {
+  const count2 = specifier.startsWith("@") ? 2 : 1;
+  const name = parts.slice(0, count2).join("/");
+  if (parts.length < count2 || !PACKAGE_NAME.test(name)) {
     return null;
   }
-  return { name, subpath: parts.slice(count3).join("/") };
+  return { name, subpath: parts.slice(count2).join("/") };
 }
-function packageOf(path18) {
-  if (!isPackageFile(path18)) {
+function packageOf(path17) {
+  if (!isPackageFile(path17)) {
     return null;
   }
-  return splitSpecifier(path18.slice(PACKAGE_DIR.length))?.name ?? null;
+  return splitSpecifier(path17.slice(PACKAGE_DIR.length))?.name ?? null;
 }
 async function readPackageJson(read2, name) {
   const source = await read2(`${PACKAGE_DIR}${name}/package.json`);
@@ -11715,9 +11715,9 @@ async function resolveInPackage(read2, importer, relative) {
   return probe(read2, joined);
 }
 var SUFFIXES = ["", ".js", ".mjs", ".cjs", ".ts", ".json", "/index.js", "/index.mjs", "/index.cjs", "/index.ts"];
-async function probe(read2, path18) {
+async function probe(read2, path17) {
   for (const suffix of SUFFIXES) {
-    const candidate = `${path18}${suffix}`;
+    const candidate = `${path17}${suffix}`;
     if (suffix === "" && !/\.[a-z]+$/.test(candidate)) {
       continue;
     }
@@ -11836,14 +11836,14 @@ function declaredLicense(json2) {
 }
 function carriedPackages(files) {
   const packages = [];
-  for (const path18 of Object.keys(files).sort()) {
-    const name = packageOf(path18);
-    if (name === null || path18 !== `${PACKAGE_DIR}${name}/package.json`) {
+  for (const path17 of Object.keys(files).sort()) {
+    const name = packageOf(path17);
+    if (name === null || path17 !== `${PACKAGE_DIR}${name}/package.json`) {
       continue;
     }
     let json2;
     try {
-      json2 = JSON.parse(files[path18] ?? "");
+      json2 = JSON.parse(files[path17] ?? "");
     } catch {
       throw new PackageError(`the package.json of ${name} is not valid JSON`);
     }
@@ -11929,9 +11929,9 @@ function testFiles(files) {
 function byteLength(text2) {
   return new TextEncoder().encode(text2).length;
 }
-function normalize(path18) {
+function normalize(path17) {
   const out = [];
-  for (const part of path18.split("/")) {
+  for (const part of path17.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -11943,9 +11943,9 @@ function normalize(path18) {
   }
   return out.join("/");
 }
-function dirname(path18) {
-  const slash = path18.lastIndexOf("/");
-  return slash === -1 ? "" : path18.slice(0, slash);
+function dirname(path17) {
+  const slash = path17.lastIndexOf("/");
+  return slash === -1 ? "" : path17.slice(0, slash);
 }
 async function vendorPackages(files, source) {
   let pins;
@@ -11961,8 +11961,8 @@ async function vendorPackages(files, source) {
   await buildDetector(files, source, fetched);
   await buildTestBundle(files, source, fetched);
   const names = /* @__PURE__ */ new Set();
-  for (const path18 of Object.keys(fetched)) {
-    const name = packageOf(path18);
+  for (const path17 of Object.keys(fetched)) {
+    const name = packageOf(path17);
     if (name !== null) {
       names.add(name);
     }
@@ -12012,21 +12012,21 @@ async function build(files, entry, globalName, isTest, builtIns, source, fetched
     throw new BundleError(error62.message);
   }
   const missing = /* @__PURE__ */ new Set();
-  const read2 = async (path18) => {
-    const own2 = files[path18] ?? fetched[path18];
+  const read2 = async (path17) => {
+    const own2 = files[path17] ?? fetched[path17];
     if (own2 !== void 0) {
       return own2;
     }
-    const name = packageOf(path18);
-    if (name === null || source === void 0 || missing.has(path18)) {
+    const name = packageOf(path17);
+    if (name === null || source === void 0 || missing.has(path17)) {
       return null;
     }
-    const text2 = await source(name, pins[name] ?? null, path18.slice(PACKAGE_DIR.length + name.length + 1));
+    const text2 = await source(name, pins[name] ?? null, path17.slice(PACKAGE_DIR.length + name.length + 1));
     if (text2 === null) {
-      missing.add(path18);
+      missing.add(path17);
       return null;
     }
-    fetched[path18] = text2;
+    fetched[path17] = text2;
     return text2;
   };
   const virtual = {
@@ -12190,9 +12190,9 @@ function formatMessage(message) {
 // packages/core/src/detector/project.ts
 var MAX_FS_CALLS = 500;
 var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path18) {
+function normalizeAbsolute(path17) {
   const out = [];
-  for (const part of path18.split("/")) {
+  for (const part of path17.split("/")) {
     if (part === "" || part === ".") {
       continue;
     }
@@ -12205,15 +12205,15 @@ function normalizeAbsolute(path18) {
   return `/${out.join("/")}`;
 }
 function mapProject(root, files) {
-  const relative = (path18) => path18 === root ? "" : path18.startsWith(`${root}/`) ? path18.slice(root.length + 1) : null;
+  const relative = (path17) => path17 === root ? "" : path17.startsWith(`${root}/`) ? path17.slice(root.length + 1) : null;
   const isDir = (inside) => inside === "" || Object.keys(files).some((name) => name.startsWith(`${inside}/`));
   return {
-    read: (path18) => {
-      const inside = relative(path18);
+    read: (path17) => {
+      const inside = relative(path17);
       return inside === null ? null : files[inside] ?? null;
     },
-    stat: (path18) => {
-      const inside = relative(path18);
+    stat: (path17) => {
+      const inside = relative(path17);
       if (inside === null) {
         return null;
       }
@@ -12223,8 +12223,8 @@ function mapProject(root, files) {
       }
       return isDir(inside) ? { kind: "dir", size: 0 } : null;
     },
-    list: (path18) => {
-      const inside = relative(path18);
+    list: (path17) => {
+      const inside = relative(path17);
       if (inside === null || inside in files || !isDir(inside)) {
         return null;
       }
@@ -12261,24 +12261,24 @@ function fsHost(cwd, project) {
     if (++calls > MAX_FS_CALLS) {
       return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
     }
-    const path18 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    const path17 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
     if (op === "stat") {
-      const stat = project.stat(path18);
+      const stat = project.stat(path17);
       return stat ? { stat } : missing;
     }
     if (op === "list") {
-      const entries = project.list(path18);
+      const entries = project.list(path17);
       if (entries) {
         return { entries };
       }
-      return project.stat(path18) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+      return project.stat(path17) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
     }
     if (op !== "read") {
       return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
     }
-    const text2 = project.read(path18);
+    const text2 = project.read(path17);
     if (text2 === null) {
-      return project.stat(path18)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+      return project.stat(path17)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
     }
     bytes += text2.length;
     if (bytes > MAX_FS_BYTES) {
@@ -12916,7 +12916,7 @@ var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
 var MAX_DETECT_CALLS = 300;
 var MAX_SHOWN_TEXT = 4e3;
 function assertPrincipleFilesSize(files) {
-  let count3 = 0;
+  let count2 = 0;
   let total = 0;
   let packageCount = 0;
   let packageTotal = 0;
@@ -12925,12 +12925,12 @@ function assertPrincipleFilesSize(files) {
       packageCount++;
       packageTotal += byteLength(content);
     } else {
-      count3++;
+      count2++;
       total += byteLength(content);
     }
   }
-  if (count3 > MAX_FILES) {
-    throw new ManifestError(`a principle may hold at most ${MAX_FILES} files, this one has ${count3}`);
+  if (count2 > MAX_FILES) {
+    throw new ManifestError(`a principle may hold at most ${MAX_FILES} files, this one has ${count2}`);
   }
   if (total > MAX_TOTAL_BYTES) {
     throw new ManifestError(`a principle may hold at most ${MAX_TOTAL_BYTES / 1024} KB, this one has ${Math.ceil(total / 1024)} KB`);
@@ -15063,6 +15063,10 @@ function parsePatch(patch) {
       current2.removed.push({ line: oldLine, text: text2.slice(1) });
       oldLine++;
     }
+    if (text2.startsWith(" ")) {
+      oldLine++;
+      line++;
+    }
   }
   return files.filter((file2) => file2.path !== "" && file2.path !== "/dev/null");
 }
@@ -16336,8 +16340,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path18, errorMaps, issueData } = params;
-  const fullPath = [...path18, ...issueData.path || []];
+  const { data, path: path17, errorMaps, issueData } = params;
+  const fullPath = [...path17, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -16452,11 +16456,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path18, key) {
+  constructor(parent, value, path17, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path18;
+    this._path = path17;
     this._key = key;
   }
   get path() {
@@ -20410,10 +20414,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path18) {
-  if (!path18)
+function getElementAtPath(obj, path17) {
+  if (!path17)
     return obj;
-  return path18.reduce((acc, key) => acc?.[key], obj);
+  return path17.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -20753,11 +20757,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path18, issues) {
+function prefixIssues(path17, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path18);
+    iss.path.unshift(path17);
     return iss;
   });
 }
@@ -20808,14 +20812,14 @@ function codePointLength(str) {
   const units = str.length;
   if (!highSurrogate.test(str))
     return units;
-  let count3 = units;
+  let count2 = units;
   for (let i = 0; i < units - 1; i++) {
     if ((str.charCodeAt(i) & 64512) === 55296 && (str.charCodeAt(i + 1) & 64512) === 56320) {
-      count3--;
+      count2--;
       i++;
     }
   }
-  return count3;
+  return count2;
 }
 function getLengthableOrigin(input2) {
   if (Array.isArray(input2))
@@ -21207,16 +21211,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path18 = []) => {
+  const processError = (error63, path17 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path18, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path17, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path18, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path18, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
       } else {
-        const fullpath = [...path18, ...issue2.path];
+        const fullpath = [...path17, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -21255,17 +21259,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path18 = []) => {
+  const processError = (error63, path17 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path18, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path17, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path18, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path18, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path17, ...issue2.path]);
       } else {
-        const fullpath = [...path18, ...issue2.path];
+        const fullpath = [...path17, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -21304,8 +21308,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path18 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path18) {
+  const path17 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path17) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -25170,8 +25174,8 @@ function az_default() {
 }
 
 // node_modules/zod/v4/locales/be.js
-function getBelarusianPlural(count3, one, few, many) {
-  const absCount = Math.abs(count3);
+function getBelarusianPlural(count2, one, few, many) {
+  const absCount = Math.abs(count2);
   const lastDigit = absCount % 10;
   const lastTwoDigits = absCount % 100;
   if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
@@ -27818,8 +27822,8 @@ function hu_default() {
 }
 
 // node_modules/zod/v4/locales/hy.js
-function getArmenianPlural(count3, one, many) {
-  return Math.abs(count3) === 1 ? one : many;
+function getArmenianPlural(count2, one, many) {
+  return Math.abs(count2) === 1 ? one : many;
 }
 function withDefiniteArticle(word) {
   if (!word)
@@ -30557,8 +30561,8 @@ function ro_default() {
 }
 
 // node_modules/zod/v4/locales/ru.js
-function getRussianPlural(count3, one, few, many) {
-  const absCount = Math.abs(count3);
+function getRussianPlural(count2, one, few, many) {
+  const absCount = Math.abs(count2);
   const lastDigit = absCount % 10;
   const lastTwoDigits = absCount % 100;
   if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
@@ -36820,11 +36824,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path18) {
-  if (path18.length === 0) {
+function getDotPath(path17) {
+  if (path17.length === 0) {
     return "object root";
   }
-  return path18.reduce((acc, seg, index) => {
+  return path17.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -39051,13 +39055,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path18 = ref.slice(1).split("/").filter(Boolean);
-  if (path18.length === 0) {
+  const path17 = ref.slice(1).split("/").filter(Boolean);
+  if (path17.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path18[0] === defsKey) {
-    const key = path18[1] === void 0 ? void 0 : decodeJSONPointerSegment(path18[1]);
+  if (path17[0] === defsKey) {
+    const key = path17[1] === void 0 ? void 0 : decodeJSONPointerSegment(path17[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -45530,881 +45534,6 @@ ${report}`);
   });
 }
 
-// packages/cli/src/review.ts
-import { execFileSync as execFileSync3 } from "node:child_process";
-import fs14 from "node:fs";
-import os6 from "node:os";
-import path16 from "node:path";
-import { fileURLToPath } from "node:url";
-var REVIEW_BUDGET_MS = 1e4;
-var MAX_FILE_BYTES3 = 512 * 1024;
-var MANIFESTS = /* @__PURE__ */ new Set([
-  "package.json",
-  "pubspec.yaml",
-  "Cargo.toml",
-  "go.mod",
-  "pyproject.toml",
-  "requirements.txt",
-  "Gemfile",
-  "composer.json",
-  "build.gradle",
-  "build.gradle.kts",
-  "pom.xml",
-  "Package.swift",
-  "deno.json",
-  "mix.exs"
-]);
-function git2(root, args) {
-  return execFileSync3("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 256 * 1024 * 1024 });
-}
-function gitOrNull(root, args) {
-  try {
-    return git2(root, args).trim();
-  } catch {
-    return null;
-  }
-}
-function defaultBranch(root) {
-  const remoteHead = gitOrNull(root, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]);
-  if (remoteHead) {
-    return remoteHead;
-  }
-  for (const candidate of ["origin/main", "origin/master", "main", "master"]) {
-    if (gitOrNull(root, ["rev-parse", "--verify", "--quiet", `${candidate}^{commit}`])) {
-      return candidate;
-    }
-  }
-  return null;
-}
-function resolveTarget(root, spec) {
-  if (spec === void 0 || spec === "") {
-    const status = git2(root, ["status", "--porcelain"]).trim();
-    if (status !== "") {
-      return { base: "HEAD", head: null, label: "local changes against HEAD" };
-    }
-    const branch = defaultBranch(root);
-    if (branch === null) {
-      throw new Error("There are no local changes, and no default branch to compare this branch with. Name what to review, such as main...HEAD.");
-    }
-    return { base: mergeBase(root, branch, "HEAD"), head: "HEAD", label: `HEAD against ${branch}` };
-  }
-  if (spec.includes("...")) {
-    const [left, right] = spec.split("...");
-    const head = right || "HEAD";
-    return { base: mergeBase(root, left || "HEAD", head), head, label: `${head} since it left ${left}` };
-  }
-  if (spec.includes("..")) {
-    const [left, right] = spec.split("..");
-    return { base: left || "HEAD", head: right || "HEAD", label: `${left} against ${right || "HEAD"}` };
-  }
-  return { base: mergeBase(root, spec, "HEAD"), head: "HEAD", label: `HEAD since it left ${spec}` };
-}
-function mergeBase(root, a, b) {
-  const base = gitOrNull(root, ["merge-base", a, b]);
-  if (!base) {
-    throw new Error(`${a} and ${b} have no common commit. Check that both exist, and fetch them first on a fresh checkout.`);
-  }
-  return base;
-}
-function rangeArgs(target) {
-  return target.head === null ? [target.base] : [target.base, target.head];
-}
-function readAt(root, ref, file2) {
-  let content;
-  try {
-    if (ref === null) {
-      const full = path16.join(root, file2);
-      if (fs14.statSync(full).size > MAX_FILE_BYTES3) {
-        return { reason: `larger than ${MAX_FILE_BYTES3 / 1024} KB` };
-      }
-      content = fs14.readFileSync(full, "utf8");
-    } else {
-      content = git2(root, ["show", `${ref}:${file2}`]);
-    }
-  } catch (error62) {
-    return { reason: `could not be read: ${error62 instanceof Error ? error62.message.split("\n")[0] : String(error62)}` };
-  }
-  if (content.length > MAX_FILE_BYTES3) {
-    return { reason: `larger than ${MAX_FILE_BYTES3 / 1024} KB` };
-  }
-  if (content.includes("\0")) {
-    return { reason: "binary" };
-  }
-  return { content };
-}
-function contentAt(root, ref, file2) {
-  const read2 = readAt(root, ref, file2);
-  return "content" in read2 ? read2.content : null;
-}
-function changedFiles(root, target) {
-  const diff = ["-c", "core.quotepath=false", "diff", "--no-color", "--no-ext-diff", "-M"];
-  const status = git2(root, [...diff, "--name-status", "-z", ...rangeArgs(target)]);
-  const lines = new Map(parsePatch(git2(root, [...diff, "-w", "-U0", ...rangeArgs(target)])).map(({ path: file2, written, removed }) => [file2, { written, removed }]));
-  const files = [];
-  const parts = status.split("\0").filter((part) => part !== "");
-  for (let index = 0; index < parts.length; ) {
-    const code = parts[index++];
-    const kind = code[0];
-    if (kind === "R" || kind === "C") {
-      const from = parts[index++];
-      const to = parts[index++];
-      const change2 = lines.get(to) ?? { written: [], removed: [] };
-      files.push({ path: to, status: kind === "R" ? "renamed" : "added", ...kind === "R" ? { from } : {}, ...change2 });
-      continue;
-    }
-    const file2 = parts[index++];
-    const change = lines.get(file2) ?? { written: [], removed: [] };
-    if (kind === "D") {
-      files.push({ path: file2, status: "deleted", written: [], removed: [] });
-    } else if (kind === "A") {
-      files.push({ path: file2, status: "added", ...change });
-    } else {
-      files.push({ path: file2, status: "modified", ...change });
-    }
-  }
-  if (target.head === null) {
-    const untracked = git2(root, ["-c", "core.quotepath=false", "ls-files", "--others", "--exclude-standard", "-z"]).split("\0").filter((file2) => file2 !== "");
-    for (const file2 of untracked) {
-      const content = contentAt(root, null, file2);
-      const all = content === null ? [] : content.split("\n").map((text2, index) => ({ line: index + 1, text: text2 }));
-      files.push({ path: file2, status: "added", written: all, removed: [] });
-    }
-  }
-  return files;
-}
-var LOCKFILES = /* @__PURE__ */ new Set(["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "pubspec.lock", "Cargo.lock", "go.sum", "poetry.lock", "uv.lock", "Gemfile.lock", "composer.lock", "Podfile.lock"]);
-var GENERATED_HEADER = /GENERATED CODE - DO NOT MODIFY|Code generated .* DO NOT EDIT|@generated\b/;
-var HEADER_LINES = 10;
-function readableDiff(root, target, files) {
-  let diff = git2(root, ["-c", "core.quotepath=false", "diff", "--no-color", "--no-ext-diff", "-M", ...rangeArgs(target)]);
-  if (target.head === null) {
-    const tracked = new Set(git2(root, ["-c", "core.quotepath=false", "diff", "--name-only", "-z", ...rangeArgs(target)]).split("\0"));
-    for (const file2 of files) {
-      if (tracked.has(file2.path) || file2.status !== "added") {
-        continue;
-      }
-      try {
-        git2(root, ["diff", "--no-color", "--no-index", "--", "/dev/null", file2.path]);
-      } catch (error62) {
-        const stdout = error62.stdout;
-        if (typeof stdout === "string") {
-          diff += stdout;
-        }
-      }
-    }
-  }
-  const generated = generatedFiles(root, files);
-  const blocks = [];
-  const omitted = [];
-  for (const text2 of diff.split(/^(?=diff --git )/m)) {
-    const name = /^diff --git a\/.* b\/(.*)$/m.exec(text2)?.[1];
-    if (name === void 0) {
-      continue;
-    }
-    const content = target.head === null ? contentAt(root, null, name) : contentAt(root, target.head, name);
-    const reason = omissionOf(name, content, generated);
-    if (reason !== null) {
-      omitted.push({ file: name, reason });
-      continue;
-    }
-    blocks.push({ file: name, text: text2 });
-  }
-  return { blocks, omitted };
-}
-function omissionOf(file2, content, generated) {
-  if (generated.has(file2)) {
-    return "marked linguist-generated";
-  }
-  if (LOCKFILES.has(path16.posix.basename(file2))) {
-    return "a lockfile";
-  }
-  const top = content?.split("\n", HEADER_LINES).join("\n") ?? "";
-  if (GENERATED_HEADER.test(top)) {
-    return "generated, as its first lines say";
-  }
-  return null;
-}
-var PART_BYTES = 30 * 1024;
-var BYTES_PER_TOKEN = 3;
-function tokensOf(bytes) {
-  return Math.ceil(bytes / BYTES_PER_TOKEN);
-}
-function splitAtHunks(block, max) {
-  const [header, ...hunks] = block.text.split(/^(?=@@ )/m);
-  const pieces = [];
-  let current2 = "";
-  for (const hunk of hunks) {
-    if (current2 !== "" && Buffer.byteLength(header + current2 + hunk) > max) {
-      pieces.push({ file: block.file, text: header + current2 });
-      current2 = "";
-    }
-    current2 += hunk;
-  }
-  pieces.push({ file: block.file, text: header + current2 });
-  return pieces;
-}
-function packDiff(blocks, max = PART_BYTES) {
-  const size = (group) => group.reduce((sum, block) => sum + Buffer.byteLength(block.text), 0);
-  const pack = (members2, depth) => {
-    if (size(members2) <= max) {
-      return [members2];
-    }
-    if (members2.length === 1) {
-      return splitAtHunks(members2[0], max).map((piece) => [piece]);
-    }
-    const children = /* @__PURE__ */ new Map();
-    for (const block of members2) {
-      const segments = block.file.split("/");
-      const key = depth < segments.length - 1 ? `${segments[depth]}/` : segments[depth];
-      children.set(key, [...children.get(key) ?? [], block]);
-    }
-    if (children.size === 1) {
-      return pack(members2, depth + 1);
-    }
-    const groups = [...children.values()].flatMap((child) => pack(child, depth + 1));
-    const merged = [];
-    for (const group of groups) {
-      const last = merged.at(-1);
-      if (last !== void 0 && size(last) + size(group) <= max) {
-        last.push(...group);
-      } else {
-        merged.push([...group]);
-      }
-    }
-    return merged;
-  };
-  const sorted = [...blocks].sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : 0);
-  return sorted.length === 0 ? [] : pack(sorted, 0);
-}
-function writeParts(dir, into, parts) {
-  fs14.mkdirSync(path16.join(dir, into), { recursive: true });
-  const written = [];
-  parts.forEach((part, index2) => {
-    const file2 = `${into}/part-${String(index2 + 1).padStart(2, "0")}.patch`;
-    const text2 = part.map((block) => block.text).join("");
-    fs14.writeFileSync(path16.join(dir, file2), text2);
-    written.push({ file: file2, bytes: Buffer.byteLength(text2), files: [...new Set(part.map((block) => block.file))] });
-  });
-  const index = ["# Parts of the change", "", "Read every part in full. Each holds whole folders or files, or whole hunks of one long file.", ""];
-  for (const part of written) {
-    index.push(`- ${part.file}: ${Math.round(part.bytes / 1024)} KB: ${part.files.join(", ")}`);
-  }
-  fs14.writeFileSync(path16.join(dir, into, "index.md"), `${index.join("\n")}
-`);
-  return written;
-}
-function generatedFiles(root, files) {
-  if (files.length === 0) {
-    return /* @__PURE__ */ new Set();
-  }
-  const out = gitOrNull(root, ["check-attr", "-z", "linguist-generated", "--", ...files.map((file2) => file2.path)]) ?? "";
-  const parts = out.split("\0");
-  const generated = /* @__PURE__ */ new Set();
-  for (let index = 0; index + 2 < parts.length; index += 3) {
-    if (parts[index + 2] === "set" || parts[index + 2] === "true") {
-      generated.add(parts[index]);
-    }
-  }
-  return generated;
-}
-function ctxOf(root, target, file2) {
-  const where = { root: toPosix(root) };
-  if (file2.status === "deleted") {
-    const was = readAt(root, target.base, file2.path);
-    return "content" in was ? { ctx: fileCtx("delete", file2.path, was.content, {}, where) } : was;
-  }
-  const read2 = readAt(root, target.head, file2.path);
-  if (!("content" in read2)) {
-    return read2;
-  }
-  return { ctx: fileCtx("write", file2.path, read2.content, { written: file2.written, removed: file2.removed }, { ...where, isNew: file2.status === "added" }) };
-}
-function projectFacts(root, target, files) {
-  const ref = target.head ?? "HEAD";
-  const tracked = git2(root, ["-c", "core.quotepath=false", "ls-tree", "-r", "--name-only", ref]).split("\n").filter((file2) => file2 !== "");
-  const top = [...new Set(tracked.map((file2) => file2.includes("/") ? `${file2.slice(0, file2.indexOf("/"))}/` : file2))].sort();
-  const manifests = tracked.filter((file2) => {
-    const isManifest = MANIFESTS.has(path16.posix.basename(file2));
-    const isVendored = file2.includes("node_modules/");
-    const isShallow = file2.split("/").length <= 4;
-    return isManifest && !isVendored && isShallow;
-  });
-  const extensions = /* @__PURE__ */ new Map();
-  for (const file2 of tracked) {
-    const ext = path16.posix.extname(file2) || "(none)";
-    extensions.set(ext, (extensions.get(ext) ?? 0) + 1);
-  }
-  const common = [...extensions.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
-  const lines = [
-    "# The project",
-    "",
-    `Top level: ${top.join(", ")}`,
-    "",
-    `Project files: ${manifests.length > 0 ? manifests.join(", ") : "none found"}`,
-    "",
-    `File types in the repository: ${common.map(([ext, count3]) => `${ext} ${count3}`).join(", ")}`,
-    "",
-    `Files this change touches: ${files.map((file2) => file2.path).join(", ")}`
-  ];
-  for (const manifest of manifests.slice(0, 8)) {
-    const content = contentAt(root, target.head, manifest);
-    if (content !== null) {
-      lines.push("", `## ${manifest}`, "", "```", content.split("\n").slice(0, 60).join("\n"), "```");
-    }
-  }
-  const readme = tracked.find((file2) => /^readme(\.md)?$/i.test(file2));
-  const readmeText = readme === void 0 ? null : contentAt(root, target.head, readme);
-  if (readme !== void 0 && readmeText !== null) {
-    const firstLines = readmeText.split("\n").slice(0, 40).join("\n");
-    lines.push("", `## ${readme}, first lines`, "", firstLines);
-  }
-  return `${lines.join("\n")}
-`;
-}
-function fileOf2(id) {
-  return `principles/${id.replace(/[^A-Za-z0-9_.-]/g, "__")}.md`;
-}
-async function planReview(cwd, spec, dir, lockfile = readLockfile()) {
-  const root = findProjectRoot(cwd);
-  if (root === null || gitOrNull(root, ["rev-parse", "--is-inside-work-tree"]) !== "true") {
-    throw new Error("A review needs a git repository. Run it inside one.");
-  }
-  const target = resolveTarget(root, spec);
-  const files = changedFiles(root, target);
-  const out = dir ?? fs14.mkdtempSync(path16.join(os6.tmpdir(), "wellactually-review-"));
-  for (const sub of ["principles", "verdicts", "verified"]) {
-    fs14.mkdirSync(path16.join(out, sub), { recursive: true });
-  }
-  const off = new Set(switchedOff(root).keys());
-  const skipped = [];
-  const principles = [];
-  const advice = /* @__PURE__ */ new Map();
-  const runnable = { syncedAt: lockfile.syncedAt, entries: [] };
-  for (const entry of lockfile.entries) {
-    if (off.has(entry.id)) {
-      skipped.push({ id: entry.id, reason: "switched off with the disable skill" });
-      continue;
-    }
-    const cached2 = readCached(entry.hash);
-    if (!cached2) {
-      skipped.push({ id: entry.id, reason: "not downloaded, run the sync skill" });
-      continue;
-    }
-    const detector = hasDetector(cached2.manifest);
-    if (detector && !entry.enabled) {
-      skipped.push({ id: entry.id, reason: "switched off on the website" });
-      continue;
-    }
-    if (detector) {
-      runnable.entries.push(entry);
-    }
-    const { manifest } = cached2;
-    principles.push({ id: entry.id, version: entry.version, title: manifest.title, summary: manifest.summary, tags: manifest.tags ?? [], detector, hits: [], file: fileOf2(entry.id) });
-    advice.set(entry.id, cached2.advice);
-  }
-  const failures = [];
-  const byId = new Map(principles.map((principle) => [principle.id, principle]));
-  const unchecked = [];
-  for (const file2 of files) {
-    if (runnable.entries.length === 0) {
-      break;
-    }
-    const event = ctxOf(root, target, file2);
-    if (!("ctx" in event)) {
-      unchecked.push({ file: file2.path, reason: event.reason });
-      continue;
-    }
-    const { ctx } = event;
-    const run = await runBoard(ctx, runnable, /* @__PURE__ */ new Set(), null, Number.POSITIVE_INFINITY, REVIEW_BUDGET_MS);
-    for (const failure3 of run.failures) {
-      failures.push({ id: failure3.id, file: file2.path, error: failure3.error });
-    }
-    for (const { principle, findings } of run.firings) {
-      const reviewed = byId.get(principle.id);
-      for (const finding of findings) {
-        reviewed?.hits.push({ file: finding.file ?? file2.path, line: finding.line ?? null, text: describeFinding(ctx, finding) ?? `the file ${file2.path}` });
-      }
-    }
-  }
-  for (const principle of principles) {
-    const hits = principle.hits.map((hit) => `- ${hit.file}: ${hit.text}`);
-    const body = [
-      `<principle id="${principle.id}" title=${JSON.stringify(principle.title)} tags="${principle.tags.join(", ")}" detector="${principle.detector ? "yes" : "no"}">`,
-      "",
-      advice.get(principle.id) ?? "",
-      "",
-      ...hits.length > 0 ? ["Its detector fired in this change. Each hit is a candidate: confirm it or dismiss it with a reason.", "", ...hits, ""] : [],
-      "</principle>"
-    ];
-    fs14.writeFileSync(path16.join(out, principle.file), `${body.join("\n")}
-`);
-  }
-  const readable = readableDiff(root, target, files);
-  const diffText = readable.blocks.map((block) => block.text).join("");
-  fs14.writeFileSync(path16.join(out, "diff.patch"), diffText);
-  const parts = writeParts(out, "diff", packDiff(readable.blocks));
-  copySteps(out);
-  fs14.writeFileSync(path16.join(out, "project.md"), projectFacts(root, target, files));
-  const plan = {
-    root: toPosix(root),
-    target,
-    files: files.map(({ path: file2, status, from }) => ({ path: file2, status, ...from ? { from } : {} })),
-    omitted: readable.omitted,
-    unchecked,
-    principles,
-    skipped,
-    failures,
-    parts,
-    tokens: { diff: tokensOf(Buffer.byteLength(diffText)), advice: principles.reduce((sum, principle) => sum + adviceTokens(out, principle.file), 0) },
-    dir: toPosix(out)
-  };
-  fs14.writeFileSync(path16.join(out, "principles.md"), renderIndex(plan));
-  fs14.writeFileSync(path16.join(out, "plan.json"), `${JSON.stringify(plan, null, 2)}
-`);
-  return plan;
-}
-function renderIndex(plan) {
-  const lines = ["# The principles", "", "id | detector hits | tags | title: summary", ""];
-  for (const principle of plan.principles) {
-    const hits = principle.detector ? String(principle.hits.length) : "no detector";
-    lines.push(`- ${principle.id} | ${hits} | ${principle.tags.join(", ") || "no tags"} | ${principle.title}: ${principle.summary}`);
-  }
-  return `${lines.join("\n")}
-`;
-}
-function count2(n, one, many = `${one}s`) {
-  return `${n} ${n === 1 ? one : many}`;
-}
-function renderPlan(plan) {
-  const hits = plan.principles.reduce((sum, principle) => sum + principle.hits.length, 0);
-  const fired = plan.principles.filter((principle) => principle.hits.length > 0).length;
-  const lines = [
-    `Review of ${plan.target.label} in ${plan.root}`,
-    `${count2(plan.files.length, "changed file")} in ${count2(plan.parts.length, "part")}, about ${plan.tokens.diff} tokens of diff.`,
-    `${count2(plan.principles.length, "principle")}, about ${plan.tokens.advice} tokens of advice, ${count2(hits, "detector hit")} from ${count2(fired, "principle")}.`,
-    `Review directory: ${plan.dir}`
-  ];
-  if (plan.files.length === 0) {
-    lines.push("The change is empty: there is nothing to review.");
-  }
-  if (plan.principles.length === 0 && plan.skipped.length === 0) {
-    lines.push("No advisory board on this machine. Sign in with the login skill, or on a CI runner set WELLACTUALLY_TOKEN to a token from the website, and run the review again.");
-  }
-  const notes = [
-    plan.omitted.length > 0 ? `${count2(plan.omitted.length, "file")} left out as generated` : null,
-    plan.unchecked.length > 0 ? `${count2(plan.unchecked.length, "file")} no detector could read` : null,
-    plan.skipped.length > 0 ? `${count2(plan.skipped.length, "principle")} left out` : null,
-    plan.failures.length > 0 ? `${count2(plan.failures.length, "detector failure")}` : null
-  ].filter((note) => note !== null);
-  if (notes.length > 0) {
-    lines.push(`${notes.join(", ")}, each with its reason in plan.json.`);
-  }
-  return lines.join("\n");
-}
-function adviceTokens(dir, file2) {
-  return tokensOf(fs14.statSync(path16.join(dir, file2)).size);
-}
-var STEP_FILES = ["splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md"];
-function stepsSource() {
-  let dir = path16.dirname(fileURLToPath(import.meta.url));
-  for (let depth = 0; depth < 5; depth++) {
-    for (const candidate of ["skills/review", "skills/wellactually-review"]) {
-      if (fs14.existsSync(path16.join(dir, candidate, "reviewer.md"))) {
-        return path16.join(dir, candidate);
-      }
-    }
-    dir = path16.dirname(dir);
-  }
-  return null;
-}
-function copySteps(out) {
-  const source = stepsSource();
-  if (source === null) {
-    return;
-  }
-  fs14.mkdirSync(path16.join(out, "steps"), { recursive: true });
-  for (const file2 of STEP_FILES) {
-    fs14.copyFileSync(path16.join(source, file2), path16.join(out, "steps", file2));
-  }
-}
-var DEFAULT_BUDGET = 1e5;
-function readJson3(dir, file2) {
-  const full = path16.join(dir, file2);
-  if (!fs14.existsSync(full)) {
-    throw new Error(`${file2} is missing in ${dir}. Run the step that writes it first.`);
-  }
-  return JSON.parse(fs14.readFileSync(full, "utf8"));
-}
-function routeReview(dir, budget = DEFAULT_BUDGET) {
-  const plan = readJson3(dir, "plan.json");
-  const scope = fs14.existsSync(path16.join(dir, "scope.json")) ? readJson3(dir, "scope.json") : { inScope: plan.principles.map((principle) => principle.id), outOfScope: [] };
-  if (!fs14.existsSync(path16.join(dir, "scope.json"))) {
-    fs14.writeFileSync(path16.join(dir, "scope.json"), `${JSON.stringify(scope, null, 2)}
-`);
-  }
-  const byId = new Map(plan.principles.map((principle) => [principle.id, principle]));
-  const placed = /* @__PURE__ */ new Set([...scope.inScope, ...scope.outOfScope.map((out) => out.id)]);
-  const kept = [...scope.inScope.filter((id) => byId.has(id)), ...plan.principles.filter((principle) => !placed.has(principle.id)).map((principle) => principle.id)];
-  const groups = [];
-  let groupTokens = 0;
-  for (const id of kept) {
-    const tokens = adviceTokens(dir, byId.get(id).file);
-    const last = groups.at(-1);
-    if (last === void 0 || groupTokens + tokens > budget / 2) {
-      groups.push([id]);
-      groupTokens = tokens;
-    } else {
-      last.push(id);
-      groupTokens += tokens;
-    }
-  }
-  const advice = kept.reduce((sum, id) => sum + adviceTokens(dir, byId.get(id).file), 0);
-  const largest = Math.max(0, ...groups.map((group) => group.reduce((sum, id) => sum + adviceTokens(dir, byId.get(id).file), 0)));
-  const room = budget - largest;
-  const route = plan.tokens.diff <= room ? "single" : "sets";
-  const jobs = route === "single" ? groups.map((principles, index) => ({ id: groups.length === 1 ? "all" : `all-g${index + 1}`, parts: plan.parts.map((part) => part.file), principles, set: null })) : [];
-  const result = { route, budget, tokens: { diff: plan.tokens.diff, advice }, groups, setBytes: room * BYTES_PER_TOKEN, jobs };
-  fs14.writeFileSync(path16.join(dir, "route.json"), `${JSON.stringify(result, null, 2)}
-`);
-  if (route === "single") {
-    fs14.writeFileSync(path16.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}
-`);
-  }
-  return result;
-}
-function renderRoute(route) {
-  const lines = [`${route.tokens.advice} tokens of advice in ${count2(route.groups.length, "group")}, ${route.tokens.diff} tokens of diff, a budget of ${route.budget} per reviewer.`];
-  if (route.route === "single") {
-    lines.push(`Route: single. ${count2(route.jobs.length, "reviewer")} for the whole change, listed in jobs.json.`);
-  } else {
-    lines.push(`Route: sets. Cut the change into change sets of at most ${Math.floor(route.setBytes / 1024)} KB of diff each, then run the command with --sets.`);
-  }
-  return lines.join("\n");
-}
-function buildSets(dir) {
-  const plan = readJson3(dir, "plan.json");
-  const route = readJson3(dir, "route.json");
-  const chosen = readJson3(dir, "sets.json");
-  const blocks = /* @__PURE__ */ new Map();
-  for (const part of plan.parts) {
-    const text2 = fs14.readFileSync(path16.join(dir, part.file), "utf8");
-    for (const piece of text2.split(/^(?=diff --git )/m)) {
-      const name = /^diff --git a\/.* b\/(.*)$/m.exec(piece)?.[1];
-      if (name !== void 0) {
-        blocks.set(name, [...blocks.get(name) ?? [], { file: name, text: piece }]);
-      }
-    }
-  }
-  const seen = /* @__PURE__ */ new Map();
-  const problems = [];
-  for (const set2 of chosen.sets) {
-    for (const file2 of set2.files) {
-      if (!blocks.has(file2)) {
-        problems.push(`${file2} in "${set2.name}" is not in the diff`);
-      } else if (seen.has(file2)) {
-        problems.push(`${file2} is in "${seen.get(file2)}" and in "${set2.name}"`);
-      } else {
-        seen.set(file2, set2.name);
-      }
-    }
-  }
-  for (const file2 of blocks.keys()) {
-    if (!seen.has(file2)) {
-      problems.push(`${file2} is in no set`);
-    }
-  }
-  if (problems.length > 0) {
-    throw new Error(`The change sets need fixing:
-- ${problems.join("\n- ")}`);
-  }
-  const jobs = [];
-  chosen.sets.forEach((set2, index) => {
-    const id = `set-${String(index + 1).padStart(2, "0")}`;
-    const parts = writeParts(dir, `sets/${id}`, packDiff(set2.files.flatMap((file2) => blocks.get(file2) ?? [])));
-    const groups = route.groups.length === 0 ? [[]] : route.groups;
-    groups.forEach((principles, group) => {
-      jobs.push({ id: groups.length === 1 ? id : `${id}-g${group + 1}`, parts: parts.map((part) => part.file), principles, set: id });
-    });
-  });
-  fs14.writeFileSync(path16.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}
-`);
-  return jobs;
-}
-function renderSets(jobs) {
-  const sets = new Set(jobs.map((job) => job.set)).size;
-  return `${count2(sets, "change set")}, ${count2(jobs.length, "reviewer")} listed in jobs.json.`;
-}
-function parseBudget(text2) {
-  const match = /^(\d+(?:\.\d+)?)\s*([km]?)$/i.exec(text2.trim());
-  if (!match) {
-    throw new Error(`"${text2}" is no budget. Write a number of tokens, such as 100k or 1m.`);
-  }
-  const scale = { "": 1, k: 1e3, m: 1e6 }[match[2].toLowerCase()];
-  return Math.round(Number(match[1]) * scale);
-}
-function checkReview(dir, stage) {
-  const stages = ["review", "test", "verify", "report"];
-  const through = stages.indexOf(stage);
-  if (through < 0) {
-    throw new Error(`Unknown review stage "${stage}". Use review, test, verify or report.`);
-  }
-  const route = readJson3(dir, "route.json");
-  const jobs = readJson3(dir, "jobs.json");
-  const problems = [];
-  if (!["single", "sets"].includes(route.route) || !Array.isArray(jobs) || jobs.length === 0 && (route.route !== "single" || !Array.isArray(route.groups) || route.groups.length !== 0)) {
-    throw new Error("Review routing is incomplete: zero jobs require a single route with no principle groups.");
-  }
-  const candidates = /* @__PURE__ */ new Map();
-  const verifiedCandidates = /* @__PURE__ */ new Map();
-  const units = jobs.length === 0 ? ["all"] : [...new Set(jobs.map((job) => job.set ?? "all"))];
-  if (route.route === "sets") {
-    units.push("crossing");
-  }
-  const expectedFiles = new Set(jobs.map((job) => job.id));
-  if (route.route === "sets") {
-    expectedFiles.add("crossing");
-  }
-  if (expectedFiles.size !== jobs.length + (route.route === "sets" ? 1 : 0)) {
-    problems.push("jobs.json has duplicate or reserved job ids");
-  }
-  const load = (file2) => {
-    try {
-      const value = readJson3(dir, file2);
-      if (value === null) {
-        throw new Error("must contain an artifact, not null");
-      }
-      return value;
-    } catch (error62) {
-      problems.push(`${file2}: ${error62 instanceof Error ? error62.message : String(error62)}`);
-      return null;
-    }
-  };
-  const requireText = (file2) => {
-    try {
-      if (fs14.readFileSync(path16.join(dir, file2), "utf8").trim() === "") {
-        problems.push(`${file2} is empty`);
-      }
-    } catch {
-      problems.push(`${file2} is missing or unreadable`);
-    }
-  };
-  if (fs14.existsSync(path16.join(dir, "plan.json")) && fs14.existsSync(path16.join(dir, "scope.json"))) {
-    const plan = load("plan.json");
-    const scope = load("scope.json");
-    if (plan !== null && scope !== null) {
-      const excluded = new Set(scope.outOfScope.map((entry) => entry.id));
-      for (const principle of plan.principles) {
-        if (excluded.has(principle.id)) {
-          continue;
-        }
-        for (const unit of units.filter((unit2) => unit2 !== "crossing")) {
-          if (!jobs.some((job) => (job.set ?? "all") === unit && job.principles.includes(principle.id))) {
-            problems.push(`jobs.json is missing principle ${principle.id} in ${unit}`);
-          }
-        }
-      }
-    }
-  }
-  const findingScopes = ["introduced", "newly_exposed", "incomplete_fix", "pre_existing"];
-  const checkScope = (finding, file2) => {
-    if (finding !== null && typeof finding === "object" && finding.evidence === "proven" && !finding.provenTest) {
-      problems.push(`${file2} has a proven finding without provenTest reproduction evidence`);
-    }
-    if (finding === null || typeof finding !== "object" || !findingScopes.includes(finding.scope)) {
-      problems.push(`${file2} has a finding without a valid scope`);
-    }
-  };
-  const verdicts = (stem, unit, expected, job) => {
-    const file2 = `verdicts/${stem}.json`;
-    const value = load(file2);
-    if (value === null) {
-      return;
-    }
-    if (value.job !== job || !Array.isArray(value.verdicts) || !Array.isArray(value.outside)) {
-      problems.push(`${file2} needs job "${job}", verdicts and outside arrays`);
-      return;
-    }
-    const seen = /* @__PURE__ */ new Set();
-    const refs = candidates.get(unit) ?? [];
-    for (const verdict of value.verdicts) {
-      if (seen.has(verdict.principle)) {
-        problems.push(`${file2} repeats principle ${verdict.principle}`);
-      }
-      seen.add(verdict.principle);
-      if (!expected.includes(verdict.principle)) {
-        problems.push(`${file2} has unassigned principle ${verdict.principle}`);
-      }
-      if (!["not_applicable", "followed", "findings"].includes(verdict.verdict)) {
-        problems.push(`${file2} has an invalid verdict for ${verdict.principle}`);
-      }
-      if (verdict.verdict === "findings" && (!Array.isArray(verdict.findings) || verdict.findings.length === 0)) {
-        problems.push(`${file2} has no findings for ${verdict.principle}`);
-      }
-      if (verdict.findings !== void 0 && !Array.isArray(verdict.findings)) {
-        problems.push(`${file2} findings for ${verdict.principle} must be an array`);
-      } else {
-        verdict.findings?.forEach((finding, index) => {
-          checkScope(finding, file2);
-          refs.push(`${stem}:${verdict.principle}:${index}`);
-        });
-      }
-    }
-    for (const id of expected) {
-      if (!seen.has(id)) {
-        problems.push(`${file2} is missing principle ${id}`);
-      }
-    }
-    value.outside.forEach((finding, index) => {
-      checkScope(finding, file2);
-      refs.push(`${stem}:outside:${index}`);
-    });
-    candidates.set(unit, refs);
-  };
-  for (const job of jobs) {
-    if (new Set(job.principles).size !== job.principles.length) {
-      problems.push(`jobs.json repeats an assigned principle in ${job.id}`);
-    }
-    verdicts(job.id, job.set ?? "all", job.principles, job.id);
-  }
-  if (route.route === "sets") {
-    verdicts("crossing", "crossing", [], "crossing");
-  }
-  if (through >= 1) {
-    for (const unit of units) {
-      const results = `probes/${unit}/results.md`;
-      try {
-        if (fs14.readFileSync(path16.join(dir, results), "utf8").trim() === "") {
-          problems.push(`${results} is empty`);
-        }
-      } catch {
-        problems.push(`${results} is missing or unreadable`);
-      }
-      const stem = `testing-${unit}`;
-      expectedFiles.add(stem);
-      verdicts(stem, unit, [], unit);
-    }
-  }
-  const verdictDir = path16.join(dir, "verdicts");
-  if (fs14.existsSync(verdictDir)) {
-    for (const file2 of fs14.readdirSync(verdictDir).filter((file3) => file3.endsWith(".json"))) {
-      const stem = file2.slice(0, -5);
-      if (!expectedFiles.has(stem) && (through >= 1 || !stem.startsWith("testing-"))) {
-        problems.push(`Unexpected verdicts/${file2}; it is not an assigned job or testing unit`);
-      }
-    }
-  }
-  if (through >= 2) {
-    for (const unit of units) {
-      const file2 = `verified/${unit}.json`;
-      const verified = load(file2);
-      if (verified === null) {
-        continue;
-      }
-      if (!Array.isArray(verified)) {
-        problems.push(`${file2} must be an array`);
-        continue;
-      }
-      const expected = new Set(candidates.get(unit) ?? []);
-      if (expected.size === 0) {
-        requireText(`challenges/${unit}.md`);
-      }
-      const seen = /* @__PURE__ */ new Set();
-      for (const [index, entry] of verified.entries()) {
-        if (!["confirmed", "plausible", "refuted"].includes(entry.status)) {
-          problems.push(`${file2} has an invalid verification status`);
-        }
-        if (entry.promoted === true && !entry.candidate && entry.file && typeof entry.line === "number" && entry.priority && entry.evidence && entry.problem && entry.fix) {
-          checkScope(entry, file2);
-          verifiedCandidates.set(`${file2}:${index}`, entry.status);
-          continue;
-        }
-        if (!expected.has(entry.candidate)) {
-          problems.push(`${file2} has unknown candidate ${String(entry.candidate)}`);
-        }
-        if (seen.has(entry.candidate)) {
-          problems.push(`${file2} repeats candidate ${entry.candidate}`);
-        }
-        seen.add(entry.candidate);
-        verifiedCandidates.set(entry.candidate, entry.status);
-      }
-      for (const ref of expected) {
-        if (!seen.has(ref)) {
-          problems.push(`${file2} is missing candidate ${ref}`);
-        }
-      }
-    }
-  }
-  if (through >= 2 && fs14.existsSync(path16.join(dir, "verified"))) {
-    for (const file2 of fs14.readdirSync(path16.join(dir, "verified")).filter((file3) => file3.endsWith(".json"))) {
-      if (!units.includes(file2.slice(0, -5))) {
-        problems.push(`Unexpected verified/${file2}; it is not an assigned verification unit`);
-      }
-    }
-  }
-  if (through >= 3 && problems.length === 0) {
-    const report = load("findings.json");
-    if (report !== null) {
-      if (report.complete !== true) {
-        problems.push("findings.json must declare complete: true after all steps pass");
-      }
-      for (const field of ["verdicts", "findings", "outside", "dismissed", "outOfScope"]) {
-        if (!Array.isArray(report[field])) {
-          problems.push(`findings.json needs a ${field} array`);
-        }
-      }
-      if (Array.isArray(report.verdicts)) {
-        const expected = new Set(jobs.flatMap((job) => job.principles));
-        const seen = /* @__PURE__ */ new Set();
-        for (const verdict of report.verdicts) {
-          if (!["not_applicable", "followed", "findings"].includes(verdict.verdict)) {
-            problems.push(`findings.json has an invalid verdict for ${verdict.principle}`);
-          }
-          if (seen.has(verdict.principle) || !expected.has(verdict.principle)) {
-            problems.push(`findings.json has duplicate or unassigned principle ${verdict.principle}`);
-          }
-          seen.add(verdict.principle);
-        }
-        for (const id of expected) {
-          if (!seen.has(id)) {
-            problems.push(`findings.json is missing principle ${id}`);
-          }
-        }
-      }
-      if (Array.isArray(report.findings) && Array.isArray(report.outside)) {
-        const retained = /* @__PURE__ */ new Set();
-        for (const finding of [...report.findings, ...report.outside]) {
-          checkScope(finding, "findings.json");
-          const refs = finding.candidates ?? (finding.candidate ? [finding.candidate] : []);
-          if (!Array.isArray(refs) || refs.length === 0) {
-            problems.push("findings.json has a finding without source candidates");
-            continue;
-          }
-          for (const ref of refs) {
-            const status = verifiedCandidates.get(ref);
-            if (status === void 0 || status === "refuted") {
-              problems.push(`findings.json retains unknown or refuted candidate ${ref}`);
-            }
-            if (retained.has(ref)) {
-              problems.push(`findings.json repeats candidate ${ref}`);
-            }
-            retained.add(ref);
-          }
-        }
-        for (const [ref, status] of verifiedCandidates) {
-          if (status !== "refuted" && !retained.has(ref)) {
-            problems.push(`findings.json is missing surviving candidate ${ref}`);
-          }
-        }
-      }
-    }
-  }
-  if (problems.length > 0) {
-    throw new Error(`Review ${stage} is incomplete:
-- ${problems.join("\n- ")}`);
-  }
-  return { stage, jobs: jobs.length, units: units.length, candidates: [...candidates.values()].reduce((sum, refs) => sum + refs.length, 0) };
-}
-
 // packages/cli/src/main.ts
 var HELP = `wellactually: author principles and run your advisory board
 
@@ -46442,16 +45571,6 @@ Your advisory board
   wellactually enable <id> [--global]   Switch it on again
   wellactually stats [on|off]           Report how often each principle fired, as counts only. On by default
 
-Review
-  wellactually review [target]          Prepare a review of a change against your advisory board: the diff, every principle and where the detectors fired
-                                 target: nothing for local changes (or the branch against the default branch), base...head, base..head, or a ref
-        --out <dir>              ... into this directory instead of a new temporary one
-  wellactually review --route <dir>     Pick how a prepared review runs, from the principles in scope.json and a token budget per reviewer
-        --budget <tokens>        ... per reviewer instead of 100k, such as 1m for a model with a 1M window
-  wellactually review --sets <dir>      Build the change sets in sets.json into parts, one reviewer each
-  wellactually review --check <dir> --stage review|test|verify|report
-                                       Check required artifacts and coverage before the next step
-
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
   wellactually mcp                      Serve the authoring commands as an MCP server
@@ -46479,13 +45598,7 @@ async function main() {
       output: { type: "string" },
       registry: { type: "string" },
       global: { type: "boolean", default: false },
-      agent: { type: "string" },
-      out: { type: "string" },
-      check: { type: "string" },
-      stage: { type: "string" },
-      route: { type: "string" },
-      sets: { type: "string" },
-      budget: { type: "string" }
+      agent: { type: "string" }
     }
   });
   const print = (data, rendered) => {
@@ -46662,7 +45775,7 @@ and confirm the code ${start.user_code}`);
         console.error("usage: wellactually update-notice --agent <opencode|opencode-1|pi>");
         return 2;
       }
-      const update = updateNotice(agent, void 0, void 0, path17.resolve(path17.dirname(process.argv[1]), ".."));
+      const update = updateNotice(agent, void 0, void 0, path16.resolve(path16.dirname(process.argv[1]), ".."));
       if (update.stale) {
         startInBackground("check-update");
       }
@@ -46727,35 +45840,6 @@ and confirm the code ${start.user_code}`);
         return 1;
       }
     }
-    case "review": {
-      try {
-        if (values.check !== void 0) {
-          const result = checkReview(values.check, values.stage ?? "report");
-          print(result, `Review ${result.stage} is complete: ${result.jobs} jobs, ${result.units} units, ${result.candidates} candidates.`);
-          return 0;
-        }
-        if (values.route !== void 0) {
-          const route = routeReview(values.route, values.budget === void 0 ? void 0 : parseBudget(values.budget));
-          print(route, renderRoute(route));
-          return 0;
-        }
-        if (values.sets !== void 0) {
-          const jobs = buildSets(values.sets);
-          print(jobs, renderSets(jobs));
-          return 0;
-        }
-      } catch (error62) {
-        console.error(error62.message);
-        return 1;
-      }
-      if (readLockfile().syncedAt === null && readConfig().token !== null) {
-        const synced = await sync();
-        console.error(`Downloaded the advisory board first: ${synced.entries.length} principles.`);
-      }
-      const plan = await planReview(process.cwd(), positionals[0], values.out);
-      print(plan, renderPlan(plan));
-      return 0;
-    }
     case "add": {
       const result = await addLocal(positionals[0] ?? ".");
       print(result, result.report.ok ? `${renderReport(result)}
@@ -46791,7 +45875,7 @@ Added ${result.id} to this machine's advisory board.` : renderReport(result));
       }
       log.ms = Math.round(performance.now() - started);
       if (process.env.WELLACTUALLY_HOOK_LOG !== "0") {
-        scheduleHookLog(path17.join(boardHome(), "logs"), log);
+        scheduleHookLog(path16.join(boardHome(), "logs"), log);
       }
       return 0;
     }
