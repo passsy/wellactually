@@ -10,3 +10,9 @@ Start each step with the Agent tool, `subagent_type` `general-purpose`, and the 
 
 A subagent cannot start subagents of its own, so you start every step yourself.
 Each one answers with a line: do not read its output file.
+
+Workers need repository reading, file writing, shell execution for tests and probes, and the available findings MCP tools.
+Use general-purpose workers rather than a restricted read-only reviewer role.
+They may inspect callers outside the changed files and write reproduction artifacts in their own directories.
+Preserve host sandbox and approval controls; missing tools must be reported as limitations.
+The report worker records verified findings through the MCP, following `findings.md`; do not replace it with handwritten MCP storage.

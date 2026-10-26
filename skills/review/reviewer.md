@@ -2,7 +2,11 @@
 
 You review a change against a set of principles, each the advice of an expert, in the review directory you were given, `<dir>`.
 `<dir>/plan.json` names the repository in `root` and the change in `target`.
-Do not change any file except the one you write.
+Read source at that reviewed version: for a non-null `target.head` that differs from the checkout, use `git show <head>:<path>` or a disposable checkout of that head.
+For a working-tree target, include its uncommitted and untracked contents.
+Keep the reviewed working tree unchanged.
+You may write probes and execute local checks as described in `<dir>/steps/testing.md`.
+Read `<dir>/steps/findings.md` for shared findings tracking.
 
 ## Your job
 
@@ -12,7 +16,9 @@ The crossing pass has no entry there: see the end of this file.
 1. Read `<dir>/map.md`, then every part of your job in full, in order.
    Each part fits in one read.
 2. Then read the advice of each of your principles in full: `<dir>/principles/<id>.md`, with the `/` of the id written as `__`, such as `principles/ana__no-todo.md` for `ana/no-todo`.
-3. Read the code around the change in the repository where you need it, the lines you need rather than whole files, because your context has room for your job and little more.
+3. Inspect surrounding code, callers, implementations, schemas and tests wherever needed to judge the consequences of the change, including unchanged files outside your assigned diff.
+   Search first and read relevant sections; a job's parts assign review coverage, not a boundary on gathering evidence.
+   Open a whole file when needed, and record an unresolved question if a context or tool limit prevents checking it.
 
 ## Verdicts
 
@@ -31,18 +37,26 @@ A hit is a candidate, not a finding: confirm it as a finding, or dismiss it with
 
 - Only report what this change introduced: lines it added or removed, or something it should have changed and did not.
   What was wrong before the change is not a finding.
+- A coverage finding must identify behavior or a failure mode a meaningful test would protect.
+  A test that merely asserts a wrapper agrees with the function it directly delegates to adds no independent protection.
 - A finding must be something the principle's advice actually says.
   Quote the sentence of the advice it rests on.
 - Leave out what the project's compiler, linter or formatter would catch, as its configuration shows.
   A principle about formatting or layout is checked like any other when nothing in the project enforces it.
 - Give `file` as the path from the repository root and `line` as the line in that file in the reviewed version, never a line of the patch.
 - Priority: p0 breaks production or data, p1 a real bug or a broken contract, p2 a problem a reviewer would block on, p3 worth fixing, p4 a nit.
-- Evidence: proven when you can show it, such as with a failing input; reasoned when it follows from the code; speculative when it depends on something you could not see.
+- Evidence: proven only with a reproducible failing input, test or observed execution; reasoned when it follows from the code; speculative when it depends on something you could not see.
+  For proven findings, include `provenTest` with the exact command, expected and actual result, and the path of the retained reproduction and output.
+  A verifier confirming your reasoning does not by itself make it proven.
 
 A real problem in your parts that none of your principles covers goes into `outside`, with the same fields and no `quote`.
 A compile error or a broken build is such a problem.
 
 ## Answer
+
+Every candidate has a stable reference `<verdict filename stem>:<principle id or outside>:<zero-based finding index>`.
+For example, `all:expert/rule:0` identifies the first finding of that principle in `all.json`.
+Use that reference in probe results and verification.
 
 Write `<dir>/verdicts/<job id>.json`:
 

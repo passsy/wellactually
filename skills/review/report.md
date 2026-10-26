@@ -1,7 +1,8 @@
 # Write the report of a review
 
 You write the report of a finished review, in the review directory you were given, `<dir>`.
-Change no file except `findings.json`.
+Write `findings.json` and the tracking files described in `<dir>/steps/findings.md`.
+Use the findings MCP when available, following that file; its tool-managed records are separate from the review's intermediate JSON.
 
 ## Read
 
@@ -12,12 +13,43 @@ Change no file except `findings.json`.
 
 ## Combine
 
+- Match verification to the source candidate id, not just its file and line.
 - A finding stands when its verifier confirmed it or found it plausible.
   A refuted one is dropped.
-- Two findings about the same place keep the one with the higher priority, naming both principles.
-- Findings outside the board, from `outside` and the crossing pass, stand by the same rule.
+- Merge duplicates only when they describe the same defect, keeping the strongest evidence and naming every relevant principle.
+  Independent defects on the same line stay separate.
+- Candidates from testing and the crossing pass stand by the same verification rule.
+  A surviving candidate with a principle id belongs to that principle, even when it arrived in `outside`.
+  Upgrade its final principle verdict to `findings`; only candidates with no principle belong outside the board.
 
-Write `<dir>/findings.json`: the verdict of every principle, the findings that stand with their status, the findings outside the board, the dismissed hits, and the out-of-scope principles.
+Check that every job has every required principle verdict, every testing unit has a result, and every candidate has a verifier entry.
+When anything is missing, report the review as incomplete and name the missing work; do not claim clean coverage or run a complete baseline check.
+
+Write `<dir>/findings.json` with this shape:
+
+```json
+{
+  "complete": true,
+  "verdicts": [{ "principle": "expert/rule", "verdict": "findings | followed | not_applicable" }],
+  "findings": [],
+  "outside": [],
+  "dismissed": [],
+  "outOfScope": []
+}
+```
+
+`verdicts` has exactly one entry per unique principle assigned across all jobs, merging per-set verdicts.
+`findings` contains the surviving principle findings, and `outside` the surviving findings with no principle.
+Retain source candidate references, location, priority, evidence, verification status, problem, fix, advice quote and reproduction evidence on each finding.
+Use `candidate` for one source or `candidates` for an array of sources merged as the same defect.
+Every confirmed or plausible candidate must be represented once; no refuted candidate may survive.
+A promoted verifier finding uses `verified/<unit>.json:<zero-based entry index>` as its source reference.
+Include MCP ids after tracking when available.
+Keep dismissed hits and out-of-scope principles with their reasons.
+Set `complete` to false for missing coverage, missing artifacts or unfinished verification; blocked test execution is disclosed as a limitation in its test result, and must not be described as a passing test.
+
+Keep reproduction commands and artifacts with proven findings.
+Record the findings that stand in the findings MCP, and finish its baseline only for a complete review, as `findings.md` describes.
 
 ## Rate
 
@@ -42,4 +74,5 @@ Answer with the report for the user, as Markdown, and nothing else:
 2. The findings outside the board, the same way, under their own heading.
 3. One line of coverage, such as "63 principles: 4 with findings, 11 followed, 48 not applicable; 33 out of scope".
 4. The out-of-scope principles with their reasons, the files left out with their reasons, and the principles left out with their reasons.
-5. The review directory, so the user can open `findings.json`.
+5. Tests and counterexamples run, with their result, and any unavailable tools or unverified behavior.
+6. The review directory, so the user can open `findings.json`, and the findings MCP target when tracking is available.

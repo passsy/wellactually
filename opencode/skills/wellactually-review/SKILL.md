@@ -74,25 +74,47 @@ When it says the change sets need fixing, send its message to the same subagent 
 ## 4. Review
 
 `<dir>/jobs.json` lists the reviewers, each with an `id`.
+When it is empty because every principle is out of scope, skip review, testing and verification workers and write the report with those exclusions.
 Start one subagent per job with the review model, all at once: "Read `<dir>/steps/reviewer.md` and do job `<id>` of the review in `<dir>`."
 After the change sets, start one more: "Read `<dir>/steps/reviewer.md` and do the crossing pass of the review in `<dir>`."
 
 Each answers with how many verdicts it wrote.
-A reviewer that wrote fewer verdicts than its job has principles is asked once more for the missing ones.
+Run `node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" review --check <dir> --stage review`.
+Send missing or invalid outputs back to their workers; after one repair attempt, report any remaining gap as incomplete.
 
-## 5. Verify
+## 5. Test and seek counterexamples
+
+Start one testing subagent per review unit with the review model: "Read `<dir>/steps/testing.md` and test unit `<unit>` of the review in `<dir>`."
+Without change sets the unit is `all`; otherwise it is each set id, plus `crossing` for contracts between sets.
+The tester may skip execution when the unit has no executable behavior, and records why.
+Wait for its results before verification.
+Run `node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" review --check <dir> --stage test`.
+Resolve missing results before going on, or report the review as incomplete.
+
+## 6. Verify
 
 Start the verifiers with the review model, all at once.
 Without change sets that is one: "Read `<dir>/steps/verifier.md` and verify the findings of the review in `<dir>`."
 With change sets it is one per set, and one for the crossing pass: "Read `<dir>/steps/verifier.md` and verify the findings of `<set>` in `<dir>`", with the set's id such as `set-01`, or `crossing`.
 
-## 6. Report
+Run `node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" review --check <dir> --stage verify`.
+Send gaps back to the responsible verifier before reporting a complete review.
+
+## 7. Report
 
 Start one subagent with the review model: "Read `<dir>/steps/report.md` and write the report of the review in `<dir>`."
 It also tells each principle's expert how it went, and answers with the report.
-Give that report to the user as it is.
+Run `node "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs" review --check <dir> --stage report` before presenting it as complete.
+Give the returned report to the user; when the check fails or a worker hits a limit, clearly name the unfinished stages.
+A successful agent exit or a `done` message does not substitute for these checks.
+Do not require a `report.md` file: some hosts only allow report workers to return text.
 
-Do not fix anything, and do not post to the pull request, unless the user asks for that.
+Reviewers and testers may read repository files, trace callers, execute local checks, and write probes or alter tests in disposable copies, as `testing.md` describes.
+Give every worker the file, shell and findings MCP tools needed for its job within the host's permissions.
+Do not restrict shell access to `git` and the preparation command: that prevents tests and counterexamples.
+Do not grant unrestricted permissions or bypass the host's approval rules.
+Keep the reviewed working tree unchanged; findings and reproduction artifacts belong in the review directory or a disposable checkout.
+Do not fix product code or post to the pull request unless the user asks for that.
 
 ## When something fails
 

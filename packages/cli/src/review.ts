@@ -639,7 +639,7 @@ function adviceTokens(dir: string, file: string): number {
 }
 
 /** The instructions of each step of the review, which ship beside the review skill. */
-const STEP_FILES = ["router.md", "splitter.md", "reviewer.md", "verifier.md", "report.md"];
+const STEP_FILES = ["router.md", "splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md", "report.md"];
 
 /** The folder of the review skill: beside the command in the plugin, or in this repository. */
 function stepsSource(): string | null {
@@ -830,4 +830,225 @@ export function parseBudget(text: string): number {
   }
   const scale = { "": 1, k: 1000, m: 1_000_000 }[(match[2] as string).toLowerCase() as "" | "k" | "m"];
   return Math.round(Number(match[1]) * scale);
+}
+
+export type ReviewStage = "review" | "test" | "verify" | "report";
+
+interface VerdictFile {
+  job: string;
+  verdicts: { principle: string; verdict: string; findings?: unknown[] }[];
+  outside: unknown[];
+}
+
+/** Checks completion from artifacts, rather than an agent's successful exit or reported count. */
+export function checkReview(dir: string, stage: string): { stage: ReviewStage; jobs: number; units: number; candidates: number } {
+  const stages: ReviewStage[] = ["review", "test", "verify", "report"];
+  const through = stages.indexOf(stage as ReviewStage);
+  if (through < 0) {
+    throw new Error(`Unknown review stage "${stage}". Use review, test, verify or report.`);
+  }
+  const route = readJson<ReviewRoute>(dir, "route.json");
+  const jobs = readJson<ReviewJob[]>(dir, "jobs.json");
+  const problems: string[] = [];
+  if (!["single", "sets"].includes(route.route) || !Array.isArray(jobs) || (jobs.length === 0 && (route.route !== "single" || !Array.isArray(route.groups) || route.groups.length !== 0))) {
+    throw new Error("Review routing is incomplete: zero jobs require a single route with no principle groups.");
+  }
+  const candidates = new Map<string, string[]>();
+  const verifiedCandidates = new Map<string, string>();
+  const units = [...new Set(jobs.map((job) => job.set ?? "all"))];
+  if (route.route === "sets") {
+    units.push("crossing");
+  }
+  const expectedFiles = new Set(jobs.map((job) => job.id));
+  if (route.route === "sets") {
+    expectedFiles.add("crossing");
+  }
+  if (expectedFiles.size !== jobs.length + (route.route === "sets" ? 1 : 0)) {
+    problems.push("jobs.json has duplicate or reserved job ids");
+  }
+  const load = <T>(file: string): T | null => {
+    try {
+      return readJson<T>(dir, file);
+    } catch (error) {
+      problems.push(`${file}: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    }
+  };
+  const verdicts = (stem: string, unit: string, expected: string[], job: string): void => {
+    const file = `verdicts/${stem}.json`;
+    const value = load<VerdictFile>(file);
+    if (value === null) {
+      return;
+    }
+    if (value.job !== job || !Array.isArray(value.verdicts) || !Array.isArray(value.outside)) {
+      problems.push(`${file} needs job "${job}", verdicts and outside arrays`);
+      return;
+    }
+    const seen = new Set<string>();
+    const refs = candidates.get(unit) ?? [];
+    for (const verdict of value.verdicts) {
+      if (seen.has(verdict.principle)) {
+        problems.push(`${file} repeats principle ${verdict.principle}`);
+      }
+      seen.add(verdict.principle);
+      if (!expected.includes(verdict.principle)) {
+        problems.push(`${file} has unassigned principle ${verdict.principle}`);
+      }
+      if (!["not_applicable", "followed", "findings"].includes(verdict.verdict)) {
+        problems.push(`${file} has an invalid verdict for ${verdict.principle}`);
+      }
+      if (verdict.verdict === "findings" && (!Array.isArray(verdict.findings) || verdict.findings.length === 0)) {
+        problems.push(`${file} has no findings for ${verdict.principle}`);
+      }
+      if (verdict.findings !== undefined && !Array.isArray(verdict.findings)) {
+        problems.push(`${file} findings for ${verdict.principle} must be an array`);
+      } else {
+        verdict.findings?.forEach((_, index) => refs.push(`${stem}:${verdict.principle}:${index}`));
+      }
+    }
+    for (const id of expected) {
+      if (!seen.has(id)) {
+        problems.push(`${file} is missing principle ${id}`);
+      }
+    }
+    value.outside.forEach((_, index) => refs.push(`${stem}:outside:${index}`));
+    candidates.set(unit, refs);
+  };
+  for (const job of jobs) {
+    if (new Set(job.principles).size !== job.principles.length) {
+      problems.push(`jobs.json repeats an assigned principle in ${job.id}`);
+    }
+    verdicts(job.id, job.set ?? "all", job.principles, job.id);
+  }
+  if (route.route === "sets") {
+    verdicts("crossing", "crossing", [], "crossing");
+  }
+  if (through >= 1) {
+    for (const unit of units) {
+      const results = `probes/${unit}/results.md`;
+      try {
+        if (fs.readFileSync(path.join(dir, results), "utf8").trim() === "") {
+          problems.push(`${results} is empty`);
+        }
+      } catch {
+        problems.push(`${results} is missing or unreadable`);
+      }
+      const stem = `testing-${unit}`;
+      expectedFiles.add(stem);
+      verdicts(stem, unit, [], unit);
+    }
+  }
+  const verdictDir = path.join(dir, "verdicts");
+  if (fs.existsSync(verdictDir)) {
+    for (const file of fs.readdirSync(verdictDir).filter((file) => file.endsWith(".json"))) {
+      const stem = file.slice(0, -5);
+      if (!expectedFiles.has(stem) && (through >= 1 || !stem.startsWith("testing-"))) {
+        problems.push(`Unexpected verdicts/${file}; it is not an assigned job or testing unit`);
+      }
+    }
+  }
+  if (through >= 2) {
+    for (const unit of units) {
+      const file = `verified/${unit}.json`;
+      const verified = load<{ candidate: string; status: string; promoted?: boolean; file?: string; line?: number; priority?: string; evidence?: string; problem?: string; fix?: string }[]>(file);
+      if (verified === null) {
+        continue;
+      }
+      if (!Array.isArray(verified)) {
+        problems.push(`${file} must be an array`);
+        continue;
+      }
+      const expected = new Set(candidates.get(unit) ?? []);
+      const seen = new Set<string>();
+      for (const [index, entry] of verified.entries()) {
+        if (!["confirmed", "plausible", "refuted"].includes(entry.status)) {
+          problems.push(`${file} has an invalid verification status`);
+        }
+        if (entry.promoted === true && !entry.candidate && entry.file && typeof entry.line === "number" && entry.priority && entry.evidence && entry.problem && entry.fix) {
+          verifiedCandidates.set(`${file}:${index}`, entry.status);
+          continue;
+        }
+        if (!expected.has(entry.candidate)) {
+          problems.push(`${file} has unknown candidate ${String(entry.candidate)}`);
+        }
+        if (seen.has(entry.candidate)) {
+          problems.push(`${file} repeats candidate ${entry.candidate}`);
+        }
+        seen.add(entry.candidate);
+        verifiedCandidates.set(entry.candidate, entry.status);
+      }
+      for (const ref of expected) {
+        if (!seen.has(ref)) {
+          problems.push(`${file} is missing candidate ${ref}`);
+        }
+      }
+    }
+  }
+  if (through >= 2 && fs.existsSync(path.join(dir, "verified"))) {
+    for (const file of fs.readdirSync(path.join(dir, "verified")).filter((file) => file.endsWith(".json"))) {
+      if (!units.includes(file.slice(0, -5))) {
+        problems.push(`Unexpected verified/${file}; it is not an assigned verification unit`);
+      }
+    }
+  }
+  if (through >= 3 && problems.length === 0) {
+    const report = load<{ complete: boolean; verdicts: { principle: string; verdict: string }[]; findings: { candidate?: string; candidates?: string[] }[]; outside: { candidate?: string; candidates?: string[] }[]; dismissed: unknown[]; outOfScope: unknown[] }>("findings.json");
+    if (report !== null) {
+      if (report.complete !== true) {
+        problems.push("findings.json must declare complete: true after all steps pass");
+      }
+      for (const field of ["verdicts", "findings", "outside", "dismissed", "outOfScope"] as const) {
+        if (!Array.isArray(report[field])) {
+          problems.push(`findings.json needs a ${field} array`);
+        }
+      }
+      if (Array.isArray(report.verdicts)) {
+        const expected = new Set(jobs.flatMap((job) => job.principles));
+        const seen = new Set<string>();
+        for (const verdict of report.verdicts) {
+          if (!["not_applicable", "followed", "findings"].includes(verdict.verdict)) {
+            problems.push(`findings.json has an invalid verdict for ${verdict.principle}`);
+          }
+          if (seen.has(verdict.principle) || !expected.has(verdict.principle)) {
+            problems.push(`findings.json has duplicate or unassigned principle ${verdict.principle}`);
+          }
+          seen.add(verdict.principle);
+        }
+        for (const id of expected) {
+          if (!seen.has(id)) {
+            problems.push(`findings.json is missing principle ${id}`);
+          }
+        }
+      }
+      if (Array.isArray(report.findings) && Array.isArray(report.outside)) {
+        const retained = new Set<string>();
+        for (const finding of [...report.findings, ...report.outside]) {
+          const refs = finding.candidates ?? (finding.candidate ? [finding.candidate] : []);
+          if (!Array.isArray(refs) || refs.length === 0) {
+            problems.push("findings.json has a finding without source candidates");
+            continue;
+          }
+          for (const ref of refs) {
+            const status = verifiedCandidates.get(ref);
+            if (status === undefined || status === "refuted") {
+              problems.push(`findings.json retains unknown or refuted candidate ${ref}`);
+            }
+            if (retained.has(ref)) {
+              problems.push(`findings.json repeats candidate ${ref}`);
+            }
+            retained.add(ref);
+          }
+        }
+        for (const [ref, status] of verifiedCandidates) {
+          if (status !== "refuted" && !retained.has(ref)) {
+            problems.push(`findings.json is missing surviving candidate ${ref}`);
+          }
+        }
+      }
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`Review ${stage} is incomplete:\n- ${problems.join("\n- ")}`);
+  }
+  return { stage: stage as ReviewStage, jobs: jobs.length, units: units.length, candidates: [...candidates.values()].reduce((sum, refs) => sum + refs.length, 0) };
 }

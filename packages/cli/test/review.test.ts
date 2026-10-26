@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 import { API_VERSION } from "@wellactually/sdk";
 import { buildBundle } from "@wellactually/core/node";
 import { writeCached } from "../src/board/board.ts";
-import { buildSets, packDiff, parseBudget, planReview, renderPlan, resolveTarget, routeReview } from "../src/review.ts";
+import { buildSets, checkReview, packDiff, parseBudget, planReview, renderPlan, resolveTarget, routeReview } from "../src/review.ts";
 
 function repo(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-repo-"));
@@ -206,5 +206,169 @@ describe("routing a review", () => {
   test("a budget is written as the user says it", () => {
     expect([parseBudget("100k"), parseBudget("1m"), parseBudget("250000")]).toEqual([100_000, 1_000_000, 250_000]);
     expect(() => parseBudget("lots")).toThrow(/no budget/);
+  });
+});
+
+describe("review completion", () => {
+  function completed(sets: boolean = false): { dir: string; write: (file: string, value: unknown) => void } {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-check-"));
+    const write = (file: string, value: unknown): void => {
+      const full = path.join(dir, file);
+      fs.mkdirSync(path.dirname(full), { recursive: true });
+      fs.writeFileSync(full, typeof value === "string" ? value : JSON.stringify(value));
+    };
+    const unit = sets ? "set-01" : "all";
+    const job = `${unit}-g1`;
+    write("route.json", { route: sets ? "sets" : "single" });
+    write("jobs.json", [{ id: job, principles: ["expert/rule"], parts: [], set: sets ? unit : null }]);
+    // Distinct findings can share a location; identity must include the source and index.
+    const finding = { file: "a.ts", line: 1, problem: "Broken boundary", fix: "Handle it" };
+    write(`verdicts/${job}.json`, { job, verdicts: [{ principle: "expert/rule", verdict: "findings", findings: [finding, finding] }], outside: [] });
+    const units = sets ? [unit, "crossing"] : [unit];
+    for (const id of units) {
+      if (id === "crossing") {
+        write("verdicts/crossing.json", { job: id, verdicts: [], outside: [] });
+      }
+      write(`probes/${id}/results.md`, "Checked the production path; reproduction retained.\n");
+      write(`verdicts/testing-${id}.json`, { job: id, verdicts: [], outside: [finding] });
+      write(`verified/${id}.json`, [
+        ...(id === unit ? [0, 1].map((index) => ({ candidate: `${job}:expert/rule:${index}`, status: "confirmed" })) : []),
+        { candidate: `testing-${id}:outside:0`, status: "refuted" },
+      ]);
+    }
+    write("findings.json", { complete: true, verdicts: [{ principle: "expert/rule", verdict: "findings" }], findings: [{ ...finding, candidates: [`${job}:expert/rule:0`, `${job}:expert/rule:1`] }], outside: [], dismissed: [], outOfScope: [] });
+    return { dir, write };
+  }
+
+  test("checks every stage without requiring a report file, including change sets and crossing", () => {
+    for (const sets of [false, true]) {
+      const { dir } = completed(sets);
+      for (const stage of ["review", "test", "verify", "report"]) {
+        expect(checkReview(dir, stage)).toMatchObject({ stage, jobs: 1, units: sets ? 2 : 1, candidates: stage === "review" ? 2 : sets ? 4 : 3 });
+      }
+      expect(fs.existsSync(path.join(dir, "report.md"))).toBe(false);
+    }
+  });
+
+  test("all principles out of scope produces no jobs or testing units and still checks the report", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-out-of-scope-"));
+    const write = (file: string, value: unknown): void => {
+      fs.writeFileSync(path.join(dir, file), JSON.stringify(value));
+    };
+    const outOfScope = [{ id: "expert/rule", reason: "Different language" }];
+    write("plan.json", { principles: [{ id: "expert/rule" }], parts: [], tokens: { diff: 10 } });
+    write("scope.json", { inScope: [], outOfScope });
+    const route = routeReview(dir);
+    expect(route).toMatchObject({ route: "single", groups: [], jobs: [] });
+    write("findings.json", { complete: true, verdicts: [], findings: [], outside: [], dismissed: [], outOfScope });
+    for (const stage of ["review", "test", "verify", "report"]) {
+      expect(checkReview(dir, stage)).toEqual({ stage, jobs: 0, units: 0, candidates: 0 });
+    }
+    write("route.json", { ...route, route: "sets" });
+    expect(() => checkReview(dir, "review")).toThrow(/zero jobs require a single route/);
+    write("route.json", { ...route, groups: [["expert/rule"]] });
+    expect(() => checkReview(dir, "review")).toThrow(/zero jobs require a single route/);
+    write("route.json", { route: "single" });
+    expect(() => checkReview(dir, "review")).toThrow(/zero jobs require a single route/);
+  });
+
+  test("rejects missing and duplicate principle verdicts and unfinished jobs", () => {
+    const { dir, write } = completed();
+    write("verdicts/all-g1.json", { job: "all-g1", verdicts: [], outside: [] });
+    expect(() => checkReview(dir, "review")).toThrow(/missing principle expert\/rule/);
+    const verdict = { principle: "expert/rule", verdict: "followed" };
+    write("verdicts/all-g1.json", { job: "all-g1", verdicts: [verdict, verdict], outside: [] });
+    expect(() => checkReview(dir, "review")).toThrow(/repeats principle expert\/rule/);
+    fs.unlinkSync(path.join(dir, "verdicts/all-g1.json"));
+    expect(() => checkReview(dir, "review")).toThrow(/verdicts\/all-g1.json is missing/);
+  });
+
+  test("requires both testing evidence and testing verdicts even when a report already exists", () => {
+    const { dir } = completed();
+    fs.unlinkSync(path.join(dir, "probes/all/results.md"));
+    fs.unlinkSync(path.join(dir, "verdicts/testing-all.json"));
+    expect(() => checkReview(dir, "test")).toThrow(/probes\/all\/results.md is missing/);
+    expect(() => checkReview(dir, "report")).toThrow(/verdicts\/testing-all.json is missing/);
+  });
+
+  test("rejects gapped, duplicate and foreign verification references despite matching file and line", () => {
+    const { dir, write } = completed();
+    const first = { candidate: "all-g1:expert/rule:0", status: "confirmed" };
+    const testing = { candidate: "testing-all:outside:0", status: "refuted" };
+    write("verified/all.json", [first, first, testing]);
+    expect(() => checkReview(dir, "verify")).toThrow(/repeats candidate all-g1:expert\/rule:0/);
+    expect(() => checkReview(dir, "verify")).toThrow(/missing candidate all-g1:expert\/rule:1/);
+    write("verified/all.json", [first, testing, { candidate: "other:outside:0", status: "confirmed" }]);
+    expect(() => checkReview(dir, "verify")).toThrow(/unknown candidate other:outside:0/);
+  });
+
+  test("requires per-unit verification including crossing and rejects stale verdict files", () => {
+    const { dir, write } = completed(true);
+    fs.unlinkSync(path.join(dir, "verified/crossing.json"));
+    expect(() => checkReview(dir, "verify")).toThrow(/verified\/crossing.json is missing/);
+    write("verdicts/stale.json", { job: "stale", verdicts: [], outside: [] });
+    expect(() => checkReview(dir, "review")).toThrow(/Unexpected verdicts\/stale.json/);
+  });
+
+  test("allows fully described promoted findings without letting them substitute for source coverage", () => {
+    const { dir, write } = completed();
+    const file = path.join(dir, "verified/all.json");
+    const entries = JSON.parse(fs.readFileSync(file, "utf8"));
+    const promoted = { promoted: true, status: "confirmed", file: "a.ts", line: 1, priority: "p2", evidence: "reasoned", problem: "Dismissed hit is real", fix: "Handle it" };
+    write("verified/all.json", [...entries, promoted]);
+    expect(() => checkReview(dir, "verify")).not.toThrow();
+    write("verified/all.json", [promoted]);
+    expect(() => checkReview(dir, "verify")).toThrow(/missing candidate/);
+  });
+
+  test("the report retains every surviving source while permitting merged duplicate findings", () => {
+    const { dir, write } = completed();
+    const file = path.join(dir, "findings.json");
+    const report = JSON.parse(fs.readFileSync(file, "utf8"));
+    expect(() => checkReview(dir, "report")).not.toThrow();
+    write("findings.json", { ...report, findings: [] });
+    expect(() => checkReview(dir, "report")).toThrow(/missing surviving candidate all-g1:expert\/rule:0/);
+    write("findings.json", { ...report, outside: [{ candidates: ["testing-all:outside:0"] }] });
+    expect(() => checkReview(dir, "report")).toThrow(/retains unknown or refuted candidate testing-all:outside:0/);
+    write("findings.json", { ...report, findings: [...report.findings, ...report.findings] });
+    expect(() => checkReview(dir, "report")).toThrow(/repeats candidate all-g1:expert\/rule:0/);
+    write("findings.json", { ...report, verdicts: [{ principle: "expert/rule", verdict: "unchecked" }] });
+    expect(() => checkReview(dir, "report")).toThrow(/invalid verdict for expert\/rule/);
+  });
+
+  test("the report retains promoted verifier findings by their stable verification source", () => {
+    const { dir, write } = completed();
+    const file = path.join(dir, "verified/all.json");
+    const entries = JSON.parse(fs.readFileSync(file, "utf8"));
+    const promoted = { promoted: true, status: "confirmed", file: "a.ts", line: 1, priority: "p2", evidence: "reasoned", problem: "Dismissed hit is real", fix: "Handle it" };
+    write("verified/all.json", [...entries, promoted]);
+    expect(() => checkReview(dir, "report")).toThrow(/missing surviving candidate verified\/all.json:3/);
+    const report = JSON.parse(fs.readFileSync(path.join(dir, "findings.json"), "utf8"));
+    write("findings.json", { ...report, outside: [{ ...promoted, candidates: ["verified/all.json:3"] }] });
+    expect(() => checkReview(dir, "report")).not.toThrow();
+  });
+
+  test("the CLI exits nonzero for incomplete work and reports successful checks", () => {
+    const { dir, write } = completed();
+    const command = ["packages/cli/src/main.ts", "review", "--check", dir, "--stage", "verify"];
+    expect(execFileSync(process.execPath, command, { encoding: "utf8" })).toContain("Review verify is complete");
+    write("verified/all.json", []);
+    try {
+      execFileSync(process.execPath, command, { encoding: "utf8", stdio: "pipe" });
+      throw new Error("The incomplete check unexpectedly succeeded");
+    } catch (error) {
+      const result = error as { status?: number; stderr?: string };
+      expect(result.status).toBe(1);
+      expect(String(result.stderr)).toContain("missing candidate all-g1:expert/rule:0");
+    }
+  });
+
+  test("rejects missing or incomplete findings and invalid stages", () => {
+    const { dir, write } = completed();
+    write("findings.json", { complete: true, verdicts: [], findings: [], outside: [], dismissed: [], outOfScope: [] });
+    expect(() => checkReview(dir, "report")).toThrow(/findings.json is missing principle expert\/rule/);
+    fs.unlinkSync(path.join(dir, "findings.json"));
+    expect(() => checkReview(dir, "report")).toThrow(/findings.json is missing/);
+    expect(() => checkReview(dir, "typo")).toThrow(/Unknown review stage/);
   });
 });

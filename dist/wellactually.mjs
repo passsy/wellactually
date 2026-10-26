@@ -46004,7 +46004,7 @@ function renderPlan(plan) {
 function adviceTokens(dir, file2) {
   return tokensOf(fs14.statSync(path16.join(dir, file2)).size);
 }
-var STEP_FILES = ["router.md", "splitter.md", "reviewer.md", "verifier.md", "report.md"];
+var STEP_FILES = ["router.md", "splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md", "report.md"];
 function stepsSource() {
   let dir = path16.dirname(fileURLToPath(import.meta.url));
   for (let depth = 0; depth < 5; depth++) {
@@ -46137,6 +46137,218 @@ function parseBudget(text2) {
   const scale = { "": 1, k: 1e3, m: 1e6 }[match[2].toLowerCase()];
   return Math.round(Number(match[1]) * scale);
 }
+function checkReview(dir, stage) {
+  const stages = ["review", "test", "verify", "report"];
+  const through = stages.indexOf(stage);
+  if (through < 0) {
+    throw new Error(`Unknown review stage "${stage}". Use review, test, verify or report.`);
+  }
+  const route = readJson3(dir, "route.json");
+  const jobs = readJson3(dir, "jobs.json");
+  const problems = [];
+  if (!["single", "sets"].includes(route.route) || !Array.isArray(jobs) || jobs.length === 0 && (route.route !== "single" || !Array.isArray(route.groups) || route.groups.length !== 0)) {
+    throw new Error("Review routing is incomplete: zero jobs require a single route with no principle groups.");
+  }
+  const candidates = /* @__PURE__ */ new Map();
+  const verifiedCandidates = /* @__PURE__ */ new Map();
+  const units = [...new Set(jobs.map((job) => job.set ?? "all"))];
+  if (route.route === "sets") {
+    units.push("crossing");
+  }
+  const expectedFiles = new Set(jobs.map((job) => job.id));
+  if (route.route === "sets") {
+    expectedFiles.add("crossing");
+  }
+  if (expectedFiles.size !== jobs.length + (route.route === "sets" ? 1 : 0)) {
+    problems.push("jobs.json has duplicate or reserved job ids");
+  }
+  const load = (file2) => {
+    try {
+      return readJson3(dir, file2);
+    } catch (error62) {
+      problems.push(`${file2}: ${error62 instanceof Error ? error62.message : String(error62)}`);
+      return null;
+    }
+  };
+  const verdicts = (stem, unit, expected, job) => {
+    const file2 = `verdicts/${stem}.json`;
+    const value = load(file2);
+    if (value === null) {
+      return;
+    }
+    if (value.job !== job || !Array.isArray(value.verdicts) || !Array.isArray(value.outside)) {
+      problems.push(`${file2} needs job "${job}", verdicts and outside arrays`);
+      return;
+    }
+    const seen = /* @__PURE__ */ new Set();
+    const refs = candidates.get(unit) ?? [];
+    for (const verdict of value.verdicts) {
+      if (seen.has(verdict.principle)) {
+        problems.push(`${file2} repeats principle ${verdict.principle}`);
+      }
+      seen.add(verdict.principle);
+      if (!expected.includes(verdict.principle)) {
+        problems.push(`${file2} has unassigned principle ${verdict.principle}`);
+      }
+      if (!["not_applicable", "followed", "findings"].includes(verdict.verdict)) {
+        problems.push(`${file2} has an invalid verdict for ${verdict.principle}`);
+      }
+      if (verdict.verdict === "findings" && (!Array.isArray(verdict.findings) || verdict.findings.length === 0)) {
+        problems.push(`${file2} has no findings for ${verdict.principle}`);
+      }
+      if (verdict.findings !== void 0 && !Array.isArray(verdict.findings)) {
+        problems.push(`${file2} findings for ${verdict.principle} must be an array`);
+      } else {
+        verdict.findings?.forEach((_, index) => refs.push(`${stem}:${verdict.principle}:${index}`));
+      }
+    }
+    for (const id of expected) {
+      if (!seen.has(id)) {
+        problems.push(`${file2} is missing principle ${id}`);
+      }
+    }
+    value.outside.forEach((_, index) => refs.push(`${stem}:outside:${index}`));
+    candidates.set(unit, refs);
+  };
+  for (const job of jobs) {
+    if (new Set(job.principles).size !== job.principles.length) {
+      problems.push(`jobs.json repeats an assigned principle in ${job.id}`);
+    }
+    verdicts(job.id, job.set ?? "all", job.principles, job.id);
+  }
+  if (route.route === "sets") {
+    verdicts("crossing", "crossing", [], "crossing");
+  }
+  if (through >= 1) {
+    for (const unit of units) {
+      const results = `probes/${unit}/results.md`;
+      try {
+        if (fs14.readFileSync(path16.join(dir, results), "utf8").trim() === "") {
+          problems.push(`${results} is empty`);
+        }
+      } catch {
+        problems.push(`${results} is missing or unreadable`);
+      }
+      const stem = `testing-${unit}`;
+      expectedFiles.add(stem);
+      verdicts(stem, unit, [], unit);
+    }
+  }
+  const verdictDir = path16.join(dir, "verdicts");
+  if (fs14.existsSync(verdictDir)) {
+    for (const file2 of fs14.readdirSync(verdictDir).filter((file3) => file3.endsWith(".json"))) {
+      const stem = file2.slice(0, -5);
+      if (!expectedFiles.has(stem) && (through >= 1 || !stem.startsWith("testing-"))) {
+        problems.push(`Unexpected verdicts/${file2}; it is not an assigned job or testing unit`);
+      }
+    }
+  }
+  if (through >= 2) {
+    for (const unit of units) {
+      const file2 = `verified/${unit}.json`;
+      const verified = load(file2);
+      if (verified === null) {
+        continue;
+      }
+      if (!Array.isArray(verified)) {
+        problems.push(`${file2} must be an array`);
+        continue;
+      }
+      const expected = new Set(candidates.get(unit) ?? []);
+      const seen = /* @__PURE__ */ new Set();
+      for (const [index, entry] of verified.entries()) {
+        if (!["confirmed", "plausible", "refuted"].includes(entry.status)) {
+          problems.push(`${file2} has an invalid verification status`);
+        }
+        if (entry.promoted === true && !entry.candidate && entry.file && typeof entry.line === "number" && entry.priority && entry.evidence && entry.problem && entry.fix) {
+          verifiedCandidates.set(`${file2}:${index}`, entry.status);
+          continue;
+        }
+        if (!expected.has(entry.candidate)) {
+          problems.push(`${file2} has unknown candidate ${String(entry.candidate)}`);
+        }
+        if (seen.has(entry.candidate)) {
+          problems.push(`${file2} repeats candidate ${entry.candidate}`);
+        }
+        seen.add(entry.candidate);
+        verifiedCandidates.set(entry.candidate, entry.status);
+      }
+      for (const ref of expected) {
+        if (!seen.has(ref)) {
+          problems.push(`${file2} is missing candidate ${ref}`);
+        }
+      }
+    }
+  }
+  if (through >= 2 && fs14.existsSync(path16.join(dir, "verified"))) {
+    for (const file2 of fs14.readdirSync(path16.join(dir, "verified")).filter((file3) => file3.endsWith(".json"))) {
+      if (!units.includes(file2.slice(0, -5))) {
+        problems.push(`Unexpected verified/${file2}; it is not an assigned verification unit`);
+      }
+    }
+  }
+  if (through >= 3 && problems.length === 0) {
+    const report = load("findings.json");
+    if (report !== null) {
+      if (report.complete !== true) {
+        problems.push("findings.json must declare complete: true after all steps pass");
+      }
+      for (const field of ["verdicts", "findings", "outside", "dismissed", "outOfScope"]) {
+        if (!Array.isArray(report[field])) {
+          problems.push(`findings.json needs a ${field} array`);
+        }
+      }
+      if (Array.isArray(report.verdicts)) {
+        const expected = new Set(jobs.flatMap((job) => job.principles));
+        const seen = /* @__PURE__ */ new Set();
+        for (const verdict of report.verdicts) {
+          if (!["not_applicable", "followed", "findings"].includes(verdict.verdict)) {
+            problems.push(`findings.json has an invalid verdict for ${verdict.principle}`);
+          }
+          if (seen.has(verdict.principle) || !expected.has(verdict.principle)) {
+            problems.push(`findings.json has duplicate or unassigned principle ${verdict.principle}`);
+          }
+          seen.add(verdict.principle);
+        }
+        for (const id of expected) {
+          if (!seen.has(id)) {
+            problems.push(`findings.json is missing principle ${id}`);
+          }
+        }
+      }
+      if (Array.isArray(report.findings) && Array.isArray(report.outside)) {
+        const retained = /* @__PURE__ */ new Set();
+        for (const finding of [...report.findings, ...report.outside]) {
+          const refs = finding.candidates ?? (finding.candidate ? [finding.candidate] : []);
+          if (!Array.isArray(refs) || refs.length === 0) {
+            problems.push("findings.json has a finding without source candidates");
+            continue;
+          }
+          for (const ref of refs) {
+            const status = verifiedCandidates.get(ref);
+            if (status === void 0 || status === "refuted") {
+              problems.push(`findings.json retains unknown or refuted candidate ${ref}`);
+            }
+            if (retained.has(ref)) {
+              problems.push(`findings.json repeats candidate ${ref}`);
+            }
+            retained.add(ref);
+          }
+        }
+        for (const [ref, status] of verifiedCandidates) {
+          if (status !== "refuted" && !retained.has(ref)) {
+            problems.push(`findings.json is missing surviving candidate ${ref}`);
+          }
+        }
+      }
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`Review ${stage} is incomplete:
+- ${problems.join("\n- ")}`);
+  }
+  return { stage, jobs: jobs.length, units: units.length, candidates: [...candidates.values()].reduce((sum, refs) => sum + refs.length, 0) };
+}
 
 // packages/cli/src/main.ts
 var HELP = `wellactually: author principles and run your advisory board
@@ -46182,6 +46394,8 @@ Review
   wellactually review --route <dir>     Pick how a prepared review runs, from the principles in scope.json and a token budget per reviewer
         --budget <tokens>        ... per reviewer instead of 100k, such as 1m for a model with a 1M window
   wellactually review --sets <dir>      Build the change sets in sets.json into parts, one reviewer each
+  wellactually review --check <dir> --stage review|test|verify|report
+                                       Check required artifacts and coverage before the next step
 
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
@@ -46212,6 +46426,8 @@ async function main() {
       global: { type: "boolean", default: false },
       agent: { type: "string" },
       out: { type: "string" },
+      check: { type: "string" },
+      stage: { type: "string" },
       route: { type: "string" },
       sets: { type: "string" },
       budget: { type: "string" }
@@ -46458,6 +46674,11 @@ and confirm the code ${start.user_code}`);
     }
     case "review": {
       try {
+        if (values.check !== void 0) {
+          const result = checkReview(values.check, values.stage ?? "report");
+          print(result, `Review ${result.stage} is complete: ${result.jobs} jobs, ${result.units} units, ${result.candidates} candidates.`);
+          return 0;
+        }
         if (values.route !== void 0) {
           const route = routeReview(values.route, values.budget === void 0 ? void 0 : parseBudget(values.budget));
           print(route, renderRoute(route));

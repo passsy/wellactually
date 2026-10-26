@@ -1,7 +1,8 @@
 # Filter the principles and map the change
 
 You prepare a code review in the review directory you were given, `<dir>`.
-Change no file except the two you write.
+Write `scope.json` and `map.md`, and initialize findings tracking as described in `<dir>/steps/findings.md`.
+You may read repository files to resolve the project stack; the prepared overview is a starting point.
 
 ## Read
 
