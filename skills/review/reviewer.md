@@ -24,35 +24,11 @@ The crossing pass has no entry there: see the end of this file.
 
 ## Investigate before judging
 
-Read `context.md` when present. Missing PR text or commit messages cannot make advice about them `not_applicable`: retrieve the context or report the specific limit. Respect advice that explicitly excludes reviewing other people's messages.
+For every assigned principle, derive concrete questions from its advice, trace the relevant paths, and answer with source locations, test assertions or retained probe output. Cover the relevant scope; one compliant example does not establish compliance across the change.
 
-For every assigned principle, first choose `method: inspection | investigation` from its full advice and this input, and give a short `methodReason`.
-Use `inspection` when examining the relevant code or text can directly settle compliance (for example imports or prose style). Use `investigation` when the advice asks you to discover what must be checked: requirements and alternatives, ownership across callers, incomplete paths, lifecycle interleavings or protecting assertions. This is a choice of work, independent of the eventual verdict; a small diff, zero hits or a familiar pattern does not make investigative advice an inspection. Fetching specified text is preparation; discovering which relationships or paths establish compliance is investigation. Revisit the choice when new context reveals that direct inspection cannot answer the advice.
-Authors do not need to classify their principles. A `review-investigation` tag can be a hint but is neither required nor authoritative. Advice without that tag can require investigation, and a missing detector does not by itself require it.
+Read `context.md` when present. Record `investigation` with `status` (`complete`, `limited` or `not_applicable`), `reason`, `questions` and `limits`. Every verdict needs at least one question, answer and nonempty `evidence` array, including evidence explaining why advice does not apply.
 
-For each principle whose chosen method is `investigation`, do that work before choosing a verdict:
-
-1. Turn the advice into concrete questions about this input. A coverage principle calls for changed behaviors and their protecting assertions; an ownership principle calls for producers, consumers and retirement paths. Ask the questions even with zero detector hits. A familiar implementation is not an answer.
-2. Trace the relevant paths and answer each question with source locations, test assertions or retained probe output. Include alternate producers, error paths and lifecycle transitions when they affect the answer. A compliant example elsewhere does not settle an unexamined path.
-3. Record `investigation` alongside the principle verdict: `status` (`complete`, `limited` or `not_applicable`), `reason`, `questions` and `limits`. Each question has `question`, `answer` and a nonempty `evidence` array of concrete references. Keep answers concise; group paths only when the same argument covers them.
-4. `not_applicable` needs a reason grounded in the input and the advice, not missing context or no detector hit. Applicable investigations need at least one answered question. If something remains unresolved, use `limited`, name the unanswered question and needed evidence in `limits`, and qualify the verdict to the inspected paths. A limited investigation cannot establish overall compliance. A conclusive source trace can complete a question with reasoned evidence; do not require runtime proof unless the answer depends on unobserved execution. Keep the evidence label independent of investigation completion.
-
-For example, a coverage answer should map a behavior such as "signed out + unknown settles into signed in and resumes the original target" to the exact protecting assertion, or state that none exists. Finding one missing fallback test does not complete the check of the other changed behaviors.
-
-```json
-"investigation": {
-  "status": "complete",
-  "reason": "The change adds an asynchronous restoration path.",
-  "questions": [{
-    "question": "Can an earlier restore publish after logout?",
-    "answer": "Yes; the retained probe resumes the older read after logout and observes signed-in state.",
-    "evidence": ["lib/auth/session.dart:134", "probes/all/logout.log"]
-  }],
-  "limits": []
-}
-```
-
-The questions come from the principle's actual advice, not a fixed questionnaire per principle ID. An inspection verdict still needs its method and reason, for example `"method": "inspection", "methodReason": "Package-import advice can be settled by inspecting all changed imports."`. Record supported violations as findings; record uncertain checks as limits rather than manufacturing findings.
+If a material question remains unresolved, use `limited` and name the missing evidence in `limits`. Missing context is a limit, not irrelevance. Source reasoning can settle a question unless its answer depends on unobserved execution. Record supported violations as findings and uncertainty as limits.
 
 ## Verdicts
 
@@ -103,10 +79,9 @@ Write `<dir>/verdicts/<job id>.json`:
   "verdicts": [
     {
       "principle": "id",
-      "method": "inspection | investigation",
-      "methodReason": "Why this advice and input call for this method",
       "verdict": "not_applicable | followed | findings",
       "where": "file:line, for followed",
+      "investigation": { "status": "complete", "reason": "Why this answer settles the advice", "questions": [{ "question": "What does the advice require here?", "answer": "Concrete conclusion", "evidence": ["path:line or retained probe"] }], "limits": [] },
       "findings": [{ "file": "path", "line": 12, "priority": "p2", "scope": "introduced", "evidence": "reasoned", "problem": "...", "fix": "...", "quote": "...", "fromDetector": false }],
       "dismissed": [{ "file": "path", "line": 12, "reason": "..." }]
     }
