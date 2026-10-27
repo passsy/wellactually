@@ -13,6 +13,7 @@ export function finalizeReview(dir) {
   const units = [...new Set(jobs.map((job) => job.set ?? "all"))];
   if (units.length === 0) units.push("all");
   if (route.route === "sets") units.push("crossing");
+  const investigations = [];
   const sources = new Map();
   const verdicts = new Map();
   const nonFindingVerdicts = new Map();
@@ -21,6 +22,7 @@ export function finalizeReview(dir) {
   const loadVerdicts = (stem) => {
     const value = read(`verdicts/${stem}.json`);
     for (const verdict of value.verdicts) {
+      if (verdict.investigation) investigations.push({ job: value.job, principle: verdict.principle, ...verdict.investigation });
       if (verdict.verdict !== "findings") {
         const previous = nonFindingVerdicts.get(verdict.principle);
         if (!previous || rank[verdict.verdict] > rank[previous]) nonFindingVerdicts.set(verdict.principle, verdict.verdict);
@@ -65,7 +67,12 @@ export function finalizeReview(dir) {
     else if (verdict.verdict === "findings") verdict.verdict = nonFindingVerdicts.get(id) ?? "followed";
   }
   for (const id of standing) if (!verdicts.has(id)) verdicts.set(id, { principle: id, verdict: "findings" });
-  const result = { complete: true, verdicts: [...verdicts.values()], findings: all.filter((finding) => finding.principles.length), outside: all.filter((finding) => !finding.principles.length), dismissed, outOfScope: scope.outOfScope };
+  const investigationAudits = units.flatMap((unit) => {
+    const file = `investigations/${unit}.json`;
+    if (!fs.existsSync(path.join(dir, file))) return [];
+    return read(file).map((audit) => ({ unit, ...audit }));
+  });
+  const result = { complete: true, investigations, investigationAudits, verdicts: [...verdicts.values()], findings: all.filter((finding) => finding.principles.length), outside: all.filter((finding) => !finding.principles.length), dismissed, outOfScope: scope.outOfScope };
   const ratings = [...standing].filter((id) => !id.startsWith("local/")).map((id) => ({ id, rating: "up" }));
   // Only explicit not-about-advice detector dismissals qualify for a negative applicability rating.
   for (const principle of plan.principles) {
@@ -83,6 +90,14 @@ export function finalizeReview(dir) {
   if (all.some((finding) => finding.scope === "pre_existing")) render("Pre-existing observations", all.filter((finding) => finding.scope === "pre_existing"));
   const counts = Object.fromEntries(Object.keys(rank).map((key) => [key, result.verdicts.filter((verdict) => verdict.verdict === key).length]));
   lines.push(`${result.verdicts.length} principles: ${counts.findings} with findings, ${counts.followed} followed, ${counts.not_applicable} not applicable; ${scope.outOfScope.length} out of scope.`, "", "## Checks and limits", "");
+  for (const inquiry of investigations) {
+    lines.push(`- Investigation ${inquiry.job}/${inquiry.principle}: ${inquiry.status}. Answers and evidence: [verdict](verdicts/${inquiry.job}.json).`);
+    for (const limit of inquiry.limits ?? []) lines.push(`  Unresolved: ${limit}`);
+  }
+  for (const audit of investigationAudits) {
+    lines.push(`- Investigation audit ${audit.job}/${audit.principle}: ${audit.status}. [Evidence](investigations/${audit.unit}.json).`);
+    for (const limit of audit.limits) lines.push(`  Unresolved: ${limit}`);
+  }
   for (const unit of units) {
     lines.push(`- Tests, commands, results and limitations: [${unit}](probes/${unit}/results.md). Verification assumptions and decisions: [${unit}](verified/${unit}.json).`);
     const results = fs.readFileSync(path.join(dir, `probes/${unit}/results.md`), "utf8");

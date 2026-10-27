@@ -22,6 +22,14 @@ The crossing pass has no entry there: see the end of this file.
    Search first and read relevant sections; a job's parts assign review coverage, not a boundary on gathering evidence.
    Open a whole file when needed, and record an unresolved question if a context or tool limit prevents checking it.
 
+## Investigate before judging
+
+For every assigned principle, derive concrete questions from its advice, trace the relevant paths, and answer with source locations, test assertions or retained probe output. Cover the relevant scope; one compliant example does not establish compliance across the change.
+
+Read `context.md` when present. Record `investigation` with `status` (`complete`, `limited` or `not_applicable`), `reason`, `questions` and `limits`. Every verdict needs at least one question, answer and nonempty `evidence` array, including evidence explaining why advice does not apply.
+
+If a material question remains unresolved, use `limited` and name the missing evidence in `limits`. Missing context is a limit, not irrelevance. Source reasoning can settle a question unless its answer depends on unobserved execution. Record supported violations as findings and uncertainty as limits.
+
 ## Verdicts
 
 Give every principle of your job exactly one verdict:
@@ -73,6 +81,7 @@ Write `<dir>/verdicts/<job id>.json`:
       "principle": "id",
       "verdict": "not_applicable | followed | findings",
       "where": "file:line, for followed",
+      "investigation": { "status": "complete", "reason": "Why this answer settles the advice", "questions": [{ "question": "What does the advice require here?", "answer": "Concrete conclusion", "evidence": ["path:line or retained probe"] }], "limits": [] },
       "findings": [{ "file": "path", "line": 12, "priority": "p2", "scope": "introduced", "evidence": "reasoned", "problem": "...", "fix": "...", "quote": "...", "fromDetector": false }],
       "dismissed": [{ "file": "path", "line": 12, "reason": "..." }]
     }

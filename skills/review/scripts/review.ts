@@ -57,6 +57,8 @@ export interface ReviewPrinciple {
 }
 
 export interface ReviewPlan {
+  /** Version 2 requires evidence-backed questions and their verification for every principle. */
+  reviewProtocol?: 2;
   root: string;
   /** Frozen reviewed file contents, separate from live caller context. */
   source?: string;
@@ -602,6 +604,7 @@ async function prepareCollected(input: CollectedInput, dir: string | undefined, 
   copySteps(out);
   fs.writeFileSync(path.join(out, "project.md"), input.context);
   const plan: ReviewPlan = {
+    reviewProtocol: 2,
     root: toPosix(root),
     source: toPosix(source),
     before: toPosix(path.join(out, "before")),
@@ -870,9 +873,16 @@ export function parseBudget(text: string): number {
 
 export type ReviewStage = "review" | "test" | "verify" | "report";
 
+interface Investigation {
+  status: "complete" | "limited" | "not_applicable";
+  reason: string;
+  questions: { question: string; answer: string; evidence: string[] }[];
+  limits: string[];
+}
+
 interface VerdictFile {
   job: string;
-  verdicts: { principle: string; verdict: string; findings?: unknown[] }[];
+  verdicts: { principle: string; verdict: string; findings?: unknown[]; investigation?: Investigation }[];
   outside: unknown[];
 }
 
@@ -889,6 +899,12 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
   if (!["single", "sets"].includes(route.route) || !Array.isArray(jobs) || (jobs.length === 0 && (route.route !== "single" || !Array.isArray(route.groups) || route.groups.length !== 0))) {
     throw new Error("Review routing is incomplete: zero jobs require a single route with no principle groups.");
   }
+  const planFile = fs.existsSync(path.join(dir, "plan.json")) ? readJson<ReviewPlan>(dir, "plan.json") : null;
+  const investigationRecords: unknown[] = [];
+  const auditRecords: unknown[] = [];
+  const inquiries = new Map<string, { job: string; principle: string; limited: boolean }[]>();
+  const nonempty = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
+  const texts = (value: unknown): value is string[] => Array.isArray(value) && value.every(nonempty);
   const candidates = new Map<string, string[]>();
   const verifiedCandidates = new Map<string, string>();
   const units = jobs.length === 0 ? ["all"] : [...new Set(jobs.map((job) => job.set ?? "all"))];
@@ -978,6 +994,25 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
       if (!["not_applicable", "followed", "findings"].includes(verdict.verdict)) {
         problems.push(`${file} has an invalid verdict for ${verdict.principle}`);
       }
+      if (planFile?.reviewProtocol === 2 || verdict.investigation !== undefined) {
+        const inquiry = verdict.investigation;
+        investigationRecords.push({ job, principle: verdict.principle, ...inquiry });
+        const label = `${file} investigation for ${verdict.principle}`;
+        if (!inquiry || !["complete", "limited", "not_applicable"].includes(inquiry.status) || !nonempty(inquiry.reason) || !Array.isArray(inquiry.questions) || !texts(inquiry.limits)) {
+          problems.push(`${label} needs status, reason, questions and limits`);
+        } else {
+          if ((inquiry.status === "not_applicable") !== (verdict.verdict === "not_applicable")) problems.push(`${label} applicability must agree with its verdict`);
+          if (inquiry.questions.length === 0) problems.push(`${label} needs answered questions and evidence`);
+          for (const question of inquiry.questions) {
+            if (!question || !nonempty(question.question) || !nonempty(question.answer) || !texts(question.evidence) || question.evidence.length === 0) problems.push(`${label} has an unanswered or unsupported question`);
+          }
+          if (inquiry.status === "limited" && inquiry.limits.length === 0) problems.push(`${label} must name its unresolved limits`);
+          if (inquiry.status !== "limited" && inquiry.limits.length !== 0) problems.push(`${label} with unresolved limits must use limited status`);
+        }
+        const entries = inquiries.get(unit) ?? [];
+        entries.push({ job, principle: verdict.principle, limited: inquiry?.status === "limited" });
+        inquiries.set(unit, entries);
+      }
       if (verdict.verdict === "findings" && (!Array.isArray(verdict.findings) || verdict.findings.length === 0)) {
         problems.push(`${file} has no findings for ${verdict.principle}`);
       }
@@ -1036,6 +1071,27 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
   }
   if (through >= 2) {
     for (const unit of units) {
+      const expectedInquiries = inquiries.get(unit) ?? [];
+      if (expectedInquiries.length) {
+        const file = `investigations/${unit}.json`;
+        const audit = load<{ job: string; principle: string; status: string; reason: string; limits: string[] }[]>(file);
+        if (audit !== null) {
+          if (!Array.isArray(audit)) problems.push(`${file} must be an array`);
+          else {
+            auditRecords.push(...audit.map((entry) => ({ unit, ...entry })));
+            const seen = new Set<string>();
+            for (const entry of audit) {
+              const key = `${entry?.job}:${entry?.principle}`;
+              const original = expectedInquiries.find((item) => item.job === entry?.job && item.principle === entry?.principle);
+              if (!original || seen.has(key)) problems.push(`${file} has duplicate or unknown investigation ${key}`);
+              seen.add(key);
+              if (!entry || !["checked", "limited"].includes(entry.status) || !nonempty(entry.reason) || !texts(entry.limits)) problems.push(`${file} audit ${key} needs status, reason and limits`);
+              else if ((entry.status === "limited") !== (entry.limits.length > 0) || (original?.limited && entry.status !== "limited")) problems.push(`${file} audit ${key} must retain unresolved limits`);
+            }
+            for (const item of expectedInquiries) if (!seen.has(`${item.job}:${item.principle}`)) problems.push(`${file} is missing investigation ${item.job}:${item.principle}`);
+          }
+        }
+      }
       const file = `verified/${unit}.json`;
       const verified = load<{ candidate: string; status: string; promoted?: boolean; file?: string; line?: number; priority?: string; evidence?: string; problem?: string; fix?: string }[]>(file);
       if (verified === null) {
@@ -1085,6 +1141,12 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
   if (through >= 3 && problems.length === 0) {
     const report = load<{ complete: boolean; verdicts: { principle: string; verdict: string }[]; findings: { candidate?: string; candidates?: string[] }[]; outside: { candidate?: string; candidates?: string[] }[]; dismissed: unknown[]; outOfScope: unknown[] }>("findings.json");
     if (report !== null) {
+      if (investigationRecords.length) {
+        const retained = report as unknown as { investigations?: unknown[]; investigationAudits?: unknown[] };
+        const ordered = (entries: unknown[]): string => JSON.stringify(entries.map((entry) => JSON.stringify(entry)).sort());
+        if (!Array.isArray(retained.investigations) || ordered(retained.investigations) !== ordered(investigationRecords)) problems.push("findings.json must retain every investigation answer and limit");
+        if (!Array.isArray(retained.investigationAudits) || ordered(retained.investigationAudits) !== ordered(auditRecords)) problems.push("findings.json must retain every investigation audit and limit");
+      }
       if (report.complete !== true) {
         problems.push("findings.json must declare complete: true after all steps pass");
       }

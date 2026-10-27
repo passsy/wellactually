@@ -18,6 +18,16 @@ For an ordinary change aim to finish in about 2 minutes: inspect the specific as
 
 Then read the advice of the principle each finding names, `<dir>/principles/<id>.md` with the `/` of the id as `__`, and the code in the repository named by `root` in `<dir>/plan.json`.
 
+## Audit the investigations, including negative results
+
+Read the full advice and evidence-backed answers for every principle in your unit, including `followed` and `not_applicable`, along with the tester's answers about solution fit, completeness and behavior protection. This audit is required even when the unit already has findings. Challenge answers that skip relevant paths or cite only one compliant example. A verifier that only checks submitted findings cannot notice questions the reviewer never asked.
+
+Compare the questions to the principle's full advice and the actual input. Challenge missing alternate paths and unsupported applicability decisions. Check that evidence answers the question rather than showing one compliant example. In particular, a coverage investigation must account for the meaningful changed behaviors, not stop at its first missing test. Inspect `context.md` for advice about PR text/messages; unavailable metadata is a limit, not irrelevance.
+
+Write `investigations/<unit>.json` as an array with one `{ "job": "all-g1", "principle": "expert/id", "status": "checked | limited", "reason": "Evidence supporting the audit conclusion", "limits": [] }` per assigned principle verdict. Use `limited` with explicit limits for unresolved or missing evidence; an original limited investigation remains limited until the reviewer supplies the missing evidence and updates its record. Return missing or inadequate answers to their reviewer. Promote supported defects through the existing finding format. Do not upgrade a suspicion to a finding merely to fill an investigation gap.
+
+This audit is a completion/evidence check, not a finding or a principle rating. The final report retains its limitations separately.
+
 ## Challenge an empty candidate set
 
 When your unit has zero candidates across review and testing, do not merely write an empty verification array.

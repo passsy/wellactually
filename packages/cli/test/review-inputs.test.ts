@@ -87,7 +87,7 @@ test("snapshot completion accepts current findings and rejects invented regressi
   const root = temp(), out = temp(), lock = await board();write(root, "a.ts", "const a = 1;\n");
   await planInputReview(root, { paths: ["a.ts"] }, out, lock);routeReview(out);
   const [job] = JSON.parse(fs.readFileSync(path.join(out, "jobs.json"), "utf8"));
-  const result = { job: job.id, verdicts: [{ principle: "local/no-todo", verdict: "followed", where: "a.ts:1" }], outside: [{ file: "a.ts", line: 1, scope: "introduced", evidence: "reasoned", priority: "p3", problem: "A current defect", fix: "Fix it" }] };
+  const result = { job: job.id, verdicts: [{ principle: "local/no-todo", verdict: "followed", where: "a.ts:1", investigation: { status: "complete", reason: "All selected source was checked.", questions: [{ question: "Do selected lines contain TODO markers?", answer: "No TODO marker exists in the selected source.", evidence: ["a.ts:1"] }], limits: [] } }], outside: [{ file: "a.ts", line: 1, scope: "introduced", evidence: "reasoned", priority: "p3", problem: "A current defect", fix: "Fix it" }] };
   write(out, `verdicts/${job.id}.json`, JSON.stringify(result));
   expect(() => checkReview(out, "review")).toThrow(/snapshot findings must use scope current/);
   result.outside[0]!.scope = "current";write(out, `verdicts/${job.id}.json`, JSON.stringify(result));
@@ -95,6 +95,7 @@ test("snapshot completion accepts current findings and rejects invented regressi
   write(out, "probes/all/results.md", "Fixture source check; execution is not required for this reasoned candidate.");
   write(out, "verdicts/testing-all.json", JSON.stringify({ job: "all", verdicts: [], outside: [] }));
   write(out, "verified/all.json", JSON.stringify([{ candidate: `${job.id}:outside:0`, status: "confirmed", scope: "current", evidence: "reasoned" }]));
+  write(out, "investigations/all.json", JSON.stringify([{ job: job.id, principle: "local/no-todo", status: "checked", reason: "Selected source supports the absence of TODO markers.", limits: [] }]));
   execFileSync(process.execPath, [path.resolve(import.meta.dirname, "../../../skills/review/scripts/finalize.mjs"), out], { stdio: "pipe" });
   expect(checkReview(out, "report").candidates).toBe(1);
   expect(JSON.parse(fs.readFileSync(path.join(out, "findings.json"), "utf8")).outside[0].scope).toBe("current");

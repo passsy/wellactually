@@ -76,6 +76,31 @@ describe("skill-local report finalization", () => {
     } finally { fs.rmSync(standalone, { recursive: true, force: true }); }
   });
 
+  test("retains investigation evidence and unresolved review and audit limits", () => {
+    const { dir, write, finish } = fixture();
+    const plan = JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8"));
+    plan.reviewProtocol = 2;
+    plan.principles[0].tags = [];
+    write("plan.json", plan);
+    const verdicts = JSON.parse(fs.readFileSync(path.join(dir, "verdicts/all.json"), "utf8"));
+    const inquiry = { status: "limited", reason: "Owner can retire during restoration.", questions: [{ question: "Can completion outlive retirement?", answer: "The source permits it.", evidence: ["state.ts:9"] }], limits: ["Device scheduling remains unverified."] };
+    verdicts.verdicts[0] = { ...verdicts.verdicts[0], investigation: inquiry };
+    write("verdicts/all.json", verdicts);
+    const audit = { job: "all", principle: "expert/rule", status: "limited", reason: "Source supports the answer; callback timing is unknown.", limits: ["Need device callback evidence."] };
+    write("investigations/all.json", [audit]);
+    expect(() => checkReview(dir, "verify")).not.toThrow();
+    const report = finish();
+    expect(report.investigations).toEqual([{ job: "all", principle: "expert/rule", ...inquiry }]);
+    expect(report.investigationAudits).toEqual([{ unit: "all", ...audit }]);
+    const text = fs.readFileSync(path.join(dir, "report.md"), "utf8");
+    expect(text).toContain("Device scheduling remains unverified.");
+    expect(text).toContain("Need device callback evidence.");
+    expect(() => checkReview(dir, "report")).not.toThrow();
+    report.investigations[0].limits = [];
+    write("findings.json", report);
+    expect(() => checkReview(dir, "report")).toThrow(/retain every investigation answer and limit/);
+  });
+
   test("finalization never upgrades reasoned evidence through confirmation", () => {
     const { write, finish } = fixture();
     write("verified/all.json", [{ candidate: "all:expert/rule:0", status: "confirmed" }, { candidate: "all:expert/rule:1", status: "refuted", proof: "No ordering defect" }, { candidate: "testing-all:outside:0", status: "refuted", proof: "Broken fixture" }]);

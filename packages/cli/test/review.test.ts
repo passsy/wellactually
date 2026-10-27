@@ -287,6 +287,99 @@ describe("review completion", () => {
     expect(() => checkReview(dir, "review")).toThrow(/zero jobs require a single route/);
   });
 
+  function investigated(sets = false) {
+    const fixture = completed(sets);
+    const { dir, write } = fixture;
+    write("plan.json", { reviewProtocol: 2, target: { kind: "git" }, principles: [{ id: "expert/rule", tags: [] }] });
+    const unit = sets ? "set-01" : "all";
+    const job = `${unit}-g1`;
+    const file = `verdicts/${job}.json`;
+    const verdicts = JSON.parse(fs.readFileSync(path.join(dir, file), "utf8"));
+    const inquiry = { status: "complete", reason: "Restoration changes ownership.", questions: [{ question: "Can an old restore survive logout?", answer: "Yes, the old token is published after logout.", evidence: ["a.ts:1", "probes/all/logout.log"] }], limits: [] };
+    const audit = { job, principle: "expert/rule", status: "checked", reason: "Traced logout and retained restore probe.", limits: [] };
+    verdicts.verdicts[0] = { ...verdicts.verdicts[0], investigation: inquiry };
+    write(file, verdicts);
+    write(`investigations/${unit}.json`, [audit]);
+    return { ...fixture, unit, job, file, verdicts, inquiry, audit };
+  }
+
+  test("investigation principles cannot be marked compliant without questions and evidence", () => {
+    const { dir, write, file, verdicts, inquiry } = investigated();
+    verdicts.verdicts[0] = { principle: "expert/rule", verdict: "followed" };
+    write(file, verdicts);
+    expect(() => checkReview(dir, "review")).toThrow(/investigation.*needs status/);
+    verdicts.verdicts[0].investigation = { ...inquiry, questions: [] };
+    write(file, verdicts);
+    expect(() => checkReview(dir, "review")).toThrow(/needs answered questions/);
+    verdicts.verdicts[0].investigation = { ...inquiry, questions: [{ ...inquiry.questions[0], evidence: [] }] };
+    write(file, verdicts);
+    expect(() => checkReview(dir, "review")).toThrow(/unanswered or unsupported/);
+  });
+
+  test("every principle needs answers regardless of tags or a claimed inspection method", () => {
+    const { dir, write, file, verdicts, inquiry } = investigated();
+    for (const tags of [[], ["review-investigation"], ["formatting"]]) {
+      write("plan.json", { reviewProtocol: 2, target: { kind: "git" }, principles: [{ id: "expert/rule", tags }] });
+      verdicts.verdicts[0] = { principle: "expert/rule", method: "inspection", verdict: "followed" };
+      write(file, verdicts);
+      expect(() => checkReview(dir, "review")).toThrow(/investigation.*needs status/);
+      verdicts.verdicts[0].investigation = inquiry;
+      write(file, verdicts);
+      expect(() => checkReview(dir, "review")).not.toThrow();
+    }
+  });
+
+  test("irrelevance needs a reason and must agree with the investigation applicability", () => {
+    const { dir, write, file, verdicts } = investigated();
+    verdicts.verdicts[0] = { principle: "expert/rule", verdict: "not_applicable", investigation: { status: "not_applicable", reason: "Only static prose is changed; no resource lifecycle.", questions: [{ question: "Does this change affect a resource lifecycle?", answer: "Only static prose changes; no resource is created or retired.", evidence: ["diff/part-01.patch"] }], limits: [] } };
+    write(file, verdicts);
+    expect(() => checkReview(dir, "review")).not.toThrow();
+    verdicts.verdicts[0].investigation.reason = "";
+    write(file, verdicts);
+    expect(() => checkReview(dir, "review")).toThrow(/needs status, reason/);
+    verdicts.verdicts[0].investigation.reason = "No lifecycle";
+    verdicts.verdicts[0].verdict = "followed";
+    write(file, verdicts);
+    expect(() => checkReview(dir, "review")).toThrow(/applicability must agree/);
+  });
+
+  test("verification audits investigations even with existing candidates, per job and unit", () => {
+    for (const sets of [false, true]) {
+      const { dir, write, unit, audit } = investigated(sets);
+      expect(() => checkReview(dir, "verify")).not.toThrow();
+      write(`investigations/${unit}.json`, []);
+      expect(() => checkReview(dir, "verify")).toThrow(/missing investigation/);
+      write(`investigations/${unit}.json`, [audit, audit]);
+      expect(() => checkReview(dir, "verify")).toThrow(/duplicate or unknown investigation/);
+      write(`investigations/${unit}.json`, [{ ...audit, job: "other" }]);
+      expect(() => checkReview(dir, "verify")).toThrow(/duplicate or unknown investigation/);
+    }
+  });
+
+  test("limits cannot silently turn into complete investigations or checked audits", () => {
+    const { dir, write, file, verdicts, inquiry, audit } = investigated();
+    verdicts.verdicts[0].investigation = { ...inquiry, status: "limited", limits: [] };
+    write(file, verdicts);
+    expect(() => checkReview(dir, "review")).toThrow(/must name its unresolved limits/);
+    verdicts.verdicts[0].investigation.limits = ["The device callback path remains unverified."];
+    write(file, verdicts);
+    expect(() => checkReview(dir, "review")).not.toThrow();
+    expect(() => checkReview(dir, "verify")).toThrow(/must retain unresolved limits/);
+    write("investigations/all.json", [{ ...audit, status: "limited", limits: ["Need device callback evidence."] }]);
+    expect(() => checkReview(dir, "verify")).not.toThrow();
+    verdicts.verdicts[0].investigation.status = "complete";
+    write(file, verdicts);
+    expect(() => checkReview(dir, "review")).toThrow(/with unresolved limits must use limited/);
+  });
+
+  test("the report cannot omit completed investigation answers or their audits", () => {
+    const { dir, write, inquiry, audit, job } = investigated();
+    expect(() => checkReview(dir, "report")).toThrow(/must retain every investigation answer/);
+    const report = JSON.parse(fs.readFileSync(path.join(dir, "findings.json"), "utf8"));
+    write("findings.json", { ...report, investigations: [{ job, principle: "expert/rule", ...inquiry }], investigationAudits: [{ unit: "all", ...audit }] });
+    expect(() => checkReview(dir, "report")).not.toThrow();
+  });
+
   test("ordinary review needs no context, blind design or investigation artifacts", () => {
     const { dir } = completed();
     expect(() => checkReview(dir, "report")).not.toThrow();
