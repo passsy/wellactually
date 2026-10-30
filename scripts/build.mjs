@@ -9,6 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { build } from "esbuild";
+import { syncSkills } from "./sync-skills.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const outfile = path.join(root, "dist/wellactually.mjs");
@@ -52,19 +53,8 @@ for (const file of ["wellactually.mjs", "wellactually-worker.mjs", "wellactually
 }
 fs.renameSync(path.join(root, "dist/opencode.mjs"), path.join(opencode, "dist/opencode.mjs"));
 fs.renameSync(path.join(root, "dist/opencode-tui.mjs"), path.join(opencode, "dist/tui.mjs"));
-// OpenCode and pi know a skill by its name alone, and login, sync, disable, enable and audit
-// are names other skills have too. Their copies are called wellactually-login and so on.
-// OpenCode 1 offers a skill as a slash command only when its metadata asks for it.
-// OpenCode 2 has no such command and loads a skill the user mentions with @.
-const skills = path.join(root, "skills");
-for (const name of fs.readdirSync(skills)) {
-  const source = path.join(skills, name, "SKILL.md");
-  if (!fs.existsSync(source)) {
-    continue;
-  }
-  const copy = path.join(opencode, "skills", `wellactually-${name}`, "SKILL.md");
-  fs.mkdirSync(path.dirname(copy), { recursive: true });
-  fs.writeFileSync(copy, fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1\nmetadata:\n  opencode/slash: \"true\""));
-}
+await build({ ...shared, entryPoints: [path.join(root, "skills/review/scripts/main.ts")], outfile: path.join(root, "skills/review/scripts/review.mjs") });
+await build({ ...shared, entryPoints: [path.join(root, "skills/review/scripts/finalize.ts")], outfile: path.join(root, "skills/review/scripts/finalize.mjs") });
+syncSkills(root);
 
 console.log(`built dist: ${[outfile, worker, logWriter, ...plugins].map((file) => path.basename(file)).join(", ")}, and copied the command and the skills into opencode`);

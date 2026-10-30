@@ -15,5 +15,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["sdk/src", "core/src", "core/test", "cli/src", "cli/test"]
+  "include": ["sdk/src", "core/src", "core/test", "cli/src", "cli/test", "../skills/review/scripts"]
 }

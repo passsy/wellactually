@@ -13568,12 +13568,12 @@ function writeCached(principle) {
 }
 var BOARD_BUDGET_MS = 1500;
 var PARALLEL_FROM = 14;
-async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ new Set(), pool = null, parallelFrom = PARALLEL_FROM) {
+async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ new Set(), pool = null, parallelFrom = PARALLEL_FROM, budgetMs = BOARD_BUDGET_MS) {
   const disk = diskFiles();
   const started = performance.now();
   const run = { firings: [], failures: [], detectors: [], skipped: [], ms: 0 };
   const applying = [];
-  const skipped = `skipped, the advisory board used its ${BOARD_BUDGET_MS} ms budget before reaching it`;
+  const skipped = `skipped, the advisory board used its ${budgetMs} ms budget before reaching it`;
   for (const entry of lockfile.entries) {
     if (!entry.enabled || off.has(entry.id)) {
       run.skipped.push({ id: entry.id, reason: "off" });
@@ -13595,12 +13595,12 @@ async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ ne
   let results;
   if (pool !== null && applying.length >= parallelFrom) {
     const tasks = applying.map((principle) => ({ bundle: principle.bundle, api: apiOf(principle.manifest) }));
-    results = await pool.run(ctx, tasks, started + BOARD_BUDGET_MS, skipped);
+    results = await pool.run(ctx, tasks, started + budgetMs, skipped);
   } else {
     results = [];
     for (const principle of applying) {
       results.push(
-        performance.now() - started > BOARD_BUDGET_MS ? { findings: [], error: skipped, dropped: [], ms: 0 } : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk, apiOf(principle.manifest))
+        performance.now() - started > budgetMs ? { findings: [], error: skipped, dropped: [], ms: 0 } : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk, apiOf(principle.manifest))
       );
     }
   }
@@ -15062,6 +15062,10 @@ function parsePatch(patch) {
     if (text2.startsWith("-")) {
       current2.removed.push({ line: oldLine, text: text2.slice(1) });
       oldLine++;
+    }
+    if (text2.startsWith(" ")) {
+      oldLine++;
+      line++;
     }
   }
   return files.filter((file2) => file2.path !== "" && file2.path !== "/dev/null");

@@ -123,6 +123,14 @@ No path, file content, prompt, command or finding is sent.
 The daily look for a newer release of the plugin is a plain download from GitHub and sends nothing.
 Ask your agent to switch reporting off, and it turns both off.
 
+## Review a change
+
+The `review` skill checks changes, files, folders and projects against your advisory board, including principles without detectors. Git is optional.
+Reviewers and an independent tester work in parallel. A separate agent verifies their findings before the report, which includes coverage, test evidence and limitations.
+
+Run `/wellactually:review` in Claude Code or `$wellactually:review` in Codex with a synced advisory board.
+Reviews use subagents where supported.
+
 ## Write a principle
 
 A principle is a directory, and its name is the principle's id:
