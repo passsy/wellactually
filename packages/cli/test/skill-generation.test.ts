@@ -60,3 +60,24 @@ test("removes deleted skills, instructions and helpers without touching the rest
   sync();
   expect(read("opencode/skills/wellactually-review/reviewer.md")).toBe("Current instructions");
 });
+
+test("ships only executable mjs helpers while preserving TypeScript sources", () => {
+  const { root, write, read, sync } = fixture();
+  write("skills/review/SKILL.md", "---\nname: review\n---\nRun scripts/finalize.mjs.\n");
+  write("skills/review/scripts/finalize.ts", "export const source = true;");
+  write("skills/review/scripts/finalize.mjs", "export const bundled = true;");
+  write("skills/review/scripts/nested/inputs.ts", "export const input = true;");
+  write("skills/review/scripts/nested/helper.mjs", "export const helper = true;");
+  write("skills/review/scripts/finalize.mjs.map", "Source map");
+  write("skills/review/scripts/notes.md", "Authoring notes");
+  write("opencode/skills/wellactually-review/scripts/old.ts", "Previously shipped source");
+  sync();
+  const packaged = path.join(root, "opencode/skills/wellactually-review/scripts");
+  expect(fs.readdirSync(packaged, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile()).map((entry) => entry.name).sort()).toEqual(["finalize.mjs", "helper.mjs"]);
+  expect(read("opencode/skills/wellactually-review/scripts/finalize.mjs")).toBe("export const bundled = true;");
+  expect(read("skills/review/scripts/finalize.ts")).toBe("export const source = true;");
+  expect(read("skills/review/scripts/nested/inputs.ts")).toBe("export const input = true;");
+  sync();
+  expect(fs.existsSync(path.join(packaged, "finalize.ts"))).toBe(false);
+});
