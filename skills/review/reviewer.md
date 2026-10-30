@@ -43,6 +43,16 @@ Give every principle of your job exactly one verdict:
 A principle with detector hits lists where its detector fired.
 A hit is a candidate, not a finding: confirm it as a finding, or dismiss it with the reason it does not apply.
 
+## Writing findings
+
+Write for the author deciding what to change. Give each finding a short, action-oriented `title` naming the behavior or boundary to protect.
+
+In `problem`, lead with the concrete consequence, then explain the trigger and mechanism using exact code names. For missing coverage, say what regression could pass unnoticed and why the existing assertions would miss it. Prefer concrete outcomes to abstract labels.
+
+In `fix`, describe the smallest useful change and the observable result it must protect. For a test, name its setup, production entry point, action and expected outcome; include related boundary cases when they matter. Prefer connected sentences and separate problem and remedy paragraphs. Scale length to the argument; do not force a template onto a one-line issue.
+
+Keep rule quotes, priorities, verification narration and reproduction commands in their evidence fields, outside the finding prose. Include an observed result in the explanation when it strengthens the case. Do not claim current behavior is broken when the evidence only demonstrates a missing regression test.
+
 ## Findings
 
 - For `target.kind: snapshot`, use `scope: current` for in-scope defects. No baseline exists; do not call them introduced or consign them to unrelated pre-existing observations.
@@ -82,11 +92,11 @@ Write `<dir>/verdicts/<job id>.json`:
       "verdict": "not_applicable | followed | findings",
       "where": "file:line, for followed",
       "investigation": { "status": "complete", "reason": "Why this answer settles the advice", "questions": [{ "question": "What does the advice require here?", "answer": "Concrete conclusion", "evidence": ["path:line or retained probe"] }], "limits": [] },
-      "findings": [{ "file": "path", "line": 12, "priority": "p2", "scope": "introduced", "evidence": "reasoned", "problem": "...", "fix": "...", "quote": "...", "fromDetector": false }],
+      "findings": [{ "title": "Concrete action and behavior", "file": "path", "line": 12, "priority": "p2", "scope": "introduced", "evidence": "reasoned", "problem": "...", "fix": "...", "quote": "...", "fromDetector": false }],
       "dismissed": [{ "file": "path", "line": 12, "reason": "..." }]
     }
   ],
-  "outside": [{ "file": "path", "line": 12, "priority": "p1", "scope": "introduced", "evidence": "proven", "problem": "...", "fix": "..." }]
+  "outside": [{ "title": "Concrete action and behavior", "file": "path", "line": 12, "priority": "p1", "scope": "introduced", "evidence": "proven", "problem": "...", "fix": "..." }]
 }
 ```
 

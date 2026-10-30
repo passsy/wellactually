@@ -64,6 +64,7 @@ Preserve or correct `scope`, `evidence` and `provenTest` in the verified entry, 
 A dismissed detector hit or an independent discovery that you find is a real finding becomes one, with status `confirmed`.
 Mark that entry `promoted: true` and include its full finding fields so the report can retain it even though it was absent from the original candidates.
 You may change a finding's priority, with the reason.
+Preserve the author-facing `title`, `problem` and `fix` unless the evidence requires a correction. Apply the writing guidance in `steps/reviewer.md`; keep audit reasoning in `reason` rather than expanding the finding into an investigation transcript.
 
 ## Answer
 

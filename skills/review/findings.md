@@ -25,6 +25,7 @@ For a file/folder/project snapshot, use a descriptive target and do not fabricat
 List existing findings again before writing.
 For each verified finding that stands, create it once or update the matching existing finding.
 Include the reviewed anchor, priority, principle id as `rule` when present, advice quote, explanation, proposed fix, verification status and evidence.
+Preserve the verified `title`. Build the author-facing body from `problem` and `fix` as separate paragraphs; do not append advice quotes, audit narration or local evidence paths to that prose. Keep them in the MCP metadata/evidence fields where supported, otherwise retain them in the linked review artifacts.
 For a committed target, pass the reviewed commit in the anchor when the MCP supports it.
 If the MCP can only capture the current checkout and it differs from the target, use a disposable reviewed checkout as `repo` consistently or report tracking as unavailable for that target; never record source from the wrong version.
 Map `proven`, `reasoned`, `speculative` to the evidence values the tool accepts, such as `Proven`, `Reasoned`, `Speculative`.

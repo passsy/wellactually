@@ -84,7 +84,12 @@ export function finalizeReview(dir) {
   const render = (title, findings) => {
     lines.push(`## ${title}`, "");
     if (!findings.length) { lines.push("None found.", ""); return; }
-    for (const finding of findings) lines.push(`- **${finding.priority ?? "p4"} · ${finding.scope} · ${finding.evidence ?? "reasoned"} · ${finding.status}** — ${finding.file}:${finding.line}: ${finding.problem} ${finding.fix}${finding.principles.length ? ` (${finding.principles.join(", ")})` : ""}${finding.status === "plausible" ? ` Dependency/limit: ${finding.reason ?? "See retained verification evidence."}` : ""}`, "");
+    for (const finding of findings) {
+      lines.push(`### ${finding.title || `${finding.file}:${finding.line}`}`, "");
+      lines.push(`*${finding.priority ?? "p4"} · ${finding.scope} · ${finding.evidence ?? "reasoned"} · ${finding.status} · ${finding.file}:${finding.line}*`, "");
+      lines.push(finding.problem, "", finding.fix, "");
+      if (finding.status === "plausible") lines.push(`Dependency/limit: ${finding.reason ?? "See retained verification evidence."}`, "");
+    }
   };
   render("Change-relevant findings", all.filter((finding) => finding.scope !== "pre_existing"));
   if (all.some((finding) => finding.scope === "pre_existing")) render("Pre-existing observations", all.filter((finding) => finding.scope === "pre_existing"));

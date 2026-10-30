@@ -101,6 +101,26 @@ describe("skill-local report finalization", () => {
     expect(() => checkReview(dir, "report")).toThrow(/retain every investigation answer and limit/);
   });
 
+  test("preserves verified author-facing wording and paragraph boundaries separately from audit metadata", () => {
+    const { dir, write, finish } = fixture();
+    const title = "Reject writes after account replacement";
+    const problem = "An old request can overwrite the new account.\n\nThe callback still publishes its captured result after replacement.";
+    const fix = "Start a request, replace the account, then complete the old request and assert that the current account stays unchanged.";
+    write("verified/all.json", [
+      { candidate: "all:expert/rule:0", status: "confirmed", title, problem, fix, reason: "Internal verification narration", quote: "Internal advice quote" },
+      { candidate: "all:expert/rule:1", status: "refuted", proof: "No second defect" },
+      { candidate: "testing-all:outside:0", status: "refuted", proof: "Duplicate superseded" },
+    ]);
+    const report = finish();
+    expect(report.findings[0]).toMatchObject({ title, problem, fix, reason: "Internal verification narration", quote: "Internal advice quote" });
+    const text = fs.readFileSync(path.join(dir, "report.md"), "utf8");
+    expect(text).toContain(`### ${title}\n\n`);
+    expect(text).toContain(`${problem}\n\n${fix}\n`);
+    expect(text).not.toContain("Internal verification narration");
+    expect(text).not.toContain("Internal advice quote");
+    expect(checkReview(dir, "report")).toMatchObject({ stage: "report" });
+  });
+
   test("finalization never upgrades reasoned evidence through confirmation", () => {
     const { write, finish } = fixture();
     write("verified/all.json", [{ candidate: "all:expert/rule:0", status: "confirmed" }, { candidate: "all:expert/rule:1", status: "refuted", proof: "No ordering defect" }, { candidate: "testing-all:outside:0", status: "refuted", proof: "Broken fixture" }]);

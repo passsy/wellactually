@@ -53,6 +53,7 @@ If the unit has no executable behavior, record that and skip execution.
 
 Write `<dir>/probes/<unit>/results.md` with checks, commands, results, limitations, candidate references, and the disposition of the hypotheses actually pursued. Keep this short; record skipped material checks as limitations.
 Write `<dir>/verdicts/testing-<unit>.json` in the reviewer's format with `job` set to the unit and an empty `verdicts` list.
+Use the finding prose guidance in `<dir>/steps/reviewer.md`, including `title`, `problem` and `fix`.
 Put new candidates in `outside`; when one violates an assigned principle, include its `principle` id and an exact advice `quote`.
 The verifier will reconcile your independent discoveries with principle candidates; do not wait for a handoff.
 Every proven candidate carries `provenTest` with the reproduction command and artifact paths.
