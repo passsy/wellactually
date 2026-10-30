@@ -1,10 +1,12 @@
+import { createRequire as __createRequire } from "node:module";
+const require = __createRequire(import.meta.url);
+
+// skills/review/scripts/finalize.ts
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-
-/** Assemble verified artifacts. No source reads, model calls or external mutations. */
-export function finalizeReview(dir) {
+function finalizeReview(dir) {
   const read = (file) => JSON.parse(fs.readFileSync(path.join(dir, file), "utf8"));
   const plan = read("plan.json");
   const jobs = read("jobs.json");
@@ -14,9 +16,9 @@ export function finalizeReview(dir) {
   if (units.length === 0) units.push("all");
   if (route.route === "sets") units.push("crossing");
   const investigations = [];
-  const sources = new Map();
-  const verdicts = new Map();
-  const nonFindingVerdicts = new Map();
+  const sources = /* @__PURE__ */ new Map();
+  const verdicts = /* @__PURE__ */ new Map();
+  const nonFindingVerdicts = /* @__PURE__ */ new Map();
   const dismissed = [];
   const rank = { not_applicable: 0, followed: 1, findings: 2 };
   const loadVerdicts = (stem) => {
@@ -24,8 +26,8 @@ export function finalizeReview(dir) {
     for (const verdict of value.verdicts) {
       if (verdict.investigation) investigations.push({ job: value.job, principle: verdict.principle, ...verdict.investigation });
       if (verdict.verdict !== "findings") {
-        const previous = nonFindingVerdicts.get(verdict.principle);
-        if (!previous || rank[verdict.verdict] > rank[previous]) nonFindingVerdicts.set(verdict.principle, verdict.verdict);
+        const previous2 = nonFindingVerdicts.get(verdict.principle);
+        if (!previous2 || rank[verdict.verdict] > rank[previous2]) nonFindingVerdicts.set(verdict.principle, verdict.verdict);
       }
       const previous = verdicts.get(verdict.principle);
       if (!previous || rank[verdict.verdict] > rank[previous.verdict]) verdicts.set(verdict.principle, { principle: verdict.principle, verdict: verdict.verdict });
@@ -41,26 +43,31 @@ export function finalizeReview(dir) {
   for (const unit of units) {
     for (const [index, entry] of read(`verified/${unit}.json`).entries()) {
       const ref = entry.promoted && !entry.candidate ? `verified/${unit}.json:${index}` : entry.candidate;
-      if (!sources.has(ref) && !(entry.promoted && !entry.candidate)) throw new Error(`Unknown candidate ${ref}`);
-      if (entry.status === "refuted") { dismissed.push({ candidate: ref, reason: entry.proof ?? entry.reason, status: "refuted" }); continue; }
+      if (!ref || !sources.has(ref) && !(entry.promoted && !entry.candidate)) throw new Error(`Unknown candidate ${ref}`);
+      if (entry.status === "refuted") {
+        dismissed.push({ candidate: ref, reason: entry.proof ?? entry.reason, status: "refuted" });
+        continue;
+      }
       if (!["confirmed", "plausible"].includes(entry.status)) throw new Error(`Invalid status for ${ref}`);
       const finding = { ...sources.get(ref), ...entry, candidate: ref };
       if (finding.evidence === "proven" && !finding.provenTest) throw new Error(`Proven candidate ${ref} is missing provenTest`);
       survivors.push(finding);
     }
   }
-  // Exact semantic text + anchor + scope only. Similar wording is not sufficient to merge.
-  const merged = new Map();
+  const merged = /* @__PURE__ */ new Map();
   const evidenceRank = { speculative: 0, reasoned: 1, proven: 2 };
   for (const finding of survivors) {
     const key = JSON.stringify([finding.file, finding.line, finding.scope, finding.problem, finding.fix, finding.status]);
     const existing = merged.get(key);
-    if (!existing) { merged.set(key, { ...finding, candidates: [finding.candidate], principles: finding.principle ? [finding.principle] : [] }); continue; }
+    if (!existing) {
+      merged.set(key, { ...finding, candidates: [finding.candidate], principles: finding.principle ? [finding.principle] : [] });
+      continue;
+    }
     existing.candidates.push(finding.candidate);
     if (finding.principle && !existing.principles.includes(finding.principle)) existing.principles.push(finding.principle);
-    if ((evidenceRank[finding.evidence] ?? -1) > (evidenceRank[existing.evidence] ?? -1)) Object.assign(existing, { evidence: finding.evidence, provenTest: finding.provenTest });
+    if ((evidenceRank[finding.evidence ?? ""] ?? -1) > (evidenceRank[existing.evidence ?? ""] ?? -1)) Object.assign(existing, { evidence: finding.evidence, provenTest: finding.provenTest });
   }
-  const all = [...merged.values()].sort((a, b) => String(a.priority ?? "p4").localeCompare(String(b.priority ?? "p4")) || (evidenceRank[b.evidence] ?? -1) - (evidenceRank[a.evidence] ?? -1));
+  const all = [...merged.values()].sort((a, b) => String(a.priority ?? "p4").localeCompare(String(b.priority ?? "p4")) || (evidenceRank[b.evidence ?? ""] ?? -1) - (evidenceRank[a.evidence ?? ""] ?? -1));
   const standing = new Set(all.flatMap((finding) => finding.principles));
   for (const [id, verdict] of verdicts) {
     if (standing.has(id)) verdict.verdict = "findings";
@@ -74,19 +81,21 @@ export function finalizeReview(dir) {
   });
   const result = { complete: true, investigations, investigationAudits, verdicts: [...verdicts.values()], findings: all.filter((finding) => finding.principles.length), outside: all.filter((finding) => !finding.principles.length), dismissed, outOfScope: scope.outOfScope };
   const ratings = [...standing].filter((id) => !id.startsWith("local/")).map((id) => ({ id, rating: "up" }));
-  // Only explicit not-about-advice detector dismissals qualify for a negative applicability rating.
   for (const principle of plan.principles) {
-    if (standing.has(principle.id) || principle.id.startsWith("local/") || !principle.detector || !(principle.hits?.length)) continue;
+    if (standing.has(principle.id) || principle.id.startsWith("local/") || !principle.detector || !principle.hits?.length) continue;
     const hits = dismissed.filter((hit) => hit.principle === principle.id && hit.notApplicable === true);
     if (hits.length >= principle.hits.length && verdicts.get(principle.id)?.verdict === "not_applicable") ratings.push({ id: principle.id, rating: "not_applicable" });
   }
   const lines = [`# Review of ${plan.target.label}`, ""];
   const render = (title, findings) => {
     lines.push(`## ${title}`, "");
-    if (!findings.length) { lines.push("None found.", ""); return; }
+    if (!findings.length) {
+      lines.push("None found.", "");
+      return;
+    }
     for (const finding of findings) {
       lines.push(`### ${finding.title || `${finding.file}:${finding.line}`}`, "");
-      lines.push(`*${finding.priority ?? "p4"} · ${finding.scope} · ${finding.evidence ?? "reasoned"} · ${finding.status} · ${finding.file}:${finding.line}*`, "");
+      lines.push(`*${finding.priority ?? "p4"} \xB7 ${finding.scope} \xB7 ${finding.evidence ?? "reasoned"} \xB7 ${finding.status} \xB7 ${finding.file}:${finding.line}*`, "");
       lines.push(finding.problem, "", finding.fix, "");
       if (finding.status === "plausible") lines.push(`Dependency/limit: ${finding.reason ?? "See retained verification evidence."}`, "");
     }
@@ -114,12 +123,13 @@ export function finalizeReview(dir) {
     if (entries.length) lines.push(`- ${name}: ${JSON.stringify(entries)}`);
   }
   lines.push("", `Artifacts: ${dir}`, "");
-  fs.writeFileSync(path.join(dir, "findings.json"), `${JSON.stringify(result, null, 2)}\n`);
-  fs.writeFileSync(path.join(dir, "ratings.json"), `${JSON.stringify(ratings, null, 2)}\n`);
+  fs.writeFileSync(path.join(dir, "findings.json"), `${JSON.stringify(result, null, 2)}
+`);
+  fs.writeFileSync(path.join(dir, "ratings.json"), `${JSON.stringify(ratings, null, 2)}
+`);
   fs.writeFileSync(path.join(dir, "report.md"), lines.join("\n"));
   return result;
 }
-
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
   try {
     const dir = path.resolve(process.argv[2] ?? ".");
@@ -129,5 +139,12 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(file
     finalizeReview(dir);
     check("report");
     console.log(`Finalized ${dir}/report.md and findings.json; ratings.json is ready for MCP.`);
-  } catch (error) { console.error(error.stderr?.toString() || error.message); process.exitCode = 1; }
+  } catch (error) {
+    const stderr = error instanceof Error && "stderr" in error ? error.stderr : void 0;
+    console.error(Buffer.isBuffer(stderr) ? stderr.toString() : error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }
+export {
+  finalizeReview
+};

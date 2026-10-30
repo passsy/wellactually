@@ -2,9 +2,9 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { describe, expect, test } from "vitest";
 import { checkReview } from "../src/review.ts";
+import { finalizeReview } from "../../../skills/review/scripts/finalize.ts";
 
 const script = path.resolve(import.meta.dirname, "../../../skills/review/scripts/finalize.mjs");
 
@@ -24,7 +24,7 @@ function fixture(): { dir: string; write: (file: string, value: unknown) => void
   write("probes/all/results.md", "A focused real-path probe failed.\nLimitation: platform execution unverified.\n");
   write("verified/all.json", [{ candidate: "all:expert/rule:0", status: "confirmed" }, { candidate: "all:expert/rule:1", status: "confirmed" }, { candidate: "testing-all:outside:0", status: "confirmed" }]);
   const finish = (): Record<string, any> => {
-    execFileSync(process.execPath, ["--input-type=module", "-e", `import { finalizeReview } from ${JSON.stringify(pathToFileURL(script).href)}; finalizeReview(${JSON.stringify(dir)});`], { stdio: "pipe" });
+    finalizeReview(dir);
     return JSON.parse(fs.readFileSync(path.join(dir, "findings.json"), "utf8"));
   };
   return { dir, write, finish };
@@ -67,12 +67,14 @@ describe("skill-local report finalization", () => {
   });
 
   test("the packaged finalizer works beside its helper without the main plugin command", () => {
-    const { dir } = fixture();
+    const { dir, finish } = fixture();
+    const expected = finish();
     const standalone = fs.mkdtempSync(path.join(os.tmpdir(), "review-standalone-"));
     try {
       for (const file of ["finalize.mjs", "review.mjs"]) fs.copyFileSync(path.join(path.dirname(script), file), path.join(standalone, file));
       execFileSync(process.execPath, [path.join(standalone, "finalize.mjs"), dir], { stdio: "pipe" });
       expect(checkReview(dir, "report")).toMatchObject({ stage: "report" });
+      expect(JSON.parse(fs.readFileSync(path.join(dir, "findings.json"), "utf8"))).toEqual(expected);
     } finally { fs.rmSync(standalone, { recursive: true, force: true }); }
   });
 
