@@ -2,7 +2,7 @@ Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 //#region \0rolldown/runtime.js
 var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod), cb = null), mod.exports);
 //#endregion
-//#region node_modules/react/cjs/react.production.js
+//#region ../../node_modules/react/cjs/react.production.js
 /**
 * @license React
 * react.production.js
@@ -389,7 +389,7 @@ var require_react_production = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.version = "19.3.1";
 }));
 //#endregion
-//#region node_modules/react/cjs/react.development.js
+//#region ../../node_modules/react/cjs/react.development.js
 /**
 * @license React
 * react.development.js
@@ -1169,13 +1169,13 @@ var require_react_development = /* @__PURE__ */ __commonJSMin(((exports, module)
 	})();
 }));
 //#endregion
-//#region node_modules/react/index.js
+//#region ../../node_modules/react/index.js
 var require_react = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	if (process.env.NODE_ENV === "production") module.exports = require_react_production();
 	else module.exports = require_react_development();
 }));
 //#endregion
-//#region node_modules/react-dom/cjs/react-dom.production.js
+//#region ../../node_modules/react-dom/cjs/react-dom.production.js
 /**
 * @license React
 * react-dom.production.js
@@ -1328,7 +1328,7 @@ var require_react_dom_production = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.version = "19.3.1";
 }));
 //#endregion
-//#region node_modules/react-dom/cjs/react-dom.development.js
+//#region ../../node_modules/react-dom/cjs/react-dom.development.js
 /**
 * @license React
 * react-dom.development.js
@@ -1517,7 +1517,7 @@ var require_react_dom_development = /* @__PURE__ */ __commonJSMin(((exports) => 
 	})();
 }));
 //#endregion
-//#region node_modules/react-dom/index.js
+//#region ../../node_modules/react-dom/index.js
 var require_react_dom = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	function checkDCE() {
 		if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined" || typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE !== "function") return;
@@ -1534,7 +1534,7 @@ var require_react_dom = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	} else module.exports = require_react_dom_development();
 }));
 //#endregion
-//#region node_modules/react-dom/cjs/react-dom-server-legacy.node.production.js
+//#region ../../node_modules/react-dom/cjs/react-dom-server-legacy.node.production.js
 /**
 * @license React
 * react-dom-server-legacy.node.production.js
@@ -5628,7 +5628,7 @@ var require_react_dom_server_legacy_node_production = /* @__PURE__ */ __commonJS
 	exports.version = "19.3.1";
 }));
 //#endregion
-//#region node_modules/react-dom/cjs/react-dom-server.node.production.js
+//#region ../../node_modules/react-dom/cjs/react-dom-server.node.production.js
 /**
 * @license React
 * react-dom-server.node.production.js
@@ -10227,7 +10227,7 @@ var require_react_dom_server_node_production = /* @__PURE__ */ __commonJSMin(((e
 	exports.version = "19.3.1";
 }));
 //#endregion
-//#region node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js
+//#region ../../node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js
 /**
 * @license React
 * react-dom-server-legacy.node.development.js
@@ -15725,7 +15725,7 @@ var require_react_dom_server_legacy_node_development = /* @__PURE__ */ __commonJ
 	})();
 }));
 //#endregion
-//#region node_modules/react-dom/cjs/react-dom-server.node.development.js
+//#region ../../node_modules/react-dom/cjs/react-dom-server.node.development.js
 /**
 * @license React
 * react-dom-server.node.development.js
@@ -21588,7 +21588,7 @@ var require_react_dom_server_node_development = /* @__PURE__ */ __commonJSMin(((
 	})();
 }));
 //#endregion
-//#region node_modules/react-dom/server.node.js
+//#region ../../node_modules/react-dom/server.node.js
 var require_server_node = /* @__PURE__ */ __commonJSMin(((exports) => {
 	var l;
 	var s;
@@ -21608,7 +21608,7 @@ var require_server_node = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.resume = s.resume;
 }));
 //#endregion
-//#region node_modules/react/cjs/react-jsx-runtime.production.js
+//#region ../../node_modules/react/cjs/react-jsx-runtime.production.js
 /**
 * @license React
 * react-jsx-runtime.production.js
@@ -21643,7 +21643,7 @@ var require_react_jsx_runtime_production = /* @__PURE__ */ __commonJSMin(((expor
 	exports.jsxs = jsxProd;
 }));
 //#endregion
-//#region node_modules/react/cjs/react-jsx-runtime.development.js
+//#region ../../node_modules/react/cjs/react-jsx-runtime.development.js
 /**
 * @license React
 * react-jsx-runtime.development.js
@@ -21855,13 +21855,13 @@ var require_react_jsx_runtime_development = /* @__PURE__ */ __commonJSMin(((expo
 	})();
 }));
 //#endregion
-//#region node_modules/react/jsx-runtime.js
+//#region ../../node_modules/react/jsx-runtime.js
 var require_jsx_runtime = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	if (process.env.NODE_ENV === "production") module.exports = require_react_jsx_runtime_production();
 	else module.exports = require_react_jsx_runtime_development();
 }));
 //#endregion
-//#region packages/findings/web/src/offline/Offline.tsx
+//#region web/src/offline/Offline.tsx
 var import_server_node = require_server_node();
 var import_jsx_runtime = require_jsx_runtime();
 function Offline({ data }) {
@@ -21905,7 +21905,7 @@ function Offline({ data }) {
 	] });
 }
 //#endregion
-//#region packages/findings/web/src/offline/offline-server.tsx
+//#region web/src/offline/offline-server.tsx
 /**
 * What the server calls to draw the page nobody wants to see.
 *

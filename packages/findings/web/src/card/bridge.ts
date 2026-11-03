@@ -168,7 +168,7 @@ export function connect(
   // Codex does, refuses it otherwise and holds the tool result back for good.
   request("ui/initialize", {
     protocolVersion: PROTOCOL,
-    appInfo: { name: "pascal-review-card", version: "1" },
+    appInfo: { name: "wellactually-review-card", version: "1" },
     appCapabilities: { availableDisplayModes: ["inline"] },
   }).then(
     (hello) => {

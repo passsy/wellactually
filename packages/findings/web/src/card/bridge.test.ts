@@ -53,7 +53,7 @@ describe("the handshake", () => {
     const hello = sent().find((message) => message.method === "ui/initialize");
     expect(hello?.params).toEqual({
       protocolVersion: "2026-01-26",
-      appInfo: { name: "pascal-review-card", version: "1" },
+      appInfo: { name: "wellactually-review-card", version: "1" },
       appCapabilities: { availableDisplayModes: ["inline"] },
     });
   });

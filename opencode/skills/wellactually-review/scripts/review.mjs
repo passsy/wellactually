@@ -42689,7 +42689,7 @@ function publish(paths) {
     }
   } catch (error62) {
     console.error(
-      `pascal-findings: the mutation is saved, but rebuilding the views of "${paths.target}" failed: ${error62 instanceof Error ? error62.message : String(error62)}`
+      `wellactually: the mutation is saved, but rebuilding the views of "${paths.target}" failed: ${error62 instanceof Error ? error62.message : String(error62)}`
     );
   }
   upsertRegistry(paths.repo, paths.target, at);
@@ -44375,7 +44375,7 @@ var candidateFields = {
   },
   quote: { type: "string" }
 };
-var REVIEW_CARD = "ui://pascal-findings/review-card.html";
+var REVIEW_CARD = "ui://wellactually/review-card.html";
 function reviewsSay() {
   return listReviews().slice(0, 30).map((review) => ({
     repo: review.repo,

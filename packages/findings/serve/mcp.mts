@@ -43,7 +43,7 @@ export function createMcpServer(
   options: McpOptions = {},
 ): Server {
   const server = new Server(
-    { name: "pascal-findings", version: "0.1.0" },
+    { name: "wellactually", version: "0.1.0" },
     { capabilities: { tools: {}, resources: {} } },
   );
 

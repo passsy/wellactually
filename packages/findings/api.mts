@@ -204,7 +204,7 @@ function publish(paths: TargetPaths): void {
     }
   } catch (error) {
     console.error(
-      `pascal-findings: the mutation is saved, but rebuilding the views of "${paths.target}" failed: ${error instanceof Error ? error.message : String(error)}`,
+      `wellactually: the mutation is saved, but rebuilding the views of "${paths.target}" failed: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
   upsertRegistry(paths.repo, paths.target, at);

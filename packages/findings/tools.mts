@@ -161,7 +161,7 @@ const candidateFields: Schema = {
  * A host that does not support it sees an ordinary tool with a text answer,
  * so nothing here changes what the tool is for.
  */
-export const REVIEW_CARD = "ui://pascal-findings/review-card.html";
+export const REVIEW_CARD = "ui://wellactually/review-card.html";
 
 export interface Tool {
   name: string;

@@ -46955,7 +46955,7 @@ function publish(paths) {
     }
   } catch (error62) {
     console.error(
-      `pascal-findings: the mutation is saved, but rebuilding the views of "${paths.target}" failed: ${error62 instanceof Error ? error62.message : String(error62)}`
+      `wellactually: the mutation is saved, but rebuilding the views of "${paths.target}" failed: ${error62 instanceof Error ? error62.message : String(error62)}`
     );
   }
   upsertRegistry(paths.repo, paths.target, at);
@@ -48883,7 +48883,7 @@ var candidateFields = {
   },
   quote: { type: "string" }
 };
-var REVIEW_CARD = "ui://pascal-findings/review-card.html";
+var REVIEW_CARD = "ui://wellactually/review-card.html";
 function reviewsSay() {
   return listReviews().slice(0, 30).map((review) => ({
     repo: review.repo,
@@ -51085,7 +51085,7 @@ var UI_EXTENSION2 = "io.modelcontextprotocol/ui";
 var CARD_MIME2 = "text/html;profile=mcp-app";
 function createMcpServer(workspace, options = {}) {
   const server = new Server(
-    { name: "pascal-findings", version: "0.1.0" },
+    { name: "wellactually", version: "0.1.0" },
     { capabilities: { tools: {}, resources: {} } }
   );
   const drawsCards2 = () => {

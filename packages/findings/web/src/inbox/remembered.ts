@@ -6,7 +6,7 @@
  * re-decide for them.
  */
 
-const KEY = "pascal-findings";
+const KEY = "wellactually-review-inbox";
 
 export interface Remembered {
   repo?: string;
