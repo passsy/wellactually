@@ -4034,7 +4034,7 @@ function compacted(sessionID, cwd) {
 }
 function mcpCommand(root) {
   const { file, args } = command(root);
-  return [file, ...args, "mcp"];
+  return [file, ...args, "mcp", "--review-host", "opencode"];
 }
 function textOf(content) {
   if (typeof content === "string") {

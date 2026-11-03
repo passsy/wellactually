@@ -8,7 +8,6 @@ Change no file except the one you write.
 ## Read
 
 - `<dir>/route.json`: `setBytes` is the most diff a change set may have.
-- `<dir>/project.md`: the pieces of the change.
 - `<dir>/diff/index.md`, which lists every file of the diff with its size, and the parts where you need them to see how the files depend on each other: imports, which test covers which code, which UI calls which action.
 - `<dir>/plan.json` records the source mode and scope. Only for a Git comparison with several commits, `git log --stat` over that range shows which files changed together, a hint that they belong together.
 

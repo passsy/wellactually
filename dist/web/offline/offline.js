@@ -1,0 +1,1 @@
+(function(){var e=document.getElementById(`cmd`),t=document.getElementById(`copy`);t?.addEventListener(`click`,()=>{navigator.clipboard.writeText(e?.textContent??``).then(()=>{t.textContent=`Copied`,setTimeout(()=>{t.textContent=`Copy`},1400)})}),setInterval(()=>{fetch(`/api/health`,{cache:`no-store`}).then(e=>{e.ok&&location.reload()}).catch(()=>{})},2e3)})();

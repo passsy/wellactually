@@ -3,8 +3,15 @@ import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { hasDetector } from "@wellactually/core/node";
+import { TOOLS as FINDINGS_TOOLS } from "../../findings/tools.mts";
+import { rateReviewPrinciple } from "../../findings/queues.mts";
+import { appToolMeta, drawsCards, registerReviewCard } from "../../findings/serve/app.mts";
+import { startUi } from "../../findings/serve/http.mts";
+import { currentWorkspace, type Workspace } from "../../findings/store/workspace.mts";
 import { scaffold } from "./board/files.ts";
-import { readConfig, writeConfig } from "./board/board.ts";
+import { readCached, readLockfile, readConfig, writeConfig } from "./board/board.ts";
+import { switchedOff } from "./board/switches.ts";
 import { switchPrinciple } from "./board/switches.ts";
 import { raterOf } from "./registry/rater.ts";
 import { ratePrinciple, RegistryError, type DraftResult } from "./registry/client.ts";
@@ -85,9 +92,100 @@ function text(value: string) {
   return { content: [{ type: "text" as const, text: value }] };
 }
 
+type JsonSchema = {
+  additionalProperties?: boolean;
+  type?: string;
+  description?: string;
+  enum?: unknown[];
+  properties?: Record<string, JsonSchema>;
+  required?: string[];
+  items?: JsonSchema;
+  minimum?: number;
+  minItems?: number;
+  maxItems?: number;
+};
+
+/** Keep the Findings core's JSON schemas intact on this Zod-based MCP. */
+function zodSchema(raw: unknown): z.ZodType {
+  const schema = raw as JsonSchema;
+  let result: z.ZodType;
+  if (schema.enum?.every((value) => typeof value === "string") && schema.enum.length > 0) {
+    result = z.enum(schema.enum as [string, ...string[]]);
+  } else if (schema.type === "string") result = z.string();
+  else if (schema.type === "integer") {
+    result = z.number().int();
+    if (schema.minimum !== undefined) result = (result as z.ZodNumber).min(schema.minimum);
+  } else if (schema.type === "boolean") result = z.boolean();
+  else if (schema.type === "array") {
+    let array = z.array(zodSchema(schema.items ?? {}));
+    if (schema.minItems !== undefined) array = array.min(schema.minItems);
+    if (schema.maxItems !== undefined) array = array.max(schema.maxItems);
+    result = array;
+  } else if (schema.type === "object") {
+    const required = new Set(schema.required ?? []);
+    const shape = Object.fromEntries(Object.entries(schema.properties ?? {}).map(([name, property]) => {
+      const child = zodSchema(property);
+      return [name, required.has(name) ? child : child.optional()];
+    }));
+    result = schema.additionalProperties === true ? z.object(shape).passthrough() : z.object(shape);
+  } else result = z.unknown();
+  return schema.description ? result.describe(schema.description) : result;
+}
+
+function registerFindingsTools(server: McpServer, workspace: Workspace): void {
+  registerReviewCard(server);
+  for (const tool of FINDINGS_TOOLS) {
+    server.registerTool(tool.name, {
+      description: tool.description,
+      inputSchema: zodSchema(tool.inputSchema),
+      ...(tool.annotations ? { annotations: tool.annotations } : {}),
+      ...(appToolMeta(tool) ? { _meta: appToolMeta(tool) } : {}),
+    }, async (args) => {
+      try {
+        if (tool.cardOnly && !drawsCards(server)) throw new Error("This tool is available only through the review card");
+        const result = await tool.run(args, workspace.repo);
+        const reply = text(tool.says ? tool.says(result) : JSON.stringify(result, null, 2));
+        return tool.card && drawsCards(server) ? { ...reply, structuredContent: (tool.forCard ? tool.forCard(args, workspace.repo) : result) as Record<string, unknown> } : reply;
+      } catch (error) {
+        return { isError: true, content: [{ type: "text" as const, text: error instanceof Error ? error.message : String(error) }] };
+      }
+    });
+  }
+}
+
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
   const server = new McpServer({ name: "wellactually", version: "0.8.0" }, { instructions: AUTHORING_GUIDE });
+  const workspace = currentWorkspace();
+  registerFindingsTools(server, workspace);
+  server.registerTool("rate_review_principle", {
+    description: "Review coordinator only: rate a retained pinned principle after verification completes, once per session. Records reason, exact version and delivery status in Findings MCP; duplicate calls never send again. Read get_review_session with includeResults:true for authoritative rating counts. Gatherers, reviewers, aggregators and proof workers must not rate.",
+    inputSchema: { repo: z.string(), target: z.string(), session: z.string(), id: z.string(), rating: z.enum(["up", "down", "not_applicable"]), reason: z.string() },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, async (args, extra) => text(JSON.stringify(await rateReviewPrinciple(args, args.repo, async (id, rating, version) => {
+    if (readLockfile().entries.find(entry => entry.id === id)?.version !== version) throw new Error("Pinned review version changed; rating was not sent");
+    return ratePrinciple(id, rating, await raterOf(server.server.getClientVersion()?.name, extra._meta));
+  }))));
+  server.registerTool("list_principles", {
+    description: "Current advisory board metadata for review filtering: id, version, short description and tags only. No full advice bodies. Pass the reviewed repo to respect project switches.",
+    inputSchema: { repo: z.string() },
+  }, async ({ repo }) => {
+    const off = switchedOff(repo);
+    return text(JSON.stringify(readLockfile().entries.flatMap(entry => {
+      const cached = readCached(entry.hash);
+      if (!cached || off.has(entry.id) || (hasDetector(cached.manifest) && !entry.enabled)) return [];
+      return [{ id: entry.id, version: entry.version, description: cached.manifest.summary, tags: cached.manifest.tags ?? [] }];
+    }), null, 2));
+  });
+  server.registerTool("get_principle", {
+    description: "Load the full cached advisory-board principle by id for an assigned review. Returns its pinned cached version and advice; no registry fetch or board sync.",
+    inputSchema: { id: z.string(), version: z.number().int().optional() },
+  }, async ({ id, version }) => {
+    const entry = readLockfile().entries.find(entry => entry.id === id);
+    const cached = entry ? readCached(entry.hash) : null;
+    if (!entry || !cached || (version !== undefined && version !== entry.version)) return { isError: true, ...text("Principle or requested version is not cached on this board: " + id) };
+    return text(JSON.stringify({ id, version: entry.version, body: cached.advice }));
+  });
 
   server.registerTool(
     "scaffold",
@@ -350,10 +448,13 @@ export async function serveMcp(): Promise<void> {
   );
 
   const transport = new StdioServerTransport();
-  await server.connect(transport);
-  // Stay up until the client goes away, then let the process end.
-  await new Promise<void>((resolve) => {
-    transport.onclose = () => resolve();
-    process.stdin.on("end", () => resolve());
+  const closed = new Promise<void>(resolve => {
+    server.server.onclose = () => resolve();
+    process.stdin.once("end", () => resolve());
   });
+  await server.connect(transport);
+  const ui = await startUi(workspace).catch(error => { process.stderr.write(`Findings UI unavailable: ${String(error)}\n`); return null; });
+  // Stay up until the client goes away, then let the process end.
+  await closed;
+  await ui?.close();
 }
