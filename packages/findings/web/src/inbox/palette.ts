@@ -96,16 +96,16 @@ function quoted(text: string): string {
  * The fingerprint a query is asking about, if it is asking about one.
  *
  * A finding posted to GitHub carries its fingerprint in a hidden
- * `<!-- pascal-review:<hash> -->` marker, and that hash is what somebody
+ * `<!-- wellactually-review:<hash> -->` marker, and that hash is what somebody
  * copies back out of the comment source to find the finding again. Accept
- * the bare hex, the `pascal-review:` prefix, or the whole marker — pasting
+ * the bare hex, a current or legacy review-marker prefix, or the whole marker — pasting
  * more than the hash should not be a reason to find nothing. Eight hex
  * characters is the floor: below that, ordinary words ("decade", "cafe")
  * read as hex and every query would rank fingerprints it never meant.
  */
 function fingerprintIn(q: string): string | null {
   const match =
-    /^(?:<!--\s*)?(?:pascal-review:)?([0-9a-f]{8,64})(?:\s*-->)?$/.exec(q);
+    /^(?:<!--\s*)?(?:(?:wellactually-review|pascal-review):)?([0-9a-f]{8,64})(?:\s*-->)?$/.exec(q);
   return match?.[1] ?? null;
 }
 

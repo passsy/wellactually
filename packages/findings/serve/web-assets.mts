@@ -13,7 +13,7 @@
  * A hit is kept, though. Installers delete the directory a running server was
  * started from — `codex plugin add` removes the old version's cache wholesale
  * — and a server that lazily re-reads its own assets then fails its first
- * view rebuild after every upgrade. The code survives that deletion because
+ * page after every upgrade. The code survives that deletion because
  * Node holds it in memory; the assets survive it by being held the same way.
  */
 
@@ -36,7 +36,7 @@ const ROOTS = [
 export class MissingWebBuild extends Error {
   constructor(what: string) {
     super(
-      `the web build is missing ${what}. Run "npm run web:build" — the triage page and the report are compiled, not written by hand.`,
+      `the web build is missing ${what}. Run "npm run web:build" — the triage page and the rule page are compiled, not written by hand.`,
     );
     this.name = "MissingWebBuild";
   }
@@ -76,33 +76,27 @@ export function cardHtml(): string {
   return readAsset("card/card.html");
 }
 
-/** The report's stylesheet and its enhancement script, to inline. */
-export function reportStyle(): string {
-  return readAsset("report/report.css");
-}
-
-export function reportScript(): string {
-  return readAsset("report/report.js");
+/** The rule page's stylesheet, to inline. */
+export function ruleStyle(): string {
+  return readAsset("rule/rule.css");
 }
 
 /**
- * The report renderer, loaded once and kept.
+ * The rule page renderer, loaded once and kept.
  *
- * `require` rather than `import`, because writing a report happens on the
- * synchronous path of a tool call and this is the one place a bundling
- * decision would otherwise force every caller to become async. The bundle is
- * built as CommonJS for exactly this.
+ * `require` rather than `import`, so the HTTP route can stay synchronous. The
+ * bundle is built as CommonJS for exactly this.
  */
-let renderer: {
-  renderReport: (data: unknown) => string;
-  renderRulePage: (rule: unknown) => string;
-} | null = null;
+let ruleRenderer: ((rule: unknown) => string) | null = null;
 
-function report(): NonNullable<typeof renderer> {
-  renderer ??= createRequire(import.meta.url)(
-    find("ssr/report-ssr.cjs"),
-  ) as NonNullable<typeof renderer>;
-  return renderer;
+/** One rule, as a page, for links from the card, the inbox and agents. */
+export function renderRulePage(rule: unknown): string {
+  ruleRenderer ??= (
+    createRequire(import.meta.url)(find("rule-ssr/rule-ssr.cjs")) as {
+      renderRulePage: (rule: unknown) => string;
+    }
+  ).renderRulePage;
+  return ruleRenderer(rule);
 }
 
 export function offlineStyle(): string {
@@ -124,13 +118,4 @@ export function renderOffline(data: unknown): string {
     }
   ).renderOffline;
   return offline(data, offlineStyle(), offlineScript());
-}
-
-export function renderReport(data: unknown): string {
-  return report().renderReport(data);
-}
-
-/** One rule, as a page, for the report that has no panel to open it in. */
-export function renderRulePage(rule: unknown): string {
-  return report().renderRulePage(rule);
 }

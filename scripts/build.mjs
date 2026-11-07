@@ -11,6 +11,10 @@ import path from "node:path";
 import { build } from "esbuild";
 import { syncSkills } from "./sync-skills.mjs";
 
+// The intermediate web/dist tree is ignored. Build it from source so a clean
+// checkout and generated-file CI ship the same UI as a local development build.
+await import("../packages/findings/web/build.mjs");
+
 const root = path.resolve(import.meta.dirname, "..");
 const outfile = path.join(root, "dist/wellactually.mjs");
 
@@ -26,8 +30,11 @@ const shared = {
   logLevel: "warning",
 };
 
-await import("../packages/findings/web/build.mjs");
 await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/main.ts")], outfile });
+// Keep the hook entry small. Codex trusts the whole plugin fingerprint, so any
+// installed package update can still require a fresh hook review.
+await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/hook-entry.ts")], outfile:path.join(root,"dist/wellactually-hook.mjs") });
+fs.rmSync(path.join(root, "dist/web"), { recursive: true, force: true });
 fs.cpSync(path.join(root, "packages/findings/web/dist"), path.join(root, "dist/web"), { recursive: true });
 // A worker loads its script from scratch, so it gets only the isolate. The hook looks for it beside the command.
 const worker = path.join(path.dirname(outfile), "wellactually-worker.mjs");
@@ -50,9 +57,10 @@ for (const plugin of plugins) {
 // of the command, because only that folder is installed.
 const opencode = path.join(root, "opencode");
 fs.mkdirSync(path.join(opencode, "dist"), { recursive: true });
-for (const file of ["wellactually.mjs", "wellactually-worker.mjs", "wellactually-log.mjs"]) {
+for (const file of ["wellactually.mjs", "wellactually-hook.mjs", "wellactually-worker.mjs", "wellactually-log.mjs"]) {
   fs.copyFileSync(path.join(root, "dist", file), path.join(opencode, "dist", file));
 }
+fs.rmSync(path.join(opencode, "dist/web"), { recursive: true, force: true });
 fs.cpSync(path.join(root, "dist/web"), path.join(opencode, "dist/web"), { recursive: true });
 fs.renameSync(path.join(root, "dist/opencode.mjs"), path.join(opencode, "dist/opencode.mjs"));
 fs.renameSync(path.join(root, "dist/opencode-tui.mjs"), path.join(opencode, "dist/tui.mjs"));

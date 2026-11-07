@@ -198,7 +198,10 @@ export class Pending {
 
 /** Reads the skills of the plugin, with the command spelled the way this plugin starts it. */
 export function readSkills(root = pluginRoot()): { name: string; description: string; path: string; content: string }[] {
-  const dir = path.join(root, "skills");
+  // The npm artifact shares a root runtime across hosts. Older Git installs put
+  // OpenCode's namespaced skills directly beside its own runtime instead.
+  const namespaced = path.join(root, "opencode", "skills");
+  const dir = fs.existsSync(namespaced) ? namespaced : path.join(root, "skills");
   let names: string[];
   try {
     names = fs.readdirSync(dir);

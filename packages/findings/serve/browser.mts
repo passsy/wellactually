@@ -6,15 +6,16 @@
  * http on loopback. This server is on the same machine as the person looking
  * at the card, so it can open the page itself.
  *
- * PASCAL_REVIEW_BROWSER replaces the command, which is how tests stay out of
+ * WELLACTUALLY_REVIEW_BROWSER replaces the command, which is how tests stay out of
  * the browser.
  */
 
 import { spawn } from "node:child_process";
 
 export function openInBrowser(url: string): void {
-  const [command, ...args] = process.env["PASCAL_REVIEW_BROWSER"]
-    ? [process.env["PASCAL_REVIEW_BROWSER"], url]
+  const override = process.env.WELLACTUALLY_REVIEW_BROWSER ?? process.env.PASCAL_REVIEW_BROWSER;
+  const [command, ...args] = override
+    ? [override, url]
     : process.platform === "darwin"
       ? ["open", url]
       : process.platform === "win32"

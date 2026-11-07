@@ -137,7 +137,7 @@ export function Chunk({
 
         {source && (
           <pre className="code overflow-x-auto text-xs leading-relaxed">
-            <code className="block">
+            <code className="block w-max min-w-full">
               {/*
                 Tokenized as one text, not line by line: a doc comment keeps
                 its colour past its first line only if the tokenizer saw it
@@ -179,7 +179,7 @@ export function Chunk({
               The change here
             </p>
             <pre className="code diff overflow-x-auto text-xs leading-relaxed">
-              <code className="block">
+              <code className="block w-max min-w-full">
                 {change.split("\n").map((line, index) => (
                   <span
                     key={`${String(index)} ${line}`}

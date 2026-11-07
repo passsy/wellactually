@@ -243,6 +243,7 @@ export function listDocs(where: Where): Promise<DocumentEntry[]> {
 export type SourceView = "diff" | "old" | "new";
 
 export interface SourceFile {
+  kind?: "artifact";
   path: string;
   /** The commit the content came from, or "working tree". */
   ref: string;
@@ -304,4 +305,40 @@ export function listRules(): Promise<RuleEntry[]> {
     (answer) => answer.rules ?? [],
   );
   return catalogue;
+}
+
+export async function occurrenceList(
+  where: Where,
+  findingId: string,
+): Promise<import("../../../model/records.mts").OccurrenceRecord[]> {
+  return api("/api/tools/list_occurrences", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...where, findingId }),
+  });
+}
+export async function saveOccurrenceState(
+  where: Where,
+  occurrence: import("../../../model/records.mts").OccurrenceRecord,
+): Promise<void> {
+  await api("/api/tools/update_occurrence", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      ...where,
+      id: occurrence.id,
+      expectedRevision: occurrence.revision,
+      actor: "human",
+      patch:
+        occurrence.state === "open"
+          ? {
+              state: "closed",
+              closure: {
+                reason: "resolved",
+                explanation: "Marked resolved in review inbox",
+              },
+            }
+          : { state: "open", closure: null },
+    }),
+  });
 }

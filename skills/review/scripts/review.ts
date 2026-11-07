@@ -8,12 +8,12 @@ import type { Ctx, Written } from "@wellactually/sdk";
 import { fileCtx, hasDetector } from "@wellactually/core/node";
 import { describeFinding } from "../../../packages/cli/src/hook/finding.ts";
 import { parsePatch } from "../../../packages/cli/src/hook/turn.ts";
-import { type Lockfile, readCached, readLockfile, runBoard } from "../../../packages/cli/src/board/board.ts";
+import { type Lockfile, readCached, readConfig, readLockfile, runBoard } from "../../../packages/cli/src/board/board.ts";
 import { findProjectRoot, toPosix } from "../../../packages/cli/src/board/files.ts";
 import { collectInput, type CollectedInput, type InputOptions } from "./inputs.ts";
 import { switchedOff } from "../../../packages/cli/src/board/switches.ts";
 import { claimReviewSession, getReviewSession, verificationProblems } from "../../../packages/findings/queues.mts";
-import { listCandidates } from "../../../packages/findings/api.mts";
+import { listFindingRecords } from "../../../packages/findings/crud.mts";
 
 /**
  * What a review compares: `base` against `head`, or against the working tree
@@ -634,7 +634,7 @@ function adviceTokens(dir: string, file: string): number {
 }
 
 /** The instructions of each step of the review, which ship beside the review skill. */
-const STEP_FILES = ["gather-information.md", "prepare-working-tree.md", "filter-principles.md", "splitter.md", "queue-session.md", "queue-reviewer.md", "aggregator.md", "verification-worker.md"];
+const STEP_FILES = ["gather-information.md", "prepare-working-tree.md", "filter-principles.md", "splitter.md", "queue-session.md", "queue-reviewer.md", "aggregator.md", "verification-worker.md", "finding-writing.md"];
 
 /** The folder of the review skill: beside the command in the plugin, or in this repository. */
 function stepsSource(): string | null {
@@ -891,7 +891,7 @@ export function setupAgents(dir: string): string[] {
   return assignments.map(agent => {
     const folder = path.join(dir, "agents", agent.folder);
     fs.mkdirSync(folder, { recursive: true });
-    const dependencies = ["findings"];
+    const dependencies = ["findings", "finding-writing"];
     const sections = [agent.role, ...dependencies].map((role, index) => {
       let body = fs.readFileSync(path.join(source, `${role}.md`), "utf8").replaceAll("<dir>", dir);
       for (const [name, number] of [["reviewer", 6], ["findings", 5]] as const) {
@@ -912,14 +912,19 @@ function setupQueueAgents(dir: string, plan: ReviewPlan, jobs: ReviewJob[], sour
   const tracking = readJson<{ target: string; run: string; session?: string }>(dir, "tracking.json");
   const units = [...new Set(jobs.map(job => job.queue!))];
   const scope = createHash("sha256").update(JSON.stringify(plan.target)).update(fs.readFileSync(path.join(dir, "diff.patch"))).digest("hex");
-  const session = claimReviewSession({ repo: plan.root, target: tracking.target, run: tracking.run, scope, sets: units.map(id => ({ id, principles: id === "crossing" ? [] : plan.principles.map(p => ({ id: p.id, version: p.version })) })) }, plan.root);
+  const retained = plan.principles.map(p => {
+    const entry = readLockfile().entries.find(e => e.id === p.id && e.version === p.version);
+    return { id: p.id, version: p.version, ...(entry ? { hash: entry.hash } : {}) };
+  });
+  const session = claimReviewSession({ repo: plan.root, target: tracking.target, run: tracking.run, scope, registry: readConfig().registry, sets: units.map(id => ({ id, principles: id === "crossing" ? [] : retained })) }, plan.root);
   fs.writeFileSync(path.join(dir, "tracking.json"), JSON.stringify({ ...tracking, session: session.id }, null, 2) + "\n");
   const assignments = [...jobs.map(job => ({ folder: `reviewer-${job.id}`, role: "queue-reviewer", job: job.id, queue: job.queue!, parts: job.parts })), { folder: "aggregator", role: "aggregator", job: "aggregator", queue: "", parts: [] }];
   return assignments.map(agent => {
     const folder = path.join(dir, "agents", agent.folder); fs.mkdirSync(folder, { recursive: true });
     const inputs = ["task.md", ...(fs.existsSync(path.join(dir, "context.md")) ? ["context.md"] : []), "plan.json", "tracking.json", "jobs.json", ...(fs.existsSync(path.join(dir, "sets.json")) ? ["sets.json"] : []), ...agent.parts];
     const header = [`# ${agent.folder}`, `Review directory: ${dir}`, `Source root: ${plan.root}`, `Worker: ${agent.job}`, `Queue: ${agent.queue}`, "", "## Inputs", ...inputs.map(file => `- [${file}](${path.join(dir, file)})`), ""];
-    const body = fs.readFileSync(path.join(source, `${agent.role}.md`), "utf8").replaceAll("<dir>", dir);
+    const body = fs.readFileSync(path.join(source, `${agent.role}.md`), "utf8").replaceAll("<dir>", dir)
+      + "\n\n" + fs.readFileSync(path.join(source, "finding-writing.md"), "utf8");
     const file = path.join(folder, "INSTRUCTIONS.md"); fs.writeFileSync(file, header.join("\n") + "\n" + body); return file;
   });
 }
@@ -937,7 +942,8 @@ export function setupVerificationAgents(dir: string): string[] {
     const workingRoot = prepareProofWorktree(plan, folder);
     const file = path.join(folder, "INSTRUCTIONS.md");
     fs.writeFileSync(path.join(folder, "workspace.json"), JSON.stringify({ root: workingRoot, isolated: workingRoot !== plan.root }, null, 2) + "\n");
-    fs.writeFileSync(file, `# ${id}\nWorker: ${id}\nQueue: verification\nReview directory: ${dir}\nReviewed source root: ${plan.root}\nProof working root: ${workingRoot}\nExecute tests/probes from the proof working root. Do not mutate the reviewed source or another worker's checkout.\nRead ${dir}/tracking.json, ${dir}/task.md, ${dir}/plan.json and optional context.md.\n\n` + fs.readFileSync(path.join(source, "verification-worker.md"), "utf8").replaceAll("<dir>", dir));
+    fs.writeFileSync(file, `# ${id}\nWorker: ${id}\nQueue: verification\nReview directory: ${dir}\nReviewed source root: ${plan.root}\nProof working root: ${workingRoot}\nExecute tests/probes from the proof working root. Do not mutate the reviewed source or another worker's checkout.\nRead ${dir}/tracking.json, ${dir}/task.md, ${dir}/plan.json and optional context.md.\n\n` + fs.readFileSync(path.join(source, "verification-worker.md"), "utf8").replaceAll("<dir>", dir)
+      + "\n\n" + fs.readFileSync(path.join(source, "finding-writing.md"), "utf8"));
     return file;
   });
 }
@@ -998,8 +1004,8 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
     const queues = session.queues.filter(q => q.phase === "review" || stage === "verify");
     const pending = queues.flatMap(q => q.items.filter(item => !item.completed).map(item => `${q.id}/${item.id}`));
     if (stage === "verify" && session.phase !== "verification") pending.push("aggregation/verification queue not initialized");
-    const candidates = listCandidates({ repo: queuedPlan.root, target: tracking.target, run: session.run }, queuedPlan.root);
-    if (stage === "verify") for (const candidate of candidates) if (candidate.status === "pending") pending.push(`candidate ${candidate.id}`);
+    const candidates = listFindingRecords({ repo: queuedPlan.root, target: tracking.target, run: session.run }, queuedPlan.root).filter(f => f.closure?.reason !== "superseded");
+    // Queue completion references saved assessments; findings have no pending/promotion state.
     if (stage === "verify") pending.push(...verificationProblems(session, queuedPlan.root, tracking.target));
     if (pending.length) throw new Error(`Review ${stage} is incomplete:\n- ${pending.join("\n- ")}`);
     return { stage: stage as ReviewStage, jobs: queues.reduce((n, q) => n + q.workers, 0), units: queues.filter(q => q.phase === "review").length, candidates: candidates.length };

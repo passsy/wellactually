@@ -4,9 +4,7 @@
  * Two maps, both of finding id to a timestamp, and both deliberately outside
  * the finding itself. Reading is not a decision and neither is meaning to
  * come back to something, so neither belongs in the record of what the review
- * found and what Pascal ruled — and every write to a finding rebuilds
- * review.html and findings.sarif, which is far too much to spend on moving a
- * cursor down one row.
+ * found and what the user ruled.
  *
  * Which findings have been read.
  *
@@ -16,9 +14,8 @@
  *
  * One file per target rather than a field on each finding, for two reasons.
  * Reading is not a decision, so it does not belong in the record of what the
- * review found and what Pascal ruled; and every write to a finding rebuilds
- * review.html and findings.sarif, which is far too much to spend on moving a
- * cursor down one row.
+ * review found and what the user ruled; and a write to a finding wakes every
+ * open inbox, which is too much to spend on moving a cursor down one row.
  */
 
 import {

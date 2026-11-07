@@ -58,4 +58,4 @@ Do not create `project.md`, `source/`, `before/` or a second summary file.
 Reply with the concise problem summary and paths to `task.md` and optional `context.md` so the coordinator can show the user the initial review brief.
 
 Do not call rate_principle or rate_review_principle.
-The server owns review activity and delivery accounting.
+Aggregation owns suggestion accounting; do not send separate review ratings.

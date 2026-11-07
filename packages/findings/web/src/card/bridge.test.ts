@@ -15,6 +15,7 @@ interface Sent {
   method?: string;
   params?: Record<string, unknown>;
   result?: unknown;
+  error?: { code?: number; message: string };
 }
 
 function hostFrame(): { host: Window; sent: () => Sent[] } {
@@ -40,11 +41,37 @@ function answer(host: Window, message: Omit<Sent, "jsonrpc">): void {
   );
 }
 
+async function initialize(host: Window, sent: () => Sent[]) {
+  const hello=sent().find(m=>m.method==="ui/initialize")!;
+  answer(host,{id:hello.id!,result:{protocolVersion:"2026-01-26",hostCapabilities:{serverTools:{}},hostContext:{}}});
+  await Promise.resolve();
+}
+
 afterEach(() => {
   document.body.innerHTML = "";
 });
 
 describe("the handshake", () => {
+  it("preserves the host's exact tool-call rejection code and message", async () => {
+    const {host,sent}=hostFrame(); const card=connect(host,window);
+    await initialize(host,sent);
+    const call=card.callTool("review_status",{});
+    const request=sent().find(m=>m.method==="tools/call")!;
+    answer(host,{id:request.id!,error:{code:-32601,message:"Tool calls are unavailable"}});
+    await expect(call).rejects.toMatchObject({method:"tools/call",code:-32601,message:"tools/call: [-32601] Tool calls are unavailable"});
+  });
+
+  it("waits for a completed handshake before any tool call", async () => {
+    const {host,sent}=hostFrame();const card=connect(host,window);
+    const call=card.callTool("review_status",{});
+    expect(sent().some(m=>m.method==="tools/call")).toBe(false);
+    await initialize(host,sent);await Promise.resolve();
+    const tool=sent().find(m=>m.method==="tools/call")!;
+    expect(tool).toBeDefined();
+    expect(card.connectionDetails!()).toMatchObject({handshake:"complete",handshakeAtToolCall:"complete"});
+    answer(host,{id:tool.id!,result:{}});await call;
+  });
+
   it("names the card as appInfo, as the MCP Apps schema requires", () => {
     const { host, sent } = hostFrame();
 
@@ -54,14 +81,101 @@ describe("the handshake", () => {
     expect(hello?.params).toEqual({
       protocolVersion: "2026-01-26",
       appInfo: { name: "wellactually-review-card", version: "1" },
-      appCapabilities: { availableDisplayModes: ["inline"] },
+      appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] },
     });
   });
 
-  it("puts a message in the conversation as a list of content blocks", () => {
+  it("requests fullscreen and follows the host's actual mode and restore notifications", async () => {
+    const { host, sent } = hostFrame();
+    const bridge = connect(host, window);
+    const states: string[] = [];
+    const unsubscribe = bridge.onDisplayState!((state) =>
+      states.push(state.mode),
+    );
+    const hello = sent().find((message) => message.method === "ui/initialize")!;
+    answer(host, {
+      id: hello.id!,
+      result: {
+        hostContext: {
+          displayMode: "inline",
+          availableDisplayModes: ["inline", "fullscreen"],
+        },
+      },
+    });
+    await vi.waitFor(() =>
+      expect(
+        sent().some(
+          (message) => message.method === "ui/notifications/initialized",
+        ),
+      ).toBe(true),
+    );
+    const change = bridge.requestDisplayMode!("fullscreen");
+    const request = sent().find(
+      (message) => message.method === "ui/request-display-mode",
+    )!;
+    expect(request.params).toEqual({ mode: "fullscreen" });
+    answer(host, { id: request.id!, result: { mode: "fullscreen" } });
+    await expect(change).resolves.toBe("fullscreen");
+    expect(document.documentElement.dataset["displayMode"]).toBe("fullscreen");
+    const count = sent().length;
+    bridge.resized(900);
+    expect(sent()).toHaveLength(count);
+    answer(host, {
+      method: "ui/notifications/host-context-changed",
+      params: { displayMode: "inline" },
+    });
+    expect(states).toContain("fullscreen");
+    expect(states.at(-1)).toBe("inline");
+    bridge.resized(300);
+    expect(sent().at(-1)?.method).toBe("ui/notifications/size-changed");
+    unsubscribe();
+  });
+
+  it("does not request an unsupported mode or claim fullscreen when the host stays inline", async () => {
+    const { host, sent } = hostFrame(),
+      bridge = connect(host, window);
+    const hello = sent().find((message) => message.method === "ui/initialize")!;
+    answer(host, {
+      id: hello.id!,
+      result: {
+        hostContext: {
+          displayMode: "inline",
+          availableDisplayModes: ["inline"],
+        },
+      },
+    });
+    await vi.waitFor(() =>
+      expect(
+        sent().some(
+          (message) => message.method === "ui/notifications/initialized",
+        ),
+      ).toBe(true),
+    );
+    await expect(bridge.requestDisplayMode!("fullscreen")).rejects.toThrow(
+      "does not support",
+    );
+    expect(
+      sent().some((message) => message.method === "ui/request-display-mode"),
+    ).toBe(false);
+    answer(host, {
+      method: "ui/notifications/host-context-changed",
+      params: { availableDisplayModes: ["inline", "fullscreen"] },
+    });
+    const change = bridge.requestDisplayMode!("fullscreen");
+    const request = sent().find(
+      (message) => message.method === "ui/request-display-mode",
+    )!;
+    answer(host, { id: request.id!, result: { mode: "inline" } });
+    await expect(change).resolves.toBe("inline");
+    expect(document.documentElement.dataset["displayMode"]).toBe("inline");
+  });
+
+  it("puts a message in the conversation as a list of content blocks", async () => {
     const { host, sent } = hostFrame();
 
-    connect(host, window).say("Fix the accepted findings of pr-7: T1");
+    const sending = connect(host, window).say(
+      "Fix the accepted findings of pr-7: T1",
+    );
 
     const message = sent().find((each) => each.method === "ui/message");
     expect(message?.params).toEqual({
@@ -70,13 +184,24 @@ describe("the handshake", () => {
         { type: "text", text: "Fix the accepted findings of pr-7: T1" },
       ],
     });
+    answer(host, { id: message!.id!, result: {} });
+    await expect(sending).resolves.toBeUndefined();
+  });
+
+  it("reports a message the host rejects", async () => {
+    const { host, sent } = hostFrame();
+    const sending = connect(host, window).say("Post T1");
+    const message = sent().find((each) => each.method === "ui/message");
+    answer(host, { id: message!.id!, result: { isError: true } });
+    await expect(sending).rejects.toThrow("declined");
   });
 
   it("gives up on a request the host never answers", async () => {
     vi.useFakeTimers();
     try {
-      const { host } = hostFrame();
+      const { host, sent } = hostFrame();
       const card = connect(host, window);
+      await initialize(host,sent);
       const call = card.callTool("set_stage", { id: "T1", to: "accepted" });
       const landed = vi.fn();
       call.catch(landed);
@@ -100,6 +225,7 @@ describe("the handshake", () => {
     try {
       const { host, sent } = hostFrame();
       const card = connect(host, window);
+      await initialize(host,sent);
       const call = card.callTool("set_stage", { id: "T1", to: "accepted" });
       const message = sent().find((each) => each.method === "tools/call");
       if (message?.id === undefined) throw new Error("no tools/call was sent");

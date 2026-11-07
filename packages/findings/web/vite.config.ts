@@ -29,7 +29,6 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": { target: SERVER, changeOrigin: true },
-      "/review.html": { target: SERVER, changeOrigin: true },
       "/rule": { target: SERVER, changeOrigin: true },
       "/sw.js": { target: SERVER, changeOrigin: true },
       "/manifest.webmanifest": { target: SERVER, changeOrigin: true },

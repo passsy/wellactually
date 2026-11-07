@@ -254,7 +254,7 @@ function ReviewRow({
         on the tooltip for whoever wants the number.
       */}
       <span className="col-span-2 row-start-3 mt-1">
-        <Meter piles={review.counts.piles} bare />
+        {review.error ? <span className="text-xs text-p1" title={review.error}>Review needs attention</span> : <Meter piles={review.counts.piles} bare />}
       </span>
     </button>
   );

@@ -1,8 +1,8 @@
 /**
  * The triage UI, served from the same process as the MCP server.
  *
- * One fixed loopback port, never a random one, because the generated
- * review.html has to be able to find it without being told. Losing the bind
+ * One fixed loopback port per host, never a random one, because the card and
+ * the links agents print have to find it without being told. Losing the bind
  * is the normal case rather than a failure: a second editor window starts a
  * second MCP server, the first one is already serving, and everything the
  * second one would have served is the same files on disk.
@@ -41,7 +41,7 @@ import { MANIFEST, platform, restartCommand, serviceWorker } from "./pwa.mts";
 import { listRules, readRule } from "../rules.mts";
 import { toolNamed, TOOL_NAMES } from "../tools.mts";
 import { inboxHtml, MissingWebBuild } from "./web-assets.mts";
-import { escapeHtml, rulePage } from "../views/html.mts";
+import { escapeHtml, rulePage } from "./rule-page.mts";
 import type { Workspace } from "../store/workspace.mts";
 
 /**
@@ -227,7 +227,12 @@ class Watchers {
     for (const dir of wanted) {
       if (this.watchers.has(dir)) continue;
       try {
-        const watcher = watch(dir, { recursive: true }, () => this.beat(dir));
+        const watcher = watch(dir, { recursive: true }, (_event, file) => {
+          // Reading CRUD records takes a lock. Internal lock/backup churn is not
+          // a data change and must not cause an SSE → read → SSE feedback loop.
+          if (file?.toString().split(/[\\/]/).some(part => part.startsWith(".") || part.endsWith(".tmp"))) return;
+          this.beat(dir);
+        });
         watcher.on("error", () => {
           watcher.close();
           this.watchers.delete(dir);
@@ -239,7 +244,7 @@ class Watchers {
     }
   }
 
-  /** One write touches the finding, the html and the sarif. Coalesce them. */
+  /** One mutation can touch several files. Coalesce them. */
   private beat(dir: string): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
@@ -760,27 +765,6 @@ async function handle(
       200,
       JSON.stringify(readDocument(fromQuery(url), workspace.repo)),
     );
-    return;
-  }
-
-  // The generated report, for the README that links it. Every review is told
-  // to write that link, and the document routes refuse it: being generated is
-  // the right reason to keep it out of a list of what the review wrote, and
-  // the wrong reason to refuse a link somebody put there on purpose.
-  //
-  // Its own route rather than the raw one, because this is a page this code
-  // generated and hands to a browser to render, not an agent's attachment
-  // being handed over as bytes.
-  if (path === "/review.html" && request.method === "GET") {
-    const paths = targetPaths(
-      url.searchParams.get("repo") || workspace.repo,
-      url.searchParams.get("target") ?? "",
-    );
-    if (!existsSync(paths.html)) {
-      send(response, 404, `No report for ${paths.target} yet.`, "text/plain");
-      return;
-    }
-    send(response, 200, readFileSync(paths.html, "utf8"), "text/html");
     return;
   }
 

@@ -20,23 +20,20 @@ import {
 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { withRecords, findingRecords, occurrenceRecords } from "./store/records.mts";
 import {
   ACTOR,
-  CANDIDATE_STATUS,
   EVIDENCE,
   MAX_TAGS,
   type Authorship,
   MAX_TAG_LENGTH,
-  OBSERVATION_STATUS,
   PRIORITY,
   REPORTER,
   RESOLUTION,
   VERDICT,
   type Actor,
   type Finding,
-  type Observation,
-  type ReviewCandidate,
   type RelatedLocation,
   type Resolution,
   type ReviewPr,
@@ -61,27 +58,16 @@ import { captureAt, lastLine, type Span } from "./model/context.mts";
 import { checkResolution, checkVerdict } from "./model/transitions.mts";
 import {
   allocateFindingId,
-  allocateCandidateId,
-  allocateObservationId,
-  claimCandidate,
   claimFinding,
-  claimObservation,
   ensureTarget,
   letterFor,
-  listCandidates as readCandidates,
   listFindings as readFindings,
-  listObservations as readObservations,
   listTargets,
   readFinding,
-  readCandidate,
   readMeta,
   reviewActivity,
-  readObservation,
   writeFinding,
-  writeCandidate,
   writeMeta,
-  writeObservation,
-  writeView,
 } from "./store/findings.mts";
 import { readRegistry, upsertRegistry } from "./store/registry.mts";
 import { readRule, reviewRules, type ReviewRules } from "./rules.mts";
@@ -104,8 +90,6 @@ import {
   prepare,
   type Complaint,
 } from "./report/issue.mts";
-import { toHtml } from "./views/html.mts";
-import { toSarif } from "./views/sarif.mts";
 import {
   flag,
   InputError,
@@ -157,57 +141,15 @@ function mustFind(paths: TargetPaths, id: string): Finding {
   return finding;
 }
 
-// A writer that keeps landing mid-rebuild publishes its own views anyway, so
-// giving up after a few passes costs nothing that its publish does not heal.
-const MAX_PUBLISH_PASSES = 5;
-
 /**
- * Rewrites both views and records the target machine-wide.
+ * Makes sure the target exists and records it machine-wide.
  *
- * Called after every mutation. A target holds dozens of findings, so
- * rebuilding from scratch is cheaper than working out what changed, and it
- * cannot leave the views disagreeing with the files.
- *
- * A view that cannot be written does not fail the mutation. The finding is
- * already on disk by the time this runs, and an error here made a saved
- * mutation report failure — the caller then retried a write that had
- * happened, or gave up on one that had not needed giving up on. The views
- * are rebuilt whole on every mutation, so the next successful one heals
- * them; the failure is said on stderr rather than to the caller.
- *
- * Every session runs its own server, and two of them writing at once each
- * rebuild the views from what they read. The rename that lands last wins, and
- * it can carry the older read: two processes writing ten findings each left
- * twenty findings on disk and nineteen in the SARIF. So the findings are read
- * again after the views are written, and a change since the first read means
- * a write slipped in and the views are rebuilt from the newer state. The
- * process whose rename lands last is always the one checking afterwards, so
- * the views end on what is on disk.
+ * Called after every mutation, so the Review Inbox lists a review as soon as
+ * anything is written to it.
  */
 function publish(paths: TargetPaths): void {
   ensureTarget(paths);
-  let findings = readFindings(paths);
-  const at = now();
-  try {
-    for (let pass = 0; pass < MAX_PUBLISH_PASSES; pass++) {
-      writeView(
-        paths.html,
-        toHtml(
-          { repo: paths.repo, target: paths.target, generatedAt: at },
-          findings,
-        ),
-      );
-      writeView(paths.sarif, toSarif(paths.target, findings));
-      const latest = readFindings(paths);
-      if (JSON.stringify(latest) === JSON.stringify(findings)) break;
-      findings = latest;
-    }
-  } catch (error) {
-    console.error(
-      `wellactually: the mutation is saved, but rebuilding the views of "${paths.target}" failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-  upsertRegistry(paths.repo, paths.target, at);
+  upsertRegistry(paths.repo, paths.target, now());
 }
 
 /**
@@ -424,14 +366,6 @@ function createFindingStored(
     );
   }
 
-  const promoted = optionalStr(args, "fromObservation");
-  const observation = promoted ? readObservation(paths, promoted) : null;
-  if (promoted && !observation) {
-    throw new InputError(
-      `no observation "${promoted}" in target "${paths.target}".`,
-    );
-  }
-
   // The base belongs to the run. Whichever call carries it first sets it for
   // the target, so every later finding gets its diff without repeating it.
   //
@@ -503,34 +437,10 @@ function createFindingStored(
     resolution: "unresolved",
     history: [{ at, actor: "review", verdict: "undecided" }],
     links: {},
-    ...(promoted ? { fromObservation: promoted } : {}),
-    ...(optionalStr(args, "fromCandidate")
-      ? { fromCandidate: optionalStr(args, "fromCandidate") }
-      : {}),
-    ...(optionalStr(args, "verificationStatus")
-      ? {
-          verification: {
-            status: optionalStr(args, "verificationStatus") as
-              "confirmed" | "plausible",
-            ...(optionalStr(args, "verificationReason")
-              ? { reason: optionalStr(args, "verificationReason") }
-              : {}),
-          },
-        }
-      : {}),
-    ...(reporter === "review" ? {} : { reporter }),
-    ...(reporterName ? { reporterName } : {}),
     createdAt: at,
   });
 
   const finding = claim(paths, letter, draft);
-  if (observation) {
-    writeObservation(paths, {
-      ...observation,
-      status: "promoted",
-      promotedTo: finding.id,
-    });
-  }
   if (publishAfter) publish(paths);
   const notice = noticeFor(
     finding.authorship,
@@ -543,335 +453,6 @@ function createFindingStored(
 /** Record one finding and refresh its generated views. */
 export function createFinding(raw: unknown, repo: string): NoticedFinding {
   return createFindingStored(raw, repo, true);
-}
-
-export interface CreateCandidatesResult {
-  created: { id: string; source: string; unit: string }[];
-  errors: { index: number; message: string }[];
-}
-
-function candidateDraft(raw: unknown, id: string, at: string): ReviewCandidate {
-  const args = requireObject(raw);
-  const anchor = object(args, "anchor");
-  const tags = tagsFrom(args);
-  const optionalPositiveInt = (
-    input: Record<string, unknown>,
-    field: string,
-  ): number | undefined =>
-    input[field] === undefined ? undefined : positiveInt(input, field);
-  const related = optionalArray(args, "related").map((rawLocation) => {
-    const location = requireObject(rawLocation);
-    return {
-      file: str(location, "file"),
-      line: positiveInt(location, "line"),
-      ...(optionalPositiveInt(location, "endLine") !== undefined
-        ? { endLine: optionalPositiveInt(location, "endLine") }
-        : {}),
-      ...(optionalStr(location, "note")
-        ? { note: optionalStr(location, "note") }
-        : {}),
-    };
-  });
-  return {
-    id,
-    source: str(args, "source"),
-    run: str(args, "run"),
-    unit: str(args, "unit"),
-    title: str(args, "title"),
-    body: str(args, "body"),
-    evidence: oneOf(args, "evidence", EVIDENCE),
-    priority: oneOf(args, "priority", PRIORITY),
-    ...(tags.length ? { tags } : {}),
-    ...(optionalStr(args, "level")
-      ? { level: optionalStr(args, "level") }
-      : {}),
-    ...(optionalStr(args, "rule") ? { rule: optionalStr(args, "rule") } : {}),
-    ...(optionalStr(args, "provenTest")
-      ? { provenTest: optionalStr(args, "provenTest") }
-      : {}),
-    anchor: {
-      ...metadataAnchor(anchor),
-      file: str(anchor, "file"),
-      line: positiveInt(anchor, "line"),
-      ...(optionalPositiveInt(anchor, "endLine") !== undefined
-        ? { endLine: optionalPositiveInt(anchor, "endLine") }
-        : {}),
-      ...(optionalStr(anchor, "commit")
-        ? { commit: optionalStr(anchor, "commit") }
-        : {}),
-    },
-    ...(related.length ? { related } : {}),
-    ...(optionalStr(args, "scope")
-      ? { scope: optionalStr(args, "scope") }
-      : {}),
-    ...(optionalStr(args, "quote")
-      ? { quote: optionalStr(args, "quote") }
-      : {}),
-    status: "pending",
-    createdAt: at,
-    updatedAt: at,
-  };
-}
-
-/** Store possible findings immediately, before independent verification. */
-export function createCandidates(
-  raw: unknown,
-  repo: string,
-): CreateCandidatesResult {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo);
-  const run = str(args, "run");
-  const candidates = optionalArray(args, "candidates");
-  if (candidates.length === 0) {
-    throw new InputError('"candidates" must contain at least one candidate.');
-  }
-  if (candidates.length > 100) {
-    throw new InputError('"candidates" may contain at most 100 candidates.');
-  }
-  const existingBySource = new Map(
-    readCandidates(paths)
-      .filter((candidate) => candidate.run === run)
-      .map((candidate) => [candidate.source, candidate]),
-  );
-  const created: CreateCandidatesResult["created"] = [];
-  const errors: CreateCandidatesResult["errors"] = [];
-  for (const [index, rawCandidate] of candidates.entries()) {
-    try {
-      const source = str(requireObject(rawCandidate), "source");
-      const existing = existingBySource.get(source);
-      if (existing) {
-        created.push({
-          id: existing.id,
-          source: existing.source,
-          unit: existing.unit,
-        });
-        continue;
-      }
-      let candidate: ReviewCandidate | null = null;
-      for (
-        let attempt = 0;
-        attempt < CLAIM_ATTEMPTS && !candidate;
-        attempt += 1
-      ) {
-        const at = now();
-        const next = candidateDraft(
-          { ...requireObject(rawCandidate), run },
-          allocateCandidateId(paths),
-          at,
-        );
-        if (claimCandidate(paths, next)) candidate = next;
-      }
-      if (!candidate) {
-        throw new InputError(
-          "could not allocate a candidate id; retry the call.",
-        );
-      }
-      existingBySource.set(candidate.source, candidate);
-      created.push({
-        id: candidate.id,
-        source: candidate.source,
-        unit: candidate.unit,
-      });
-    } catch (error) {
-      errors.push({
-        index,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-  if (created.length) upsertRegistry(paths.repo, paths.target, now());
-  return { created, errors };
-}
-
-/** Read pending or resolved review candidates without consulting local files. */
-export function listCandidates(raw: unknown, repo: string): ReviewCandidate[] {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo);
-  const run = optionalStr(args, "run");
-  const unit = optionalStr(args, "unit");
-  const status = optionalOneOf(args, "status", CANDIDATE_STATUS);
-  return readCandidates(paths)
-    .filter((candidate) => !run || candidate.run === run)
-    .filter((candidate) => !unit || candidate.unit === unit)
-    .filter((candidate) => !status || candidate.status === status);
-}
-
-export interface ResolveCandidatesResult {
-  resolved: {
-    id: string;
-    status: ReviewCandidate["status"];
-    findingId?: string;
-  }[];
-  errors: { index: number; id?: string; message: string }[];
-}
-
-/**
- * Finish independent verification in one round trip.
- *
- * Refuted candidates remain as calibration evidence. Confirmed and plausible
- * candidates atomically become ordinary undecided findings for human triage.
- */
-export function resolveCandidates(
-  raw: unknown,
-  repo: string,
-): ResolveCandidatesResult {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo);
-  const decisions = optionalArray(args, "decisions");
-  if (decisions.length === 0) {
-    throw new InputError('"decisions" must contain at least one decision.');
-  }
-  if (decisions.length > 100) {
-    throw new InputError('"decisions" may contain at most 100 decisions.');
-  }
-  const target = str(args, "target");
-  const explicitRepo = optionalStr(args, "repo");
-  const base = optionalStr(args, "base");
-  const resolved: ResolveCandidatesResult["resolved"] = [];
-  const errors: ResolveCandidatesResult["errors"] = [];
-  let published = false;
-
-  for (const [index, rawDecision] of decisions.entries()) {
-    let id: string | undefined;
-    try {
-      const decision = requireObject(rawDecision);
-      id = str(decision, "id");
-      const candidate = readCandidate(paths, id);
-      if (!candidate)
-        throw new InputError(
-          `no candidate "${id}" in target "${paths.target}".`,
-        );
-      if (candidate.status !== "pending" && args["reverify"] !== true) {
-        resolved.push({
-          id: candidate.id,
-          status: candidate.status,
-          ...(candidate.findingId ? { findingId: candidate.findingId } : {}),
-        });
-        continue;
-      }
-      const status = oneOf(decision, "status", [
-        "confirmed",
-        "plausible",
-        "refuted",
-      ] as const);
-      const reason = optionalStr(decision, "reason");
-      const proof = optionalStr(decision, "proof");
-      if (status === "plausible" && !reason) {
-        throw new InputError(
-          `candidate ${id} is plausible and needs a reason.`,
-        );
-      }
-      if (status === "refuted" && !proof && !reason) {
-        throw new InputError(
-          `candidate ${id} is refuted and needs proof or a reason.`,
-        );
-      }
-      const at = now();
-      if (status === "refuted") {
-        if (candidate.findingId) {
-          const previous = mustFind(paths, candidate.findingId);
-          writeFinding(paths, { ...previous, verification: { status: "refuted", ...(reason || proof ? { reason: reason ?? proof } : {}) } });
-          published = true;
-        }
-        const updated: ReviewCandidate = {
-          ...candidate,
-          status,
-          ...(reason ? { verificationReason: reason } : {}),
-          ...(proof ? { proof } : {}),
-          updatedAt: at,
-        };
-        writeCandidate(paths, updated);
-        resolved.push({ id, status });
-        continue;
-      }
-
-      const correction =
-        decision["finding"] === undefined
-          ? {}
-          : requireObject(decision["finding"]);
-      const final = { ...candidate, ...correction } as Record<string, unknown>;
-      const scope =
-        typeof final["scope"] === "string" ? final["scope"] : undefined;
-      const rawTags = Array.isArray(final["tags"])
-        ? final["tags"].filter((tag): tag is string => typeof tag === "string")
-        : [];
-      const scopeTag = scope ? `scope:${scope}` : undefined;
-      const tags =
-        scopeTag && !rawTags.includes(scopeTag) && rawTags.length < MAX_TAGS
-          ? [...rawTags, scopeTag]
-          : rawTags;
-      const duplicate = candidate.findingId ? mustFind(paths, candidate.findingId) : readFindings(paths).find(
-        (finding) =>
-          finding.title === final["title"] &&
-          finding.body === final["body"] &&
-          finding.rule === final["rule"] &&
-          finding.anchor.file ===
-            (final["anchor"] as { file?: unknown })?.file &&
-          finding.anchor.line === (final["anchor"] as { line?: unknown })?.line,
-      );
-      const stored =
-        (duplicate ? updateFinding({ ...correction, ...(typeof correction["scope"] === "string" && correction["tags"] === undefined ? { tags: [...(duplicate.tags ?? []).filter(tag => !tag.startsWith("scope:")), `scope:${correction["scope"]}`] } : {}), id: duplicate.id, target, ...(explicitRepo ? { repo: explicitRepo } : {}) }, repo) : undefined) ??
-        createFindingStored(
-          {
-            ...final,
-            tags,
-            target,
-            ...(explicitRepo ? { repo: explicitRepo } : {}),
-            ...(base ? { base } : {}),
-            fromCandidate: id,
-            verificationStatus: status,
-            ...(reason ? { verificationReason: reason } : {}),
-          },
-          repo,
-          false,
-        );
-      const { verificationBlock: _, ...unblocked } = stored;
-      writeFinding(paths, { ...unblocked, verification: { status, ...(reason ? { reason } : {}), ...(proof ? { proof } : {}),
-        ...(decision["method"] ? { method: decision["method"] as "source" | "executable" | "unverified" } : {}),
-        ...(Array.isArray(args["proofs"]) ? { proofs: args["proofs"] as string[] } : {}),
-        ...(Array.isArray(args["limits"]) ? { limits: args["limits"] as string[] } : {}) } });
-      const updated: ReviewCandidate = {
-        ...candidate,
-        ...(correction as Partial<ReviewCandidate>),
-        status,
-        ...(reason ? { verificationReason: reason } : {}),
-        findingId: stored.id,
-        updatedAt: at,
-      };
-      writeCandidate(paths, updated);
-      resolved.push({ id, status, findingId: stored.id });
-      published = true;
-    } catch (error) {
-      errors.push({
-        index,
-        ...(id ? { id } : {}),
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-  if (published) publish(paths);
-  return { resolved, errors };
-}
-
-/** Make stopped proof claims visible for human review without calling them verified. */
-export function recordVerificationBlock(raw: unknown, repo: string): { findings: string[]; errors: string[] } {
-  const args = requireObject(raw), paths = pathsOf(args, repo), reason = str(args, "reason");
-  const ids = optionalArray(args, "candidates").map(String), findings = new Set<string>(), errors: string[] = [];
-  for (const id of ids) {
-    let candidate = readCandidate(paths, id);
-    if (!candidate) { errors.push(`Unknown candidate ${id}`); continue; }
-    if (candidate.status === "pending") {
-      const result = resolveCandidates({ target: paths.target, repo: paths.repo, decisions: [{ id, status: "plausible", reason: `Unverified: verification was blocked. ${reason}` }] }, paths.repo);
-      errors.push(...result.errors.map(error => error.message));
-      candidate = readCandidate(paths, id)!;
-    }
-    if (!candidate.findingId) continue; // A previously deduplicated/refuted alias stays calibration evidence.
-    const finding = mustFind(paths, candidate.findingId);
-    writeFinding(paths, { ...finding, verificationBlock: { reason, at: now(), candidates: ids }, ...(finding.verification?.status === "plausible" ? { verification: { status: "plausible", reason: `Unverified: verification was blocked. ${reason}` } } : {}) });
-    findings.add(finding.id);
-  }
-  if (findings.size) publish(paths);
-  return { findings: [...findings], errors };
 }
 
 /**
@@ -946,7 +527,7 @@ export function addLocation(raw: unknown, repo: string): NoticedFinding {
  *
  * Only the fields the writer authored. The verdict and the resolution are
  * decisions with their own tools and their own checks; the note belongs to
- * Pascal; the id is identity. Moving the anchor recomputes what was derived
+ * the user; the id is identity. Moving the anchor recomputes what was derived
  * from it, because a fingerprint left over from the old line is what makes a
  * later `baseline_check` report a finding that never went away.
  *
@@ -1130,6 +711,7 @@ export const SOURCE_VIEW = ["new", "old", "diff"] as const;
 export type SourceView = (typeof SOURCE_VIEW)[number];
 
 export interface SourceFile {
+  kind?: "artifact";
   path: string;
   /** The commit the content came from, or "working tree". */
   ref: string;
@@ -1155,8 +737,9 @@ export interface SourceFile {
  * The only read this server does outside its own review directories, so it is
  * also the only place a path from a browser turns into a path on disk. Three
  * things hold: the repository has to be one the server already knows, the
- * resolved path has to stay inside it after symlinks, and the file has to be
- * small enough to be a source file rather than an artifact.
+ * resolved source path has to stay inside it after symlinks, and the file
+ * must fit the text limit. An external proof is readable only through an
+ * exact evidence reference saved on this target's findings or occurrences.
  */
 export function readSource(raw: unknown, repo: string): SourceFile {
   const args = requireObject(raw);
@@ -1188,7 +771,30 @@ export function readSource(raw: unknown, repo: string): SourceFile {
       (base) => candidate === base || candidate.startsWith(base + sep),
     );
   if (!contained(full) || !contained(realOf(full))) {
-    throw new InputError(`${path} is outside ${root}.`);
+    const target = optionalStr(args, "target");
+    if (target) {
+      const paths = targetPaths(root, target);
+      // Proofs are often beside a detached checkout. Authorize the exact saved
+      // evidence reference, never its entire directory or a neighbouring review.
+      const recorded = withRecords(paths, () =>
+        [...findingRecords(paths), ...occurrenceRecords(paths)]
+          .flatMap(record => record.evidence.flatMap(entry => entry.artifacts))
+          .some(artifact => resolve(root, artifact.replace(/:\d+(?:-\d+)?$/, "")) === full),
+      );
+      if (recorded) {
+        // Resolve parent aliases such as /var -> /private/var, but do not follow
+        // a proof file symlink to an unrelated file after it was recorded.
+        if (realOf(full) !== resolve(realOf(dirname(full)), basename(full)))
+          throw new InputError(`${path} is a symlink outside its artifact directory.`);
+        const stats = statSync(full, {throwIfNoEntry:false});
+        if (!stats?.isFile()) throw new InputError(`no saved artifact ${path}.`);
+        if (stats.size > MAX_SOURCE_BYTES) throw new InputError(`${path} is too big to show as an artifact.`);
+        const bytes = readFileSync(full);
+        if (bytes.subarray(0,8000).includes(0)) throw new InputError(`${path} is a binary artifact, not a text file.`);
+        return {path,kind:"artifact",ref:"review artifact",view:"new",lines:bytes.toString("utf8").split(/\r?\n/)};
+      }
+    }
+    throw new InputError(`${path} is outside ${root} and is not a saved artifact of this review.`);
   }
 
   // The base belongs to the target, so asking for anything but the current
@@ -1312,10 +918,13 @@ function fileDiff(
  */
 const GENERATED = new Set([
   "findings",
+  "occurrences",
+  ".legacy-records",
+  ".records",
+  ".records-v2",
+  ".deleted",
   "observations",
   "target.json",
-  "review.html",
-  "findings.sarif",
   "seen.json",
   "follow.json",
 ]);
@@ -1498,7 +1107,7 @@ export function listFindings(raw: unknown, repo: string): FindingList[] {
 }
 
 /**
- * Records that Pascal has read these findings, or that he has not.
+ * Records that the user has read these findings, or that he has not.
  *
  * Only the triage page calls this, and only about the row it is showing. There
  * is deliberately no tool for it: what an agent has read is not interesting,
@@ -1539,7 +1148,7 @@ export function getFinding(raw: unknown, repo: string): Finding {
   return mustFind(pathsOf(args, repo), str(args, "id"));
 }
 
-/** What Pascal decided about a finding. Nobody else may call this. */
+/** What the user decided about a finding. Nobody else may call this. */
 export function setVerdict(raw: unknown, repo: string): Finding {
   const args = requireObject(raw);
   const paths = pathsOf(args, repo);
@@ -1779,68 +1388,6 @@ export function setReported(raw: unknown, repo: string): Finding {
   return updated;
 }
 
-export function createObservation(raw: unknown, repo: string): Observation {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo);
-  ensureTarget(paths);
-  const draft = (id: string): Observation => ({
-    id,
-    text: str(args, "text"),
-    forLevel: str(args, "forLevel"),
-    status: "pending",
-    createdAt: now(),
-  });
-  // The same race as findings, in its own sequence. See claimFinding.
-  let observation: Observation | null = null;
-  for (
-    let attempt = 0;
-    attempt < CLAIM_ATTEMPTS && !observation;
-    attempt += 1
-  ) {
-    const next = draft(allocateObservationId(paths));
-    if (claimObservation(paths, next)) observation = next;
-  }
-  if (!observation) {
-    throw new InputError(
-      `could not take an id for a new observation after ${CLAIM_ATTEMPTS} tries. Something else is writing to this target as fast as this is.`,
-    );
-  }
-  upsertRegistry(paths.repo, paths.target, observation.createdAt);
-  return observation;
-}
-
-export function listObservations(raw: unknown, repo: string): Observation[] {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo);
-  const forLevel = optionalStr(args, "forLevel");
-  const status = optionalOneOf(args, "status", OBSERVATION_STATUS);
-  return readObservations(paths)
-    .filter((each) => !forLevel || each.forLevel === forLevel)
-    .filter((each) => !status || each.status === status);
-}
-
-export function dropObservation(raw: unknown, repo: string): Observation {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo);
-  const id = str(args, "id");
-  const observation = readObservation(paths, id);
-  if (!observation) {
-    throw new InputError(`no observation "${id}" in target "${paths.target}".`);
-  }
-  if (observation.status !== "pending") {
-    throw new InputError(
-      `observation ${id} is already ${observation.status} and cannot be dropped.`,
-    );
-  }
-  const dropped: Observation = {
-    ...observation,
-    status: "dropped",
-    dropReason: str(args, "reason"),
-  };
-  writeObservation(paths, dropped);
-  return dropped;
-}
-
 export interface BaselineResult {
   target: string;
   /** Resolutions the run moved. The verdict is never one of them. */
@@ -2025,18 +1572,8 @@ export function exportDismissals(
   return rows.sort((a, b) => a.at.localeCompare(b.at));
 }
 
-export function regenerateViews(
-  raw: unknown,
-  repo: string,
-): { target: string; html: string; sarif: string } {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo);
-  publish(paths);
-  return { target: paths.target, html: paths.html, sarif: paths.sarif };
-}
-
 /**
- * Which of Pascal's rules are on for a project.
+ * Which of the user's rules are on for a project.
  *
  * Here rather than in the rules module because the repository a caller means
  * is resolved the same way for every tool on this server: the one it was
@@ -2071,7 +1608,7 @@ export function listRepos(): {
  * finds nothing never appears at all, which is indistinguishable from a run
  * that never happened.
  *
- * It also carries what Level 0 already knows and nothing else could recover:
+ * It also carries the known review metadata and nothing else could recover:
  * which pull request this is, who opened it and when. "pr-356" identifies a
  * review, it does not say what the change is or how long the author has been
  * waiting for an answer.
@@ -2229,8 +1766,7 @@ export function reviewStatus(raw: unknown, repo: string): ReviewStatus {
     throwIfNoEntry: false,
   });
   const activity = reviewActivity(paths);
-  const candidates = readCandidates(paths).filter(candidate => candidate.status === "pending");
-  const finished = readme !== undefined || Boolean(activity?.complete && candidates.length === 0);
+  const finished = readme !== undefined || Boolean(activity?.complete);
   const at = now();
 
   // The findings' own writes are in the summary; a level document is a write
@@ -2238,7 +1774,6 @@ export function reviewStatus(raw: unknown, repo: string): ReviewStatus {
   const lastAt = [
     summary.lastAt,
     ...(activity ? [activity.updatedAt] : []),
-    ...candidates.map(candidate => candidate.updatedAt),
     ...documents.map((doc) => doc.changed),
     ...(readme ? [readme.mtime.toISOString()] : []),
   ]
@@ -2275,7 +1810,6 @@ export function reviewStatus(raw: unknown, repo: string): ReviewStatus {
     link: `http://127.0.0.1:${String(UI_PORT)}/open/${linkIdOf(paths.repo, paths.target)}`,
     state,
     ...(activity ? { phase: activity.phase } : {}),
-    candidates,
     startedAt: summary.startedAt,
     lastAt,
     ...(elapsedMs >= 0 && elapsedMs <= ONE_RUN_MS ? { elapsedMs } : {}),
@@ -2284,7 +1818,7 @@ export function reviewStatus(raw: unknown, repo: string): ReviewStatus {
     // A review that finished without one level document was never run level
     // by level, and six skipped levels would be six things that never were.
     levels:
-      activity || (finished && documents.length === 0)
+      activity || documents.length === 0
         ? []
         : levelsOf({
             startedAt: summary.startedAt,
@@ -2422,10 +1956,26 @@ export function listReviews(): ReviewSummary[] {
   for (const entry of readRegistry().repos) {
     const reviewDir = join(entry.path, REVIEW_DIR);
     if (!existsSync(reviewDir)) continue;
-    for (const target of listTargets(reviewDir)) {
-      reviews.push(
-        summarise(targetPaths(entry.path, target), entry.lastReview),
-      );
+    let targets: string[];
+    try { targets = listTargets(reviewDir); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    for (const target of targets) {
+      try {
+        reviews.push(summarise(targetPaths(entry.path, target), entry.lastReview));
+      } catch (error) {
+        // Repositories/worktrees can disappear between enumeration and the
+        // record read. A vanished row must not terminate the serving process.
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+        reviews.push({
+          repo:entry.path,repoName:basename(entry.path),target,
+          startedAt:entry.lastReview,lastAt:entry.lastReview,
+          counts:countsOf([],{},{}),
+          error:error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   }
   // Two reviews started in the same millisecond is a test writing them back
@@ -2451,7 +2001,7 @@ function summarise(paths: TargetPaths, lastReview: string): ReviewSummary {
   const pr = recordedPr(paths, meta);
   const title = pr.title ?? written.heading;
   const at = (finding: Finding): string =>
-    finding.history[finding.history.length - 1]?.at ?? finding.createdAt;
+    [finding.record?.updatedAt ?? finding.history[finding.history.length - 1]?.at ?? finding.createdAt, finding.occurrenceSummary?.updatedAt ?? finding.createdAt].sort().at(-1)!;
   const top = PRIORITY.find((priority) =>
     open.some((finding) => finding.priority === priority),
   );
@@ -2495,7 +2045,7 @@ function summarise(paths: TargetPaths, lastReview: string): ReviewSummary {
  * Everything known about the pull request under a review, however it was
  * learned.
  *
- * Whatever Level 0 recorded wins over whatever the README says, because one
+ * Whatever the review coordinator recorded wins over whatever the README says, because one
  * is a field and the other is a line of prose that happened to parse. The
  * README is what lights up the reviews that ran before there was a tool to
  * record any of this — and there are plenty of those, so anything that wants

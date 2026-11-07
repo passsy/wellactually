@@ -45,7 +45,8 @@ function paint(ui: ReactElement) {
 }
 import userEvent from "@testing-library/user-event";
 import { Queue } from "./Queue.tsx";
-import { NoteFooter } from "./NoteFooter.tsx";
+import { Detail } from "./Detail.tsx";
+import { NoteEditor } from "./NoteEditor.tsx";
 import { Rail } from "./Rail.tsx";
 import { FilePanel } from "./FilePanel.tsx";
 import { SHORTCUTS, type Actions } from "./hooks/useKeys.ts";
@@ -481,6 +482,78 @@ describe("what kind of thing a review is of", () => {
  * mocking the clock is mocking half of it.
  */
 describe("the note box", () => {
+  test("places notes before code, moves metadata into details and collapses history", async () => {
+    const user = userEvent.setup();
+    const onOpenFile = vi.fn();
+    const f = finding({
+      rule: "passsy/use-spot-instead-of-finders@3",
+      tags: ["scope:introduced"],
+      provenTest: "/review artifacts/proofs/probe.ts:2",
+      history: [
+        { at: "2026-11-03T00:00:00Z", actor: "human", verdict: "accepted" },
+      ],
+      context: { start: 1, lines: ["source();", "bug();"] },
+    });
+    const { container } = paint(
+      <Detail
+        finding={f}
+        comment={<NoteEditor finding={f} onSave={async () => {}} />}
+        onMove={() => {}}
+        onOpenFile={onOpenFile}
+        onTag={() => {}}
+        tag={null}
+      />,
+    );
+    const description = screen.getByRole("region", { name: "Description" }),
+      note = screen.getByRole("region", { name: "Your note" }),
+      code = container.querySelector("pre")!;
+    expect(
+      description.compareDocumentPosition(note) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      note.compareDocumentPosition(code) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const details = screen.getByRole("complementary", {
+      name: "Finding details",
+    });
+    expect(within(details).getByText("scope:introduced")).toBeInTheDocument();
+    const proof = within(details).getByRole("button", {name:"probe.ts:2"});
+    expect(proof).toHaveAttribute("title", "/review artifacts/proofs/probe.ts:2");
+    await user.click(proof);
+    expect(onOpenFile).toHaveBeenCalledWith({file:"/review artifacts/proofs/probe.ts",line:2});
+    expect(
+      within(details).getByRole("link", { name: f.rule! }),
+    ).toHaveAttribute(
+      "href",
+      "https://wellactually.dev/p/passsy/use-spot-instead-of-finders?v=3",
+    );
+    const history = within(details).getByText("History").closest("details")!;
+    expect(history.open).toBe(false);
+    await user.click(within(details).getByText("History"));
+    expect(history.open).toBe(true);
+    expect(container.querySelectorAll(".track")).toHaveLength(1);
+    expect(container.querySelector("footer")).toBeNull();
+  });
+
+  test("grows and shrinks with note content without resize controls", () => {
+    const onSave = vi.fn(async () => {});
+    paint(<NoteEditor finding={finding({ note: "" })} onSave={onSave} />);
+    const box = screen.getByRole("textbox") as HTMLTextAreaElement;
+    vi.spyOn(box, "scrollHeight", "get").mockImplementation(
+      () => box.value.split("\n").length * 20 + 8,
+    );
+    expect(
+      screen.queryByRole("separator", { name: "Resize comment" }),
+    ).toBeNull();
+    expect(box).toHaveStyle({ height: "32px" });
+    fireEvent.change(box, { target: { value: "One\nTwo\nThree" } });
+    expect(box).toHaveStyle({ height: "70px" });
+    fireEvent.change(box, { target: { value: "One" } });
+    expect(box).toHaveStyle({ height: "32px" });
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   /** Longer than the box waits for typing to settle. */
   const SETTLED = 700;
 
@@ -495,9 +568,7 @@ describe("the note box", () => {
       });
     };
     const note = finding({ id: "G1", note: "" });
-    const { rerender } = paint(
-      <NoteFooter finding={note} onMove={() => {}} onSave={onSave} />,
-    );
+    const { rerender } = paint(<NoteEditor finding={note} onSave={onSave} />);
     const box = screen.getByRole("textbox");
 
     fireEvent.change(box, { target: { value: "abc" } });
@@ -515,13 +586,7 @@ describe("the note box", () => {
 
     // The server answers the older save, so the page hands the note back as
     // "abc". This is the moment the "d" used to disappear.
-    rerender(
-      <NoteFooter
-        finding={{ ...note, note: "abc" }}
-        onMove={() => {}}
-        onSave={onSave}
-      />,
-    );
+    rerender(<NoteEditor finding={{ ...note, note: "abc" }} onSave={onSave} />);
 
     expect(box).toHaveValue("abcd");
   });
@@ -529,19 +594,14 @@ describe("the note box", () => {
   test("takes the server's note when the box is not being written in", () => {
     const note = finding({ id: "G1", note: "" });
     const { rerender } = paint(
-      <NoteFooter
-        finding={note}
-        onMove={() => {}}
-        onSave={() => Promise.resolve()}
-      />,
+      <NoteEditor finding={note} onSave={() => Promise.resolve()} />,
     );
 
     // Nothing typed and nothing focused: an agent writing a note on the
     // finding being looked at is worth showing, and here it costs nothing.
     rerender(
-      <NoteFooter
+      <NoteEditor
         finding={{ ...note, note: "written by somebody else" }}
-        onMove={() => {}}
         onSave={() => Promise.resolve()}
       />,
     );

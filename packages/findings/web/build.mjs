@@ -11,11 +11,8 @@
  *   card.html       the review card a host draws in the conversation: an MCP
  *                   App, which is the widget host the line above was waiting
  *                   for. One file, because its sandbox allows nothing else.
- *   report.js/css   the interactive half of a generated review.html, as one
- *                   IIFE with nothing to import, so it can be inlined into a
- *                   file somebody opens from their downloads folder.
- *   report-ssr.mjs  the same components rendered by Node at write time, so
- *                   the report is readable as markup before any script runs.
+ *   rule.css        the standalone rule page's stylesheet.
+ *   rule-ssr.cjs    the rule page rendered by Node as static markup.
  *
  * Run by `npm run web:build`, and by the release build before esbuild.
  */
@@ -72,16 +69,8 @@ await build({
 });
 
 /**
- * The report's client half, and its stylesheet.
- *
- * An IIFE rather than a module: this ends up between script tags inside a
- * file that is opened from disk, where a module's import would be a request
- * to a directory that is not there.
- *
- * No React in here on purpose. Hydrating the report would mean inlining half
- * a megabyte into a file that is six kilobytes today and whose whole point is
- * that you can send it to somebody. The components still render it — Node
- * does that at write time — and this only adds what needs a live server.
+ * The rule page's stylesheet. The library entry only imports the CSS; the
+ * script it also emits is never served.
  */
 await build({
   ...ALIAS,
@@ -89,22 +78,22 @@ await build({
   logLevel: "warn",
   plugins: plugins(),
   build: {
-    outDir: join(OUT, "report"),
+    outDir: join(OUT, "rule"),
     emptyOutDir: true,
     cssCodeSplit: false,
     assetsInlineLimit: Number.MAX_SAFE_INTEGER,
     lib: {
-      entry: join(WEB, "src", "report", "enhance.ts"),
+      entry: join(WEB, "src", "rule", "style.ts"),
       formats: ["iife"],
-      name: "PascalReport",
-      fileName: () => "report.js",
-      cssFileName: "report",
+      name: "WellActuallyRule",
+      fileName: () => "rule.js",
+      cssFileName: "rule",
     },
   },
 });
 
 /**
- * The same components, for Node to render with at write time.
+ * The rule page component, for Node to render with.
  *
  * Bundled rather than left to import React at runtime: the release artifact
  * ships no node_modules, so anything this file still expects to resolve is a
@@ -117,18 +106,15 @@ await build({
   plugins: plugins(),
   ssr: { noExternal: true },
   build: {
-    outDir: join(OUT, "ssr"),
+    outDir: join(OUT, "rule-ssr"),
     emptyOutDir: true,
     ssr: true,
     cssCodeSplit: false,
     rollupOptions: {
-      input: join(WEB, "src", "report", "entry-server.tsx"),
-      // CommonJS, so the server can load it with createRequire and keep
-      // writing a report synchronously. Every caller of toHtml is on the
-      // write path of a tool call, and making that async to satisfy a
-      // dynamic import would turn one bundling decision into a change of
-      // shape across the whole store.
-      output: { entryFileNames: "report-ssr.cjs", format: "cjs" },
+      input: join(WEB, "src", "rule", "entry-server.tsx"),
+      // CommonJS, so the server can load it with createRequire and keep the
+      // rule route synchronous.
+      output: { entryFileNames: "rule-ssr.cjs", format: "cjs" },
     },
   },
 });
@@ -136,10 +122,8 @@ await build({
 /**
  * The page an installed window shows when nothing is serving.
  *
- * Its own bundle rather than a corner of the report's, because it is inlined
- * into the service worker: a browser fetches that before it will install
- * anything, and the report's stylesheet is fifteen kilobytes of reset and
- * utilities for components this page does not have.
+ * Its own bundle because it is inlined into the service worker, which a
+ * browser fetches before installing the app. It only needs its own styles.
  */
 await build({
   ...ALIAS,
@@ -154,7 +138,7 @@ await build({
     lib: {
       entry: join(WEB, "src", "offline", "enhance.ts"),
       formats: ["iife"],
-      name: "PascalOffline",
+      name: "WellActuallyOffline",
       fileName: () => "offline.js",
       cssFileName: "offline",
     },
@@ -180,5 +164,5 @@ await build({
 });
 
 process.stdout.write(
-  "web: inbox.html, card.html, report.js, report-ssr.cjs, offline.js, offline-ssr.cjs\n",
+  "web: inbox.html, card.html, rule.css, rule-ssr.cjs, offline.js, offline-ssr.cjs\n",
 );

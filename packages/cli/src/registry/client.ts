@@ -392,12 +392,21 @@ export async function fetchHistory(id: string): Promise<History> {
 
 export type Rating = "up" | "down" | "not_applicable";
 
+export async function sendReviewSuggestions(suggestions: { id: string; hash: string; principle: string; day: string }[]): Promise<void> {
+  const response = await call("/api/review-suggestions", { method: "POST", body: { suggestions }, timeoutMs: 10000 });
+  if (!response.ok) throw await failure(response);
+  const result = await response.json() as { stored?: number; duplicates?: number; rejected?: unknown[] };
+  if (result.rejected?.length || typeof result.stored !== "number" || typeof result.duplicates !== "number" || result.stored + result.duplicates !== suggestions.length) {
+    throw new RegistryError("Registry did not acknowledge every aggregated suggestion; report remains pending.");
+  }
+}
+
 export async function sendReviewEvents(events: ReviewEvent[]): Promise<{ rejected: RejectedReviewEvent[] }> {
   const response = await call("/api/review-events", { method: "POST", body: { events }, timeoutMs: 10000 });
   if (!response.ok) throw await failure(response);
   const result = await response.json() as { stored?: number; duplicates?: number; rejected?: RejectedReviewEvent[] };
   if (!Number.isSafeInteger(result.stored) || !Number.isSafeInteger(result.duplicates) || !Array.isArray(result.rejected) ||
-    result.stored! < 0 || result.duplicates! < 0 || result.stored! + result.duplicates! + result.rejected.length !== events.length) throw new RegistryError("Invalid review-event acknowledgement; report remains pending.");
+    result.stored! < 0 || result.duplicates! < 0 || result.stored! + result.duplicates! + result.rejected.length !== events.length) throw new RegistryError(`Invalid review-event acknowledgement; report remains pending (sent=${events.length}, stored=${JSON.stringify(result.stored)}, duplicates=${JSON.stringify(result.duplicates)}, rejected=${Array.isArray(result.rejected) ? result.rejected.length : typeof result.rejected}).`);
   return { rejected: result.rejected };
 }
 

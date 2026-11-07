@@ -1,5 +1,5 @@
 /**
- * Whether this is a finding Pascal has not read yet.
+ * Whether this is a finding the user has not read yet.
  *
  * The reason the queue needs this at all: findings arrive while the review is
  * still running, so by the time he looks, "undecided" holds both the ones he

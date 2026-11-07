@@ -3,6 +3,7 @@ import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { zodSchema } from "../../findings/zod-schema.mts";
 import { hasDetector } from "@wellactually/core/node";
 import { TOOLS as FINDINGS_TOOLS } from "../../findings/tools.mts";
 import { reportPendingReviewSuggestions, REVIEW_REPORT_MS } from "./registry/review-reports.ts";
@@ -94,46 +95,6 @@ function text(value: string) {
   return { content: [{ type: "text" as const, text: value }] };
 }
 
-type JsonSchema = {
-  additionalProperties?: boolean;
-  type?: string;
-  description?: string;
-  enum?: unknown[];
-  properties?: Record<string, JsonSchema>;
-  required?: string[];
-  items?: JsonSchema;
-  minimum?: number;
-  minItems?: number;
-  maxItems?: number;
-};
-
-/** Keep the Findings core's JSON schemas intact on this Zod-based MCP. */
-function zodSchema(raw: unknown): z.ZodType {
-  const schema = raw as JsonSchema;
-  let result: z.ZodType;
-  if (schema.enum?.every((value) => typeof value === "string") && schema.enum.length > 0) {
-    result = z.enum(schema.enum as [string, ...string[]]);
-  } else if (schema.type === "string") result = z.string();
-  else if (schema.type === "integer") {
-    result = z.number().int();
-    if (schema.minimum !== undefined) result = (result as z.ZodNumber).min(schema.minimum);
-  } else if (schema.type === "boolean") result = z.boolean();
-  else if (schema.type === "array") {
-    let array = z.array(zodSchema(schema.items ?? {}));
-    if (schema.minItems !== undefined) array = array.min(schema.minItems);
-    if (schema.maxItems !== undefined) array = array.max(schema.maxItems);
-    result = array;
-  } else if (schema.type === "object") {
-    const required = new Set(schema.required ?? []);
-    const shape = Object.fromEntries(Object.entries(schema.properties ?? {}).map(([name, property]) => {
-      const child = zodSchema(property);
-      return [name, required.has(name) ? child : child.optional()];
-    }));
-    result = schema.additionalProperties === true ? z.object(shape).passthrough() : z.object(shape);
-  } else result = z.unknown();
-  return schema.description ? result.describe(schema.description) : result;
-}
-
 function registerFindingsTools(server: McpServer, workspace: Workspace): void {
   registerReviewCard(server);
   for (const tool of FINDINGS_TOOLS) {
@@ -145,9 +106,18 @@ function registerFindingsTools(server: McpServer, workspace: Workspace): void {
     }, async (args) => {
       try {
         if (tool.cardOnly && !drawsCards(server)) throw new Error("This tool is available only through the review card");
-        if (tool.name === "claim_review_session") (args as Record<string, unknown>).registry = readConfig().registry;
+        if (tool.name === "claim_review_session") {
+          (args as Record<string, unknown>).registry = readConfig().registry;
+          const a = args as { sets?: { principles?: { id: string; version: number; hash?: string }[] }[] };
+          for (const set of a.sets ?? []) for (const principle of set.principles ?? []) {
+            const pinned = readLockfile().entries.find(e => e.id === principle.id && e.version === principle.version);
+            if (pinned) principle.hash ??= pinned.hash;
+          }
+        }
         const result = await tool.run(args, workspace.repo);
-        if (readConfig().stats && (tool.name === "begin_verification" || (tool.name === "get_review_session" && claimReport()))) startInBackground("report-detections");
+        if (readConfig().stats && (tool.name === "begin_verification" || (tool.name === "get_review_session" && claimReport()))) {
+          startInBackground("report-detections");
+        }
         const reply = text(tool.says ? tool.says(result) : JSON.stringify(result, null, 2));
         return tool.card && drawsCards(server) ? { ...reply, structuredContent: (tool.forCard ? tool.forCard(args, workspace.repo) : result) as Record<string, unknown> } : reply;
       } catch (error) {
@@ -159,19 +129,23 @@ function registerFindingsTools(server: McpServer, workspace: Workspace): void {
 
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
+  // A fix may land after the final aggregation upload. Keep checking without
+  // a network call in CRUD operations, and without keeping a closed MCP alive.
   const reporting = setInterval(() => { if (readConfig().stats && claimReport()) startInBackground("report-detections"); }, REVIEW_REPORT_MS);
   reporting.unref();
   const server = new McpServer({ name: "wellactually", version: "0.8.0" }, { instructions: AUTHORING_GUIDE });
   const workspace = currentWorkspace();
   registerFindingsTools(server, workspace);
   server.registerTool("report_review_suggestions", {
-    description: "Upload eligible pending review selections, aggregated suggestions and fixes. Upload cycles and resolved-fix delays are at least five minutes. Failed uploads remain pending. Respects stats off.",
+    description: "Upload pending review selections, aggregated suggestions and completed fixes. Upload cycles are at least five minutes apart; fixes also wait at least five minutes after resolution. Call once at review completion; a network failure leaves events pending without blocking the review. Respects stats off.",
     inputSchema: {}, annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   }, async () => text(JSON.stringify({ reported: await reportPendingReviewSuggestions() })));
+  // Older review instructions may still call this name. Acknowledge without
+  // polluting injection assessments with review helpfulness votes.
   server.registerTool("rate_review_principle", {
-    description: "Compatibility only: review helpfulness ratings are retired. Aggregated activity is reported automatically.",
+    description: "Compatibility only: review ratings are retired. Aggregation reports suggestions automatically; this tool sends no rating.",
     inputSchema: { repo: z.string(), target: z.string(), session: z.string(), id: z.string(), rating: z.enum(["up", "down", "not_applicable"]), reason: z.string() },
-  }, async () => text("Review ratings are retired. No injection assessment was sent."));
+  }, async () => text("Review ratings are retired. Aggregated suggestions are reported automatically; no injection assessment was sent."));
   server.registerTool("list_principles", {
     description: "Current advisory board metadata for review filtering: id, version, short description and tags only. No full advice bodies. Pass the reviewed repo to respect project switches.",
     inputSchema: { repo: z.string() },
@@ -371,7 +345,7 @@ export async function serveMcp(): Promise<void> {
     "rate_principle",
     {
       description:
-        "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle revision, rating and injection context. Nothing about the code or the conversation. It is sent to the registry the user signed in to, only while the user has reporting switched on (set_stats), and otherwise nothing leaves the machine.",
+        "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle revision, the rating and its injection context. Nothing about the code or the conversation. It is sent to the registry the user signed in to, only while the user has reporting switched on (set_stats), and otherwise nothing leaves the machine.",
       inputSchema: {
         id: z.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
         rating: z.enum(["up", "down", "not_applicable"]).describe("up, down or not_applicable"),

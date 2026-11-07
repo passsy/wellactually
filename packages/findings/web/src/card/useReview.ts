@@ -1,3 +1,4 @@
+import { ruleUrl } from "../shared/rule-url.ts";
 /**
  * The review the card is showing, and the three things it can do to it.
  *
@@ -14,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Finding, ReviewStatus } from "../shared/domain.ts";
 import { STOPS, stopOf } from "../shared/stage.tsx";
+import type { OccurrenceRecord } from "../../../model/records.mts";
 import type { Host, ToolResult } from "./bridge.ts";
 
 const WHILE_RUNNING_MS = 2000;
@@ -78,6 +80,10 @@ export interface Review {
   move: (finding: Finding, to: string) => void;
   note: (finding: Finding, text: string) => void;
   fix: (findings: Finding[]) => void;
+  post: (finding: Finding) => Promise<void>;
+  postAccepted: (findings: Finding[]) => Promise<void>;
+  occurrences: (findingId: string) => Promise<OccurrenceRecord[]>;
+  saveOccurrence: (occurrence: OccurrenceRecord) => Promise<void>;
   openInbox: (finding?: Finding) => void;
   /** The handbook page for a rule a finding cites, in a browser. */
   openRule: (id: string) => void;
@@ -92,6 +98,7 @@ export interface Review {
    * session's CLI runs.
    */
   stranded: boolean;
+  refreshError: string | null;
   /** Asks the agent for a fresh card, which is all a stranded card can do. */
   redraw: () => void;
 }
@@ -107,6 +114,7 @@ export function useReview(host: Host): Review {
   const [failed, setFailed] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [stranded, setStranded] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshPaused, setRefreshPaused] = useState(false);
   const refreshing = useRef(false);
   const refused = useRef(false);
@@ -154,12 +162,13 @@ export function useReview(host: Host): Review {
       name: string,
       args: Record<string, unknown>,
     ): Promise<ToolResult> => {
-      if (refused.current) throw new Error("this host carries no tool calls");
+      if (refused.current) throw new Error("refresh is paused after a failed host request");
       try {
         return await host.callTool(name, args);
       } catch (error) {
         if (!(error instanceof Error) || error.name !== "Unanswered") {
           refused.current = true;
+          setRefreshError(error instanceof Error ? error.message : String(error));
           setStranded(true);
         }
         throw error;
@@ -244,7 +253,7 @@ export function useReview(host: Host): Review {
       draw?: (now: ReviewStatus) => ReviewStatus,
     ) => {
       const now = held.current;
-      if (!now) return;
+      if (!now || now.readOnly) return;
       epoch.current += 1;
       const back = confirmed.current;
       if (draw) take(draw(now));
@@ -296,9 +305,99 @@ export function useReview(host: Host): Review {
     (findings: Finding[]) => {
       const now = held.current;
       if (!now || findings.length === 0) return;
-      host.say(
-        `Fix the accepted findings of ${now.target}: ` +
-          findings.map((each) => each.id).join(", "),
+      void host
+        .say(
+          `Fix the accepted findings of ${now.target}: ` +
+            findings.map((each) => each.id).join(", "),
+        )
+        .catch((error: unknown) =>
+          setFailed(error instanceof Error ? error.message : String(error)),
+        );
+    },
+    [host],
+  );
+
+  const occurrences = useCallback(
+    async (findingId: string): Promise<OccurrenceRecord[]> => {
+      const now = held.current;
+      if (!now) throw new Error("Review unavailable");
+      const result = await call("list_occurrences", {
+        repo: now.repo,
+        target: now.target,
+        findingId,
+      });
+      if (result.isError) throw new Error(errorIn(result));
+      if (!Array.isArray(result.structuredContent)) {
+        const body = result.content?.find((c) => c.type === "text")?.text;
+        if (!body) throw new Error("No occurrence data returned");
+        return JSON.parse(body) as OccurrenceRecord[];
+      }
+      return result.structuredContent as OccurrenceRecord[];
+    },
+    [call],
+  );
+  const saveOccurrence = useCallback(
+    async (occurrence: OccurrenceRecord): Promise<void> => {
+      const now = held.current;
+      if (!now) throw new Error("Review unavailable");
+      epoch.current += 1;
+      const result = await call("update_occurrence", {
+        repo: now.repo,
+        target: now.target,
+        id: occurrence.id,
+        expectedRevision: occurrence.revision,
+        actor: "human",
+        patch:
+          occurrence.state === "open"
+            ? {
+                state: "closed",
+                closure: {
+                  reason: "resolved",
+                  explanation: "Marked resolved in review card",
+                },
+              }
+            : { state: "open", closure: null },
+      });
+      if (result.isError) throw new Error(errorIn(result));
+      await refresh().catch(() => null);
+    },
+    [call, refresh],
+  );
+
+  const post = useCallback(
+    async (finding: Finding): Promise<void> => {
+      const now = held.current;
+      if (!now) throw new Error("The review is no longer available.");
+      await host.say(
+        "Use the Well Actually post-findings skill (wellactually:post-findings; " +
+          "wellactually-post-findings on OpenCode/pi) to post exactly this finding as an inline PR comment: " +
+          JSON.stringify({
+            repo: now.repo,
+            target: now.target,
+            id: finding.id,
+            pr: now.pr,
+          }) +
+          ". " +
+          "This card request selects only this finding. If trusted conversation instructions already authorize it, proceed; otherwise prepare the exact comment preview and ask once for confirmation in the conversation before publishing. Read the current finding, occurrences and my note from the Well Actually MCP, " +
+          "verify the PR and account, check the current diff and existing comments, then post and " +
+          "record the comment URL by appending to links with update_finding and expectedRevision. Do not post other findings or submit an approval.",
+      );
+    },
+    [host],
+  );
+
+  const postAccepted = useCallback(
+    async (findings: Finding[]): Promise<void> => {
+      const now = held.current;
+      if (!now || findings.length === 0) return;
+      await host.say(
+        "Use the Well Actually post-findings skill (wellactually:post-findings; " +
+        "wellactually-post-findings on OpenCode/pi) to post exactly these accepted findings as inline PR comments: " +
+        JSON.stringify({repo:now.repo,target:now.target,ids:findings.map(f=>f.id),pr:now.pr}) +
+        ". This card request selects only these findings. If trusted conversation instructions already authorize them, proceed; otherwise prepare the exact comment previews and ask once for confirmation in the conversation before publishing. Read their current records, occurrences and my notes from the Well Actually MCP; " +
+        "verify the PR and account, check the current diff and existing comments, skip already-posted duplicates, then post and " +
+        "record each comment URL and reportedAt with revision-checked update_finding, preserving existing links. " +
+        "Do not post other findings, change verdicts or resolution, or submit an approval.",
       );
     },
     [host],
@@ -318,7 +417,7 @@ export function useReview(host: Host): Review {
         ? `${now.url}&finding=${encodeURIComponent(finding.id)}`
         : now.url;
       void (async () => {
-        const opened = await call("open_inbox", {
+        const opened = now.readOnly ? null : await call("open_inbox", {
           repo: now.repo,
           target: now.target,
           ...(finding ? { finding: finding.id } : {}),
@@ -344,61 +443,45 @@ export function useReview(host: Host): Review {
     [call, host],
   );
 
-  /**
-   * The rule behind a finding's id, read where rules are read.
-   *
-   * The same three doors as the inbox, for the same reason: the server is on
-   * loopback and the host that draws the card opens https. What is different
-   * is that a rule page names nothing of the repository, so it needs no short
-   * link of its own — the address itself is already safe to hand a redirect.
-   */
   const openRule = useCallback(
     (id: string) => {
-      const now = held.current;
-      if (!now) return;
-      const url = new URL(`/rule/${encodeURIComponent(id)}`, now.url).href;
-      void (async () => {
-        const opened = await call("open_inbox", {
-          repo: now.repo,
-          target: now.target,
-          rule: id,
-        }).catch(() => null);
-        if (opened && opened.isError !== true) {
-          setLink(null);
-          return;
-        }
-        if (await host.openLink(url)) {
-          setLink(null);
-          return;
-        }
-        setLink(
-          (await host.openLink(`${BOUNCE}${encodeURIComponent(url)}`))
-            ? null
-            : url,
-        );
-      })();
+      const url = ruleUrl(id);
+      void host.openLink(url).then((opened) => setLink(opened ? null : url));
     },
-    [call, host],
+    [host],
   );
 
   const redraw = useCallback(() => {
     const now = held.current;
     if (!now) return;
-    host.say(
-      `Show the current review card for ${now.target} in ${now.repo}: call review_status.`,
-    );
+    void host
+      .say(
+        `Show the current review card for ${now.target} in ${now.repo}: call review_status.`,
+      )
+      .catch((error: unknown) =>
+        setFailed(error instanceof Error ? error.message : String(error)),
+      );
   }, [host]);
 
   return {
     status,
     failed,
     refreshPaused,
+    refreshError,
     resumeRefresh: () => {
+      refused.current = false;
+      setStranded(false);
+      setRefreshError(null);
       setRefreshPaused(false);
+      if (stranded) void refresh().catch(() => setRefreshPaused(true));
     },
     move,
     note,
     fix,
+    post,
+    postAccepted,
+    occurrences,
+    saveOccurrence,
     openInbox,
     openRule,
     link,

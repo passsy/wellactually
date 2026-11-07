@@ -89,7 +89,9 @@ describe("jumping to anything", () => {
     // way a git hash is.
     for (const q of [
       hash,
+      `wellactually-review:${hash}`,
       `pascal-review:${hash}`,
+      `<!-- wellactually-review:${hash} -->`,
       `<!-- pascal-review:${hash} -->`,
       hash.slice(0, 12),
     ]) {

@@ -34,14 +34,31 @@ export class Unanswered extends Error {
   }
 }
 
+export class HostRpcError extends Error {
+  constructor(readonly method: string, readonly code: number | undefined, message: string) {
+    super(`${method}: ${code === undefined ? "" : `[${code}] `}${message}`);
+    this.name = "HostRpcError";
+  }
+}
+
 export interface ToolResult {
   content?: { type: string; text?: string }[];
   structuredContent?: unknown;
   isError?: boolean;
 }
 
+export type DisplayMode = "inline" | "fullscreen" | "pip";
+export interface DisplayState {
+  mode: DisplayMode;
+  ready: boolean;
+  availableModes?: DisplayMode[];
+}
+
 /** Everything the card asks of whatever is hosting it. */
 export interface Host {
+  connectionDetails?: () => Record<string, unknown>;
+  onDisplayState?: (listener: (state: DisplayState) => void) => () => void;
+  requestDisplayMode?: (mode: "inline" | "fullscreen") => Promise<DisplayMode>;
   /**
    * The result of the tool call that opened the card. A listener added after
    * it arrived is handed it at once, so mounting late loses nothing.
@@ -53,8 +70,8 @@ export interface Host {
   ) => Promise<ToolResult>;
   /** Whether the host opened it. Claude's opens nothing that is not https. */
   openLink: (url: string) => Promise<boolean>;
-  /** Puts a message in the conversation as though the user had typed it. */
-  say: (text: string) => void;
+  /** Requests a conversation turn. The host determines its provenance; app content may remain untrusted. */
+  say: (text: string) => Promise<void>;
   /** Replaces what the model knows about what was done in the card. */
   tellModel: (text: string) => void;
   /** The host sizes the frame from what the card says it needs. */
@@ -67,10 +84,12 @@ interface Message {
   method?: string;
   params?: unknown;
   result?: unknown;
-  error?: { message: string };
+  error?: { code?: number; message: string };
 }
 
 interface HostContext {
+  displayMode?: DisplayMode;
+  availableDisplayModes?: DisplayMode[];
   theme?: string;
   styles?: { variables?: Record<string, string | undefined> };
 }
@@ -100,6 +119,22 @@ export function connect(
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >();
   const listeners = new Set<(result: ToolResult) => void>();
+  const displayListeners = new Set<(state: DisplayState) => void>();
+  let display: DisplayState = { mode: "inline", ready: false };
+  const hostContext = (context: HostContext | undefined): void => {
+    wear(context);
+    display = {
+      ...display,
+      ready: true,
+      ...(context?.displayMode ? { mode: context.displayMode } : {}),
+      ...(context?.availableDisplayModes
+        ? { availableModes: context.availableDisplayModes }
+        : {}),
+    };
+    document.documentElement.dataset["displayMode"] = display.mode;
+    for (const listener of displayListeners) listener(display);
+  };
+  const connection: Record<string, unknown> = { app: "wellactually-review-card", requestedProtocol: PROTOCOL, handshake: "pending", toolInputReceived: false, toolResultReceived: false };
   let first: ToolResult | undefined;
   let told = 0;
 
@@ -124,7 +159,7 @@ export function connect(
         },
         reject: (error) => {
           clearTimeout(lost);
-          reject(error);
+          reject(new HostRpcError(method, (error as Error & { code?: number }).code, error.message));
         },
       });
       post({ id, method, params });
@@ -148,17 +183,19 @@ export function connect(
         message.id === undefined ? undefined : waiting.get(message.id);
       if (!call || message.id === undefined) return;
       waiting.delete(message.id);
-      if (message.error) call.reject(new Error(message.error.message));
+      if (message.error) call.reject(Object.assign(new Error(message.error.message), { code: message.error.code }));
       else call.resolve(message.result);
       return;
     }
 
+    if (message.method === "ui/notifications/tool-input") connection.toolInputReceived = true;
     if (message.method === "ui/notifications/tool-result") {
+      connection.toolResultReceived = true;
       first = message.params as ToolResult;
       for (const listener of listeners) listener(first);
     }
     if (message.method === "ui/notifications/host-context-changed") {
-      wear(message.params as HostContext);
+      hostContext(message.params as HostContext);
     }
     // ui/resource-teardown is a request, and the host waits for the reply.
     if (message.id !== undefined) post({ id: message.id, result: {} });
@@ -166,23 +203,54 @@ export function connect(
 
   // appInfo, not MCP's clientInfo: a host that validates the request, as
   // Codex does, refuses it otherwise and holds the tool result back for good.
-  request("ui/initialize", {
+  const initialized = request("ui/initialize", {
     protocolVersion: PROTOCOL,
     appInfo: { name: "wellactually-review-card", version: "1" },
-    appCapabilities: { availableDisplayModes: ["inline"] },
+    appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] },
   }).then(
     (hello) => {
-      wear((hello as { hostContext?: HostContext }).hostContext);
+      const reply = hello as { hostContext?: HostContext; hostInfo?: unknown; hostCapabilities?: unknown; protocolVersion?: string };
+      hostContext(reply.hostContext);
+      connection.handshake = "complete";
+      connection.host = reply.hostInfo;
+      connection.capabilities = reply.hostCapabilities;
+      connection.negotiatedProtocol = reply.protocolVersion;
       post({ method: "ui/notifications/initialized", params: {} });
     },
-    (error: unknown) => {
+  );
+  void initialized.catch((error: unknown) => {
+      connection.handshake = "failed";
       // Nothing will arrive after a refusal, so the card stays empty. Say
       // why where somebody debugging the frame will look.
+      hostContext({ displayMode: "inline", availableDisplayModes: ["inline"] });
       console.error("The host refused ui/initialize:", error);
-    },
-  );
+  });
 
   return {
+    connectionDetails: () => structuredClone(connection),
+    onDisplayState: (listener) => {
+      displayListeners.add(listener);
+      listener(display);
+      return () => {
+        displayListeners.delete(listener);
+      };
+    },
+    requestDisplayMode: async (mode) => {
+      if (!display.ready)
+        throw new Error("Waiting for the harness to initialize.");
+      if (display.availableModes && !display.availableModes.includes(mode))
+        throw new Error(`The harness does not support ${mode} mode.`);
+      const result = (await request("ui/request-display-mode", { mode })) as {
+        mode?: DisplayMode;
+      };
+      if (
+        !result ||
+        !["inline", "fullscreen", "pip"].includes(result.mode ?? "")
+      )
+        throw new Error("The harness did not confirm a display mode.");
+      hostContext({ displayMode: result.mode! });
+      return result.mode!;
+    },
     onResult: (listener) => {
       listeners.add(listener);
       if (first) listener(first);
@@ -190,8 +258,14 @@ export function connect(
         listeners.delete(listener);
       };
     },
-    callTool: (name, args) =>
-      request("tools/call", { name, arguments: args }) as Promise<ToolResult>,
+    callTool: (name, args) => {
+      const send = () => {
+        connection.lastTool = name;
+        connection.handshakeAtToolCall = connection.handshake;
+        return request("tools/call", { name, arguments: args }) as Promise<ToolResult>;
+      };
+      return connection.handshake === "complete" ? send() : initialized.then(send);
+    },
     openLink: (url) =>
       request("ui/open-link", { url }).then(
         (answer) => (answer as { isError?: boolean } | null)?.isError !== true,
@@ -200,13 +274,20 @@ export function connect(
     say: (text) => {
       // A list of blocks, as the specification has it. A single block is
       // dropped by both Claude's host and Codex's.
-      ask("ui/message", { role: "user", content: [{ type: "text", text }] });
+      return request("ui/message", {
+        role: "user",
+        content: [{ type: "text", text }],
+      }).then((answer) => {
+        if ((answer as { isError?: boolean } | null)?.isError) {
+          throw new Error("The host declined to send the message.");
+        }
+      });
     },
     tellModel: (text) => {
       ask("ui/update-model-context", { content: [{ type: "text", text }] });
     },
     resized: (height) => {
-      if (height === told) return;
+      if (display.mode !== "inline" || height === told) return;
       told = height;
       post({
         method: "ui/notifications/size-changed",

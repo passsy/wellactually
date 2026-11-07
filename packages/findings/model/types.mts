@@ -98,8 +98,7 @@ export const MAX_TAG_LENGTH = 24;
  *
  * There used to be one "dismissed" for both, which made the same keystroke
  * mean "this is garbage" and "this is right, and no" — the reason it was
- * hard to press. Old files still say "dismissed" (briefly also "parked");
- * the store normalises them on read and nothing else ever sees the words.
+ * hard to press. The disposition stays separate from reporting and resolution.
  */
 export const VERDICT = [
   "undecided",
@@ -108,24 +107,6 @@ export const VERDICT = [
   "tolerated",
 ] as const;
 export type Verdict = (typeof VERDICT)[number];
-
-/**
- * The verdict an old file's word means now.
- *
- * "dismissed" carried both failed states, so the entry's reason is the only
- * witness: "false-positive" was a claim the review got it wrong, which is
- * exactly "invalid". Every other reason — taste, not-now, disagree-with-rule,
- * the hardcoded "other", none at all — was some way of letting the finding
- * stand, which is "tolerated". "parked" existed for a day and was tolerated
- * by definition.
- */
-export function modernVerdict(verdict: string, reason?: string): Verdict {
-  if (verdict === "dismissed") {
-    return reason === "false-positive" ? "invalid" : "tolerated";
-  }
-  if (verdict === "parked") return "tolerated";
-  return verdict as Verdict;
-}
 
 /**
  * Whether the code still has the problem. Independent of the verdict.
@@ -197,7 +178,7 @@ export interface TransitionEntry {
    * A retired field old files still carry: the reason enum that used to ride
    * on a dismissal ("false-positive", "taste", "not-now", …). The verdict
    * says everything now; this is kept readable because history is never
-   * rewritten, and it is what modernVerdict reads to sort an old dismissal.
+   * rewritten.
    */
   reason?: string;
   /** Free text, e.g. why not now. */
@@ -259,6 +240,9 @@ export interface RelatedLocation {
 }
 
 export interface Finding {
+  /** Compatibility presentation; the canonical CRUD record has no workflow kind. */
+  record?: import("./records.mts").FindingRecord;
+  occurrenceSummary?: import("./records.mts").OccurrenceSummary;
   /** Server-allocated, unique per target, e.g. "T4". */
   id: string;
   title: string;
@@ -325,14 +309,6 @@ export interface Finding {
   note?: string;
   /** When the note was last written. */
   noteAt?: string;
-  /** The observation this was promoted from, when a level handed it over. */
-  fromObservation?: string;
-  /** The review candidate this finding was verified from. */
-  fromCandidate?: string;
-  /** Technical review confidence, separate from the human verdict. */
-  verification?: { status: "confirmed" | "plausible" | "refuted"; reason?: string; method?: "source" | "executable" | "unverified"; proof?: string; proofs?: string[]; limits?: string[] };
-  /** A stopped verification attempt, visible independently of human triage. */
-  verificationBlock?: { reason: string; at: string; candidates: string[] };
   /**
    * When it was told to the author, if it has been.
    *
@@ -404,7 +380,7 @@ export interface ReviewBranch {
 /**
  * The pull request a review is of.
  *
- * Everything here is written by Level 0, which collects it from GitHub before
+ * The coordinator collects these fields from GitHub before
  * any finding exists, and is kept so the inbox can say what a review is about
  * without opening it. "pr-356" identifies a review; it does not say what the
  * change is or how long it has been waiting.
@@ -452,81 +428,6 @@ export interface ReviewPr {
   baseBranch?: string;
 }
 
-export const OBSERVATION_STATUS = ["pending", "promoted", "dropped"] as const;
-export type ObservationStatus = (typeof OBSERVATION_STATUS)[number];
-
-/**
- * A handoff: something one level noticed that belongs to another level.
- *
- * Not to be confused with the Review Inbox, which is the triage page and is
- * Pascal's. This queue is between levels and he never sees it.
- *
- * Deliberately lighter than a finding. One line, no analysis, no verdict. The
- * owning level decides later whether it becomes a finding, and dropping one is
- * recorded rather than forgotten because which level generates noise for which
- * other level is calibration data for the skill.
- */
-export interface Observation {
-  /** Server-allocated, e.g. "O1". A separate sequence from findings. */
-  id: string;
-  text: string;
-  /** Which level owns triaging it, e.g. "2". */
-  forLevel: string;
-  status: ObservationStatus;
-  /** The finding id, once promoted. */
-  promotedTo?: string;
-  dropReason?: string;
-  createdAt: string;
-}
-
-/** Technical review state, before a finding reaches human triage. */
-export const CANDIDATE_STATUS = [
-  "pending",
-  "confirmed",
-  "plausible",
-  "refuted",
-] as const;
-export type CandidateStatus = (typeof CANDIDATE_STATUS)[number];
-
-/**
- * A possible finding owned by the review process.
- *
- * Candidates live in the same service as findings so reviewers can hand work
- * to verifiers without serialising finding prose through local JSON files.
- * Only confirmed or plausible candidates become human-triage findings.
- */
-export interface ReviewCandidate {
-  /** Server-allocated, unique per target, e.g. "C3". */
-  id: string;
-  /** Stable worker-side reference, useful in probe output. */
-  source: string;
-  /** One invocation of a review against a durable target. */
-  run: string;
-  /** Verification partition, e.g. "all", "set-01" or "crossing". */
-  unit: string;
-  title: string;
-  body: string;
-  evidence: Evidence;
-  priority: Priority;
-  tags?: string[];
-  level?: string;
-  rule?: string;
-  provenTest?: string;
-  anchor: Omit<Anchor, "commit"> & { commit?: string };
-  related?: Omit<RelatedLocation, "context" | "diff" | "authorship">[];
-  /** Review-specific scope retained for verification and reporting. */
-  scope?: string;
-  /** Exact principle advice when the candidate came from a rule. */
-  quote?: string;
-  status: CandidateStatus;
-  verificationReason?: string;
-  proof?: string;
-  /** Human-triage finding created by confirmation/plausibility. */
-  findingId?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 /**
  * What the triage page and the report are handed over HTTP.
  *
@@ -539,7 +440,7 @@ export type SeenMap = Record<string, string>;
 /** How much of a review is left to do, for the inbox's list. */
 export interface ReviewCounts {
   total: number;
-  /** Findings Pascal has not read, which is what the inbox badges. */
+  /** Findings the user has not read, which is what the inbox badges. */
   unread: number;
   /** Findings somebody has written a note on. */
   noted: number;
@@ -566,6 +467,8 @@ export interface ReviewCounts {
 }
 
 export interface ReviewSummary {
+  /** Unreadable records stay visible without taking other reviews offline. */
+  error?: string;
   repo: string;
   /** The checkout's directory name, which is what a review runs in. */
   repoName: string;
@@ -629,6 +532,8 @@ export type ReviewState = (typeof REVIEW_STATE)[number];
  * the whole answer at once and asks again.
  */
 export interface ReviewStatus {
+  /** A viewer connector with no mutation tools. */
+  readOnly?: boolean;
   repo: string;
   repoName: string;
   target: string;
@@ -643,8 +548,6 @@ export interface ReviewStatus {
   link: string;
   state: ReviewState;
   phase?: "review" | "verification";
-  /** Incoming candidates remain read-only until verification creates a finding. */
-  candidates?: ReviewCandidate[];
   startedAt: string;
   /** The last write of any kind: a finding, a verdict, a level document. */
   lastAt: string;

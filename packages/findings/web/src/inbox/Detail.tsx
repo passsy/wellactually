@@ -1,3 +1,5 @@
+import { useEffect, useRef, type ReactNode } from "react";
+import { ruleUrl } from "../shared/rule-url.ts";
 /**
  * One finding, read.
  *
@@ -12,8 +14,9 @@ import { Markdown, MarkdownSurface } from "../shared/markdown/Markdown.tsx";
 import { Diagram } from "./Diagram.tsx";
 import { Track } from "../shared/track/Track.tsx";
 import { BLANK_AFTER, flagFor, stopOf, stopsFor } from "../shared/stage.tsx";
-import { Evidence, Priority, Rule, State, Tag } from "../shared/chips.tsx";
-import { VerificationNotice } from "../shared/VerificationNotice.tsx";
+import { Priority, Rule, State, Tag } from "../shared/chips.tsx";
+import { Occurrences, FindingInformation } from "../shared/Occurrences.tsx";
+import { occurrenceList, saveOccurrenceState, type Where } from "./api.ts";
 import { Chunks } from "../shared/chunk/Chunk.tsx";
 import { AUTHORSHIP_SAYS, type Finding } from "../shared/domain.ts";
 import type { PanelAt } from "./FilePanel.tsx";
@@ -105,49 +108,150 @@ function Reported({ finding }: { finding: Finding }) {
  * verdict was given to something else, and the only place that is visible is
  * here.
  */
-function History({ finding }: { finding: Finding }) {
-  if (finding.history.length === 0) return null;
-  return (
-    <ol className="mt-6 border-t border-line pt-2 text-[0.8rem] text-muted">
-      {finding.history.map((entry, index) => {
-        const what = entry.edited
+function History({
+  finding,
+  onTag,
+  tag,
+  onOpenFile,
+}: {
+  finding: Finding;
+  onTag: (tag: string) => void;
+  tag: string | null;
+  onOpenFile: (at: PanelAt) => void;
+}) {
+  const entries = finding.record
+    ? finding.record.history.flatMap((change) => {
+        const patch = change.patch;
+        const actions: string[] = [];
+        if (change.revision === 1 && patch.title)
+          actions.push("Created finding");
+        else {
+          if (patch.verdict) actions.push(String(patch.verdict));
+          if ("reportedAt" in patch)
+            actions.push(patch.reportedAt ? "reported" : "reporting cleared");
+          if (patch.state === "closed")
+            actions.push(
+              (patch.closure as { reason?: string } | undefined)?.reason ??
+                "closed",
+            );
+          else if (patch.state === "open") actions.push("reopened");
+          const edited = [
+            "title",
+            "description",
+            "note",
+            "rules",
+            "priority",
+            "tags",
+            "links",
+          ].filter((key) => key in patch);
+          if (edited.length) actions.push(`updated ${edited.join(", ")}`);
+        }
+        return actions.length
+          ? [{ at: change.at, actor: change.actor, what: actions.join(" · ") }]
+          : [];
+      })
+    : finding.history.map((entry) => ({
+        at: entry.at,
+        actor: entry.actor,
+        what: entry.edited
           ? `rewrote ${entry.edited.join(", ")}`
           : (entry.verdict ??
             entry.resolution ??
-            // A reason with no verdict is the why arriving after the throw.
-            (entry.reason ? "why" : ""));
-        return (
-          <li key={`${entry.at} ${index}`}>
-            <span className="font-mono" title={entry.at}>
-              {when(entry.at)}
-            </span>{" "}
-            · {entry.actor} → {what}
-            {entry.reason ? ` (${entry.reason})` : ""}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-/**
- * The rule chip with its id narrowed: inside here `rule` is a string, so
- * opening it needs no cast and cannot drift from the guard above.
- */
-function RuleChip({
-  rule,
-  onOpenRule,
-}: {
-  rule: string;
-  onOpenRule: (id: string) => void;
-}) {
+            entry.reason ??
+            "Updated finding"),
+      }));
+  const proofs = [
+    ...new Set([
+      ...(finding.provenTest ? [finding.provenTest] : []),
+      ...(finding.record?.evidence
+        .filter((e) => e.kind === "test")
+        .flatMap((e) => e.artifacts) ?? []),
+    ]),
+  ];
   return (
-    <Rule
-      id={rule}
-      onPick={() => {
-        onOpenRule(rule);
-      }}
-    />
+    <aside
+      aria-label="Finding details"
+      className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-sm"
+    >
+      <h2 className="shrink-0 border-b border-line px-4 py-3 text-sm font-medium">
+        Details
+      </h2>
+      <div className="min-w-0">
+        <div className="space-y-3 p-4 text-sm">
+          <div className="flex flex-wrap gap-2">
+            <Priority of={finding.priority} />
+            <Reporter finding={finding} />
+            <Posted finding={finding} />
+          </div>
+          {(finding.tags ?? []).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {finding.tags!.map((one) => (
+                <Tag key={one} on={one === tag} onPick={() => onTag(one)}>
+                  {one}
+                </Tag>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-col items-start gap-2 [&_a]:break-all [&_a]:whitespace-normal">
+            {(
+              finding.record?.rules ??
+              (finding.rule ? [{ id: finding.rule }] : [])
+            ).map((rule) => (
+              <Rule key={rule.id} id={rule.id} />
+            ))}
+          </div>
+          <Reported finding={finding} />
+          {finding.confirmedAt && (
+            <State title={finding.confirmedAt}>{finding.resolution} ✓</State>
+          )}
+          {proofs.length > 0 && (
+            <section aria-label="Proof tests">
+              <h3 className="mb-2 text-xs font-medium text-muted">
+                Proof tests
+              </h3>
+              {proofs.map((proof) => {
+                const at = /^(.*?)(?::(\d+))?$/.exec(proof);
+                const name = (at?.[1] ?? proof).split(/[\\/]/).pop() || proof;
+                const label = name + (at?.[2] ? `:${at[2]}` : "");
+                return (
+                  <p key={proof} className="my-1 break-all font-mono text-xs">
+                    {at ? (
+                      <button
+                        type="button"
+                        className="text-left underline underline-offset-2"
+                        title={proof}
+                        onClick={() =>
+                          onOpenFile({ file: at[1]!, line: Number(at[2] ?? 1) })
+                        }
+                      >
+                        {label}
+                      </button>
+                    ) : (
+                      label
+                    )}
+                  </p>
+                );
+              })}
+            </section>
+          )}
+        </div>
+        {entries.length > 0 && (
+          <details className="border-t border-line">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+              History
+            </summary>
+            <ol className="space-y-3 px-4 pb-4 text-xs text-muted">
+              {[...entries].reverse().map((entry, index) => (
+                <li key={`${entry.at}:${index}`}>
+                  <p className="font-medium text-fg">{entry.what}</p>
+                  <span title={entry.at}>{when(entry.at)}</span> · {entry.actor}
+                </li>
+              ))}
+            </ol>
+          </details>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -182,7 +286,7 @@ export function FindingTrack({
  * rather than offering a button that could not keep the promise.
  */
 function RuleIssue({ finding }: { finding: Finding }) {
-  if (finding.verdict !== "invalid") return null;
+  if (finding.record || finding.verdict !== "invalid") return null;
   const url = finding.links.ruleIssue;
   if (!url) {
     return (
@@ -208,16 +312,18 @@ function RuleIssue({ finding }: { finding: Finding }) {
 
 export function Detail({
   finding,
+  comment,
+  where,
   onMove,
   onOpenFile,
-  onOpenRule,
   onTag,
   tag,
 }: {
   finding: Finding;
+  where?: Where | undefined;
+  comment?: ReactNode;
   onMove: (to: string) => void;
   onOpenFile: (at: PanelAt) => void;
-  onOpenRule: (id: string) => void;
   /** The same hold the queue's tags offer: one control, both places. */
   onTag: (tag: string) => void;
   /** The tag the queue is held to, so that chip can wear its on state. */
@@ -234,67 +340,19 @@ export function Detail({
    * cannot hold it either way, and `pre` opts out of overflow wrapping
    * entirely, so source keeps scrolling in its own frame.
    */
+  const article = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    article.current
+      ?.closest<HTMLElement>("[data-radix-scroll-area-viewport]")
+      ?.scrollTo?.({ top: 0 });
+  }, [finding.id]);
   return (
-    <article className="p-5 wrap-anywhere">
+    <article ref={article} className="@container p-5 wrap-anywhere">
       <h1 className="mb-[0.6rem] text-[1.15rem] font-semibold">
         <span className="font-mono text-muted">{finding.id}</span>
         <span className="text-muted"> — </span>
         {finding.title}
       </h1>
-
-      <VerificationNotice finding={finding} />
-      <p className="mb-4 flex flex-wrap items-center gap-[0.4rem] text-muted">
-        <Priority of={finding.priority} />
-        <Evidence of={finding.evidence} />
-        {(finding.tags ?? []).map((one) => (
-          <Tag
-            key={one}
-            on={one === tag}
-            onPick={() => {
-              onTag(one);
-            }}
-          >
-            {one}
-          </Tag>
-        ))}
-        {finding.rule !== undefined && finding.rule !== "" && (
-          <RuleChip rule={finding.rule} onOpenRule={onOpenRule} />
-        )}
-        <Reporter finding={finding} />
-        <Posted finding={finding} />
-        {/*
-          No chip for the verdict or the resolution: the track below is the
-          same facts as a control, and saying them twice on one screen makes
-          the reader check whether the two agree. The one thing the track
-          cannot say — that a later review run went looking and did not find
-          it any more — keeps a chip, because that is a check, not a claim.
-        */}
-        {finding.confirmedAt && (
-          <State
-            title={`Confirmed by a later review run on ${finding.confirmedAt.slice(0, 10)}`}
-          >
-            {finding.resolution} ✓
-          </State>
-        )}
-        {/* Pressable like every other place-in-the-code on this page. */}
-        <button
-          type="button"
-          onClick={() => {
-            onOpenFile({
-              file: finding.anchor.file,
-              line: finding.anchor.line,
-              endLine: finding.anchor.endLine,
-            });
-          }}
-          className="cursor-pointer font-mono text-[0.8rem] underline-offset-2 hover:underline"
-          title="Open this file beside the finding"
-        >
-          {finding.anchor.file}:{finding.anchor.line}
-          {(finding.anchor.endLine ?? finding.anchor.line) > finding.anchor.line
-            ? `-${String(finding.anchor.endLine)}`
-            : ""}
-        </button>
-      </p>
 
       {/*
         Under the labels rather than above the title: the labels say what this
@@ -354,81 +412,88 @@ export function Detail({
         </p>
       )}
 
-      {finding.provenTest && (
-        <p className="my-[0.8rem] text-[0.8rem] text-muted">
-          Failing test:{" "}
-          {/*
-            The same affordance as the chunk header: a place in the code
-            opens beside the finding. Two paths on one page, one pressable
-            and one inert, teaches the reader that paths here do nothing.
-          */}
-          <button
-            type="button"
-            onClick={() => {
-              const test = /^(.*?):(\d+)$/.exec(finding.provenTest ?? "");
-              onOpenFile(
-                test?.[1] !== undefined && test[2] !== undefined
-                  ? { file: test[1], line: Number(test[2]) }
-                  : { file: finding.provenTest ?? "", line: 1 },
-              );
-            }}
-            className="cursor-pointer font-mono underline-offset-2 hover:underline"
-            title="Open this test beside the finding"
-          >
-            {finding.provenTest}
-          </button>
-        </p>
-      )}
-
-      <Reported finding={finding} />
-
       {/*
-        A measure, not a column: on a wide window the prose was running the
-        full pane and the eye lost the line on the way back. The code blocks
-        below stay full width — code does not rewrap.
+        Prose stays bounded; history sits at the far edge of the pane. The
+        container query follows the pane width, including when a file panel
+        is open. Source code keeps the full available width, and history
+        follows it in the reading order when the pane is narrow.
       */}
-      <div className="mt-4 max-w-[600px] text-[0.95rem]">
-        <MarkdownSurface
-          surface={{
-            // In the page there is a panel to open it in, so a citation does
-            // not have to leave. The report has no panel and opens a tab.
-            rule: (id) => ({
-              href: `/rule/${id}`,
-              onPick: () => {
-                onOpenRule(id);
-              },
-            }),
-            // A finding that argues about where something belongs sometimes
-            // carries its own small map. Same fence, same drawing.
-            draw: (language, code, source) =>
-              language === "mermaid" ? (
-                <Diagram code={code} source={source} />
-              ) : null,
-          }}
+      <div className="relative mt-4 grid grid-cols-1 items-start gap-4 @[900px]:grid-cols-[minmax(0,1fr)_320px]">
+        <section
+          aria-label="Description"
+          className="min-w-0 max-w-[680px] overflow-hidden rounded-lg border border-line bg-card text-[0.95rem]"
         >
-          <Markdown body={finding.body} />
-        </MarkdownSurface>
-      </div>
+          <h2 className="border-b border-line px-5 py-3 text-sm font-medium text-muted">
+            Description
+          </h2>
+          <div className="px-5 py-4">
+            <MarkdownSurface
+              surface={{
+                // In the page there is a panel to open it in, so a citation does
+                // not have to leave. The report has no panel and opens a tab.
+                rule: (id) => ({ href: ruleUrl(id), external: true }),
+                // A finding that argues about where something belongs sometimes
+                // carries its own small map. Same fence, same drawing.
+                draw: (language, code, source) =>
+                  language === "mermaid" ? (
+                    <Diagram code={code} source={source} />
+                  ) : null,
+              }}
+            >
+              <Markdown body={finding.body} />
+            </MarkdownSurface>
+          </div>
+        </section>
 
-      {/*
+        {comment && (
+          <div className="min-w-0 max-w-[680px] @[900px]:col-start-1 @[900px]:row-start-2">
+            {comment}
+          </div>
+        )}
+        <div className="min-w-0 @[900px]:col-span-2">
+          {/*
         What the reviewer was looking at. A finding carries its own source
         because line numbers drift and a reader coming back next week needs
         to see what was seen, not what the file says by then.
       */}
-      <Chunks
-        anchor={{
-          file: finding.anchor.file,
-          line: finding.anchor.line,
-          endLine: finding.anchor.endLine,
-          context: finding.context,
-          diff: finding.diff,
-        }}
-        related={finding.related}
-        onOpen={onOpenFile}
-        withDiff={false}
-      />
-
-      <History finding={finding} />
+          {finding.record && where ? (
+            <>
+              <FindingInformation record={finding.record} />
+              <Occurrences
+                key={`${where.repo}:${where.target}:${finding.id}`}
+                findingId={finding.id}
+                summary={finding.occurrenceSummary}
+                refreshKey={`${finding.record.updatedAt}:${finding.occurrenceSummary?.revisionKey}`}
+                load={() => occurrenceList(where, finding.id)}
+                save={(occurrence) => saveOccurrenceState(where, occurrence)}
+                onOpen={onOpenFile}
+              />
+            </>
+          ) : (
+            <Chunks
+              anchor={{
+                file: finding.anchor.file,
+                line: finding.anchor.line,
+                endLine: finding.anchor.endLine,
+                context: finding.context,
+                diff: finding.diff,
+              }}
+              related={finding.related}
+              onOpen={onOpenFile}
+              withDiff={false}
+            />
+          )}
+        </div>
+        <div className="min-w-0 max-w-[680px] @[900px]:absolute @[900px]:top-0 @[900px]:right-0 @[900px]:z-20 @[900px]:w-80">
+          <History
+            key={finding.id}
+            finding={finding}
+            onTag={onTag}
+            tag={tag}
+            onOpenFile={onOpenFile}
+          />
+        </div>
+      </div>
     </article>
   );
 }

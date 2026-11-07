@@ -25,6 +25,7 @@
 import type { MouseEvent, ReactNode } from "react";
 import { Flag, MessageSquare } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { ruleUrl } from "./rule-url.ts";
 import { cn } from "./cn.ts";
 import { groupOf, type Finding, type Priority as Level } from "./domain.ts";
 import { STAGE_FILL, STAGE_MARK, STAGE_SAYS } from "./stage.tsx";
@@ -285,11 +286,7 @@ export function Rule({
   id: string;
   report?: boolean;
   onPick?: () => void;
-  /**
-   * Where the rule lives, for a page that is not served beside it. The card
-   * is drawn by a host on its own origin, so the relative address below
-   * points at that host rather than at the findings server.
-   */
+  /** Override the published principle URL when a surface supplies one. */
   href?: string;
 }) {
   const look = chip({ face: "mono", size: "rule", tone: "accent" });
@@ -306,7 +303,7 @@ export function Rule({
   }
   return (
     <a
-      href={href ?? `/rule/${id}`}
+      href={href ?? ruleUrl(id)}
       {...(onPick
         ? {
             onClick: (event: MouseEvent<HTMLAnchorElement>) => {

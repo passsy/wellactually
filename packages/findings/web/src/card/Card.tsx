@@ -1,3 +1,5 @@
+import { Maximize2, Minimize2, LoaderCircle } from "lucide-react";
+import { Button } from "../components/ui/button.tsx";
 /**
  * The review card: what a host draws in the conversation when a review starts.
  *
@@ -10,7 +12,10 @@
  * the same control and the same keys.
  */
 
+import { ruleUrl } from "../shared/rule-url.ts";
+import { Occurrences, FindingInformation } from "../shared/Occurrences.tsx";
 import {
+  Fragment,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -44,7 +49,7 @@ import {
 import { Track } from "../shared/track/Track.tsx";
 import { Meter } from "../inbox/Meter.tsx";
 import { cn } from "../shared/cn.ts";
-import type { Host } from "./bridge.ts";
+import type { Host, DisplayState } from "./bridge.ts";
 import { clock } from "./clock.ts";
 import { useReview, type Review } from "./useReview.ts";
 
@@ -59,6 +64,7 @@ const STOP_KEYS: Record<string, string> = {
 };
 
 const SAVE_AFTER_MS = 700;
+type Issue = Finding;
 
 /** A finding whose work has ended, one way or another. */
 function ended(finding: Finding): boolean {
@@ -76,7 +82,71 @@ const SAYS: Record<ReviewStatus["state"], string> = {
   done: "Reviewed",
 };
 
-function Header({ status, review }: { status: ReviewStatus; review: Review }) {
+function DisplayButton({ host }: { host: Host }) {
+  const [display, setDisplay] = useState<DisplayState>({
+    mode: "inline",
+    ready: false,
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => host.onDisplayState?.(setDisplay), [host]);
+  if (!host.requestDisplayMode || !host.onDisplayState) return null;
+  const full = display.mode === "fullscreen";
+  const target = full ? "inline" : "fullscreen";
+  const unsupported =
+    display.availableModes && !display.availableModes.includes(target);
+  return (
+    <div className="display-control">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-7 w-7"
+        aria-label={full ? "Restore inline review" : "Maximize review"}
+        title={
+          unsupported
+            ? `This harness does not support ${target} mode`
+            : full
+              ? "Restore inline review"
+              : "Maximize review"
+        }
+        disabled={busy || !display.ready || Boolean(unsupported)}
+        onClick={() => {
+          setBusy(true);
+          setError(null);
+          void host.requestDisplayMode!(target)
+            .then((mode) => {
+              if (mode !== target)
+                setError(`The harness kept the review in ${mode} mode.`);
+            })
+            .catch((why: unknown) =>
+              setError(why instanceof Error ? why.message : String(why)),
+            )
+            .finally(() => setBusy(false));
+        }}
+      >
+        {busy ? (
+          <LoaderCircle className="animate-spin" aria-hidden="true" />
+        ) : full ? (
+          <Minimize2 aria-hidden="true" />
+        ) : (
+          <Maximize2 aria-hidden="true" />
+        )}
+      </Button>
+      {error && <span role="alert">{error}</span>}
+    </div>
+  );
+}
+
+function Header({
+  status,
+  review,
+  host,
+}: {
+  status: ReviewStatus;
+  review: Review;
+  host: Host;
+}) {
   const title = status.title ?? status.target;
   return (
     <header className="top">
@@ -90,6 +160,7 @@ function Header({ status, review }: { status: ReviewStatus; review: Review }) {
       {status.elapsedMs !== undefined && (
         <span className="text-muted">{clock(status.elapsedMs)}</span>
       )}
+      <DisplayButton host={host} />
       <button
         type="button"
         className="link"
@@ -157,9 +228,11 @@ function Now({ status }: { status: ReviewStatus }) {
         <span className="grow truncate text-muted italic">
           {running
             ? `Level ${String(running.n)} of 5 · ${running.name}`
-            : status.phase === "verification" ? "Verifying findings"
-            : status.phase === "review" ? "Reviewing changes"
-            : "Starting"}
+            : status.phase === "verification"
+              ? "Verifying findings"
+              : status.phase === "review"
+                ? "Reviewing changes"
+                : "Starting"}
         </span>
       )}
       {total > 0 && (
@@ -180,7 +253,7 @@ function Row({
   fresh,
   onOpen,
 }: {
-  finding: Finding;
+  finding: Issue;
   at: boolean;
   fresh: boolean;
   onOpen: () => void;
@@ -216,9 +289,11 @@ function Row({
       )}
       onClick={onOpen}
     >
-      <Stage finding={finding} />
+      {<Stage finding={finding} />}
       <Priority of={finding.priority} />
-      <span className="id font-mono">{finding.id}</span>
+      <span className="id font-mono" title={finding.id}>
+        {finding.id}
+      </span>
       <span className="says grow truncate" title={finding.title}>
         {finding.title}
       </span>
@@ -235,13 +310,6 @@ function Row({
   );
 }
 
-/**
- * The reader's own words on a finding, for whoever fixes it.
- *
- * Saved a moment after the typing stops, and again on the way out. What is
- * in the box is the draft until the reader leaves it, because swapping in
- * the stored text mid-sentence would trim the space they had just typed.
- */
 function NoteBox({
   finding,
   review,
@@ -350,7 +418,16 @@ function One({
         <span className="text-muted">
           <Key>↑</Key> <Key>↓</Key>
         </span>
-        <FixButton accepted={accepted} review={review} />
+        {!status.readOnly && <PostButton
+          key={finding.id}
+          finding={finding}
+          status={status}
+          review={review}
+        />}
+        {!status.readOnly && <>
+          <PostAcceptedButton key={accepted.map(f=>f.id).join(",")} accepted={accepted} status={status} review={review} />
+          <FixButton accepted={accepted} review={review} />
+        </>}
       </div>
       <div className="one">
         <div className="facts">
@@ -359,7 +436,7 @@ function One({
           {(finding.tags ?? []).map((tag) => (
             <Tag key={tag}>{tag}</Tag>
           ))}
-          <Evidence of={finding.evidence} />
+          {!finding.record && <Evidence of={finding.evidence} />}
           {/*
             A rule id nobody could read was an id not worth printing: the
             chip said PW-G007 and the card had no way to say what PW-G007
@@ -367,20 +444,22 @@ function One({
             works, because it is on loopback and the host that draws the
             card opens https.
           */}
-          {finding.rule !== undefined && finding.rule !== "" && (
+          {(
+            finding.record?.rules ??
+            (finding.rule ? [{ id: finding.rule }] : [])
+          ).map((rule) => (
             <Rule
-              id={finding.rule}
-              href={new URL(`/rule/${finding.rule}`, status.url).href}
-              onPick={() => {
-                review.openRule(finding.rule ?? "");
-              }}
+              key={rule.id}
+              id={rule.id}
+              href={ruleUrl(rule.id)}
+              onPick={() => review.openRule(rule.id)}
             />
-          )}
+          ))}
           {/*
             On the line that says what the finding is, at its far end: the
             first thing in view, and no line of its own to pay for.
           */}
-          <span className="rate">
+          {!status.readOnly && <span className="rate">
             <span className="text-muted">
               <Key>←</Key> <Key>→</Key>
             </span>
@@ -394,31 +473,122 @@ function One({
                 review.move(finding, to);
               }}
             />
-          </span>
+          </span>}
         </div>
         <h2>{finding.title}</h2>
         <div className="body">
           <Markdown body={finding.body} />
         </div>
-        <Chunk
-          at={{
-            file: finding.anchor.file,
-            line: finding.anchor.line,
-            endLine: finding.anchor.endLine,
-            context: finding.context,
-          }}
-          withDiff={false}
-        />
+        {finding.record ? (
+          <>
+            <FindingInformation record={finding.record} />
+            <Occurrences
+              key={finding.id}
+              findingId={finding.id}
+              summary={finding.occurrenceSummary}
+              refreshKey={`${finding.record.updatedAt}:${finding.occurrenceSummary?.revisionKey}`}
+              load={() => review.occurrences(finding.id)}
+              save={status.readOnly ? undefined : review.saveOccurrence}
+            />
+          </>
+        ) : (
+          <Chunk
+            at={{
+              file: finding.anchor.file,
+              line: finding.anchor.line,
+              endLine: finding.anchor.endLine,
+              context: finding.context,
+            }}
+            withDiff={false}
+          />
+        )}
         {/* Keyed by the finding, so a draft never follows the reader to the next one. */}
-        <NoteBox
+        {!status.readOnly && <NoteBox
           key={finding.id}
           finding={finding}
           review={review}
           boxRef={boxRef}
-        />
+        />}
       </div>
     </>
   );
+}
+
+function PostButton({
+  finding,
+  status,
+  review,
+}: {
+  finding: Finding;
+  status: ReviewStatus;
+  review: Review;
+}) {
+  const [state, setState] = useState<"ready" | "sending" | "sent">("ready");
+  const [error, setError] = useState<string | null>(null);
+  if (!status.pr?.number && !status.pr?.url) return null;
+  if (finding.links.prComment)
+    return (
+      <a
+        className="btn"
+        href={finding.links.prComment}
+        target="_blank"
+        rel="noreferrer"
+      >
+        View PR comment ↗
+      </a>
+    );
+  const eligible = finding.record
+    ? finding.record.state === "open"
+    : finding.resolution !== "resolved" &&
+      (finding.verdict === "undecided" || finding.verdict === "accepted");
+  return (
+    <>
+      <button
+        type="button"
+        className="btn"
+        disabled={!eligible || state !== "ready"}
+        title="Ask the agent to post this finding as an inline PR comment"
+        onClick={() => {
+          setState("sending");
+          setError(null);
+          void review.post(finding).then(
+            () => setState("sent"),
+            (why: unknown) => {
+              setState("ready");
+              setError(why instanceof Error ? why.message : String(why));
+            },
+          );
+        }}
+      >
+        {state === "sent"
+          ? "Asked agent to post"
+          : state === "sending"
+            ? "Sending…"
+            : "Post to PR"}
+      </button>
+      {error && <span role="alert">Could not ask the agent: {error}</span>}
+    </>
+  );
+}
+
+function PostAcceptedButton({accepted,status,review}: {accepted:Finding[];status:ReviewStatus;review:Review}) {
+  const [state,setState]=useState<"ready"|"sending"|"sent">("ready");
+  const [error,setError]=useState<string|null>(null);
+  const pending=accepted.filter(f=>!f.links.prComment && !f.reportedAt && (!f.record || f.record.state==="open"));
+  if ((!status.pr?.number && !status.pr?.url) || pending.length===0) return null;
+  return <>
+    <button type="button" className="btn" disabled={state!=="ready"}
+      title="Ask the agent to post the accepted findings as inline PR comments"
+      onClick={()=>{
+        setState("sending");setError(null);
+        void review.postAccepted(pending).then(()=>setState("sent"),(why:unknown)=>{
+          setState("ready");setError(why instanceof Error?why.message:String(why));
+        });
+      }}>
+      {state==="sent"?"Asked agent to post":state==="sending"?"Sending…":`Post ${pending.length} accepted`}
+    </button>
+    {error && <span role="alert">Could not ask the agent: {error}</span>}
+  </>;
 }
 
 /**
@@ -465,15 +635,15 @@ export function Card({ host }: { host: Host }) {
   const wantsNote = useRef(false);
 
   const findings = status?.findings ?? [];
-  const here =
-    findings.find((each) => each.id === cursor) ?? findings[0] ?? null;
+  const issues: Issue[] = findings;
+  const here = issues.find((each) => each.id === cursor) ?? issues[0] ?? null;
   const shown =
-    open === null ? null : (findings.find((each) => each.id === open) ?? null);
+    open === null ? null : (issues.find((each) => each.id === open) ?? null);
 
   // Which findings a reader who was already looking has not seen arrive.
   // The first draw is not news: a card opened halfway through a run would
   // otherwise announce everything found so far at once.
-  const ids = findings.map((each) => each.id).join(" ");
+  const ids = issues.map((each) => each.id).join(" ");
   const [seen, setSeen] = useState<ReadonlySet<string> | null>(null);
   const first = useRef(true);
   const loaded = status !== null;
@@ -534,8 +704,9 @@ export function Card({ host }: { host: Host }) {
         return;
       }
       if (!here) return;
+      if (status?.readOnly && (key === "ArrowRight" || key === "ArrowLeft" || STOP_KEYS[key] !== undefined || key === "n")) return;
       const step = (by: number) => {
-        const next = findings[findings.indexOf(here) + by];
+        const next = issues[issues.indexOf(here) + by];
         if (!next) return;
         setCursor(next.id);
         if (open !== null) setOpen(next.id);
@@ -580,7 +751,8 @@ export function Card({ host }: { host: Host }) {
   const accepted = findings.filter((each) => stopOf(each) === 3);
   return (
     <div ref={card} className="card">
-      <Header status={status} review={review} />
+      <Header status={status} review={review} host={host} />
+      {status.readOnly && <div className="aside">Read-only · Decisions and notes are managed in the coding session.</div>}
       {status.levels.length > 0 && (
         <div className="levels">
           {status.levels.map((level) => (
@@ -595,20 +767,6 @@ export function Card({ host }: { host: Host }) {
         </div>
       )}
       <Now status={status} />
-      {(status.candidates ?? []).length > 0 && (
-        <section className="queue" aria-label="Unverified findings" aria-live="polite">
-          <p className="incoming-heading">Incoming findings · awaiting verification</p>
-          {status.candidates!.map(candidate => (
-            <details className="incoming" key={candidate.id}>
-              <summary className="row incoming-row"><Priority of={candidate.priority} /><span className="incoming-id">{candidate.id}</span><span className="incoming-title">{candidate.title}</span><span className="incoming-badge">Unverified</span><span className="incoming-file">{candidate.anchor.file}:{candidate.anchor.line}</span></summary>
-              <div className="aside">
-                <p className="font-mono">{candidate.anchor.file}:{candidate.anchor.line}</p>
-                <Markdown body={candidate.body} />
-              </div>
-            </details>
-          ))}
-        </section>
-      )}
       {review.refreshPaused && !review.stranded && (
         <div className="aside" role="status">
           Live updates paused because the host did not answer. Resolve any
@@ -619,13 +777,15 @@ export function Card({ host }: { host: Host }) {
         </div>
       )}
       {review.stranded && (
-        <p className="aside">
-          This host does not let the card update, so it shows the review as it
-          was when it was drawn.{" "}
+        <div className="aside">
+          Live updates stopped. The card shows its last saved snapshot.
+          {review.refreshError && <span> Refresh request failed: {review.refreshError}. </span>}
+          <button type="button" className="link" onClick={review.resumeRefresh}>Retry live updates</button>{" "}
+          {host.connectionDetails && <details><summary>Connection details</summary><pre>{JSON.stringify(host.connectionDetails(), null, 2)}</pre></details>}
           <button type="button" className="link" onClick={review.redraw}>
             Draw it again
           </button>
-        </p>
+        </div>
       )}
       {review.link !== null && (
         <p className="aside">
@@ -652,20 +812,21 @@ export function Card({ host }: { host: Host }) {
           }}
         />
       ) : (
-        findings.length > 0 && (
+        issues.length > 0 && (
           <>
             <div className="queue">
-              {findings.map((each) => (
-                <Row
-                  key={each.id}
-                  finding={each}
-                  at={each.id === here?.id}
-                  fresh={fresh(each.id)}
-                  onOpen={() => {
-                    setCursor(each.id);
-                    setOpen(each.id);
-                  }}
-                />
+              {issues.map((each) => (
+                <Fragment key={each.id}>
+                  <Row
+                    finding={each}
+                    at={each.id === here?.id}
+                    fresh={fresh(each.id)}
+                    onOpen={() => {
+                      setCursor(each.id);
+                      setOpen(each.id);
+                    }}
+                  />
+                </Fragment>
               ))}
             </div>
             <footer className="foot">
@@ -673,17 +834,24 @@ export function Card({ host }: { host: Host }) {
                 <span>
                   <Key>↑</Key> <Key>↓</Key> move
                 </span>
-                <span>
-                  <Key>←</Key> <Key>→</Key> rate
-                </span>
+                {here && !status.readOnly && (
+                  <span>
+                    <Key>←</Key> <Key>→</Key> rate
+                  </span>
+                )}
                 <span>
                   <Key>↵</Key> read
                 </span>
-                <span>
-                  <Key>N</Key> note
-                </span>
+                {here && !status.readOnly && (
+                  <span>
+                    <Key>N</Key> note
+                  </span>
+                )}
               </span>
-              <FixButton accepted={accepted} review={review} />
+              {!status.readOnly && <>
+          <PostAcceptedButton key={accepted.map(f=>f.id).join(",")} accepted={accepted} status={status} review={review} />
+          <FixButton accepted={accepted} review={review} />
+        </>}
             </footer>
           </>
         )

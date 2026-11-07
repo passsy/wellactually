@@ -166,18 +166,6 @@ export function Documents({
     >
       <h2 className="flex flex-none items-center gap-2 px-[0.8rem] py-1 text-[0.68rem] font-semibold tracking-wider text-muted uppercase">
         <span>Documents{root.count > 0 ? ` ${String(root.count)}` : ""}</span>
-        {where && (
-          <a
-            id="report-link"
-            href={`/review.html?repo=${encodeURIComponent(where.repo)}&target=${encodeURIComponent(where.target)}`}
-            target="_blank"
-            rel="noopener"
-            title="The generated report: one self-contained file, safe to send to someone who has none of this installed"
-            className="ml-auto rounded border border-line px-1.5 py-0.5 text-[0.65rem] normal-case transition-colors hover:border-hitline hover:text-hitline"
-          >
-            Report ↗
-          </a>
-        )}
       </h2>
       <ScrollArea className="min-h-0 flex-1">
         <ul>

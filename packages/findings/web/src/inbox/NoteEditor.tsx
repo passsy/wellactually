@@ -1,8 +1,7 @@
 /**
- * The reader's own note, and the verdict.
+ * The reader's own note, next to the finding.
  *
- * Outside the scrolling article, like the buttons it replaces: a verdict that
- * has to be scrolled to is a verdict given late.
+ * Inline below the description, before the source occurrences.
  *
  * The note is saved while it is being written rather than submitted, so this
  * is the most frequently hit route on the server. Three things write to the
@@ -17,26 +16,31 @@
  * which it can happen.
  */
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useId,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { Textarea } from "@/components/ui/textarea";
-import { FindingTrack } from "./Detail.tsx";
 import type { Finding } from "../shared/domain.ts";
 
 /** Typing stops for this long and the note is on disk. */
 const SETTLE = 600;
 
-export function NoteFooter({
+export function NoteEditor({
   boxRef,
   finding,
-  onMove,
   onSave,
 }: {
   /** Handed up so the keyboard's "write a note" can land in the box. */
   boxRef?: RefObject<HTMLTextAreaElement | null>;
   finding: Finding;
-  onMove: (to: string) => void;
   onSave: (id: string, note: string) => Promise<unknown>;
 }) {
+  const fieldId = useId();
   const [text, setText] = useState(finding.note ?? "");
   const [state, setState] = useState("");
   const editing = useRef(false);
@@ -52,6 +56,26 @@ export function NoteFooter({
    * how the box knows to defend itself.
    */
   const box = useRef<HTMLTextAreaElement | null>(null);
+
+  const fit = (element: HTMLTextAreaElement) => {
+    element.style.height = "0px";
+    element.style.height = `${Math.max(32, element.scrollHeight + 2)}px`;
+  };
+  useLayoutEffect(() => {
+    if (box.current) fit(box.current);
+  }, [text]);
+  useEffect(() => {
+    const element = box.current;
+    if (!element) return;
+    let width = element.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (element.clientWidth === width) return;
+      width = element.clientWidth;
+      fit(element);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   // Moving to another finding takes whatever is pending with it, and puts the
   // new finding's note in the box. Coming back to the same finding while it is
@@ -105,28 +129,31 @@ export function NoteFooter({
   }
 
   return (
-    <footer data-keeps-panel className="border-t border-line p-3">
+    <section aria-label="Your note" data-keeps-panel className="relative">
+      <label htmlFor={fieldId} className="sr-only">
+        Your note
+      </label>
       <Textarea
+        id={fieldId}
         ref={(node) => {
           box.current = node;
           if (boxRef) boxRef.current = node;
         }}
-        rows={3}
+        rows={1}
         value={text}
         onChange={(event) => {
           typed(event.target.value);
         }}
-        placeholder="Your note on this finding. Saved as you type, and read by whoever fixes it."
-        className="resize-none border-line bg-card"
+        placeholder="Add a note…"
+        className="min-h-8 resize-none overflow-hidden rounded-2xl border-line bg-card px-3 py-1 text-sm leading-5"
       />
-      <div className="mt-2 flex items-center gap-3">
-        <span key={state} className="animate-in fade-in text-xs text-muted">
-          {state}
-        </span>
-        <span className="ml-auto">
-          <FindingTrack finding={finding} onMove={onMove} />
-        </span>
-      </div>
-    </footer>
+      {state && (
+        <div className="mt-1 flex items-center gap-3">
+          <span key={state} className="animate-in fade-in text-xs text-muted">
+            {state}
+          </span>
+        </div>
+      )}
+    </section>
   );
 }

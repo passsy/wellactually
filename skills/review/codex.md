@@ -10,16 +10,21 @@ node "<skill>/scripts/review.mjs" --run-reviewer <dir> --job <job-id> --model <c
 node "<skill>/scripts/review.mjs" --run-verifier <dir> --job verification-worker-<n> --model <coordinator-model> --effort <coordinator-effort> --proof-sandbox <host-policy>
 ```
 
+These launchers start a nested `codex exec`, which cannot write its own state inside Codex's workspace sandbox and dies before its first event.
+Unless your shell already runs with full access, run every launcher command with escalated permissions from the first attempt (`sandbox_permissions: "require_escalated"`, justified as starting the restricted review workers).
+The workers keep their own read-only or proof sandbox either way.
+When a launcher reports that the worker CLI could not start inside the host sandbox, rerun the same command with escalation instead of counting it as a crashed worker.
+
 Prefer --run-reviewers <dir> and --run-verifiers <dir> with the same model/effort and proof-sandbox arguments to launch the whole pool and recover ordinary worker crashes automatically. They preserve failed audits, reuse the dead worker identity, and permit at most two replacements. A known safeguard rejection is not replayed, even if the pool command is repeated. Check incomplete/blocked queue items rather than relying on a successful worker process alone.
 
 Pass the actual host policy explicitly. On an unrestricted/full-access host use --proof-sandbox danger-full-access for proof workers, including normal installed SDK cache writes and localhost test-runner sockets. On a workspace-write host use workspace-write. Never relax a stricter host policy, or reviewer restrictions. Avoid copying an entire SDK just to work around an unnecessarily stricter child sandbox; report the limit when policy prevents the required access.
 
-The runtime removes shell tools, ignores user/project tool configuration and plugins, disables web search and child agents, and applies a read-only sandbox to built-in tools. Its MCP gateway supplies only bounded text reads/search, base-revision reads, assigned principles, immediate candidate creation, and the assigned coverage write. It writes `agents/reviewer-<id>/tool-audit.jsonl` as session evidence. Never replace a failed restricted launch with an unrestricted reviewer. Report unsupported host enforcement as blocked.
+The runtime removes shell tools, ignores user/project tool configuration and plugins, disables web search and child agents, and applies a read-only sandbox to built-in tools. Its MCP gateway supplies only bounded text reads/search, base-revision reads, assigned principles, immediate finding creation and occurrence CRUD, and the assigned coverage write. It writes `agents/reviewer-<id>/tool-audit.jsonl` as session evidence. Never replace a failed restricted launch with an unrestricted reviewer. Report unsupported host enforcement as blocked.
 
 When you have no such tool, follow `pi.md` instead.
 
 The commands use `<skill>` for the directory containing this skill's `SKILL.md`; its helper is `scripts/review.mjs`.
 
-Reviewers need restricted read/search tools, read-only Git and MCP queue/candidate tools. Disable project/test/build/probe execution for reviewers using host permissions or tool allowlists. If enforcement is unavailable, report it before dispatch. Verification queue workers get local execution and disposable probe/test permissions; the aggregator only groups candidates.
+Reviewers need restricted read/search tools, read-only Git and MCP queue/finding tools. Disable project/test/build/probe execution for reviewers using host permissions or tool allowlists. If enforcement is unavailable, report it before dispatch. Verification queue workers get local execution and disposable probe/test permissions; the aggregator only groups findings.
 Preserve host sandbox and approval controls; missing tools must be reported as limitations.
-Review workers create candidates; proof workers submit decisions through complete_review_work. Their proof gateway exposes only the claimed issue's candidates and advice. The verification launcher enables shell tools in a workspace-write sandbox for focused proofs, and keeps plugins, web search and child agents disabled. Preserve any stricter host policy; report blocked checks. The coordinator checks authoritative queue completeness and never relays finding records through files.
+Review workers create findings; proof workers submit decisions through complete_review_work. Their proof gateway exposes only the claimed issue's findings and advice. The verification launcher enables shell tools in a workspace-write sandbox for focused proofs, and keeps plugins, web search and child agents disabled. Preserve any stricter host policy; report blocked checks. The coordinator checks authoritative queue completeness and never relays finding records through files.

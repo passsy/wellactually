@@ -3,3 +3,10 @@ node_modules
 .DS_Store
 evaluator/output
 packages/findings/web/dist
+.artifacts/
+# Build outputs stay available for the legacy Git installer until the catalog
+# switches to npm. Already tracked payloads are removed only at that gate.
+/dist/
+/opencode/dist/
+/opencode/skills/
+/skills/review/scripts/*.mjs

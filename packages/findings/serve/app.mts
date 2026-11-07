@@ -17,7 +17,7 @@ export function appToolMeta(tool: Tool): Record<string, unknown> | undefined {
 }
 
 export function registerReviewCard(server: McpServer): void {
-  server.registerResource("Review card", REVIEW_CARD, { mimeType: CARD_MIME, description: "Live review candidates, verification and findings." }, async () => ({
+  server.registerResource("Review card", REVIEW_CARD, { mimeType: CARD_MIME, description: "Live review findings and occurrence code." }, async () => ({
     contents: [{ uri: REVIEW_CARD, mimeType: CARD_MIME, text: cardHtml(), _meta: { ui: { prefersBorder: false }, "openai/widgetShowCodexWidgetInline": true } }],
   }));
 }

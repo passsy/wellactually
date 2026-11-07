@@ -67,7 +67,7 @@ The word `rate_principle` is in every block of advice and in the agent's list of
 
 - Setup: in `~/.codex/config.toml` (or under `$CODEX_HOME`), a table `[plugins."wellactually@..."]`, which `enabled = false` switches off.
   Codex runs a plugin's hook only once the user trusted it in `/hooks`, and says nothing while it is not.
-  A trusted hook has a table `[hooks.state."wellactually@...:hooks/hooks.json:<event>:0:0"]` with a `trusted_hash`.
+  A stored trust entry alone does not prove a hook can run: Codex also fingerprints the entire installed plugin directory, including scripts, skills, UI assets and documentation. A separate hook executable inside that same plugin does not isolate trust from other plugin changes. Inspect `/hooks` or the read-only app-server `hooks/list` response for the session directory (params `cwds: ["<directory>"]`); require `enabled: true` and `trustStatus: "trusted"`. `modified` or `untrusted` hooks are skipped even when config.toml contains trusted_hash. Never rewrite hashes to self-approve a changed hook; the user reviews it in `/hooks`. A trusted hook has a table `[hooks.state."wellactually@...:hooks/hooks.json:<event>:0:0"]` with a `trusted_hash`.
   The plugin registers `session_start`, `user_prompt_submit`, `pre_tool_use`, `post_tool_use`, `post_compact` and `session_end`, so check each of them.
   Codex asks again after an update changed a hook.
   The installed versions are folders in `~/.codex/plugins/cache/<marketplace>/wellactually/`.

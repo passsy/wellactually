@@ -8,7 +8,8 @@ import { claimReviewSession, getReviewSession } from "../../findings/queues.mts"
 
 describe("reviewer capability boundary", () => {
   test.each(["codex", "claude"] as const)("%s pool recovers crashes and never replays safeguard blocks", async (provider) => {
-   for (const blocked of [false, true]) {
+   for (const rejection of [null, "This content was flagged for possible cybersecurity risk", "Permission for this action was denied by the Claude Code auto mode classifier. Reason: [Create Unsafe Agents]", "The tool use was rejected. STOP and wait for the user."]) {
+    const blocked = rejection !== null;
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wa-pool-test-")), source = path.join(dir, "project"), bin = path.join(dir, "bin");
     fs.mkdirSync(source); fs.mkdirSync(bin);
     const session = claimReviewSession({ repo: source, target: "test", run: "r", sets: [{ id: "all", principles: [] }] }, source);
@@ -18,7 +19,7 @@ describe("reviewer capability boundary", () => {
     fs.mkdirSync(path.join(dir, "agents/reviewer-one"), { recursive: true });
     fs.writeFileSync(path.join(dir, "agents/reviewer-one/INSTRUCTIONS.md"), "Test worker");
     const module = fileURLToPath(new URL("../../findings/queues.mts", import.meta.url));
-    const stub = `#!${process.execPath}\nimport fs from 'node:fs';import {claimReviewWork,completeReviewWork} from ${JSON.stringify(module)};let args=JSON.parse(fs.readFileSync('tracking.json'));args={...args,queue:'all',worker:'one'};const attempt=fs.existsSync('attempt')?Number(fs.readFileSync('attempt','utf8'))+1:1;fs.writeFileSync('attempt',String(attempt));let next=claimReviewWork(args,args.repo);if(attempt===1){console.log(JSON.stringify({type:'error',message:${JSON.stringify(blocked ? "This content was flagged for possible cybersecurity risk" : "Temporary provider connection lost")}}));process.exit(1);}while(next.state==='claimed'){completeReviewWork({...args,item:next.work.id,claim:next.work.claim.token,result:{findings:[],investigation:{status:'complete',reason:'Source traced',questions:[{question:'Contract?',answer:'Satisfied',evidence:['file:1']}],limits:[]}}},args.repo);next=claimReviewWork(args,args.repo);}console.log(JSON.stringify({type:'item.completed',item:{type:'mcp_tool_call',tool:'claim_review_work',status:'completed',result:{content:[{type:'text',text:JSON.stringify(next)}]}}}));\n`;
+    const stub = `#!${process.execPath}\nimport fs from 'node:fs';import {claimReviewWork,completeReviewWork} from ${JSON.stringify(module)};let args=JSON.parse(fs.readFileSync('tracking.json'));args={...args,queue:'all',worker:'one'};const attempt=fs.existsSync('attempt')?Number(fs.readFileSync('attempt','utf8'))+1:1;fs.writeFileSync('attempt',String(attempt));let next=claimReviewWork(args,args.repo);if(attempt===1){console.log(JSON.stringify({type:'error',message:${JSON.stringify(rejection ?? "Temporary provider connection lost")}}));process.exit(1);}while(next.state==='claimed'){completeReviewWork({...args,item:next.work.id,claim:next.work.claim.token,result:{findings:[],investigation:{status:'complete',reason:'Source traced',questions:[{question:'Contract?',answer:'Satisfied',evidence:['file:1']}],limits:[]}}},args.repo);next=claimReviewWork(args,args.repo);}console.log(JSON.stringify({type:'item.completed',item:{type:'mcp_tool_call',tool:'claim_review_work',status:'completed',result:{content:[{type:'text',text:JSON.stringify(next)}]}}}));\n`;
     const claudeTail = `console.log(JSON.stringify({type:'assistant',message:{content:[{type:'tool_use',id:'claim',name:'mcp__review__claim_review_work',input:{}}]}}));console.log(JSON.stringify({type:'user',message:{content:[{type:'tool_result',tool_use_id:'claim',content:JSON.stringify(next)}]}}));console.log(JSON.stringify({type:'result',is_error:false,usage:{output_tokens:10}}));`;
     const executable = provider === "claude" ? stub.slice(0, stub.indexOf("console.log(JSON.stringify({type:'item.completed'")) + claudeTail : stub;
     fs.writeFileSync(path.join(bin, provider), executable, { mode: 0o755 });
@@ -32,13 +33,34 @@ describe("reviewer capability boundary", () => {
     } finally { process.env.PATH = previous; }
    }
   }, 20000);
-  test("Claude exposes no built-in reviewer tools and refuses a broader proof policy", () => {
+  test("a CLI that the host sandbox keeps from starting is not replaced", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wa-pool-sandbox-")), source = path.join(dir, "project"), bin = path.join(dir, "bin");
+    fs.mkdirSync(source); fs.mkdirSync(bin);
+    const session = claimReviewSession({ repo: source, target: "test", run: "r", sets: [{ id: "all", principles: [] }] }, source);
+    fs.writeFileSync(path.join(dir, "tracking.json"), JSON.stringify({ repo: source, target: "test", session: session.id }));
+    fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({ root: source }));
+    fs.writeFileSync(path.join(dir, "jobs.json"), JSON.stringify([{ id: "one", queue: "all", set: null, parts: [], principles: [] }]));
+    fs.mkdirSync(path.join(dir, "agents/reviewer-one"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "agents/reviewer-one/INSTRUCTIONS.md"), "Test worker");
+    // What a nested `codex exec` prints inside Codex's workspace sandbox.
+    fs.writeFileSync(path.join(bin, "codex"), `#!${process.execPath}\nimport fs from 'node:fs';fs.appendFileSync('attempt','x');console.error('Error: failed to initialize in-process app-server client: Operation not permitted (os error 1)');process.exit(1);\n`, { mode: 0o755 });
+    const previous = process.env.PATH; process.env.PATH = bin + path.delimiter + previous;
+    try {
+      expect(await runWorkerPool(dir, "/unused-script", "test", "medium")).toBe(1);
+      expect(fs.readFileSync(path.join(dir, "attempt"), "utf8")).toBe("x");
+      expect(getReviewSession({ repo: source, target: "test", session: session.id }, source).queues[0]!.items[0]!.blocked).toBeFalsy();
+    } finally { process.env.PATH = previous; }
+  });
+  test("Claude restricts reviewers and requires native agents for all proof policies", () => {
     const args = claudeWorkerArgs("script", "/review", "one", "opus", "medium", "prompt", false, "workspace-write");
     expect(args[args.indexOf("--tools") + 1]).toBe("");
     expect(args).toContain("--strict-mcp-config");
     expect(args[args.indexOf("--settings") + 1]).toContain('"disableAllHooks":true');
-    expect(() => claudeWorkerArgs("script", "/review", "one", "opus", "medium", "prompt", true, "workspace-write")).toThrow("full-access");
-    expect(claudeWorkerArgs("script", "/review", "one", "opus", "medium", "prompt", true, "danger-full-access")).toContain("Bash,Read,Grep,Glob");
+    for (const policy of ["workspace-write", "danger-full-access"])
+      expect(() => claudeWorkerArgs("script", "/review", "one", "opus", "medium", "prompt", true, policy)).toThrow("native Agent tool");
+  });
+  test("Claude CLI proof pools fail before reading assignments or launching workers", async () => {
+    await expect(runWorkerPool("/missing-review", "/unused", "opus", "medium", true, "danger-full-access", "claude")).rejects.toThrow("native Agent tool");
   });
   test("permits source inspection and assigned coverage but rejects other locations and principles", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "reviewer-boundary-"));
@@ -62,7 +84,7 @@ describe("reviewer capability boundary", () => {
     expect(() => access.read(".well-actually/secret")).toThrow();
     expect(() => access.before("../../outside")).toThrow();
     expect(() => access.principle("skipped/rule")).toThrow("not claimed");
-    expect(() => access.candidates([{ rule: "skipped/rule" }])).toThrow("unassigned");
+    expect(() => access.recordTool("create_finding",{finding:{title:"Unassigned",rules:[{id:"skipped/rule"}]},idempotencyKey:"unassigned"})).toThrow("unassigned");
     expect(() => access.verdict({ job: "other" })).toThrow();
     fs.symlinkSync(path.join(source, "code.rs"), path.join(source, "escape"));
     expect(access.read("escape")).toContain("hello");

@@ -1,3 +1,4 @@
+import { ruleUrl } from "../shared/rule-url.ts";
 /**
  * The triage page.
  *
@@ -32,7 +33,7 @@ import { useVisible } from "./hooks/useVisible.ts";
 import { openedWith, useAddress } from "./hooks/useAddress.ts";
 import { Queue } from "./Queue.tsx";
 import { Detail } from "./Detail.tsx";
-import { NoteFooter } from "./NoteFooter.tsx";
+import { NoteEditor } from "./NoteEditor.tsx";
 import { Header, MergedBanner } from "./Header.tsx";
 import { Rail } from "./Rail.tsx";
 import { counted, flagged, isMerged, marked } from "./reviews.ts";
@@ -631,7 +632,7 @@ export function App() {
           setPanel({ kind: "file", at: { file: hit.value, line: 1 } });
           return;
         case "rule":
-          setPanel({ kind: "rule", id: hit.value });
+          window.open(ruleUrl(hit.value), "_blank", "noopener");
       }
     },
     [queue, pickFilter, pickTag],
@@ -872,13 +873,22 @@ export function App() {
               {here ? (
                 <>
                   <ScrollArea
-                    // Keyed by finding: the swap remounts the pane, which both
-                    // starts the entrance and puts the scroll back at the top
-                    // of the new finding rather than wherever the last one was.
-                    key={here.id}
+                    // Keep the editor mounted so pending autosaves survive selection changes.
                     className="animate-in fade-in-0 slide-in-from-bottom-1 min-h-0 flex-1 duration-200"
                   >
                     <Detail
+                      comment={
+                        <NoteEditor
+                          boxRef={note}
+                          finding={here}
+                          onSave={(id, text) =>
+                            where
+                              ? setNote(where, id, text).then(fresh)
+                              : Promise.reject(new Error("no review open"))
+                          }
+                        />
+                      }
+                      where={where ?? undefined}
                       finding={here}
                       onMove={(to) => {
                         move.mutate({ id: here.id, to });
@@ -886,25 +896,10 @@ export function App() {
                       onOpenFile={(at) => {
                         setPanel({ kind: "file", at });
                       }}
-                      onOpenRule={(id) => {
-                        setPanel({ kind: "rule", id });
-                      }}
                       onTag={pickTag}
                       tag={tag}
                     />
                   </ScrollArea>
-                  <NoteFooter
-                    boxRef={note}
-                    finding={here}
-                    onMove={(to) => {
-                      move.mutate({ id: here.id, to });
-                    }}
-                    onSave={(id, text) =>
-                      where
-                        ? setNote(where, id, text).then(fresh)
-                        : Promise.reject(new Error("no review open"))
-                    }
-                  />
                 </>
               ) : (
                 <p className="animate-in fade-in p-8 text-muted duration-300">
@@ -1003,7 +998,7 @@ export function App() {
                 setPanel(null);
               }}
               onRule={(id) => {
-                setPanel({ kind: "rule", id });
+                window.open(ruleUrl(id), "_blank", "noopener");
               }}
               onDoc={(path) => {
                 setPanel({ kind: "doc", path });

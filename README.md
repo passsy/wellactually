@@ -118,18 +118,31 @@ The code that does this is public: [`packages/core/src/detector/sandbox.ts`](pac
 
 - How often each principle fired: a day, a hash and a count.
 - A rating, when your agent gives one: the principle's hash and `up`, `down` or `not_applicable`.
+- Review selections, suggestions and completed fixes: the principle and pinned
+  revision, event time, an opaque deduplication ID, and priority for suggestions
+  and fixes. Reviews do not send helpfulness ratings.
 
 No path, file content, prompt, command or finding is sent.
 The daily look for a newer release of the plugin is a plain download from GitHub and sends nothing.
-Ask your agent to switch reporting off, and it turns both off.
+Ask your agent to switch reporting off, and it turns these reports off.
 
 ## Review a change
 
 The `review` skill checks changes, files, folders and projects against your advisory board, including principles without detectors. Git is optional.
-Reviewers and an independent tester work in parallel. A separate agent verifies their findings before the report, which includes coverage, test evidence and limitations.
+Read-only reviewers work through queues of applicable principles. An aggregator
+merges duplicate findings into one finding with multiple occurrences. Proof
+workers then investigate the findings in isolated worktrees. The report states
+coverage, executable proof and limitations; a finding need not have a test to
+be useful.
 
 Run `/wellactually:review` in Claude Code or `$wellactually:review` in Codex with a synced advisory board.
 Reviews use subagents where supported.
+The findings inbox keeps your accept, reject, note and fixed decisions locally.
+Posting accepted findings to the PR is a separate explicit action.
+
+The forthcoming npm distribution is built and tested from the same sources for
+all four hosts. The current Git installation commands above remain active until
+the registry rollout is complete; see [the release sequence](docs/releasing-review.md).
 
 ## Write a principle
 

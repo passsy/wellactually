@@ -181,7 +181,7 @@ function One({ block }: { block: Block }) {
       const source = (
         <pre className="my-2 overflow-x-auto rounded-md bg-fg/6 p-3">
           <code
-            className={`font-mono text-[.85em] ${block.language ? `lang-${block.language}` : ""}`}
+            className={`block w-max min-w-full font-mono text-[.85em] ${block.language ? `lang-${block.language}` : ""}`}
           >
             {tokenLines(block.code, block.language || null).map(
               (toks, index) => (

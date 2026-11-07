@@ -69,7 +69,7 @@ export function checkVerdict(from: Verdict, to: Verdict, actor: Actor): void {
   }
   if (actor !== "human") {
     throw new TransitionError(
-      `only "human" decides a verdict, because accepting or failing a finding is Pascal's call and nobody else's. You passed actor "${actor}".`,
+      `only "human" decides a verdict, because accepting or failing a finding is the user's call and nobody else's. You passed actor "${actor}".`,
     );
   }
 }

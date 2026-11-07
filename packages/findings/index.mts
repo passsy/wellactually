@@ -1,20 +1,18 @@
 /**
  * The findings server, from the outside.
  *
- * Files on disk are the source of truth; review.html and findings.sarif are
- * generated views of them. Everything that writes a finding goes through
- * api.mts, whether it arrived as an MCP tool call or an HTTP request.
+ * Files on disk are the source of truth. Canonical finding/occurrence CRUD
+ * lives in crud.mts; api.mts adapts existing UI controls and saved review sessions.
  *
  * This file is the module's only address. Both plugins load it by path, so
  * everything beside it can be moved without telling anybody:
  *
  *   model/   what a finding is — the vocabulary, and the rules of the thing.
  *            Pure, and the part the browser imports as it stands.
- *   store/   where it lives — one file per finding, and the paths, the
+ *   store/   where it lives — separate finding and occurrence files, and the
  *            registry and the read receipts around them.
  *   serve/   the doors, and what they hand out: MCP, HTTP, the port they
  *            argue over, and the built page.
- *   views/   the generated report and SARIF.
  *   web/     the pages themselves, which are compiled rather than written.
  *
  *   api.mts  the one core. Both doors call this and add no rules of their
@@ -26,27 +24,18 @@ export { claimReviewSession, getReviewSession, claimReviewWork, completeReviewWo
 export {
   addLocation,
   baselineCheck,
-  createCandidates,
   createFinding,
-  createObservation,
   documentPath,
-  dropObservation,
-  exportDismissals,
   getFinding,
   listDocuments,
   readDocument,
   linkFixCommit,
   linkPrComment,
   listFindings,
-  listCandidates,
-  listObservations,
   listRepos,
   listReviews,
   markFindingsSeen,
   readSource,
-  regenerateViews,
-  reportFinding,
-  resolveCandidates,
   reviewStatus,
   setNote,
   setReported,
@@ -74,7 +63,6 @@ export {
   nextResolutions,
   TransitionError,
 } from "./model/transitions.mts";
-export { upgrade } from "./store/legacy.mts";
 export { fingerprintOf, normalize, snippetAt } from "./model/fingerprint.mts";
 export { InputError } from "./validate.mts";
 export { readRegistry, upsertRegistry } from "./store/registry.mts";
@@ -96,8 +84,6 @@ export { createMcpServer, serveStdio } from "./serve/mcp.mts";
 export { startUi } from "./serve/http.mts";
 export type { Ui } from "./serve/http.mts";
 export { main } from "./serve/server.mts";
-export { toHtml } from "./views/html.mts";
-export { toSarif, FINGERPRINT_KEY } from "./views/sarif.mts";
 
 export {
   captureAt,
@@ -116,8 +102,6 @@ export type {
   Authorship,
   Evidence,
   Finding,
-  Observation,
-  ObservationStatus,
   Priority,
   RelatedLocation,
   Resolution,
@@ -131,8 +115,11 @@ export {
   AUTHORSHIP,
   AUTHORSHIP_SAYS,
   EVIDENCE,
-  OBSERVATION_STATUS,
   PRIORITY,
   RESOLUTION,
   VERDICT,
 } from "./model/types.mts";
+
+// Canonical CRUD API. Presentation operations above drive the UI controls.
+export { createFindingRecord, getFindingRecord, listFindingRecords, updateFindingRecord, deleteFindingRecord, createOccurrence, getOccurrence, listOccurrences, updateOccurrence, deleteOccurrence } from "./crud.mts";
+export type { FindingRecord, FindingVerdict, OccurrenceRecord, OccurrenceLocation, EvidenceEntry, Assessment, RecordLink, RuleLink, Closure } from "./model/records.mts";

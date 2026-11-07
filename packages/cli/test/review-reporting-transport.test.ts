@@ -43,15 +43,14 @@ test("packaged MCP aggregation delivers the pinned issue once and exposes acknow
       PATH: process.env.PATH!, WELLACTUALLY_HOME: home, WELLACTUALLY_FINDINGS_HOME: path.join(root, "index"), WELLACTUALLY_TOKEN: "", WELLACTUALLY_REVIEW_PORT: String(uiPort),
     } }));
     const session = await call("claim_review_session", { run: "transport", sets: [{ id: "all", principles: [{ id: "expert/docs", version: 2 }] }] });
-    const created = await call("create_candidates", { run: "transport", candidates: [{ source: "docs", unit: "all", title: "Documentation absent", body: "No documentation.\n\nAdd it.", evidence: "Reasoned", priority: "p2", rule: "expert/docs", anchor: { file: "a.ts", line: 1 } }] });
-    expect(created.errors).toEqual([]);
+    const finding = await call("create_finding", { finding: { title: "Documentation absent", rules: [{ id: "expert/docs" }], origins: [{ run: "transport", source: "review", unit: "all" }] } });
     for (let i = 0; i < 2; i++) {
       const work = await call("claim_review_work", { session: session.id, queue: "all", worker: "reviewer" });
       await call("complete_review_work", { session: session.id, queue: "all", worker: "reviewer", item: work.work.id, claim: work.work.claim.token, result: {
-        ...(work.work.kind === "principle" ? { verdict: "followed", where: "a.ts:1" } : {}), findings: [], investigation: { status: "complete", reason: "Read source", questions: [{ question: "Documented?", answer: "No", evidence: ["a.ts:1"] }], limits: [] },
+        ...(work.work.kind === "principle" ? { verdict: "findings", where: "a.ts:1" } : {}), findings: [finding.id], investigation: { status: "complete", reason: "Read source", questions: [{ question: "Documented?", answer: "No", evidence: ["a.ts:1"] }], limits: [] },
       } });
     }
-    const grouped = await call("begin_verification", { session: session.id, groups: [{ candidates: ["C1"], reason: "One issue" }] });
+    const grouped = await call("begin_verification", { session: session.id, groups: [{ findings: [finding.id], reason: "One issue" }] });
     expect(grouped.suggestions.count).toBe(1);
     await call("report_review_suggestions");
     await expect.poll(async () => (await call("get_review_session", { session: session.id })).suggestions.sentAt, { timeout: 3000 }).toBeTruthy();

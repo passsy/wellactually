@@ -8,12 +8,7 @@
  */
 
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { locked } from "./lock.mts";
-import {
-  GLOBAL_ROOT,
-  LEGACY_REGISTRY_FILE,
-  REGISTRY_FILE,
-} from "./paths.mts";
+import { GLOBAL_ROOT, REGISTRY_FILE } from "./paths.mts";
 
 export interface RegistryRepo {
   path: string;
@@ -27,13 +22,11 @@ export interface Registry {
 }
 
 export function readRegistry(): Registry {
-  for (const file of [REGISTRY_FILE, LEGACY_REGISTRY_FILE]) {
-    try {
-      const parsed = JSON.parse(readFileSync(file, "utf8")) as Registry;
-      if (Array.isArray(parsed.repos)) return parsed;
-    } catch {
-      // The new registry wins when present; otherwise seed it from the legacy one.
-    }
+  try {
+    const parsed = JSON.parse(readFileSync(REGISTRY_FILE, "utf8")) as Registry;
+    if (Array.isArray(parsed.repos)) return parsed;
+  } catch {
+    /* A missing registry starts empty. */
   }
   return { repos: [] };
 }
@@ -41,14 +34,15 @@ export function readRegistry(): Registry {
 /**
  * Records that `repo` has `target`.
  *
- * Serialize read/merge/write so a one-off review selection remains discoverable.
+ * Read, merge, write, every time. Two servers racing here lose at worst one
+ * repo entry, which the next mutation puts back, and that is a better trade
+ * than a lock file nobody cleans up.
  */
 export function upsertRegistry(
   repo: string,
   target: string,
   now: string,
 ): Registry {
-  return locked(GLOBAL_ROOT, () => {
   const registry = readRegistry();
   const existing = registry.repos.find((entry) => entry.path === repo);
   if (existing) {
@@ -61,7 +55,6 @@ export function upsertRegistry(
   registry.repos.sort((a, b) => a.path.localeCompare(b.path));
   write(registry);
   return registry;
-  });
 }
 
 function write(registry: Registry): void {

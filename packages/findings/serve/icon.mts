@@ -11,7 +11,19 @@
  * sixteen pixels wide in a dock.
  */
 
-import { crc32, deflateSync } from "node:zlib";
+import { deflateSync } from "node:zlib";
+
+// zlib.crc32 arrived after Node 20, which the installed plugin supports.
+const CRC_TABLE = Array.from({ length: 256 }, (_, byte) => {
+  let value = byte;
+  for (let bit = 0; bit < 8; bit++) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  return value >>> 0;
+});
+function crc32(bytes: Buffer): number {
+  let value = 0xffffffff;
+  for (const byte of bytes) value = (value >>> 8) ^ CRC_TABLE[(value ^ byte) & 0xff]!;
+  return (value ^ 0xffffffff) >>> 0;
+}
 
 /** The page's dark background and its accent, so the icon is the app. */
 const INK = [27, 27, 26];

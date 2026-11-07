@@ -11,4 +11,7 @@ The things you do yourself, as skills of the plugin.
 - `review` reviews a change, a branch or a pull request against every principle on your advisory board.
   The detectors run on the changed lines, every principle gets a verdict, and each finding names the principle it breaks.
 
+- `apply-review-fixes` fixes accepted or selected findings, verifies the changes, records work links and explicitly closes completed findings before reporting them done.
+- `post-findings` posts selected findings as inline PR comments, checks for duplicates and records the comment links. The review card can ask the agent to post one finding.
+
 Claude Code offers them as `/wellactually:login`, `/wellactually:sync`, `/wellactually:disable`, `/wellactually:enable`, `/wellactually:audit` and `/wellactually:review`, Codex as `$wellactually:login` and so on.

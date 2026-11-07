@@ -8,24 +8,16 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve, sep } from "node:path";
 
 /** Findings owned by Well Actually live here inside every reviewed repository. */
 export const REVIEW_DIR = ".well-actually";
-export const LEGACY_REVIEW_DIR = ".pascal-review";
 
 export const GLOBAL_ROOT =
   process.env.WELLACTUALLY_FINDINGS_HOME ?? join(homedir(), REVIEW_DIR);
 
 export const REGISTRY_FILE = join(GLOBAL_ROOT, "registry.json");
-export const LEGACY_REGISTRY_FILE = join(
-  homedir(),
-  LEGACY_REVIEW_DIR,
-  "registry.json",
-);
-
 /**
  * A target name that cannot escape the review directory.
  *
@@ -88,35 +80,20 @@ export interface TargetPaths {
   target: string;
   dir: string;
   findings: string;
-  candidates: string;
-  observations: string;
+  occurrences: string;
   meta: string;
-  html: string;
-  sarif: string;
 }
 
 export function targetPaths(repo: string, target: string): TargetPaths {
   const slug = slugTarget(target);
   const dir = join(repo, REVIEW_DIR, slug);
-  const legacy = join(repo, LEGACY_REVIEW_DIR, slug);
-  if (!existsSync(dir) && existsSync(legacy)) {
-    try {
-      cpSync(legacy, dir, { recursive: true, preserveTimestamps: true });
-    } catch (error) {
-      // Another MCP process may have completed the same migration first.
-      if (!existsSync(dir)) throw error;
-    }
-  }
   return {
     repo,
     target: slug,
     dir,
     findings: join(dir, "findings"),
-    candidates: join(dir, "candidates"),
-    observations: join(dir, "observations"),
+    occurrences: join(dir, "occurrences"),
     meta: join(dir, "target.json"),
-    html: join(dir, "review.html"),
-    sarif: join(dir, "findings.sarif"),
   };
 }
 

@@ -14,7 +14,7 @@ export function syncSkills(root) {
     }
     const copy = path.join(destination, `wellactually-${name}`);
     fs.mkdirSync(copy, { recursive: true });
-    fs.writeFileSync(path.join(copy, "SKILL.md"), fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1\nmetadata:\n  opencode/slash: \"true\""));
+    fs.writeFileSync(path.join(copy, "SKILL.md"), fs.readFileSync(source, "utf8").replaceAll("../review/finding-writing.md", "../wellactually-review/finding-writing.md").replace(/^name: (.+)$/m, "name: wellactually-$1\nmetadata:\n  opencode/slash: \"true\""));
     if (fs.existsSync(path.join(skills, name, "scripts"))) {
       // Installed helpers run the generated bundles; authored sources stay in the source tree.
       fs.cpSync(path.join(skills, name, "scripts"), path.join(copy, "scripts"), {

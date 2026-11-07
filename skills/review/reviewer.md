@@ -1,11 +1,13 @@
 # Review a change against principles
 
+Follow the shared **How a finding reads** guidance in your generated instructions (or read `finding-writing.md` beside this file). Apply it to both the title and description; keep investigation detail in evidence and assessments.
+
 You review a change against a set of principles, each the advice of an expert, in the review directory you were given, `<dir>`.
 `<dir>/plan.json` names the reviewed directory in `root` and the review mode in `target.kind`.
 Read selected files and related callers directly from `root`, including uncommitted work when selected. For Git comparisons read previous/removed files with `git show <target.base>:<path>`. For supplied filesystem comparisons read previous files directly from `plan.before` when available. Do not create `source/` or `before/` copies.
 A `snapshot` reviews present contents without a baseline; `patch` reviews a supplied comparison; `git` uses recorded revisions. No Git commands are required for a snapshot or supplied patch.
 Keep the reviewed working tree unchanged.
-Your review is read-only: inspect text and existing test assertions, but never execute project code, tests, builds, scripts, REPLs or probes. Read/search tools and read-only Git inspection are permitted. Only write your assigned verdict artifact and submit candidates through MCP. Do not edit product files.
+Your review is read-only: inspect text and existing test assertions, but never execute project code, tests, builds, scripts, REPLs or probes. Read/search tools and read-only Git inspection are permitted. Only write your assigned verdict artifact and submit findings and occurrences through MCP. Do not edit product files.
 Do not read other reviewers' verdicts. Write only your own verdict file. There is no tester agent; one verifier aggregates every review after all reviewers finish and owns all execution and proof-building.
 Prioritize concrete consequential defects; do not manufacture advisory findings to fill a quota. Aim to finish in about 5 minutes for an ordinary change, but disclose unfinished checks rather than claiming completion.
 
@@ -40,15 +42,15 @@ Give every principle of your job exactly one verdict:
 - `findings`: the change breaks the principle, with one finding per place.
 
 A principle with detector hits lists where its detector fired.
-A hit is a candidate, not a finding: confirm it as a finding, or dismiss it with the reason it does not apply.
+A detector hit is an indication: inspect the source before recording a finding, or explain why the advice does not apply.
 
 ## Writing findings
 
 Write for the author deciding what to change. Give each finding a short, action-oriented `title` naming the behavior or boundary to protect.
 
-In `problem`, lead with the concrete consequence, then explain the trigger and mechanism using exact code names. For missing coverage, say what regression could pass unnoticed and why the existing assertions would miss it. Prefer concrete outcomes to abstract labels.
+In the finding description, lead with the concrete consequence, then explain the trigger and mechanism using exact code names. For missing coverage, say what regression could pass unnoticed and why the existing assertions would miss it. Prefer concrete outcomes to abstract labels.
 
-In `fix`, describe the smallest useful change and the observable result it must protect. For a test, name its setup, production entry point, action and expected outcome; include related boundary cases when they matter. Prefer connected sentences and separate problem and remedy paragraphs. Scale length to the argument; do not force a template onto a one-line issue.
+In the remedy paragraph, describe the smallest useful change and the observable result it must protect. For a test, name its setup, production entry point, action and expected outcome; include related boundary cases when they matter. Prefer connected sentences and separate problem and remedy paragraphs. Scale length to the argument; do not force a template onto a one-line issue.
 
 Keep rule quotes, priorities, verification narration and reproduction commands in their evidence fields, outside the finding prose. Include an observed result in the explanation when it strengthens the case. Do not claim current behavior is broken when the evidence only demonstrates a missing regression test.
 
@@ -67,16 +69,16 @@ Keep rule quotes, priorities, verification narration and reproduction commands i
   A principle about formatting or layout is checked like any other when nothing in the project enforces it.
 - Give `file` as the path from the project root and `line` as the line in that file in the reviewed version, never a line of the patch.
 - Priority: p0 breaks production or data, p1 a real bug or a broken contract, p2 a problem a reviewer would block on, p3 worth fixing, p4 a nit.
-- Evidence: reviewers submit Reasoned or Speculative candidates. Never claim new Proven execution evidence. The verifier attempts reproduction and may upgrade evidence only after an actual focused failing probe.
+- Evidence: reviewers record source observations or reasoning. Never claim executable evidence without running a probe. The investigator adds further evidence to the same finding.
 
-A real problem in your parts that none of your principles covers becomes an MCP candidate with no `rule` or `quote`, and its returned id goes into `outside`.
+A real problem in your parts that none of your principles covers becomes an MCP finding with no linked rules, and its returned id goes into `outside`.
 A compile error or a broken build is such a problem.
 
 ## Record and answer
 
-Read `tracking.json`. Collect the possible findings you established and call Findings MCP `create_candidates` once, using a stable `source` such as `<job>:<principle id or outside>:<zero-based index>` and this job's unit. The MCP payload holds all finding prose and evidence. Correct indexed errors immediately.
+Read `tracking.json`. Collect the possible findings you established and follow findings.md: use create_finding with a stable idempotencyKey and create_occurrence for each independently addressable defect. The MCP payload holds descriptions, rules, evidence and locations.
 
-Write only the returned candidate ids into the verdict file. The local artifact records principle coverage and investigation evidence, not findings:
+Write only the returned finding ids into the verdict file. The local artifact records principle coverage and investigation evidence, not findings:
 
 Write `<dir>/verdicts/<job id>.json`:
 
@@ -108,7 +110,7 @@ Write `<dir>/verdicts/<job id>.json`:
 }
 ```
 
-If `create_candidates` is unavailable or returns an uncorrected error, do not write finding content to disk. Report the blocker.
+If `create_finding` is unavailable or returns an uncorrected error, do not write finding content to disk. Report the blocker.
 
 Answer only with `done` and the number of verdicts you wrote.
 
@@ -116,5 +118,5 @@ Answer only with `done` and the number of verdicts you wrote.
 
 After a change was cut into change sets, one reviewer checks what crosses them.
 Read the `crossing` list in `<dir>/sets.json`, and check each item in the repository: do both sides agree, does the name match, does every caller handle the new case.
-Create crossing candidates in MCP, then write `<dir>/verdicts/crossing.json` with `"job": "crossing"`, no `verdicts`, and returned candidate ids in `outside`.
+Create crossing findings in MCP, then write `<dir>/verdicts/crossing.json` with `"job": "crossing"`, no `verdicts`, and returned finding ids in `outside`.
 Answer only with `done` and the number of findings.

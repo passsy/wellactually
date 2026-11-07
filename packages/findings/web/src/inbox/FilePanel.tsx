@@ -1,3 +1,4 @@
+import { ruleUrl } from "../shared/rule-url.ts";
 /**
  * The file beside the finding, and the rules a finding cites.
  *
@@ -165,7 +166,8 @@ function Source({
   if (!file.data) return <p className="p-4 text-sm text-muted">Reading…</p>;
 
   const bands = bandsIn(at.file, findings, current);
-  const rows = rowsOf(file.data.lines, view);
+  const effectiveView = file.data.view ?? view;
+  const rows = rowsOf(file.data.lines, effectiveView);
 
   /*
    * Where the reader is taken: the place the panel was opened at, which is
@@ -184,7 +186,7 @@ function Source({
    * carry the language's. Both at once is noise, so the diff stays plain.
    */
   const code =
-    view === "diff"
+    effectiveView === "diff"
       ? null
       : tokenLines(file.data.lines.join("\n"), languageOf(at.file));
 
@@ -193,7 +195,7 @@ function Source({
       key={view}
       className="code animate-in fade-in overflow-auto p-0 text-xs leading-relaxed duration-150"
     >
-      <code className="block">
+      <code className="block w-max min-w-full">
         {rows.map((row, index) => {
           const number = row.number;
           const band =
@@ -256,7 +258,7 @@ function Rule({ id, onRule }: { id: string; onRule: (id: string) => void }) {
         <MarkdownSurface
           surface={{
             rule: (other) => ({
-              href: `/rule/${other}`,
+              href: ruleUrl(other),
               onPick: () => {
                 onRule(other);
               },
@@ -335,7 +337,7 @@ function Doc({
         <MarkdownSurface
           surface={{
             rule: (id) => ({
-              href: `/rule/${id}`,
+              href: ruleUrl(id),
               onPick: () => {
                 onRule(id);
               },
@@ -481,7 +483,7 @@ export function FilePanel({
         >
           {nameOf(showing)}
         </span>
-        {showing.kind === "file" && (
+        {showing.kind === "file" && !(where && showing.at.file.startsWith("/") && !showing.at.file.startsWith(where.repo + "/")) && (
           <Tabs
             value={view}
             onValueChange={(next) => {

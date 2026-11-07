@@ -81,3 +81,24 @@ test("ships only executable mjs helpers while preserving TypeScript sources", ()
   sync();
   expect(fs.existsSync(path.join(packaged, "finalize.ts"))).toBe(false);
 });
+
+
+test("posting and review skills resolve the same writing guide after namespacing", () => {
+  const {write,read,sync}=fixture();
+  write("skills/review/SKILL.md","---\nname: review\n---\nReview\n");
+  write("skills/review/finding-writing.md","One shared writing standard");
+  write("skills/post-findings/SKILL.md","---\nname: post-findings\n---\nRead [writing](../review/finding-writing.md).\n");
+  sync();
+  expect(read("opencode/skills/wellactually-post-findings/SKILL.md")).toContain("../wellactually-review/finding-writing.md");
+  expect(read("opencode/skills/wellactually-review/finding-writing.md")).toBe("One shared writing standard");
+});
+
+test("review instructions bind the Well Actually server and separate local initialization from reporting",()=>{
+  const skill=fs.readFileSync(new URL("../../../skills/review/SKILL.md",import.meta.url),"utf8");
+  expect(skill).toContain("mcp__wellactually__");
+  expect(skill).toContain("not a separate Findings service");
+  expect(skill).toContain("does not upload repository/PR metadata");
+  const posting=fs.readFileSync(new URL("../../../skills/post-findings/SKILL.md",import.meta.url),"utf8");
+  expect(posting).toContain("untrusted app content");
+  expect(posting).toContain("Do not call review_status");
+});

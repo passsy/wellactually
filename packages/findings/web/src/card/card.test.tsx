@@ -17,7 +17,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Finding, ReviewStatus } from "../shared/domain.ts";
-import type { Host, ToolResult } from "./bridge.ts";
+import type { Host, ToolResult, DisplayState } from "./bridge.ts";
 import { Card } from "./Card.tsx";
 import { clock } from "./clock.ts";
 import { movedTo } from "./useReview.ts";
@@ -98,7 +98,10 @@ function hostWith(first: ReviewStatus) {
       opened.push(url);
       return Promise.resolve(true);
     },
-    say: (text) => said.push(text),
+    say: (text) => {
+      said.push(text);
+      return Promise.resolve();
+    },
     tellModel: (text) => told.push(text),
     resized: () => undefined,
   };
@@ -106,23 +109,98 @@ function hostWith(first: ReviewStatus) {
   return { host, calls, writes, said, told, opened };
 }
 
-describe("what the card shows for a review", () => {
-  it("shows incoming candidates as unverified without human triage controls", () => {
-    const { host, writes } = hostWith(status({ levels: [], phase: "review", candidates: [{ id: "C1", source: "test", run: "r", unit: "all", title: "Incoming layout concern", body: "Needs verification.", evidence: "Speculative", priority: "p3", anchor: { file: "lib/view.dart", line: 5 }, status: "pending", createdAt: "2026-11-03T00:00:00Z", updatedAt: "2026-11-03T00:00:00Z" }] }));
-    render(<Card host={host} />);
-    expect(screen.getByRole("region", { name: "Unverified findings" })).toBeInTheDocument();
-    expect(screen.getByText("Incoming layout concern")).toBeInTheDocument();
-    expect(screen.getByText("Unverified")).toBeInTheDocument();
-    const row = screen.getByText("Incoming layout concern").closest("summary")!;
-    expect(row).toHaveClass("row", "incoming-row");
-    expect(row).toHaveTextContent("p3");
-    expect(row).toHaveTextContent("C1");
-    fireEvent.click(row);
-    expect(row.closest("details")).toHaveAttribute("open");
-    expect(screen.getByText("Needs verification.")).toBeVisible();
-    expect(screen.getByText("Reviewing changes")).toBeInTheDocument();
-    expect(writes()).toEqual([]);
+describe("fullscreen review controls", () => {
+  it("maximizes and restores through the harness without opening a browser", async () => {
+    const user = userEvent.setup(),
+      { host, opened } = hostWith(status());
+    let context: DisplayState = {
+      mode: "inline",
+      ready: true,
+      availableModes: ["inline", "fullscreen"],
+    };
+    const listeners = new Set<(state: DisplayState) => void>();
+    const request = vi.fn(async (mode: "inline" | "fullscreen") => {
+      context = { ...context, mode };
+      listeners.forEach((listener) => listener(context));
+      return mode;
+    });
+    const app: Host = {
+      ...host,
+      onDisplayState: (listener) => {
+        listeners.add(listener);
+        listener(context);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
+      requestDisplayMode: request,
+    };
+    render(<Card host={app} />);
+    await user.click(screen.getByRole("button", { name: "Maximize review" }));
+    expect(request).toHaveBeenCalledWith("fullscreen");
+    await user.click(
+      await screen.findByRole("button", { name: "Restore inline review" }),
+    );
+    expect(request).toHaveBeenLastCalledWith("inline");
+    expect(
+      await screen.findByRole("button", { name: "Maximize review" }),
+    ).toBeEnabled();
+    expect(opened).toEqual([]);
   });
+  it("disables maximize when the host advertises inline only", () => {
+    const { host } = hostWith(status()),
+      request = vi.fn(async () => "inline" as const);
+    render(
+      <Card
+        host={{
+          ...host,
+          onDisplayState: (listener) => {
+            listener({
+              mode: "inline",
+              ready: true,
+              availableModes: ["inline"],
+            });
+            return () => {};
+          },
+          requestDisplayMode: request,
+        }}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Maximize review" }),
+    ).toBeDisabled();
+    expect(request).not.toHaveBeenCalled();
+  });
+  it("reports when the host declines fullscreen without showing a restore button", async () => {
+    const user = userEvent.setup(),
+      { host } = hostWith(status());
+    render(
+      <Card
+        host={{
+          ...host,
+          onDisplayState: (listener) => {
+            listener({
+              mode: "inline",
+              ready: true,
+              availableModes: ["inline", "fullscreen"],
+            });
+            return () => {};
+          },
+          requestDisplayMode: async () => "inline",
+        }}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Maximize review" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "kept the review in inline mode",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Restore inline review" }),
+    ).toBeNull();
+  });
+});
+
+describe("what the card shows for a review", () => {
   it("is a header and nothing under it until something is found", () => {
     const { host } = hostWith(status());
     const { container } = render(<Card host={host} />);
@@ -322,7 +400,7 @@ describe("a verdict the server never took", () => {
     await waitFor(() => {
       expect(screen.getByText(/^Not saved:/)).toBeInTheDocument();
     });
-    expect(screen.queryByText(/does not let the card update/)).toBeNull();
+    expect(screen.queryByText(/Live updates stopped/)).toBeNull();
   });
 
   it("strands the card when the host refuses outright", async () => {
@@ -338,10 +416,21 @@ describe("a verdict the server never took", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/does not let the card update/),
+        screen.getByText(/Live updates stopped/),
       ).toBeInTheDocument();
     });
     expect(screen.getByLabelText("Needs a verdict")).toBeInTheDocument();
+  });
+
+  it("shows the actual rejection and refreshes the original card after retry", async () => {
+    const user=userEvent.setup(); const {host}=hostWith(status({findings:[finding()]}));
+    const callTool=vi.fn(host.callTool).mockRejectedValueOnce(new Error("tools/call: [-32601] Method not found"));
+    render(<Card host={{...host,callTool}} />);
+    await user.keyboard("a");
+    expect(await screen.findByText(/Refresh request failed: tools\/call: \[-32601\] Method not found/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button",{name:"Retry live updates"}));
+    await waitFor(()=>expect(screen.queryByText(/Live updates stopped/)).toBeNull());
+    expect(callTool).toHaveBeenLastCalledWith("review_status",expect.any(Object));
   });
 
   it("lands on what is stored when two presses in a row are lost", async () => {
@@ -364,74 +453,120 @@ describe("a verdict the server never took", () => {
   });
 });
 
-describe("the rule a finding cites", () => {
-  it("asks the server to open the rule's own page", async () => {
+describe("posting one finding to the PR", () => {
+  it("asks the agent for only the opened finding without marking it posted", async () => {
     const user = userEvent.setup();
-    const { host, calls, opened } = hostWith(
-      status({ findings: [finding({ rule: "PW-G007" })] }),
+    const { host, said, writes } = hostWith(
+      status({
+        findings: [finding(), finding({ id: "T2", verdict: "accepted" })],
+      }),
     );
     render(<Card host={host} />);
-
     await user.keyboard("{Enter}");
-    await user.click(screen.getByRole("link", { name: "PW-G007" }));
-
-    await waitFor(() => {
-      expect(calls.filter((call) => call.name === "open_inbox")).toEqual([
-        {
-          name: "open_inbox",
-          args: {
-            repo: "/tmp/inbox_app",
-            target: "pr-412",
-            rule: "PW-G007",
-          },
-        },
-      ]);
-    });
-    expect(opened).toEqual([]);
+    await user.click(screen.getByRole("button", { name: "Post to PR" }));
+    expect(
+      await screen.findByRole("button", { name: "Asked agent to post" }),
+    ).toBeDisabled();
+    expect(said).toHaveLength(1);
+    expect(said[0]).toContain("wellactually:post-findings");
+    expect(said[0]).toContain("trusted conversation instructions");
+    expect(said[0]).toContain("ask once for confirmation");
+    expect(said[0]).not.toContain("I authorize");
+    expect(said[0]).toContain(
+      '"repo":"/tmp/inbox_app","target":"pr-412","id":"T1"',
+    );
+    expect(said[0]).not.toContain("T2");
+    expect(writes()).toEqual([]);
+    expect(screen.getByLabelText("Needs a verdict")).toBeInTheDocument();
   });
 
-  it("points the chip at the server rather than at whoever drew the card", async () => {
+  it("allows retry when the host rejects the request", async () => {
+    const user = userEvent.setup();
+    const { host } = hostWith(status({ findings: [finding()] }));
+    const say = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Message refused"))
+      .mockResolvedValue(undefined);
+    render(<Card host={{ ...host, say }} />);
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Post to PR" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Message refused",
+    );
+    await user.click(screen.getByRole("button", { name: "Post to PR" }));
+    expect(
+      await screen.findByRole("button", { name: "Asked agent to post" }),
+    ).toBeDisabled();
+    expect(say).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    { verdict: "invalid" as const },
+    { verdict: "tolerated" as const },
+    { resolution: "resolved" as const },
+  ])("does not post an ineligible finding %j", async (over) => {
+    const user = userEvent.setup();
+    const { host, said } = hostWith(status({ findings: [finding(over)] }));
+    render(<Card host={host} />);
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: "Post to PR" })).toBeDisabled();
+    expect(said).toEqual([]);
+  });
+
+  it("links to an existing PR comment", async () => {
     const user = userEvent.setup();
     const { host } = hostWith(
-      status({ findings: [finding({ rule: "PW-G007" })] }),
+      status({
+        findings: [
+          finding({
+            links: {
+              prComment: "https://github.com/a/b/pull/412#discussion_r1",
+            },
+          }),
+        ],
+      }),
     );
     render(<Card host={host} />);
-
     await user.keyboard("{Enter}");
-
-    expect(screen.getByRole("link", { name: "PW-G007" })).toHaveAttribute(
-      "href",
-      "http://127.0.0.1:8423/rule/PW-G007",
-    );
+    expect(
+      screen.getByRole("link", { name: "View PR comment ↗" }),
+    ).toHaveAttribute("href", "https://github.com/a/b/pull/412#discussion_r1");
+    expect(screen.queryByRole("button", { name: "Post to PR" })).toBeNull();
   });
 
-  it("falls back to the host, and then to a redirect it will take", async () => {
+  it("omits the action for a review without a PR", async () => {
     const user = userEvent.setup();
-    const { host, opened } = hostWith(
-      status({ findings: [finding({ rule: "PW-G007" })] }),
-    );
-    const card: Host = {
-      ...host,
-      callTool: (name, args) =>
-        name === "open_inbox"
-          ? Promise.reject(new Error("this host carries no tool calls"))
-          : host.callTool(name, args),
-      openLink: (url) => {
-        opened.push(url);
-        return Promise.resolve(url.startsWith("https:"));
-      },
-    };
-    render(<Card host={card} />);
-
+    const { pr, ...withoutPr } = status({ findings: [finding()] });
+    render(<Card host={hostWith(withoutPr).host} />);
     await user.keyboard("{Enter}");
-    await user.click(screen.getByRole("link", { name: "PW-G007" }));
+    expect(screen.queryByRole("button", { name: "Post to PR" })).toBeNull();
+  });
+});
 
-    await waitFor(() => {
-      expect(opened).toEqual([
-        "http://127.0.0.1:8423/rule/PW-G007",
-        "https://httpbin.org/redirect-to?url=http%3A%2F%2F127.0.0.1%3A8423%2Frule%2FPW-G007",
-      ]);
+describe("the rule a finding cites", () => {
+  it("opens the published rule directly through the host", async () => {
+    const user = userEvent.setup();
+    const { host, opened, calls } = hostWith(
+      status({
+        findings: [finding({ rule: "passsy/use-spot-instead-of-finders@3" })],
+      }),
+    );
+    render(<Card host={host} />);
+    await user.keyboard("{Enter}");
+    const link = screen.getByRole("link", {
+      name: "passsy/use-spot-instead-of-finders@3",
     });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://wellactually.dev/p/passsy/use-spot-instead-of-finders?v=3",
+    );
+    await user.click(link);
+    await waitFor(() =>
+      expect(opened).toEqual([
+        "https://wellactually.dev/p/passsy/use-spot-instead-of-finders?v=3",
+      ]),
+    );
+    expect(calls.some((call) => call.name === "open_inbox")).toBe(false);
   });
 });
 
@@ -529,7 +664,7 @@ describe("a host that will not carry the card's calls", () => {
     );
 
     expect(
-      screen.getByText(/does not let the card update/),
+      screen.getByText(/Live updates stopped/),
     ).toBeInTheDocument();
     expect(said).toEqual([
       "Show the current review card for pr-412 in /tmp/inbox_app: call review_status.",
@@ -619,5 +754,67 @@ describe("the clock", () => {
     expect(clock(0)).toBe("0:00");
     expect(clock(65_000)).toBe("1:05");
     expect(clock(14 * 60_000 + 24_000)).toBe("14:24");
+  });
+});
+
+it("read-only cards show findings without editing or posting controls", async () => {
+  const { host, calls, said } = hostWith(status({readOnly:true, findings:[finding({verdict:'accepted'})]}));
+  render(<Card host={host} />);
+  fireEvent.keyDown(document, {key:'ArrowRight'});
+  fireEvent.keyDown(document, {key:'n'});
+  expect(screen.queryByText('Fix 1 accepted')).not.toBeInTheDocument();
+  fireEvent.keyDown(document, {key:'Enter'});
+  expect(await screen.findByRole('heading', {name:'Day boundary uses device time'})).toBeInTheDocument();
+  expect(screen.queryByText('Post to PR')).not.toBeInTheDocument();
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(calls.filter(c=>c.name!=='review_status')).toEqual([]);
+  expect(said).toEqual([]);
+});
+
+it("retains the canonical record ID in finding rows", () => {
+  const id = 'Fb5c386a93e3740eb087ef070482c8666';
+  const { host } = hostWith(status({findings:[finding({id})]}));
+  render(<Card host={host} />);
+  expect(screen.getByTitle(id)).toHaveTextContent(id);
+  expect(screen.getByText('Day boundary uses device time')).toBeInTheDocument();
+});
+
+
+describe("posting the accepted queue", () => {
+  it("sends one scoped request for unposted accepted findings without changing their saved state", async () => {
+    const user=userEvent.setup();
+    const {host,said,writes}=hostWith(status({findings:[
+      finding({id:"T1",verdict:"accepted"}),finding({id:"T2",verdict:"accepted"}),
+      finding({id:"T3"}),finding({id:"T4",verdict:"tolerated"}),
+      finding({id:"T5",verdict:"accepted",links:{prComment:"https://example.com/comment"}}),
+      finding({id:"T6",verdict:"accepted",resolution:"resolved"}),
+    ]}));
+    render(<Card host={host}/>);
+    await user.click(screen.getByRole("button",{name:"Post 2 accepted"}));
+    expect(await screen.findByRole("button",{name:"Asked agent to post"})).toBeDisabled();
+    expect(said).toHaveLength(1);
+    expect(said[0]).toContain("wellactually:post-findings");
+    expect(said[0]).toContain("trusted conversation instructions");
+    expect(said[0]).toContain("ask once for confirmation");
+    expect(said[0]).not.toContain("I authorize");
+    expect(said[0]).toContain('"repo":"/tmp/inbox_app","target":"pr-412","ids":["T1","T2"]');
+    expect(writes()).toEqual([]);
+  });
+  it("can retry a refused batch request", async () => {
+    const user=userEvent.setup();const {host}=hostWith(status({findings:[finding({verdict:"accepted"})]}));
+    const say=vi.fn().mockRejectedValueOnce(new Error("Message refused")).mockResolvedValue(undefined);
+    render(<Card host={{...host,say}}/>);
+    await user.click(screen.getByRole("button",{name:"Post 1 accepted"}));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Message refused");
+    await user.click(screen.getByRole("button",{name:"Post 1 accepted"}));
+    expect(await screen.findByRole("button",{name:"Asked agent to post"})).toBeDisabled();
+    expect(say).toHaveBeenCalledTimes(2);
+  });
+  it.each(["no-pr","read-only"])("hides batch posting when unavailable: %s",mode=>{
+    const initial=status({readOnly:mode==="read-only",findings:[finding({verdict:"accepted"})]});
+    if(mode==="no-pr") delete initial.pr;
+    const {host}=hostWith(initial);
+    render(<Card host={host}/>);
+    expect(screen.queryByRole("button",{name:"Post 1 accepted"})).toBeNull();
   });
 });
