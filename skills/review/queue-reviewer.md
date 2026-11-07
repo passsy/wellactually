@@ -52,4 +52,4 @@ Keep all candidate bodies and coverage in MCP.
 Reply with done and the number of completed items.
 
 Do not call rate_principle or rate_review_principle.
-The coordinator owns review rating and delivery accounting.
+The server owns review activity and delivery accounting.

@@ -597,10 +597,10 @@ export function Card({ host }: { host: Host }) {
       <Now status={status} />
       {(status.candidates ?? []).length > 0 && (
         <section className="queue" aria-label="Unverified findings" aria-live="polite">
-          <p className="aside">Incoming findings · awaiting verification</p>
+          <p className="incoming-heading">Incoming findings · awaiting verification</p>
           {status.candidates!.map(candidate => (
-            <details key={candidate.id}>
-              <summary><span className="text-muted">Unverified · </span>{candidate.title}</summary>
+            <details className="incoming" key={candidate.id}>
+              <summary className="row incoming-row"><Priority of={candidate.priority} /><span className="incoming-id">{candidate.id}</span><span className="incoming-title">{candidate.title}</span><span className="incoming-badge">Unverified</span><span className="incoming-file">{candidate.anchor.file}:{candidate.anchor.line}</span></summary>
               <div className="aside">
                 <p className="font-mono">{candidate.anchor.file}:{candidate.anchor.line}</p>
                 <Markdown body={candidate.body} />

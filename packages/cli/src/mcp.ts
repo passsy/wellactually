@@ -5,7 +5,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { hasDetector } from "@wellactually/core/node";
 import { TOOLS as FINDINGS_TOOLS } from "../../findings/tools.mts";
-import { rateReviewPrinciple } from "../../findings/queues.mts";
+import { reportPendingReviewSuggestions, REVIEW_REPORT_MS } from "./registry/review-reports.ts";
+import { startInBackground } from "./hook/hook.ts";
+import { claimReport } from "./board/detections.ts";
 import { appToolMeta, drawsCards, registerReviewCard } from "../../findings/serve/app.mts";
 import { startUi } from "../../findings/serve/http.mts";
 import { currentWorkspace, type Workspace } from "../../findings/store/workspace.mts";
@@ -143,7 +145,9 @@ function registerFindingsTools(server: McpServer, workspace: Workspace): void {
     }, async (args) => {
       try {
         if (tool.cardOnly && !drawsCards(server)) throw new Error("This tool is available only through the review card");
+        if (tool.name === "claim_review_session") (args as Record<string, unknown>).registry = readConfig().registry;
         const result = await tool.run(args, workspace.repo);
+        if (readConfig().stats && (tool.name === "begin_verification" || (tool.name === "get_review_session" && claimReport()))) startInBackground("report-detections");
         const reply = text(tool.says ? tool.says(result) : JSON.stringify(result, null, 2));
         return tool.card && drawsCards(server) ? { ...reply, structuredContent: (tool.forCard ? tool.forCard(args, workspace.repo) : result) as Record<string, unknown> } : reply;
       } catch (error) {
@@ -155,17 +159,19 @@ function registerFindingsTools(server: McpServer, workspace: Workspace): void {
 
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
+  const reporting = setInterval(() => { if (readConfig().stats && claimReport()) startInBackground("report-detections"); }, REVIEW_REPORT_MS);
+  reporting.unref();
   const server = new McpServer({ name: "wellactually", version: "0.8.0" }, { instructions: AUTHORING_GUIDE });
   const workspace = currentWorkspace();
   registerFindingsTools(server, workspace);
+  server.registerTool("report_review_suggestions", {
+    description: "Upload eligible pending review selections, aggregated suggestions and fixes. Upload cycles and resolved-fix delays are at least five minutes. Failed uploads remain pending. Respects stats off.",
+    inputSchema: {}, annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  }, async () => text(JSON.stringify({ reported: await reportPendingReviewSuggestions() })));
   server.registerTool("rate_review_principle", {
-    description: "Review coordinator only: rate a retained pinned principle after verification completes, once per session. Records reason, exact version and delivery status in Findings MCP; duplicate calls never send again. Read get_review_session with includeResults:true for authoritative rating counts. Gatherers, reviewers, aggregators and proof workers must not rate.",
+    description: "Compatibility only: review helpfulness ratings are retired. Aggregated activity is reported automatically.",
     inputSchema: { repo: z.string(), target: z.string(), session: z.string(), id: z.string(), rating: z.enum(["up", "down", "not_applicable"]), reason: z.string() },
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  }, async (args, extra) => text(JSON.stringify(await rateReviewPrinciple(args, args.repo, async (id, rating, version) => {
-    if (readLockfile().entries.find(entry => entry.id === id)?.version !== version) throw new Error("Pinned review version changed; rating was not sent");
-    return ratePrinciple(id, rating, await raterOf(server.server.getClientVersion()?.name, extra._meta));
-  }))));
+  }, async () => text("Review ratings are retired. No injection assessment was sent."));
   server.registerTool("list_principles", {
     description: "Current advisory board metadata for review filtering: id, version, short description and tags only. No full advice bodies. Pass the reviewed repo to respect project switches.",
     inputSchema: { repo: z.string() },
@@ -365,7 +371,7 @@ export async function serveMcp(): Promise<void> {
     "rate_principle",
     {
       description:
-        "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle, the rating, and which agent and model you are, as your agent reports them. Nothing about the code or the conversation. It is sent to the registry the user signed in to, only while the user has reporting switched on (set_stats), and otherwise nothing leaves the machine.",
+        "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle revision, rating and injection context. Nothing about the code or the conversation. It is sent to the registry the user signed in to, only while the user has reporting switched on (set_stats), and otherwise nothing leaves the machine.",
       inputSchema: {
         id: z.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
         rating: z.enum(["up", "down", "not_applicable"]).describe("up, down or not_applicable"),

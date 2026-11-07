@@ -36,7 +36,7 @@ Include corrected locations and wording in finding so the saved record changes i
 Do not leave a known wrong anchor or evidence label for the coordinator to explain in chat.
 Read the pinned runtime configuration before resolving dependencies; do not start with an unrelated global SDK.
 For an introduced-regression claim, compare the relevant base path or explicitly retain the untested base as a limit.
-Do not rate principles; the coordinator owns session ratings.
+Do not rate principles; review activity is reported automatically.
 Decisions must cover every candidate in the claimed issue exactly once.
 confirmed/plausible promotes an undecided/unresolved finding; plausible requires the unresolved dependency.
 A duplicate member may be refuted only with an explicit duplicate reason pointing to the retained candidate; do not refute its substantive claim.

@@ -18,4 +18,4 @@ Return the queue's worker count so the coordinator can run --setup-verifiers and
 With zero issues, no proof workers are needed.
 
 Do not call rate_principle or rate_review_principle.
-The coordinator owns review rating and delivery accounting.
+The server owns review activity and delivery accounting.

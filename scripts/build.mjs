@@ -26,6 +26,7 @@ const shared = {
   logLevel: "warning",
 };
 
+await import("../packages/findings/web/build.mjs");
 await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/main.ts")], outfile });
 fs.cpSync(path.join(root, "packages/findings/web/dist"), path.join(root, "dist/web"), { recursive: true });
 // A worker loads its script from scratch, so it gets only the isolate. The hook looks for it beside the command.

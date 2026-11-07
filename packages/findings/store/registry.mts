@@ -8,6 +8,7 @@
  */
 
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { locked } from "./lock.mts";
 import {
   GLOBAL_ROOT,
   LEGACY_REGISTRY_FILE,
@@ -40,15 +41,14 @@ export function readRegistry(): Registry {
 /**
  * Records that `repo` has `target`.
  *
- * Read, merge, write, every time. Two servers racing here lose at worst one
- * repo entry, which the next mutation puts back, and that is a better trade
- * than a lock file nobody cleans up.
+ * Serialize read/merge/write so a one-off review selection remains discoverable.
  */
 export function upsertRegistry(
   repo: string,
   target: string,
   now: string,
 ): Registry {
+  return locked(GLOBAL_ROOT, () => {
   const registry = readRegistry();
   const existing = registry.repos.find((entry) => entry.path === repo);
   if (existing) {
@@ -61,6 +61,7 @@ export function upsertRegistry(
   registry.repos.sort((a, b) => a.path.localeCompare(b.path));
   write(registry);
   return registry;
+  });
 }
 
 function write(registry: Registry): void {

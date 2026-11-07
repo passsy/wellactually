@@ -503,3 +503,15 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+.incoming-heading { margin: 0; padding: 10px 14px; color: var(--muted); }
+.incoming-row { list-style: none; cursor: pointer; padding: 9px 14px; }
+.incoming-row::-webkit-details-marker { display: none; }
+.incoming-row::before { content: "▸"; color: var(--muted); }
+.incoming[open] .incoming-row::before { content: "▾"; }
+.incoming-id { font-family: var(--font-mono); color: var(--muted); }
+.incoming-title { flex: 1; min-width: 0; white-space: normal; }
+.incoming-badge { padding: 1px 5px; border-radius: 4px; background: var(--cut); color: var(--muted); font-size: 11px; }
+.incoming-file { max-width: 30%; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-mono); color: var(--muted); }
+.incoming .aside { padding: 8px 14px 14px; overflow-wrap: anywhere; }
+@media(max-width: 500px) { .incoming-file { display: none; } .incoming-row { flex-wrap: wrap; } }

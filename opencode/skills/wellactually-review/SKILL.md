@@ -15,7 +15,7 @@ Check the assigned directory, host project inventory and known clone locations b
 Do not recursively search the home directory for a repository.
 If a clone is needed, create it in the durable assigned workspace.
 Start timing at the user request and retain stage and worker timestamps.
-Only the coordinator sends review ratings; tell every child agent not to rate principles.
+Review activity is reported automatically; do not send helpfulness ratings during reviews.
 
 Start a fresh cheap-model worker with gather-information.md, the assigned directory, supplied links/refs and the original user request verbatim.
 It writes task.md and optional context.md before worktree/diff preparation.
@@ -147,15 +147,16 @@ Wait for all workers and require --check <dir> --stage verify plus zero pending 
 The gate checks final evidence, locations and proof/limit persistence against the published findings, not just queue completion.
 Read authoritative session/findings; no finalizer/report worker.
 Retain coverage and platform limits.
-Only the coordinator calls rate_review_principle with repo, target, session, id, rating and reason for each surviving principle whose advice helped.
-The server records the pinned version, rating and delivery state once per session; duplicate calls do not send another rating.
-Use get_review_session with includeResults:true for rating counts; distinguish sent, not_sent, sending and uncertain deliveries.
-Do not use generic rate_principle for this review or send ratings from child agents.
-On incomplete coverage leave baseline untouched.
-After complete coverage and rating accounting, call baseline_check once with currentFindingIds containing every surviving finding ID from this run, including metadata findings.
+After complete coverage, call baseline_check once with currentFindingIds containing every surviving finding ID from this run, including metadata findings.
 Do not reconstruct metadata findings as source-file anchors.
 Keep human verdicts undecided/unresolved.
 
 Present verdict, concrete findings, a concise solution assessment where relevant, measured timings and proof limits, with artifact/MCP links.
 Infrastructure failures are not product defects.
 Node 20+ is required.
+
+Review selections are reported once per retained principle; suggestions and their priority are reported after aggregation.
+Completed fixes are tracked from resolved findings, once per issue and credited principle.
+Upload cycles are at least five minutes apart, and fixes wait at least five minutes after resolution.
+Do not send helpfulness ratings for reviews.
+At completion, call report_review_suggestions once; upload failures must not block review delivery.

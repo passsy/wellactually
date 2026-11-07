@@ -112,7 +112,14 @@ describe("what the card shows for a review", () => {
     render(<Card host={host} />);
     expect(screen.getByRole("region", { name: "Unverified findings" })).toBeInTheDocument();
     expect(screen.getByText("Incoming layout concern")).toBeInTheDocument();
-    expect(screen.getByText("Unverified ·")).toBeInTheDocument();
+    expect(screen.getByText("Unverified")).toBeInTheDocument();
+    const row = screen.getByText("Incoming layout concern").closest("summary")!;
+    expect(row).toHaveClass("row", "incoming-row");
+    expect(row).toHaveTextContent("p3");
+    expect(row).toHaveTextContent("C1");
+    fireEvent.click(row);
+    expect(row.closest("details")).toHaveAttribute("open");
+    expect(screen.getByText("Needs verification.")).toBeVisible();
     expect(screen.getByText("Reviewing changes")).toBeInTheDocument();
     expect(writes()).toEqual([]);
   });

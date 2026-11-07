@@ -1070,10 +1070,10 @@ var require_util = __commonJS({
     var codegen_1 = require_codegen();
     var code_1 = require_code();
     function toHash(arr) {
-      const hash3 = {};
+      const hash4 = {};
       for (const item of arr)
-        hash3[item] = true;
-      return hash3;
+        hash4[item] = true;
+      return hash4;
     }
     exports.toHash = toHash;
     function alwaysValidSchema(it, schema) {
@@ -3271,8 +3271,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path11) {
-      let input2 = path11;
+    function removeDotSegments(path13) {
+      let input2 = path13;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -3681,8 +3681,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path11 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path11 && path11 !== "/" ? path11 : void 0;
+        const path13 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path13 && path13 !== "/" ? path13 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7195,12 +7195,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list2, fs9, exportName) {
+    function addFormats(ajv, list2, fs11, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list2)
-        ajv.addFormat(f, fs9[f]);
+        ajv.addFormat(f, fs11[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -7329,7 +7329,7 @@ async function QuickJSRaw(moduleArg = {}) {
     throw d;
   }, v = import.meta.url;
   if (n) {
-    var fs9 = require2("node:fs");
+    var fs11 = require2("node:fs");
     v.startsWith("file:") && require2("node:path").dirname(require2("node:url").fileURLToPath(v)), 1 < process.argv.length && (t = process.argv[1].replace(/\\/g, "/")), process.argv.slice(2), u = (b, d) => {
       throw process.exitCode = b, d;
     };
@@ -9729,9 +9729,18 @@ var init_emscripten_module_Q67P5WYC = __esm({
   }
 });
 
+// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
+var variant, src_default;
+var init_dist = __esm({
+  "node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs"() {
+    variant = { type: "sync", importFFI: () => Promise.resolve().then(() => (init_ffi(), ffi_exports)).then((mod) => mod.QuickJSFFI), importModuleLoader: () => Promise.resolve().then(() => (init_emscripten_module_Q67P5WYC(), emscripten_module_Q67P5WYC_exports)).then((mod) => mod.default) };
+    src_default = variant;
+  }
+});
+
 // node_modules/@jitl/quickjs-ffi-types/dist/index.mjs
 var EvalFlags, IntrinsicsFlags, JSPromiseStateEnum, GetOwnPropertyNamesFlags, IsEqualOp;
-var init_dist = __esm({
+var init_dist2 = __esm({
   "node_modules/@jitl/quickjs-ffi-types/dist/index.mjs"() {
     EvalFlags = { JS_EVAL_TYPE_GLOBAL: 0, JS_EVAL_TYPE_MODULE: 1, JS_EVAL_TYPE_DIRECT: 2, JS_EVAL_TYPE_INDIRECT: 3, JS_EVAL_TYPE_MASK: 3, JS_EVAL_FLAG_STRICT: 8, JS_EVAL_FLAG_STRIP: 16, JS_EVAL_FLAG_COMPILE_ONLY: 32, JS_EVAL_FLAG_BACKTRACE_BARRIER: 64 };
     IntrinsicsFlags = { BaseObjects: 1, Date: 2, Eval: 4, StringNormalize: 8, RegExp: 16, RegExpCompiler: 32, JSON: 64, Proxy: 128, MapSet: 256, TypedArrays: 512, Promise: 1024, BigInt: 2048, BigFloat: 4096, BigDecimal: 8192, OperatorOverloading: 16384, BignumExt: 32768 };
@@ -9829,8 +9838,8 @@ function applyModuleEvalRuntimeOptions(runtime, options) {
 var __defProp3, __export2, QTS_DEBUG, errors_exports2, QuickJSUnwrapError, QuickJSWrongOwner, QuickJSUseAfterFree, QuickJSNotImplemented, QuickJSAsyncifyError, QuickJSAsyncifySuspended, QuickJSMemoryLeakDetected, QuickJSEmscriptenModuleError, QuickJSUnknownIntrinsic, QuickJSPromisePending, QuickJSEmptyGetOwnPropertyNames, QuickJSHostRefRangeExceeded, QuickJSHostRefInvalid, AwaitYield, UsingDisposable, SymbolDispose, prototypeAsAny, Lifetime, StaticLifetime, WeakLifetime, Scope, AbstractDisposableResult, DisposableSuccess, DisposableFail, DisposableResult, QuickJSDeferredPromise, ModuleMemory, DefaultIntrinsics, QuickJSIterator, INT32_MIN, INT32_MAX, INVALID_HOST_REF_ID, HostRefMap, HostRef, ContextMemory, QuickJSContext, QuickJSRuntime, QuickJSEmscriptenModuleCallbacks, QuickJSModuleCallbacks, QuickJSWASMModule;
 var init_chunk_V2S4ZYJR = __esm({
   "node_modules/quickjs-emscripten-core/dist/chunk-V2S4ZYJR.mjs"() {
-    init_dist();
-    init_dist();
+    init_dist2();
+    init_dist2();
     __defProp3 = Object.defineProperty;
     __export2 = (target2, all) => {
       for (var name in all) __defProp3(target2, name, { get: all[name], enumerable: true });
@@ -10872,13 +10881,4901 @@ var init_module_ES6BEMUI = __esm({
   }
 });
 
+// node_modules/quickjs-emscripten-core/dist/index.mjs
+async function newQuickJSWASMModuleFromVariant(variantOrPromise) {
+  let variant2 = smartUnwrap(await variantOrPromise), [wasmModuleLoader, QuickJSFFI2, { QuickJSWASMModule: QuickJSWASMModule2 }] = await Promise.all([variant2.importModuleLoader().then(smartUnwrap), variant2.importFFI(), Promise.resolve().then(() => (init_module_ES6BEMUI(), module_ES6BEMUI_exports)).then(smartUnwrap)]), wasmModule = await wasmModuleLoader();
+  wasmModule.type = "sync";
+  let ffi = new QuickJSFFI2(wasmModule);
+  return new QuickJSWASMModule2(wasmModule, ffi);
+}
+function smartUnwrap(val) {
+  return val && "default" in val && val.default ? val.default && "default" in val.default && val.default.default ? val.default.default : val.default : val;
+}
+function shouldInterruptAfterDeadline(deadline) {
+  let deadlineAsNumber = typeof deadline == "number" ? deadline : deadline.getTime();
+  return function() {
+    return Date.now() > deadlineAsNumber;
+  };
+}
+var init_dist3 = __esm({
+  "node_modules/quickjs-emscripten-core/dist/index.mjs"() {
+    init_dist2();
+  }
+});
+
+// packages/core/src/build/engines.ts
+function setEngines(next) {
+  engines = next;
+  quickjs = null;
+}
+function currentEngines() {
+  if (!engines) {
+    throw new Error('No engines are set. Import "@wellactually/core/node", or call setEngines() before building or running a detector.');
+  }
+  return engines;
+}
+function loadSandbox() {
+  quickjs ??= currentEngines().quickjs().then((QuickJS) => {
+    const vm = QuickJS.newContext();
+    try {
+      const result = vm.evalCode(WARM_UP);
+      (result.error ?? result.value).dispose();
+    } finally {
+      vm.dispose();
+    }
+    return QuickJS;
+  });
+  return quickjs;
+}
+var engines, quickjs, WARM_UP;
+var init_engines = __esm({
+  "packages/core/src/build/engines.ts"() {
+    "use strict";
+    engines = null;
+    quickjs = null;
+    WARM_UP = `(function () {
+  function* found(ctx) { for (const line of ctx.lines) { if (/\\bx\\b/.test(line)) { yield { line: 1, evidence: line.trim() }; } } }
+  return JSON.stringify([...found(JSON.parse('{"lines":["a x b","c"]}'))]);
+})()`;
+  }
+});
+
+// packages/sdk/src/glob.ts
+function matchesGlob(path13, pattern) {
+  let matcher = cache.get(pattern);
+  if (!matcher) {
+    matcher = compile2(pattern);
+    cache.set(pattern, matcher);
+  }
+  return matcher(path13);
+}
+function matchesGlobs(path13, globs) {
+  const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
+  if (excluded.some((glob) => matchesGlob(path13, glob))) {
+    return false;
+  }
+  const included = globs.filter((glob) => !glob.startsWith("!"));
+  return included.length === 0 || included.some((glob) => matchesGlob(path13, glob));
+}
+function parse3(pattern) {
+  const anchored = [...pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`];
+  const root = [];
+  const open2 = [];
+  const current2 = () => open2.at(-1)?.at(-1) ?? root;
+  for (let i = 0; i < anchored.length; i++) {
+    const char = anchored[i] ?? "";
+    if (char === "*" && anchored[i + 1] === "*") {
+      const slashAfter = anchored[i + 2] === "/";
+      current2().push({ kind: slashAfter ? "folders" : "any" });
+      i += slashAfter ? 2 : 1;
+      continue;
+    }
+    if (char === "*") {
+      current2().push({ kind: "star" });
+    } else if (char === "?") {
+      current2().push({ kind: "one" });
+    } else if (char === "{") {
+      open2.push([[]]);
+    } else if (char === "}" && open2.length > 0) {
+      const options = open2.pop();
+      current2().push({ kind: "either", options });
+    } else if (char === "," && open2.length > 0) {
+      open2.at(-1)?.push([]);
+    } else {
+      current2().push({ kind: "char", char });
+    }
+  }
+  while (open2.length > 0) {
+    const [first = [], ...rest] = open2.pop();
+    current2().push({ kind: "char", char: "{" }, ...first, ...rest.flatMap((option) => [{ kind: "char", char: "," }, ...option]));
+  }
+  return root;
+}
+function compile2(pattern) {
+  const states = [{ moves: [], free: [] }];
+  const add = () => states.push({ moves: [], free: [] }) - 1;
+  const state = (index) => states[index];
+  const sequence = (pieces, next) => {
+    let after = next;
+    for (let i = pieces.length - 1; i >= 0; i--) {
+      after = piece(pieces[i], after);
+    }
+    return after;
+  };
+  const piece = (it, next) => {
+    const at = add();
+    switch (it.kind) {
+      case "char":
+        state(at).moves.push({ takes: (char) => char === it.char, to: next });
+        break;
+      case "one":
+        state(at).moves.push({ takes: notSlash, to: next });
+        break;
+      case "star":
+        state(at).moves.push({ takes: notSlash, to: at });
+        state(at).free.push(next);
+        break;
+      case "any":
+        state(at).moves.push({ takes: anyChar, to: at });
+        state(at).free.push(next);
+        break;
+      case "folders": {
+        const inside = add();
+        state(at).free.push(next, inside);
+        state(inside).moves.push({ takes: anyChar, to: inside }, { takes: (char) => char === "/", to: next });
+        break;
+      }
+      case "either":
+        for (const option of it.options) {
+          state(at).free.push(sequence(option, next));
+        }
+        break;
+    }
+    return at;
+  };
+  const start = sequence(parse3(pattern), 0);
+  const reach = (from) => {
+    const seen = /* @__PURE__ */ new Set();
+    const stack = [...from];
+    while (stack.length > 0) {
+      const index = stack.pop();
+      if (!seen.has(index)) {
+        seen.add(index);
+        stack.push(...state(index).free);
+      }
+    }
+    return seen;
+  };
+  return (path13) => {
+    let now2 = reach([start]);
+    for (const char of path13) {
+      const next = [];
+      for (const index of now2) {
+        for (const move of state(index).moves) {
+          if (move.takes(char)) {
+            next.push(move.to);
+          }
+        }
+      }
+      if (next.length === 0) {
+        return false;
+      }
+      now2 = reach(next);
+    }
+    return now2.has(0);
+  };
+}
+var cache, anyChar, notSlash;
+var init_glob = __esm({
+  "packages/sdk/src/glob.ts"() {
+    "use strict";
+    cache = /* @__PURE__ */ new Map();
+    anyChar = () => true;
+    notSlash = (char) => char !== "/";
+  }
+});
+
+// packages/sdk/src/index.ts
+function removedOf(event, change, allLines) {
+  if (event === "delete") {
+    return allLines;
+  }
+  if (event === "read") {
+    return [];
+  }
+  return change.removed ?? [];
+}
+function fileCtx(event, relativePath, content, change = {}, where = {}) {
+  const relative2 = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
+  const root = where.root === void 0 ? TEST_ROOT : where.root;
+  const path13 = (where.absolute ?? `${root ?? ""}/${relative2}`).replaceAll("\\", "/");
+  const name = path13.slice(path13.lastIndexOf("/") + 1);
+  const dot = name.lastIndexOf(".");
+  const lines = content.split("\n");
+  const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
+  return {
+    event,
+    file: {
+      path: path13,
+      relativePath: relative2,
+      name,
+      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
+      content,
+      lines,
+      written: event === "write" ? change.written ?? allLines : [],
+      removed: removedOf(event, change, allLines),
+      isNew: event === "write" && where.isNew === true
+    },
+    text: content,
+    command: null,
+    cwd: null,
+    project: root
+  };
+}
+var API_VERSION, TEST_ROOT;
+var init_src = __esm({
+  "packages/sdk/src/index.ts"() {
+    "use strict";
+    init_glob();
+    API_VERSION = 4;
+    TEST_ROOT = "/project";
+  }
+});
+
+// packages/core/src/build/licenses.ts
+var PERMISSIVE_LICENSES, CANONICAL, RULE;
+var init_licenses = __esm({
+  "packages/core/src/build/licenses.ts"() {
+    "use strict";
+    PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
+    CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
+    RULE = "-".repeat(72);
+  }
+});
+
+// packages/core/src/build/packages.ts
+var init_packages = __esm({
+  "packages/core/src/build/packages.ts"() {
+    "use strict";
+    init_licenses();
+  }
+});
+
+// packages/core/src/build/sdk-source.generated.ts
+var init_sdk_source_generated = __esm({
+  "packages/core/src/build/sdk-source.generated.ts"() {
+    "use strict";
+  }
+});
+
+// packages/core/src/build/bundle.ts
+var BUNDLE_GLOBAL, MAX_BUNDLE_BYTES, SDK, SDK_NOW;
+var init_bundle = __esm({
+  "packages/core/src/build/bundle.ts"() {
+    "use strict";
+    init_src();
+    init_engines();
+    init_licenses();
+    init_packages();
+    init_sdk_source_generated();
+    BUNDLE_GLOBAL = "__principle";
+    MAX_BUNDLE_BYTES = 1024 * 1024;
+    SDK = "@wellactually/sdk";
+    SDK_NOW = `${SDK}/v${API_VERSION}`;
+  }
+});
+
+// packages/core/src/detector/project.ts
+function normalizeAbsolute(path13) {
+  const out = [];
+  for (const part of path13.split("/")) {
+    if (part === "" || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      out.pop();
+      continue;
+    }
+    out.push(part);
+  }
+  return `/${out.join("/")}`;
+}
+function fsHost(cwd, project) {
+  let calls = 0;
+  let bytes = 0;
+  const answer = (request) => {
+    let op;
+    let asked;
+    try {
+      ({ op, path: asked } = JSON.parse(request));
+    } catch {
+      return { error: { code: "EINVAL", message: "EINVAL: invalid argument" } };
+    }
+    const shown = typeof asked === "string" ? asked : "";
+    const missing = { error: { code: "ENOENT", message: `ENOENT: no such file or directory, '${shown}'` } };
+    if (typeof asked !== "string" || project === null) {
+      return missing;
+    }
+    if (++calls > MAX_FS_CALLS) {
+      return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
+    }
+    const path13 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
+    if (op === "stat") {
+      const stat = project.stat(path13);
+      return stat ? { stat } : missing;
+    }
+    if (op === "list") {
+      const entries = project.list(path13);
+      if (entries) {
+        return { entries };
+      }
+      return project.stat(path13) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
+    }
+    if (op !== "read") {
+      return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
+    }
+    const text2 = project.read(path13);
+    if (text2 === null) {
+      return project.stat(path13)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
+    }
+    bytes += text2.length;
+    if (bytes > MAX_FS_BYTES) {
+      return { error: { code: "EFBIG", message: `EFBIG: a detector may read at most ${MAX_FS_BYTES / 1024 / 1024} MB per run` } };
+    }
+    return { text: text2 };
+  };
+  return (request) => JSON.stringify(answer(request));
+}
+var MAX_FS_CALLS, MAX_FS_BYTES;
+var init_project = __esm({
+  "packages/core/src/detector/project.ts"() {
+    "use strict";
+    MAX_FS_CALLS = 500;
+    MAX_FS_BYTES = 4 * 1024 * 1024;
+  }
+});
+
+// packages/core/src/detector/api.ts
+function apiOf(manifest) {
+  return manifest.api ?? 1;
+}
+function unsupported(api) {
+  if (!Number.isInteger(api) || api < 1) {
+    return `it names a detector API version this host does not know: ${String(api)}`;
+  }
+  if (api > API_VERSION) {
+    return `it was built for detector API ${api} and this version of Well Actually runs up to ${API_VERSION}. Update the plugin.`;
+  }
+  if (api < MIN_API_VERSION) {
+    return `it was built for detector API ${api}, which is no longer run. Its expert has to release it again.`;
+  }
+  return null;
+}
+function ctxFor(api, ctx) {
+  let event = ctx;
+  for (let version2 = API_VERSION; version2 > api; version2--) {
+    const step = DOWNGRADE[version2];
+    if (!step) {
+      throw new Error(`there is no step from detector API ${version2} to ${version2 - 1}`);
+    }
+    event = step(event);
+  }
+  return event;
+}
+function environmentFor(api, ctx, project) {
+  return {
+    // `node:path` resolves against the project root, and `node:fs` asks the host.
+    strings: { __ctx: JSON.stringify(ctxFor(api, ctx)), __cwd: ctx.project ?? "/" },
+    functions: { __fs: fsHost(ctx.project ?? "/", project) }
+  };
+}
+var MIN_API_VERSION, DOWNGRADE, SDK2, current;
+var init_api = __esm({
+  "packages/core/src/detector/api.ts"() {
+    "use strict";
+    init_src();
+    init_project();
+    MIN_API_VERSION = 3;
+    DOWNGRADE = {
+      // Version 4 added the lines a write removed and the `delete` event. A detector of version 3 has no handler for a deletion, so it is never asked about one.
+      4: (ctx) => {
+        if (ctx.file === null) {
+          return ctx;
+        }
+        const { removed: _, ...file3 } = ctx.file;
+        return { ...ctx, file: file3 };
+      }
+    };
+    SDK2 = "@wellactually/sdk";
+    current = `"${SDK2}/v${API_VERSION}"`;
+  }
+});
+
+// packages/core/src/detector/glob.ts
+var init_glob2 = __esm({
+  "packages/core/src/detector/glob.ts"() {
+    "use strict";
+    init_src();
+  }
+});
+
+// packages/core/src/detector/ctx.ts
+function applies(manifest, ctx) {
+  const file3 = ctx.file;
+  return (manifest.handlers ?? []).some((handler) => handler.event === ctx.event && (!file3 || matchesGlobs(file3.relativePath, handler.globs)));
+}
+var init_ctx = __esm({
+  "packages/core/src/detector/ctx.ts"() {
+    "use strict";
+    init_src();
+    init_glob2();
+  }
+});
+
+// packages/core/src/principle/manifest.ts
+var init_manifest = __esm({
+  "packages/core/src/principle/manifest.ts"() {
+    "use strict";
+    init_src();
+  }
+});
+
+// packages/core/src/detector/sandbox.ts
+function evaluateIn(QuickJS, script, environment, limits) {
+  const runtime = QuickJS.newRuntime();
+  runtime.setMemoryLimit(limits.memoryBytes);
+  runtime.setMaxStackSize(512 * 1024);
+  runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + limits.ms));
+  const vm = runtime.newContext();
+  let json4 = null;
+  let failure3 = { error: null };
+  try {
+    for (const [name, value] of Object.entries(environment.strings)) {
+      const handle = vm.newString(value);
+      vm.setProp(vm.global, name, handle);
+      handle.dispose();
+    }
+    for (const [name, implementation] of Object.entries(environment.functions)) {
+      const handle = vm.newFunction(name, (argument) => vm.newString(implementation(vm.getString(argument))));
+      vm.setProp(vm.global, name, handle);
+      handle.dispose();
+    }
+    const result = vm.evalCode(script, "detector.js");
+    if (result.error) {
+      const dumped = vm.dump(result.error);
+      if (result.error.alive) {
+        result.error.dispose();
+      }
+      failure3 = describeError(dumped, limits);
+    } else {
+      json4 = vm.getString(result.value);
+      result.value.dispose();
+    }
+  } catch (thrown) {
+    failure3 = describeError(thrown, limits);
+  } finally {
+    try {
+      vm.dispose();
+      runtime.dispose();
+    } catch (thrown) {
+      json4 = null;
+      if (failure3.error === null) {
+        failure3 = describeError(thrown, limits);
+      }
+    }
+  }
+  return { json: json4, ...failure3 };
+}
+async function runDetector(bundle, ctx, limits = DEFAULT_LIMITS, project = null, api = API_VERSION) {
+  return runDetectorIn(await loadSandbox(), bundle, ctx, limits, project, api);
+}
+function runDetectorIn(QuickJS, bundle, ctx, limits, project, api) {
+  const refused = unsupported(api);
+  if (refused !== null) {
+    return { findings: [], error: refused, dropped: [], ms: 0 };
+  }
+  const started = performance.now();
+  try {
+    const { json: json4, error: error62, thrown } = evaluateIn(QuickJS, `${bundle}
+;${RUN}`, environmentFor(api, ctx, project), limits);
+    const ms = performance.now() - started;
+    if (json4 === null) {
+      return { findings: [], error: error62 ?? "the detector returned nothing", ...thrown === void 0 ? {} : { thrown }, dropped: [], ms };
+    }
+    const { findings, dropped } = validateFindings(json4, ctx, project);
+    return { findings, error: null, dropped, ms };
+  } catch {
+    return { findings: [], error: "the host could not make sense of what the detector did", dropped: [], ms: performance.now() - started };
+  }
+}
+function jsonOf(value) {
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return "a value that is not text";
+  }
+}
+function textOf(value) {
+  return typeof value === "string" ? value : jsonOf(value);
+}
+function quoted(value) {
+  const text2 = jsonOf(value);
+  return text2.length > 60 ? `${text2.slice(0, 60)}\u2026` : text2;
+}
+function describeError(dumped, limits) {
+  const message = typeof dumped === "object" && dumped !== null && "message" in dumped ? textOf(dumped.message) : textOf(dumped);
+  if (message.includes("interrupted")) {
+    return { error: `the detector ran longer than ${limits.ms} ms and was stopped` };
+  }
+  if (message.includes("out of memory")) {
+    return { error: `the detector used more than ${limits.memoryBytes / 1024 / 1024} MB and was stopped` };
+  }
+  const name = typeof dumped === "object" && dumped !== null && "name" in dumped ? `${textOf(dumped.name)}: ` : "";
+  const thrown = `${name}${message}`;
+  return { error: "the detector threw an error", thrown: thrown.length > MAX_THROWN_LENGTH ? `${thrown.slice(0, MAX_THROWN_LENGTH)}\u2026` : thrown };
+}
+function fromRoot(file3, root) {
+  if (root !== null && file3.startsWith(`${root}/`)) {
+    return file3.slice(root.length + 1);
+  }
+  return file3;
+}
+function existingFile(file3, ctx, project) {
+  const base2 = ctx.project ?? ctx.cwd ?? "/";
+  const absolute = normalizeAbsolute(file3.startsWith("/") ? file3 : `${base2}/${file3}`);
+  const exists = absolute === ctx.file?.path || project !== null && project.stat(absolute) !== null;
+  return exists ? fromRoot(absolute, ctx.project) : null;
+}
+function everyLine(first, last, textOn) {
+  for (let line = first; line <= last; line++) {
+    if (textOn(line) === void 0) {
+      return false;
+    }
+  }
+  return true;
+}
+function linesFrom(first, last, textOn) {
+  const texts = [];
+  for (let line = first; line <= last; line++) {
+    texts.push(textOn(line) ?? "");
+  }
+  return texts;
+}
+function hasLines(ctx) {
+  return ctx.file !== null || ctx.event === "output";
+}
+function validateFindings(json4, ctx, project = null) {
+  const findings = [];
+  const dropped = [];
+  let parsed;
+  try {
+    parsed = JSON.parse(json4);
+  } catch {
+    return { findings, dropped: ["the detector did not return JSON"] };
+  }
+  if (!Array.isArray(parsed)) {
+    return { findings, dropped: ["the detector did not return a list of findings"] };
+  }
+  const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  const removed = new Map((ctx.file?.removed ?? []).map((line) => [line.line, line.text]));
+  for (const raw of parsed) {
+    if (findings.length >= MAX_FINDINGS) {
+      dropped.push(`more than ${MAX_FINDINGS} findings; the rest were dropped`);
+      break;
+    }
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      dropped.push("a finding that is not an object");
+      continue;
+    }
+    const candidate = raw;
+    const finding = {};
+    const onRemoved = candidate.removed === true;
+    if (candidate.removed !== void 0 && typeof candidate.removed !== "boolean") {
+      dropped.push(`the removed of a finding, which is true or false: ${quoted(candidate.removed)}`);
+    } else if (onRemoved && candidate.line === void 0) {
+      dropped.push("the removed of a finding without a line");
+    }
+    const textOn = (line) => {
+      if (onRemoved) {
+        return removed.get(line);
+      }
+      return lines[line - 1];
+    };
+    if (candidate.line !== void 0) {
+      const line = candidate.line;
+      if (!hasLines(ctx)) {
+        dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
+      } else if (typeof line !== "number" || !Number.isInteger(line) || textOn(line) === void 0) {
+        if (onRemoved) {
+          dropped.push(`line ${quoted(line)} of a finding, which the agent did not remove`);
+        } else {
+          dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
+        }
+      } else {
+        finding.line = line;
+        if (onRemoved) {
+          finding.removed = true;
+        }
+      }
+    }
+    if (candidate.endLine !== void 0) {
+      const endLine = candidate.endLine;
+      if (finding.line === void 0) {
+        dropped.push("the endLine of a finding without a line");
+      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || !everyLine(finding.line, endLine, textOn)) {
+        dropped.push(`endLine ${quoted(endLine)} of a finding on line ${finding.line}`);
+      } else if (endLine > finding.line) {
+        finding.endLine = endLine;
+      }
+    }
+    if (candidate.match !== void 0) {
+      const match = typeof candidate.match === "string" ? candidate.match.trim() : "";
+      const scope = finding.line === void 0 ? [ctx.text, ...removed.values()] : linesFrom(finding.line, finding.endLine ?? finding.line, textOn);
+      if (match === "") {
+        dropped.push("an empty match");
+      } else if (match.includes("\n")) {
+        dropped.push(`a match that spans lines: ${JSON.stringify(match.slice(0, 60))}. Name the lines with line and endLine.`);
+      } else if (match.length > MAX_MATCH_LENGTH) {
+        dropped.push(`a match longer than ${MAX_MATCH_LENGTH} characters`);
+      } else if (!scope.some((text2) => text2.includes(match))) {
+        dropped.push(`a match that does not occur ${finding.line === void 0 ? "in the input" : finding.endLine === void 0 ? `on line ${finding.line}` : `in lines ${finding.line} to ${finding.endLine}`}: ${JSON.stringify(match.slice(0, 60))}`);
+      } else {
+        finding.match = match;
+      }
+    }
+    if (candidate.file !== void 0) {
+      const file3 = typeof candidate.file === "string" ? candidate.file.trim() : "";
+      if (file3 === "") {
+        dropped.push("the file of a finding, which is not a path");
+      } else if (file3.includes("\n")) {
+        dropped.push("the file of a finding, which spans lines");
+      } else if (file3.length > MAX_MATCH_LENGTH) {
+        dropped.push(`the file of a finding, a path longer than ${MAX_MATCH_LENGTH} characters`);
+      } else {
+        const shown = existingFile(file3, ctx, project);
+        if (shown !== null) {
+          finding.file = shown;
+        } else if (ctx.text.includes(file3)) {
+          finding.file = fromRoot(file3, ctx.project);
+        } else {
+          dropped.push(`the file of a finding, which does not exist and does not occur in the input: ${JSON.stringify(file3.slice(0, 60))}`);
+        }
+      }
+    }
+    if (candidate.depth !== void 0) {
+      if (candidate.depth !== "pointer" && candidate.depth !== "full") {
+        dropped.push(`the unknown depth ${quoted(candidate.depth)}`);
+      } else {
+        finding.depth = candidate.depth;
+      }
+    }
+    findings.push(finding);
+  }
+  return { findings, dropped };
+}
+var DEFAULT_LIMITS, MAX_FINDINGS, MAX_MATCH_LENGTH, MAX_THROWN_LENGTH, RUN, LOAD_LIMITS, HANDLERS, TEST_LIMITS;
+var init_sandbox = __esm({
+  "packages/core/src/detector/sandbox.ts"() {
+    "use strict";
+    init_dist3();
+    init_src();
+    init_api();
+    init_bundle();
+    init_engines();
+    init_project();
+    DEFAULT_LIMITS = {
+      ms: 100,
+      memoryBytes: 32 * 1024 * 1024
+    };
+    MAX_FINDINGS = 20;
+    MAX_MATCH_LENGTH = 300;
+    MAX_THROWN_LENGTH = 1e3;
+    RUN = `JSON.stringify(${BUNDLE_GLOBAL}.run(JSON.parse(__ctx), ${MAX_FINDINGS}))`;
+    LOAD_LIMITS = { ...DEFAULT_LIMITS, ms: 2e3 };
+    HANDLERS = `JSON.stringify(${BUNDLE_GLOBAL}.handlers())`;
+    TEST_LIMITS = {
+      ms: 5e3,
+      memoryBytes: 64 * 1024 * 1024
+    };
+  }
+});
+
+// packages/core/src/principle/scan.ts
+var init_scan = __esm({
+  "packages/core/src/principle/scan.ts"() {
+    "use strict";
+  }
+});
+
+// packages/core/src/principle/advice-length.ts
+var encoder;
+var init_advice_length = __esm({
+  "packages/core/src/principle/advice-length.ts"() {
+    "use strict";
+    encoder = new TextEncoder();
+  }
+});
+
+// packages/core/src/principle/principle.ts
+async function hashPrinciple(manifest, advice, bundle) {
+  const bytes = new TextEncoder().encode(JSON.stringify([manifest, advice, bundle]));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+function hasDetector(manifest) {
+  return !Array.isArray(manifest.handlers) || manifest.handlers.length > 0;
+}
+var MAX_TOTAL_BYTES, MAX_PACKAGE_BYTES;
+var init_principle = __esm({
+  "packages/core/src/principle/principle.ts"() {
+    "use strict";
+    init_src();
+    init_api();
+    init_bundle();
+    init_ctx();
+    init_manifest();
+    init_licenses();
+    init_packages();
+    init_project();
+    init_sandbox();
+    init_scan();
+    init_advice_length();
+    MAX_TOTAL_BYTES = 512 * 1024;
+    MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
+  }
+});
+
+// packages/core/src/build/fs.ts
+var readFrom;
+var init_fs = __esm({
+  "packages/core/src/build/fs.ts"() {
+    "use strict";
+    init_bundle();
+    init_packages();
+    init_principle();
+    readFrom = /* @__PURE__ */ new Set();
+  }
+});
+
+// packages/core/src/build/cdn.ts
+var init_cdn = __esm({
+  "packages/core/src/build/cdn.ts"() {
+    "use strict";
+    init_packages();
+  }
+});
+
+// packages/core/src/principle/scaffold.ts
+var init_scaffold = __esm({
+  "packages/core/src/principle/scaffold.ts"() {
+    "use strict";
+    init_src();
+    init_manifest();
+  }
+});
+
+// packages/core/src/principle/released.ts
+var init_released = __esm({
+  "packages/core/src/principle/released.ts"() {
+    "use strict";
+  }
+});
+
+// packages/core/src/index.ts
+var init_src2 = __esm({
+  "packages/core/src/index.ts"() {
+    "use strict";
+    init_advice_length();
+    init_api();
+    init_bundle();
+    init_cdn();
+    init_ctx();
+    init_engines();
+    init_glob2();
+    init_licenses();
+    init_manifest();
+    init_packages();
+    init_principle();
+    init_project();
+    init_sandbox();
+    init_scaffold();
+    init_scan();
+    init_released();
+  }
+});
+
+// packages/core/src/node.ts
+import { createRequire } from "node:module";
+import path from "node:path";
+async function loadEsbuild() {
+  try {
+    return await import("esbuild");
+  } catch {
+    for (const dir of [...readFrom].reverse()) {
+      try {
+        return createRequire(path.join(dir, "package.json"))("esbuild");
+      } catch {
+      }
+    }
+    throw new Error(
+      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev github:passsy/wellactually#sdk vitest`."
+    );
+  }
+}
+var sandbox;
+var init_node = __esm({
+  "packages/core/src/node.ts"() {
+    "use strict";
+    init_dist();
+    init_dist3();
+    init_engines();
+    init_fs();
+    init_src2();
+    init_fs();
+    sandbox = null;
+    setEngines({
+      // Loaded on first use. The hook only runs detectors and never builds one,
+      // and the plugin's single-file bundle cannot carry esbuild's native binary.
+      build: async (options) => (await loadEsbuild()).build(options),
+      // The build with the WebAssembly inlined, so the isolate also loads from a single bundled file.
+      quickjs: () => sandbox ??= newQuickJSWASMModuleFromVariant(src_default)
+    });
+  }
+});
+
+// packages/cli/src/hook/finding.ts
+function describeFinding(ctx, finding) {
+  const place = describePlace(ctx, finding);
+  if (finding.file === void 0 || finding.file === ctx.file?.relativePath) {
+    return place ?? (ctx.file ? `the file ${ctx.file.relativePath}` : null);
+  }
+  if (place === null) {
+    return `the file ${finding.file}`;
+  }
+  return `the file ${finding.file}, from ${place}`;
+}
+function describePlace(ctx, finding) {
+  const match = finding.match === void 0 ? null : JSON.stringify(finding.match);
+  if (finding.line === void 0) {
+    return match;
+  }
+  const text2 = lineText(ctx, finding).trim();
+  const quoted2 = text2.length > MAX_QUOTED_LENGTH ? `${text2.slice(0, MAX_QUOTED_LENGTH)}\u2026` : text2;
+  const kind = finding.removed === true ? "removed line" : "line";
+  const where = finding.endLine === void 0 ? `${kind} ${finding.line}` : `${kind}s ${finding.line}-${finding.endLine}`;
+  const named = match !== null && finding.match !== text2 ? `${where}, ${match}` : where;
+  return quoted2 === "" ? named : `${named}: ${quoted2}`;
+}
+function lineText(ctx, finding) {
+  if (finding.removed === true) {
+    const removed = ctx.file?.removed.find((line) => line.line === finding.line);
+    return removed?.text ?? "";
+  }
+  const lines = ctx.file?.lines ?? ctx.text.split("\n");
+  return lines[(finding.line ?? 1) - 1] ?? "";
+}
+var MAX_QUOTED_LENGTH;
+var init_finding = __esm({
+  "packages/cli/src/hook/finding.ts"() {
+    "use strict";
+    MAX_QUOTED_LENGTH = 300;
+  }
+});
+
+// packages/cli/src/board/files.ts
+import fs from "node:fs";
+import path2 from "node:path";
+function toPosix(file3) {
+  return file3.split(path2.sep).join("/");
+}
+function findProjectRoot(from) {
+  const start = path2.resolve(from);
+  for (const marker of ROOT_MARKERS) {
+    for (let dir = start; ; dir = path2.dirname(dir)) {
+      if (fs.existsSync(path2.join(dir, marker))) {
+        return dir;
+      }
+      if (dir === path2.dirname(dir)) {
+        break;
+      }
+    }
+  }
+  return null;
+}
+function diskFiles() {
+  const kindOf = (stat) => stat.isFile() ? "file" : stat.isDirectory() ? "dir" : null;
+  const statOf = (file3) => {
+    try {
+      return fs.statSync(file3);
+    } catch {
+      return null;
+    }
+  };
+  return {
+    read: (file3) => {
+      const stat = statOf(file3);
+      if (!stat?.isFile() || stat.size > MAX_READ_BYTES) {
+        return null;
+      }
+      try {
+        const content = fs.readFileSync(file3, "utf8");
+        return content.includes("\0") ? null : content;
+      } catch {
+        return null;
+      }
+    },
+    stat: (file3) => {
+      const stat = statOf(file3);
+      const kind = stat ? kindOf(stat) : null;
+      return stat && kind ? { kind, size: stat.size } : null;
+    },
+    list: (dir) => {
+      if (!statOf(dir)?.isDirectory()) {
+        return null;
+      }
+      let names2;
+      try {
+        names2 = fs.readdirSync(dir).sort();
+      } catch {
+        return null;
+      }
+      const entries = [];
+      for (const name of names2) {
+        const stat = statOf(path2.join(dir, name));
+        const kind = stat ? kindOf(stat) : null;
+        if (kind) {
+          entries.push({ name, kind });
+        }
+      }
+      return entries;
+    }
+  };
+}
+var ROOT_MARKERS, MAX_READ_BYTES;
+var init_files = __esm({
+  "packages/cli/src/board/files.ts"() {
+    "use strict";
+    init_node();
+    ROOT_MARKERS = [".wellactually.json", ".git"];
+    MAX_READ_BYTES = 512 * 1024;
+  }
+});
+
+// packages/cli/src/board/board.ts
+import fs2 from "node:fs";
+import os from "node:os";
+import path3 from "node:path";
+function boardHome() {
+  return process.env.WELLACTUALLY_HOME ?? path3.join(os.homedir(), ".wellactually");
+}
+function readJson(file3) {
+  let source;
+  try {
+    source = fs2.readFileSync(file3, "utf8");
+  } catch {
+    return null;
+  }
+  return JSON.parse(source);
+}
+function writeJson(file3, value) {
+  fs2.mkdirSync(path3.dirname(file3), { recursive: true });
+  const temporary = `${file3}.${process.pid}.tmp`;
+  fs2.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}
+`, { mode: 384 });
+  fs2.renameSync(temporary, file3);
+}
+function tokenFromEnvironment() {
+  return process.env.WELLACTUALLY_TOKEN?.trim() || null;
+}
+function readStoredConfig() {
+  return readJson(path3.join(boardHome(), "config.json"));
+}
+function readConfig() {
+  const stored = readStoredConfig();
+  return {
+    registry: process.env.WELLACTUALLY_REGISTRY ?? stored?.registry ?? DEFAULT_REGISTRY,
+    token: tokenFromEnvironment() ?? stored?.token ?? null,
+    handle: stored?.handle ?? null,
+    stats: stored?.stats ?? true
+  };
+}
+function readLockfile() {
+  return readJson(path3.join(boardHome(), "board.json")) ?? { syncedAt: null, entries: [] };
+}
+function writeLockfile(lockfile) {
+  writeJson(path3.join(boardHome(), "board.json"), lockfile);
+}
+function bundlePath(hash4) {
+  if (!/^[a-f0-9]{64}$/.test(hash4)) {
+    throw new Error(`"${hash4}" is not a principle hash`);
+  }
+  return path3.join(boardHome(), "bundles", `${hash4}.json`);
+}
+function hasCached(hash4) {
+  return fs2.existsSync(bundlePath(hash4));
+}
+function readCached(hash4) {
+  return readJson(bundlePath(hash4));
+}
+function writeCached(principle) {
+  writeJson(bundlePath(principle.hash), principle);
+}
+async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ new Set(), pool = null, parallelFrom = PARALLEL_FROM, budgetMs = BOARD_BUDGET_MS) {
+  const disk = diskFiles();
+  const started = performance.now();
+  const run3 = { firings: [], failures: [], detectors: [], skipped: [], ms: 0 };
+  const applying = [];
+  const skipped = `skipped, the advisory board used its ${budgetMs} ms budget before reaching it`;
+  for (const entry of lockfile.entries) {
+    if (!entry.enabled || off.has(entry.id)) {
+      run3.skipped.push({ id: entry.id, reason: "off" });
+      continue;
+    }
+    const cached2 = readCached(entry.hash);
+    const principle = cached2 && { ...cached2, id: entry.id, version: entry.version };
+    if (!principle) {
+      run3.failures.push({ id: entry.id, error: "its bundle is not in the local cache; download it with the plugin's sync skill" });
+      run3.skipped.push({ id: entry.id, reason: "not cached" });
+      continue;
+    }
+    if (applies(principle.manifest, ctx)) {
+      applying.push(principle);
+    } else {
+      run3.skipped.push({ id: entry.id, reason: "globs" });
+    }
+  }
+  let results;
+  if (pool !== null && applying.length >= parallelFrom) {
+    const tasks = applying.map((principle) => ({ bundle: principle.bundle, api: apiOf(principle.manifest) }));
+    results = await pool.run(ctx, tasks, started + budgetMs, skipped);
+  } else {
+    results = [];
+    for (const principle of applying) {
+      results.push(
+        performance.now() - started > budgetMs ? { findings: [], error: skipped, dropped: [], ms: 0 } : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk, apiOf(principle.manifest))
+      );
+    }
+  }
+  applying.forEach((principle, index) => {
+    const result = results[index];
+    run3.detectors.push({ id: principle.id, version: principle.version, findings: result.findings, dropped: result.dropped, error: result.error, ...result.thrown === void 0 ? {} : { thrown: result.thrown }, ms: result.ms });
+    if (result.error) {
+      run3.failures.push({ id: principle.id, error: result.error });
+    } else if (result.findings.length > 0) {
+      run3.firings.push({ principle, findings: result.findings });
+    }
+  });
+  run3.ms = performance.now() - started;
+  return run3;
+}
+var DEFAULT_REGISTRY, BOARD_BUDGET_MS, PARALLEL_FROM, SESSION_MAX_AGE_MS;
+var init_board = __esm({
+  "packages/cli/src/board/board.ts"() {
+    "use strict";
+    init_node();
+    init_finding();
+    init_files();
+    DEFAULT_REGISTRY = "https://wellactually.dev";
+    BOARD_BUDGET_MS = 1500;
+    PARALLEL_FROM = 14;
+    SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+  }
+});
+
+// packages/findings/store/paths.mts
+import { execFileSync } from "node:child_process";
+import { cpSync, existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { isAbsolute, join, resolve, sep } from "node:path";
+function slugTarget(target2) {
+  const slug = target2.trim().replace(/[/\\]+/g, "-").replace(/[^A-Za-z0-9._-]/g, "-").replace(/^[.-]+/, "").replace(/-+/g, "-");
+  if (slug === "" || slug === "." || slug === "..") {
+    throw new Error(
+      `target "${target2}" does not name a directory. Use something like "pr-123" or a branch name.`
+    );
+  }
+  return slug;
+}
+function headCommit(root) {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+function targetPaths(repo2, target2) {
+  const slug = slugTarget(target2);
+  const dir = join(repo2, REVIEW_DIR, slug);
+  const legacy = join(repo2, LEGACY_REVIEW_DIR, slug);
+  if (!existsSync(dir) && existsSync(legacy)) {
+    try {
+      cpSync(legacy, dir, { recursive: true, preserveTimestamps: true });
+    } catch (error62) {
+      if (!existsSync(dir)) throw error62;
+    }
+  }
+  return {
+    repo: repo2,
+    target: slug,
+    dir,
+    findings: join(dir, "findings"),
+    candidates: join(dir, "candidates"),
+    observations: join(dir, "observations"),
+    meta: join(dir, "target.json"),
+    html: join(dir, "review.html"),
+    sarif: join(dir, "findings.sarif")
+  };
+}
+function repoRelative(repo2, file3) {
+  const absolute = isAbsolute(file3) ? file3 : join(repo2, file3);
+  const prefix = repo2.endsWith(sep) ? repo2 : repo2 + sep;
+  return absolute.startsWith(prefix) ? absolute.slice(prefix.length) : file3;
+}
+var REVIEW_DIR, LEGACY_REVIEW_DIR, GLOBAL_ROOT, REGISTRY_FILE, LEGACY_REGISTRY_FILE;
+var init_paths = __esm({
+  "packages/findings/store/paths.mts"() {
+    "use strict";
+    REVIEW_DIR = ".well-actually";
+    LEGACY_REVIEW_DIR = ".pascal-review";
+    GLOBAL_ROOT = process.env.WELLACTUALLY_FINDINGS_HOME ?? join(homedir(), REVIEW_DIR);
+    REGISTRY_FILE = join(GLOBAL_ROOT, "registry.json");
+    LEGACY_REGISTRY_FILE = join(
+      homedir(),
+      LEGACY_REVIEW_DIR,
+      "registry.json"
+    );
+  }
+});
+
+// packages/findings/model/types.mts
+function modernVerdict(verdict, reason) {
+  if (verdict === "dismissed") {
+    return reason === "false-positive" ? "invalid" : "tolerated";
+  }
+  if (verdict === "parked") return "tolerated";
+  return verdict;
+}
+var EVIDENCE, PRIORITY, MAX_TAGS, MAX_TAG_LENGTH, VERDICT, RESOLUTION, ACTOR, REPORTER, OBSERVATION_STATUS, CANDIDATE_STATUS;
+var init_types = __esm({
+  "packages/findings/model/types.mts"() {
+    "use strict";
+    EVIDENCE = ["Proven", "Reasoned", "Speculative"];
+    PRIORITY = ["p0", "p1", "p2", "p3", "p4"];
+    MAX_TAGS = 4;
+    MAX_TAG_LENGTH = 24;
+    VERDICT = [
+      "undecided",
+      "accepted",
+      "invalid",
+      "tolerated"
+    ];
+    RESOLUTION = ["unresolved", "resolved", "regressed"];
+    ACTOR = ["review", "human", "agent"];
+    REPORTER = ["review", "human", "pr-comment"];
+    OBSERVATION_STATUS = ["pending", "promoted", "dropped"];
+    CANDIDATE_STATUS = [
+      "pending",
+      "confirmed",
+      "plausible",
+      "refuted"
+    ];
+  }
+});
+
+// packages/findings/model/fingerprint.mts
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join as join2 } from "node:path";
+function normalize(snippet) {
+  return snippet.trim().replace(/\s+/g, " ");
+}
+function fingerprintOf(rule, file3, snippet) {
+  const parts = `${rule ?? "adhoc"}:${file3}:${normalize(snippet)}`;
+  return createHash("sha256").update(parts).digest("hex");
+}
+function snippetAt(repo2, file3, line) {
+  try {
+    const lines = readFileSync(join2(repo2, file3), "utf8").split(/\r?\n/);
+    return lines[line - 1] ?? "";
+  } catch {
+    return "";
+  }
+}
+var init_fingerprint = __esm({
+  "packages/findings/model/fingerprint.mts"() {
+    "use strict";
+  }
+});
+
+// packages/findings/model/authorship.mts
+import { execFileSync as execFileSync2 } from "node:child_process";
+function classifyAuthorship(repo2, base2, file3, span) {
+  const cut = base2.indexOf("..");
+  const ref = cut === -1 ? base2 : base2.slice(0, cut);
+  const mergeBase2 = git(repo2, ["merge-base", ref, "HEAD"])?.trim();
+  if (!mergeBase2) return void 0;
+  const authored = (flags, wholeFile = false) => authoredAny(repo2, `${mergeBase2}..HEAD`, file3, span, flags, wholeFile);
+  const literally = authored([]);
+  if (literally === void 0) return void 0;
+  if (!literally) return "untouched";
+  const beyondWhitespace = authored(["-w"]);
+  if (beyondWhitespace === void 0) return void 0;
+  if (!beyondWhitespace) return "whitespace-only";
+  const beyondMoves = authored(["-w", "-M", "-C", "-C"], true);
+  if (beyondMoves === void 0) return void 0;
+  if (!beyondMoves) return "moved";
+  return "changed";
+}
+function authoredAny(repo2, range2, file3, span, flags, wholeFile) {
+  const end = Math.max(span.line, span.endLine ?? span.line);
+  const out = git(repo2, [
+    "blame",
+    "--line-porcelain",
+    ...wholeFile ? [] : ["-L", `${span.line},${end}`],
+    ...flags,
+    range2,
+    "--",
+    file3
+  ]);
+  if (out === void 0) return void 0;
+  let lines = 0;
+  let boundary = 0;
+  let counted = false;
+  for (const each of out.split("\n")) {
+    const header = /^[0-9a-f]{40} \d+ (\d+)/.exec(each);
+    if (header) {
+      const at = Number(header[1]);
+      counted = at >= span.line && at <= end;
+      if (counted) lines += 1;
+    } else if (counted && each === "boundary") {
+      boundary += 1;
+    }
+  }
+  if (lines === 0) return void 0;
+  return lines > boundary;
+}
+function git(repo2, args) {
+  try {
+    return execFileSync2("git", args, {
+      cwd: repo2,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+  } catch {
+    return void 0;
+  }
+}
+var init_authorship = __esm({
+  "packages/findings/model/authorship.mts"() {
+    "use strict";
+  }
+});
+
+// packages/findings/model/context.mts
+import { execFileSync as execFileSync3 } from "node:child_process";
+import { readFileSync as readFileSync2 } from "node:fs";
+import { join as join3 } from "node:path";
+function lastLine(span) {
+  return Math.max(span.line, span.endLine ?? span.line);
+}
+function captureAt(repo2, file3, span, base2) {
+  const context = captureContext(repo2, file3, span);
+  const diff = base2 ? captureDiff(repo2, base2, file3, span) : void 0;
+  const authorship = base2 ? classifyAuthorship(repo2, base2, file3, span) : void 0;
+  return {
+    ...context ? { context } : {},
+    ...diff ? { diff } : {},
+    ...authorship ? { authorship } : {}
+  };
+}
+function captureContext(repo2, file3, span) {
+  let lines;
+  try {
+    lines = readFileSync2(join3(repo2, file3), "utf8").split(/\r?\n/);
+  } catch {
+    return void 0;
+  }
+  if (span.line > lines.length) return void 0;
+  const start = Math.max(1, span.line - CONTEXT_RADIUS);
+  const end = Math.min(lines.length, lastLine(span) + CONTEXT_RADIUS);
+  return { start, lines: lines.slice(start - 1, end) };
+}
+function range(base2) {
+  return base2.includes("..") ? base2 : `${base2}...HEAD`;
+}
+function captureDiff(repo2, base2, file3, span) {
+  let patch;
+  try {
+    patch = execFileSync3("git", ["diff", range(base2), "--", file3], {
+      cwd: repo2,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+  } catch {
+    return void 0;
+  }
+  return hunksAround(patch, span);
+}
+function hunksAround(patch, span) {
+  const kept = [];
+  let current2 = null;
+  const end = lastLine(span);
+  for (const each of patch.split("\n")) {
+    const header = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(each);
+    if (header) {
+      const start = Number(header[1]);
+      const count3 = header[2] === void 0 ? 1 : Number(header[2]);
+      const overlaps = span.line < start + Math.max(count3, 1) && end >= start;
+      current2 = overlaps ? [each] : null;
+      if (current2) kept.push(current2);
+      continue;
+    }
+    current2?.push(each);
+  }
+  if (kept.length === 0) return void 0;
+  return kept.map((hunk) => hunk.join("\n").replace(/\s+$/, "")).join("\n");
+}
+var CONTEXT_RADIUS;
+var init_context = __esm({
+  "packages/findings/model/context.mts"() {
+    "use strict";
+    init_authorship();
+    CONTEXT_RADIUS = 5;
+  }
+});
+
+// packages/findings/model/transitions.mts
+function checkVerdict(from, to, actor) {
+  if (from === to) {
+    throw new TransitionError(`the finding is already ${to}.`);
+  }
+  if (actor !== "human") {
+    throw new TransitionError(
+      `only "human" decides a verdict, because accepting or failing a finding is Pascal's call and nobody else's. You passed actor "${actor}".`
+    );
+  }
+}
+function checkResolution(from, to, actor) {
+  if (from === to) {
+    throw new TransitionError(`the finding is already ${to}.`);
+  }
+  const edges = RESOLUTION_EDGES[from];
+  const edge = edges.find((candidate) => candidate.to === to);
+  if (!edge) {
+    const reachable = edges.map((each) => `"${each.to}"`).join(", ");
+    throw new TransitionError(
+      `an ${from} finding cannot become ${to}. From ${from} it can only become ${reachable || "nothing"}.`
+    );
+  }
+  if (!edge.by.includes(actor)) {
+    const allowed = edge.by.map((each) => `"${each}"`).join(" or ");
+    throw new TransitionError(
+      `only ${allowed} can move a finding from ${from} to ${to}, because ${edge.why}. You passed actor "${actor}".`
+    );
+  }
+}
+var RESOLUTION_EDGES, TransitionError;
+var init_transitions = __esm({
+  "packages/findings/model/transitions.mts"() {
+    "use strict";
+    RESOLUTION_EDGES = {
+      unresolved: [
+        {
+          to: "resolved",
+          by: ["agent", "human"],
+          why: "someone claims the code no longer has it"
+        }
+      ],
+      resolved: [
+        { to: "regressed", by: ["review"], why: "a review run found it again" },
+        { to: "unresolved", by: ["human"], why: "the fix did not hold up" }
+      ],
+      regressed: [
+        {
+          to: "resolved",
+          by: ["agent", "human"],
+          why: "a commit claims to fix it again"
+        },
+        { to: "unresolved", by: ["human"], why: "it goes back on the pile" }
+      ]
+    };
+    TransitionError = class extends Error {
+    };
+  }
+});
+
+// packages/findings/store/legacy.mts
+function axesOf(status) {
+  return AXES[status ?? "open"] ?? OPEN;
+}
+function upgradeEntry(entry) {
+  if (entry.verdict || entry.resolution || !entry.to) return entry;
+  const axes = axesOf(entry.to);
+  const moved = entry.to === "dismissed" ? (
+    // The one state that split in two, and the entry's own reason is the
+    // witness for which half it meant.
+    { verdict: modernVerdict("dismissed", entry.reason) }
+  ) : entry.to === "open" || entry.to === "accepted" ? { verdict: axes.verdict } : { resolution: axes.resolution };
+  const { to: _was, ...rest } = entry;
+  return { ...rest, ...moved };
+}
+function upgrade(finding) {
+  const old = finding;
+  if (finding.verdict && finding.resolution) return modern(ranked(finding));
+  const axes = axesOf(old.status);
+  const entries = old.history ?? [];
+  const history = entries.map(upgradeEntry);
+  const confirmedAt = axes.confirmed ? entries.findLast((entry) => entry.to === "verified")?.at ?? finding.createdAt : void 0;
+  const upgraded = {
+    ...ranked(finding),
+    verdict: old.status === "dismissed" ? modernVerdict(
+      "dismissed",
+      entries.findLast((entry) => entry.to === "dismissed")?.reason
+    ) : axes.verdict,
+    resolution: axes.resolution,
+    ...confirmedAt ? { confirmedAt } : {},
+    history
+  };
+  delete upgraded.status;
+  return modern(upgraded);
+}
+function modern(finding) {
+  const old = finding;
+  const reason = old.reason ?? finding.history.findLast(
+    (entry) => entry.verdict === finding.verdict && entry.reason
+  )?.reason;
+  const verdict = modernVerdict(finding.verdict, reason);
+  if (verdict === finding.verdict && old.reason === void 0) return finding;
+  const upgraded = { ...finding, verdict };
+  delete upgraded.reason;
+  return upgraded;
+}
+function ranked(finding) {
+  const old = finding;
+  if (finding.priority) return finding;
+  const upgraded = {
+    ...finding,
+    // An unrecognised name lands in the middle rather than at either end: the
+    // ordering is a guess either way, and a guess that shouts is worse.
+    priority: RANKED[old.impact ?? ""] ?? "p2"
+  };
+  delete upgraded.impact;
+  return upgraded;
+}
+var RANKED, AXES, OPEN;
+var init_legacy = __esm({
+  "packages/findings/store/legacy.mts"() {
+    "use strict";
+    init_types();
+    RANKED = {
+      Blocker: "p0",
+      Degraded: "p1",
+      Tripwire: "p2",
+      Polish: "p3",
+      Nit: "p4"
+    };
+    AXES = {
+      open: { verdict: "undecided", resolution: "unresolved" },
+      accepted: { verdict: "accepted", resolution: "unresolved" },
+      // The single-axis era had no reasons, so nothing can prove an old dismissal
+      // was a claim of invalidity. Tolerated is the verdict that demands nothing.
+      dismissed: { verdict: "tolerated", resolution: "unresolved" },
+      // Reaching fixed took an acceptance first, so the verdict is recovered
+      // rather than guessed. What cannot be recovered is a finding that was
+      // fixed without being accepted, because the old lifecycle had no way to
+      // say it.
+      fixed: { verdict: "accepted", resolution: "resolved" },
+      verified: { verdict: "accepted", resolution: "resolved", confirmed: true },
+      regressed: { verdict: "accepted", resolution: "regressed" }
+    };
+    OPEN = { verdict: "undecided", resolution: "unresolved" };
+  }
+});
+
+// packages/findings/store/findings.mts
+import {
+  existsSync as existsSync2,
+  linkSync,
+  mkdirSync,
+  readFileSync as readFileSync3,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import { join as join4 } from "node:path";
+function writeJson2(path13, value) {
+  const temp = `${path13}.${process.pid}.${writeCounter++}.tmp`;
+  writeFileSync(temp, `${JSON.stringify(value, null, 2)}
+`);
+  renameSync(temp, path13);
+}
+function writeView(path13, text2) {
+  const temp = `${path13}.${process.pid}.${writeCounter++}.tmp`;
+  writeFileSync(temp, text2);
+  renameSync(temp, path13);
+}
+function readJson2(path13) {
+  try {
+    return JSON.parse(readFileSync3(path13, "utf8"));
+  } catch {
+    return null;
+  }
+}
+function jsonFiles(dir) {
+  if (!existsSync2(dir)) return [];
+  return readdirSync(dir).filter((name) => name.endsWith(".json")).map((name) => join4(dir, name));
+}
+function numberOf(id) {
+  const digits = /(\d+)$/.exec(id);
+  return digits ? Number(digits[1]) : 0;
+}
+function byPriority(a, b) {
+  const rank = (PRIORITY_RANK.get(a.priority) ?? PRIORITY.length) - (PRIORITY_RANK.get(b.priority) ?? PRIORITY.length);
+  if (rank !== 0) return rank;
+  return a.id.localeCompare(b.id) || numberOf(a.id) - numberOf(b.id);
+}
+function ensureTarget(paths) {
+  mkdirSync(paths.findings, { recursive: true });
+  mkdirSync(paths.candidates, { recursive: true });
+  mkdirSync(paths.observations, { recursive: true });
+}
+function findingPath(paths, id) {
+  return join4(paths.findings, `${id}.json`);
+}
+function readFinding(paths, id) {
+  const finding = readJson2(findingPath(paths, id));
+  return finding && upgrade(finding);
+}
+function listFindings(paths) {
+  return jsonFiles(paths.findings).map((path13) => readJson2(path13)).filter((finding) => finding !== null).map(upgrade).sort(byPriority);
+}
+function writeFinding(paths, finding) {
+  ensureTarget(paths);
+  writeJson2(findingPath(paths, finding.id), finding);
+}
+function claimFinding(paths, finding) {
+  ensureTarget(paths);
+  const path13 = findingPath(paths, finding.id);
+  const temp = `${path13}.${process.pid}.${writeCounter++}.tmp`;
+  writeFileSync(temp, `${JSON.stringify(finding, null, 2)}
+`);
+  try {
+    linkSync(temp, path13);
+    return true;
+  } catch (error62) {
+    if (error62.code === "EEXIST") return false;
+    throw error62;
+  } finally {
+    rmSync(temp, { force: true });
+  }
+}
+function claimObservation(paths, observation) {
+  ensureTarget(paths);
+  const path13 = observationPath(paths, observation.id);
+  const temp = `${path13}.${process.pid}.${writeCounter++}.tmp`;
+  writeFileSync(temp, `${JSON.stringify(observation, null, 2)}
+`);
+  try {
+    linkSync(temp, path13);
+    return true;
+  } catch (error62) {
+    if (error62.code === "EEXIST") return false;
+    throw error62;
+  } finally {
+    rmSync(temp, { force: true });
+  }
+}
+function readMeta(paths) {
+  return readJson2(paths.meta) ?? {};
+}
+function writeMeta(paths, meta3) {
+  ensureTarget(paths);
+  writeJson2(paths.meta, meta3);
+}
+function listObservations(paths) {
+  return jsonFiles(paths.observations).map((path13) => readJson2(path13)).filter((each) => each !== null).sort((a, b) => numberOf(a.id) - numberOf(b.id));
+}
+function observationPath(paths, id) {
+  return join4(paths.observations, `${id}.json`);
+}
+function readObservation(paths, id) {
+  return readJson2(observationPath(paths, id));
+}
+function writeObservation(paths, observation) {
+  ensureTarget(paths);
+  writeJson2(observationPath(paths, observation.id), observation);
+}
+function candidatePath(paths, id) {
+  return join4(paths.candidates, `${id}.json`);
+}
+function readCandidate(paths, id) {
+  return readJson2(candidatePath(paths, id));
+}
+function listCandidates(paths) {
+  return jsonFiles(paths.candidates).map((path13) => readJson2(path13)).filter((candidate) => candidate !== null).sort((a, b) => numberOf(a.id) - numberOf(b.id));
+}
+function writeCandidate(paths, candidate) {
+  ensureTarget(paths);
+  writeJson2(candidatePath(paths, candidate.id), candidate);
+}
+function claimCandidate(paths, candidate) {
+  ensureTarget(paths);
+  const path13 = candidatePath(paths, candidate.id);
+  const temp = `${path13}.${process.pid}.${writeCounter++}.tmp`;
+  writeFileSync(temp, `${JSON.stringify(candidate, null, 2)}
+`);
+  try {
+    linkSync(temp, path13);
+    return true;
+  } catch (error62) {
+    if (error62.code === "EEXIST") return false;
+    throw error62;
+  } finally {
+    rmSync(temp, { force: true });
+  }
+}
+function allocateCandidateId(paths) {
+  const used = listCandidates(paths).map((candidate) => numberOf(candidate.id)).filter((number4) => Number.isFinite(number4));
+  return `C${String((used.length ? Math.max(...used) : 0) + 1)}`;
+}
+function letterFor(level) {
+  if (level === void 0) return "G";
+  const trimmed = level.trim();
+  const known = LEVEL_LETTERS[trimmed];
+  if (known) return known;
+  return /^[A-Za-z]$/.test(trimmed) ? trimmed.toUpperCase() : "G";
+}
+function allocateFindingId(paths, letter) {
+  const used = listFindings(paths).filter((finding) => finding.id.startsWith(letter)).map((finding) => numberOf(finding.id));
+  return `${letter}${Math.max(0, ...used) + 1}`;
+}
+function allocateObservationId(paths) {
+  const used = listObservations(paths).map((each) => numberOf(each.id));
+  return `O${Math.max(0, ...used) + 1}`;
+}
+function listTargets(reviewDir) {
+  if (!existsSync2(reviewDir)) return [];
+  return readdirSync(reviewDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).filter((name) => existsSync2(join4(reviewDir, name, "findings"))).sort();
+}
+function reviewActivity(paths) {
+  const dir = join4(paths.dir, "sessions");
+  if (!existsSync2(dir)) return null;
+  const latest = readdirSync(dir).map((id) => readJson2(join4(dir, id, "session.json"))).filter((s) => s !== null).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  return latest ? { updatedAt: latest.updatedAt, phase: latest.phase, complete: latest.phase === "verification" && latest.queues.every((q) => q.items.every((i) => i.completed)) } : null;
+}
+var writeCounter, PRIORITY_RANK, LEVEL_LETTERS;
+var init_findings = __esm({
+  "packages/findings/store/findings.mts"() {
+    "use strict";
+    init_types();
+    init_legacy();
+    writeCounter = 0;
+    PRIORITY_RANK = new Map(PRIORITY.map((each, index) => [each, index]));
+    LEVEL_LETTERS = {
+      "0": "G",
+      "1": "A",
+      "2": "H",
+      "3": "T",
+      "4": "L",
+      "5": "R"
+    };
+  }
+});
+
+// packages/findings/validate.mts
+function requireObject(input2) {
+  if (typeof input2 !== "object" || input2 === null || Array.isArray(input2)) {
+    throw new InputError("arguments must be an object.");
+  }
+  return input2;
+}
+function str(input2, field) {
+  const value = input2[field];
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new InputError(
+      `"${field}" is required and must be a non-empty string, got ${describe3(value)}.`
+    );
+  }
+  return value;
+}
+function text(input2, field) {
+  const value = input2[field];
+  if (typeof value !== "string") {
+    throw new InputError(
+      `"${field}" is required and must be a string, got ${describe3(value)}. Pass "" to clear it.`
+    );
+  }
+  return value;
+}
+function optionalStr(input2, field) {
+  const value = input2[field];
+  if (value === void 0 || value === null || value === "") return void 0;
+  if (typeof value !== "string") {
+    throw new InputError(
+      `"${field}" must be a string when given, got ${describe3(value)}.`
+    );
+  }
+  return value;
+}
+function positiveInt(input2, field) {
+  const value = input2[field];
+  const parsed = typeof value === "string" ? Number(value) : value;
+  if (typeof parsed !== "number" || !Number.isInteger(parsed) || parsed < 1) {
+    throw new InputError(
+      `"${field}" must be a whole number of 1 or more, got ${describe3(value)}.`
+    );
+  }
+  return parsed;
+}
+function oneOf(input2, field, allowed) {
+  const value = input2[field];
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    throw new InputError(
+      `"${field}" must be one of ${list(allowed)}, got ${describe3(value)}.`
+    );
+  }
+  return value;
+}
+function optionalOneOf(input2, field, allowed) {
+  const value = input2[field];
+  if (value === void 0 || value === null || value === "") return void 0;
+  return oneOf(input2, field, allowed);
+}
+function object3(input2, field) {
+  const value = input2[field];
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new InputError(
+      `"${field}" is required and must be an object, got ${describe3(value)}.`
+    );
+  }
+  return value;
+}
+function flag(input2, field) {
+  const value = input2[field];
+  if (value === void 0 || value === null) return false;
+  if (typeof value === "boolean") return value;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new InputError(
+    `"${field}" must be true or false when given, got ${describe3(value)}.`
+  );
+}
+function optionalArray(input2, field) {
+  const value = input2[field];
+  if (value === void 0 || value === null) return [];
+  if (!Array.isArray(value)) {
+    throw new InputError(
+      `"${field}" must be an array when given, got ${describe3(value)}.`
+    );
+  }
+  return value;
+}
+function list(values) {
+  return values.map((value) => `"${value}"`).join(", ");
+}
+function describe3(value) {
+  if (value === void 0) return "nothing";
+  if (value === null) return "null";
+  if (typeof value === "string") return `"${value}"`;
+  if (Array.isArray(value)) return "an array";
+  if (typeof value === "object") return "an object";
+  return String(value);
+}
+var InputError;
+var init_validate = __esm({
+  "packages/findings/validate.mts"() {
+    "use strict";
+    InputError = class extends Error {
+    };
+  }
+});
+
+// packages/findings/store/lock.mts
+import fs3 from "node:fs";
+import path4 from "node:path";
+function locked(dir, action) {
+  fs3.mkdirSync(dir, { recursive: true });
+  const lock = path4.join(dir, ".lock");
+  const start = Date.now();
+  while (true) {
+    try {
+      fs3.mkdirSync(lock);
+      fs3.writeFileSync(path4.join(lock, "owner"), String(process.pid));
+      break;
+    } catch (error62) {
+      if (error62.code !== "EEXIST") throw error62;
+      const recovery = path4.join(dir, ".recovery");
+      let ownsRecovery = false;
+      try {
+        fs3.mkdirSync(recovery);
+        ownsRecovery = true;
+        const pid = Number(fs3.readFileSync(path4.join(lock, "owner"), "utf8"));
+        if (Number.isInteger(pid) && pid > 0) {
+          try {
+            process.kill(pid, 0);
+          } catch (failure3) {
+            if (failure3.code === "ESRCH")
+              fs3.rmSync(lock, { recursive: true, force: true });
+          }
+        }
+      } catch {
+        if (ownsRecovery) {
+          try {
+            if (Date.now() - fs3.statSync(lock).mtimeMs > 6e4 && !fs3.existsSync(path4.join(lock, "owner")))
+              fs3.rmSync(lock, { recursive: true, force: true });
+          } catch {
+          }
+        }
+      } finally {
+        if (ownsRecovery) fs3.rmSync(recovery, { recursive: true, force: true });
+      }
+      if (Date.now() - start > 5e3)
+        throw new InputError("Records are busy; retry this call");
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    }
+  }
+  try {
+    return action();
+  } finally {
+    fs3.rmSync(lock, { recursive: true, force: true });
+  }
+}
+var init_lock = __esm({
+  "packages/findings/store/lock.mts"() {
+    "use strict";
+    init_validate();
+  }
+});
+
+// packages/findings/store/registry.mts
+import { mkdirSync as mkdirSync2, readFileSync as readFileSync4, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
+function readRegistry() {
+  for (const file3 of [REGISTRY_FILE, LEGACY_REGISTRY_FILE]) {
+    try {
+      const parsed = JSON.parse(readFileSync4(file3, "utf8"));
+      if (Array.isArray(parsed.repos)) return parsed;
+    } catch {
+    }
+  }
+  return { repos: [] };
+}
+function upsertRegistry(repo2, target2, now2) {
+  return locked(GLOBAL_ROOT, () => {
+    const registry2 = readRegistry();
+    const existing = registry2.repos.find((entry) => entry.path === repo2);
+    if (existing) {
+      if (!existing.targets.includes(target2)) existing.targets.push(target2);
+      existing.targets.sort();
+      existing.lastReview = now2;
+    } else {
+      registry2.repos.push({ path: repo2, targets: [target2], lastReview: now2 });
+    }
+    registry2.repos.sort((a, b) => a.path.localeCompare(b.path));
+    write(registry2);
+    return registry2;
+  });
+}
+function write(registry2) {
+  mkdirSync2(GLOBAL_ROOT, { recursive: true });
+  const temp = `${REGISTRY_FILE}.${process.pid}.tmp`;
+  writeFileSync2(temp, `${JSON.stringify(registry2, null, 2)}
+`);
+  renameSync2(temp, REGISTRY_FILE);
+}
+var init_registry = __esm({
+  "packages/findings/store/registry.mts"() {
+    "use strict";
+    init_lock();
+    init_paths();
+  }
+});
+
+// packages/cli/src/board/switches.ts
+import fs4 from "node:fs";
+import path5 from "node:path";
+function read(file3) {
+  try {
+    const stored = JSON.parse(fs4.readFileSync(file3, "utf8"));
+    return Array.isArray(stored.disabled) ? stored.disabled.filter((id) => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+function projectRoot(cwd) {
+  return findProjectRoot(cwd) ?? path5.resolve(cwd);
+}
+function fileOf(scope, cwd) {
+  return scope === "global" ? path5.join(boardHome(), "disabled.json") : path5.join(projectRoot(cwd), PROJECT_FILE);
+}
+function switchedOff(cwd) {
+  const off = /* @__PURE__ */ new Map();
+  for (const scope of ["project", "global"]) {
+    for (const id of read(fileOf(scope, cwd))) {
+      off.set(id, [...off.get(id) ?? [], scope]);
+    }
+  }
+  return off;
+}
+var PROJECT_FILE;
+var init_switches = __esm({
+  "packages/cli/src/board/switches.ts"() {
+    "use strict";
+    init_board();
+    init_files();
+    PROJECT_FILE = ".wellactually.json";
+  }
+});
+
+// packages/findings/rules.mts
+function catalogue(repo2) {
+  const off = switchedOff(repo2);
+  return readLockfile().entries.flatMap((entry) => {
+    const cached2 = readCached(entry.hash);
+    if (!cached2) return [];
+    const scopes = off.get(entry.id) ?? [];
+    return [
+      {
+        id: entry.id,
+        title: cached2.manifest.title,
+        doc: entry.id,
+        enabled: entry.enabled && scopes.length === 0,
+        source: scopes.includes("project") ? "project" : scopes.includes("global") ? "global" : "board"
+      }
+    ];
+  });
+}
+function reviewRules(repo2) {
+  const rules = catalogue(repo2);
+  return {
+    repo: repo2,
+    enabled: rules.filter((rule) => rule.enabled).map((rule) => ({
+      id: rule.id,
+      title: rule.title,
+      file: rule.doc,
+      description: readRule(rule.id)?.description ?? null
+    })),
+    disabled: rules.filter((rule) => !rule.enabled).map((rule) => ({
+      id: rule.id,
+      title: rule.title,
+      source: rule.source,
+      turnedOffBy: null
+    }))
+  };
+}
+function readRule(id) {
+  const entry = readLockfile().entries.find((candidate) => candidate.id === id);
+  if (!entry) return null;
+  const cached2 = readCached(entry.hash);
+  if (!cached2) return null;
+  return {
+    id,
+    title: cached2.manifest.title,
+    doc: id,
+    description: cached2.manifest.summary,
+    body: cached2.advice
+  };
+}
+var init_rules = __esm({
+  "packages/findings/rules.mts"() {
+    "use strict";
+    init_board();
+    init_switches();
+  }
+});
+
+// packages/findings/model/unread.mts
+function isUnseen(finding, seenAt) {
+  if (!seenAt) return true;
+  const edits = (finding.history ?? []).filter((entry) => entry.edited);
+  const last = edits.length ? edits[edits.length - 1] : null;
+  return last ? last.at > seenAt : false;
+}
+var init_unread = __esm({
+  "packages/findings/model/unread.mts"() {
+    "use strict";
+  }
+});
+
+// packages/findings/store/reader.mts
+import {
+  existsSync as existsSync3,
+  mkdirSync as mkdirSync3,
+  readFileSync as readFileSync5,
+  renameSync as renameSync3,
+  writeFileSync as writeFileSync3
+} from "node:fs";
+import { dirname, join as join5 } from "node:path";
+function seenPath(paths) {
+  return join5(paths.dir, "seen.json");
+}
+function followPath(paths) {
+  return join5(paths.dir, "follow.json");
+}
+function readFollow(paths) {
+  return readMap(followPath(paths));
+}
+function readSeen(paths) {
+  return readMap(seenPath(paths));
+}
+function readMap(path13) {
+  if (!existsSync3(path13)) return {};
+  try {
+    const parsed = JSON.parse(readFileSync5(path13, "utf8"));
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      return {};
+    const map2 = {};
+    for (const [id, at] of Object.entries(parsed)) {
+      if (typeof at === "string") map2[id] = at;
+    }
+    return map2;
+  } catch {
+    return {};
+  }
+}
+var init_reader = __esm({
+  "packages/findings/store/reader.mts"() {
+    "use strict";
+    init_unread();
+  }
+});
+
+// packages/findings/model/groups.mts
+function groupOf(finding) {
+  if (finding.resolution === "regressed") return "back";
+  if (finding.resolution === "resolved") return "resolved";
+  if (finding.verdict === "invalid") return "invalid";
+  if (finding.verdict === "tolerated") return "tolerated";
+  if (finding.reportedAt) return "posted";
+  if (finding.verdict === "accepted") return "fix";
+  return "verdict";
+}
+var init_groups = __esm({
+  "packages/findings/model/groups.mts"() {
+    "use strict";
+  }
+});
+
+// packages/findings/model/counts.mts
+function hasNote(finding) {
+  return (finding.note ?? "").trim() !== "";
+}
+function empty() {
+  return {
+    back: 0,
+    verdict: 0,
+    fix: 0,
+    posted: 0,
+    invalid: 0,
+    tolerated: 0,
+    resolved: 0
+  };
+}
+function countsOf(findings, seen, follow = {}) {
+  const piles = empty();
+  let unread = 0;
+  let noted = 0;
+  let marked = 0;
+  for (const finding of findings) {
+    piles[groupOf(finding)] += 1;
+    if (isUnseen(finding, seen[finding.id])) unread += 1;
+    if (hasNote(finding)) noted += 1;
+    if (follow[finding.id]) marked += 1;
+  }
+  return {
+    total: findings.length,
+    unread,
+    noted,
+    marked,
+    open: findings.length - piles.resolved - piles.invalid - piles.tolerated,
+    back: piles.back,
+    piles
+  };
+}
+var init_counts = __esm({
+  "packages/findings/model/counts.mts"() {
+    "use strict";
+    init_groups();
+    init_unread();
+  }
+});
+
+// packages/findings/model/levels.mts
+function skipReasonOf(text2) {
+  const lines = text2.split("\n").map((line2) => line2.trim()).filter((line2) => line2 !== "" && !line2.startsWith("#"));
+  const said = lines.filter(
+    (line2) => !/^[-*]?\s*(date|commit|head|base)\b/i.test(line2)
+  );
+  if (said.length !== 1) return void 0;
+  const line = said[0] ?? "";
+  if (!/\bskip/i.test(line) || /\b(not|no|never)\s+skip/i.test(line)) {
+    return void 0;
+  }
+  return line.replace(/^[-*>]\s*/, "").replace(/^\**skipp?(ed|ing)?\**\s*[:.,–-]?\s*/i, "").trim();
+}
+function levelsOf(input2) {
+  const written = new Map(input2.documents.map((doc) => [doc.n, doc]));
+  const furthest = Math.max(-1, ...written.keys());
+  const running = input2.finished ? void 0 : LEVELS.find((level) => level.n > furthest)?.n;
+  let mark = Date.parse(input2.startedAt);
+  return LEVELS.map((level) => {
+    const doc = written.get(level.n);
+    if (!doc) {
+      if (level.n === running) {
+        return { ...level, state: "running", ...sitting(mark, input2.now) };
+      }
+      return {
+        ...level,
+        state: level.n < furthest || input2.finished ? "skipped" : "pending"
+      };
+    }
+    const from = mark;
+    mark = Date.parse(doc.changed);
+    const skipReason = skipReasonOf(doc.text);
+    if (skipReason !== void 0) {
+      return {
+        ...level,
+        state: "skipped",
+        ...skipReason === "" ? {} : { skipReason }
+      };
+    }
+    return { ...level, state: "done", ...sitting(from, doc.changed) };
+  });
+}
+function sitting(from, to) {
+  const ms = Date.parse(to) - from;
+  return ms >= 0 && ms <= ONE_SITTING_MS ? { ms } : {};
+}
+var LEVELS, ONE_SITTING_MS;
+var init_levels = __esm({
+  "packages/findings/model/levels.mts"() {
+    "use strict";
+    LEVELS = [
+      { n: 0, mark: "0", name: "Context" },
+      { n: 1, mark: "A", letter: "A", name: "Approach" },
+      { n: 2, mark: "H", letter: "H", name: "Architecture" },
+      { n: 3, mark: "T", letter: "T", name: "Tests" },
+      { n: 4, mark: "L", letter: "L", name: "Low-level" },
+      { n: 5, mark: "R", letter: "R", name: "Framework" }
+    ];
+    ONE_SITTING_MS = 6 * 60 * 60 * 1e3;
+  }
+});
+
+// packages/findings/serve/port.mts
+function reviewHost(env = process.env, argv = process.argv) {
+  const index = argv.indexOf("--review-host");
+  const explicit = env.WELLACTUALLY_REVIEW_HOST ?? (index >= 0 ? argv[index + 1] : void 0);
+  if (explicit) {
+    if (!Object.hasOwn(REVIEW_PORTS, explicit)) throw new Error("Unknown findings review host");
+    return explicit;
+  }
+  if (env.CLAUDECODE || env.CLAUDE_CODE_ENTRYPOINT || env.CLAUDE_EFFORT) return "claude";
+  if (env.CODEX_THREAD_ID) return "codex";
+  return "standalone";
+}
+function reviewPort(env = process.env, argv = process.argv) {
+  const port = Number(env.WELLACTUALLY_REVIEW_PORT ?? REVIEW_PORTS[reviewHost(env, argv)]);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid findings server port");
+  return port;
+}
+var REVIEW_PORTS, UI_PORT;
+var init_port = __esm({
+  "packages/findings/serve/port.mts"() {
+    "use strict";
+    REVIEW_PORTS = { claude: 8424, codex: 8425, opencode: 8426, pi: 8427, standalone: 8428 };
+    UI_PORT = reviewPort();
+  }
+});
+
+// packages/findings/serve/browser.mts
+import { spawn } from "node:child_process";
+function openInBrowser(url2) {
+  const [command, ...args] = process.env["PASCAL_REVIEW_BROWSER"] ? [process.env["PASCAL_REVIEW_BROWSER"], url2] : process.platform === "darwin" ? ["open", url2] : process.platform === "win32" ? ["cmd", "/c", "start", "", url2] : ["xdg-open", url2];
+  const child = spawn(command ?? "open", args, {
+    detached: true,
+    stdio: "ignore"
+  });
+  child.on("error", () => {
+  });
+  child.unref();
+}
+var init_browser = __esm({
+  "packages/findings/serve/browser.mts"() {
+    "use strict";
+  }
+});
+
+// packages/findings/model/language.mts
+function languageOf(path13) {
+  const name = path13.split("/").pop() ?? "";
+  const named = NAMED[name];
+  if (named) return named;
+  const ext = name.includes(".") ? name.split(".").pop()?.toLowerCase() ?? "" : "";
+  return EXT[ext] ?? null;
+}
+var NAMED, EXT;
+var init_language = __esm({
+  "packages/findings/model/language.mts"() {
+    "use strict";
+    NAMED = {
+      Dockerfile: "docker",
+      Containerfile: "docker",
+      Podfile: "ruby",
+      Gemfile: "ruby",
+      Rakefile: "ruby",
+      Brewfile: "ruby",
+      Fastfile: "ruby",
+      Appfile: "ruby",
+      Matchfile: "ruby"
+    };
+    EXT = {
+      dart: "dart",
+      py: "python",
+      kt: "kotlin",
+      kts: "kotlin",
+      swift: "swift",
+      java: "java",
+      m: "objectivec",
+      mm: "objectivec",
+      // Ambiguous between C, C++ and Objective-C. C is the part all three agree
+      // on, and the keywords the other two add are a smaller loss than picking
+      // one of them and being wrong about most files called .h.
+      h: "c",
+      hpp: "cpp",
+      c: "c",
+      cc: "cpp",
+      cpp: "cpp",
+      cs: "csharp",
+      go: "go",
+      rs: "rust",
+      rb: "ruby",
+      php: "php",
+      sql: "sql",
+      gradle: "groovy",
+      groovy: "groovy",
+      graphql: "graphql",
+      gql: "graphql",
+      scss: "scss",
+      toml: "toml",
+      ini: "ini",
+      cfg: "ini",
+      properties: "properties",
+      ts: "typescript",
+      mts: "typescript",
+      cts: "typescript",
+      tsx: "tsx",
+      js: "javascript",
+      mjs: "javascript",
+      cjs: "javascript",
+      jsx: "jsx",
+      yaml: "yaml",
+      yml: "yaml",
+      json: "json",
+      sh: "bash",
+      bash: "bash",
+      zsh: "bash",
+      md: "markdown",
+      html: "markup",
+      xml: "markup",
+      // All XML, all already registered, and none of it was reaching the grammar.
+      // An iOS checkout alone carries hundreds of these.
+      svg: "markup",
+      plist: "markup",
+      storyboard: "markup",
+      xib: "markup",
+      xcscheme: "markup",
+      xcsettings: "markup",
+      css: "css",
+      diff: "diff",
+      patch: "diff"
+    };
+  }
+});
+
+// packages/findings/report/redact.mts
+function forbidden(secrets) {
+  const words = /* @__PURE__ */ new Set();
+  const library = new Set(
+    (secrets.library ?? []).map((one) => one.toLowerCase())
+  );
+  for (const source of secrets.from) {
+    const cleaned = source.replace(CHECKOUT_SUFFIX, "");
+    for (const piece of cleaned.split(/[^A-Za-z]+/)) {
+      const word = piece.toLowerCase();
+      if (word.length < 3) continue;
+      if (ORDINARY.has(word) || library.has(word)) continue;
+      words.add(word);
+    }
+    for (const piece of cleaned.split(/(?=[A-Z])|[^A-Za-z]+/)) {
+      const word = piece.toLowerCase();
+      if (word.length < 3 || ORDINARY.has(word) || library.has(word)) continue;
+      words.add(word);
+    }
+  }
+  const all = [...words].sort();
+  return all.filter(
+    (word) => !all.some((other) => other !== word && word.includes(other))
+  );
+}
+function placeholder(n) {
+  const word = PLACEHOLDERS[n % PLACEHOLDERS.length] ?? "foo";
+  const round = Math.floor(n / PLACEHOLDERS.length);
+  return round === 0 ? word : `${word}${String(round + 1)}`;
+}
+function shapeOf(name) {
+  const lead = /^_+/.exec(name)?.[0] ?? "";
+  const bare = name.slice(lead.length);
+  if (/^[A-Z0-9_$]+$/.test(bare) && bare.includes("_"))
+    return { shape: "screaming", lead };
+  if (/^[A-Z]/.test(bare)) return { shape: "pascal", lead };
+  if (bare.includes("_")) return { shape: "snake", lead };
+  return { shape: "camel", lead };
+}
+function maskName(name, n) {
+  const { shape, lead } = shapeOf(name);
+  const word = placeholder(n);
+  if (shape === "pascal") return lead + word[0].toUpperCase() + word.slice(1);
+  if (shape === "screaming") return lead + word.toUpperCase();
+  return lead + word;
+}
+function redact(text2, secrets, seen = /* @__PURE__ */ new Map()) {
+  const words = forbidden(secrets);
+  const kinds = /* @__PURE__ */ new Set();
+  let out = text2;
+  out = out.replace(URL_LIKE, () => {
+    kinds.add("links");
+    return "<link>";
+  });
+  out = out.replace(EMAIL_LIKE, () => {
+    kinds.add("addresses");
+    return "<address>";
+  });
+  out = out.replace(ABSOLUTE_PATH, () => {
+    kinds.add("paths");
+    return "<path>";
+  });
+  out = out.replace(LONG_DIGITS, () => {
+    kinds.add("long numbers");
+    return "<number>";
+  });
+  if (words.length > 0) {
+    out = out.replace(IDENTIFIER, (name) => {
+      const lower = name.toLowerCase();
+      if (!words.some((word) => lower.includes(word))) return name;
+      const already = seen.get(name);
+      if (already !== void 0) return already;
+      const mask = maskName(name, seen.size);
+      seen.set(name, mask);
+      kinds.add("names");
+      return mask;
+    });
+  }
+  return { text: out, masked: seen.size, kinds: [...kinds].sort() };
+}
+function redactCode(code, secrets, seen = /* @__PURE__ */ new Map()) {
+  const pass = redact(code, secrets, seen);
+  let dropped = false;
+  const text2 = pass.text.replace(
+    /(['"`])((?:\\.|(?!\1)[^\\])*)\1/g,
+    (whole, quote, body) => {
+      if (body.length <= 24 && !/\s\S+\s/.test(body)) return whole;
+      dropped = true;
+      return `${quote}\u2026${quote}`;
+    }
+  );
+  const kinds = dropped ? [...pass.kinds, "long strings"].sort() : pass.kinds;
+  return { ...pass, text: text2, kinds };
+}
+var ORDINARY, CHECKOUT_SUFFIX, URL_LIKE, EMAIL_LIKE, ABSOLUTE_PATH, LONG_DIGITS, IDENTIFIER, PLACEHOLDERS;
+var init_redact = __esm({
+  "packages/findings/report/redact.mts"() {
+    "use strict";
+    ORDINARY = /* @__PURE__ */ new Set([
+      "the",
+      "and",
+      "for",
+      "app",
+      "api",
+      "web",
+      "www",
+      "src",
+      "lib",
+      "core",
+      "main",
+      "test",
+      "tests",
+      "demo",
+      "dev",
+      "prod",
+      "staging",
+      "release",
+      "file",
+      "files",
+      "service",
+      "services",
+      "server",
+      "client",
+      "data",
+      "model",
+      "models",
+      "view",
+      "views",
+      "page",
+      "pages",
+      "util",
+      "utils",
+      "common",
+      "shared",
+      "base",
+      "new",
+      "old",
+      "mobile",
+      "android",
+      "ios",
+      "flutter",
+      "dart",
+      "kotlin",
+      "swift",
+      "python",
+      "backend",
+      "frontend",
+      "feature",
+      "features",
+      "project",
+      "repo",
+      "code",
+      "scan",
+      "upload",
+      "download",
+      "flow",
+      "form",
+      "user",
+      "users",
+      "admin",
+      "auth",
+      "login",
+      "sync",
+      "store",
+      "state",
+      "widget",
+      "screen",
+      "module",
+      "package"
+    ]);
+    CHECKOUT_SUFFIX = /-pr-?\d+$/i;
+    URL_LIKE = /\b(?:https?:\/\/|www\.)[^\s"'`)\]]+/gi;
+    EMAIL_LIKE = /\b[\w.+-]+@[\w-]+\.[\w.]+\b/g;
+    ABSOLUTE_PATH = /(?:\/Users\/|\/home\/|[A-Z]:\\)[^\s"'`)\]]+/g;
+    LONG_DIGITS = /\b\d{6,}\b/g;
+    IDENTIFIER = /[A-Za-z_$][A-Za-z0-9_$]*/g;
+    PLACEHOLDERS = [
+      "foo",
+      "bar",
+      "baz",
+      "qux",
+      "quux",
+      "corge",
+      "grault",
+      "garply",
+      "waldo",
+      "fred",
+      "plugh",
+      "xyzzy",
+      "thud"
+    ];
+  }
+});
+
+// packages/findings/report/issue.mts
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { existsSync as existsSync4, readFileSync as readFileSync6 } from "node:fs";
+import { join as join6 } from "node:path";
+function secretsOf(paths) {
+  const pr = recordedPr(paths);
+  return {
+    from: [
+      paths.repo.split("/").pop() ?? "",
+      paths.target,
+      pr.title ?? "",
+      pr.headBranch ?? "",
+      pr.baseBranch ?? "",
+      pr.author ?? ""
+    ].filter((one) => one !== "")
+  };
+}
+function scopeOf(lines, at) {
+  const opens = [];
+  const indent = (line) => /^\s*/.exec(line)?.[0].length ?? 0;
+  let floor = indent(lines[at] ?? "");
+  for (let i = at - 1; i >= 0; i--) {
+    const line = lines[i] ?? "";
+    if (line.trim() === "") continue;
+    const here = indent(line);
+    if (here >= floor) continue;
+    floor = here;
+    if (DECLARES.test(line)) opens.unshift(line.replace(/\s*\{\s*$/, " {"));
+    if (here === 0) break;
+  }
+  return opens;
+}
+function importsIn(source, mine) {
+  const found = [];
+  for (const line of source.split("\n")) {
+    const at = /^\s*(?:import|from|#include|using|require)\b.*$/.exec(line);
+    if (!at) continue;
+    const pkg = /package:([\w.]+)|from\s+['"]([\w.@/-]+)['"]|<([\w./]+)>/.exec(
+      line
+    );
+    const name = pkg?.[1] ?? pkg?.[2] ?? pkg?.[3];
+    if (!name || mine(name)) continue;
+    found.push(line.trim());
+  }
+  return [...new Set(found)];
+}
+function snippetOf(finding) {
+  const context = finding.context;
+  if (!context) return finding.snippet;
+  const at = finding.anchor.line - context.start;
+  const from = Math.max(0, at - WINDOW);
+  const to = Math.min(context.lines.length, at + WINDOW + 1);
+  const window = context.lines.slice(from, to);
+  const opens = scopeOf(context.lines, at).filter(
+    (line) => !window.includes(line)
+  );
+  return opens.length > 0 ? [...opens, "  // \u2026", ...window].join("\n") : window.join("\n");
+}
+function sourceOf(paths, file3) {
+  const path13 = join6(paths.repo, file3);
+  if (!existsSync4(path13)) return "";
+  try {
+    return readFileSync6(path13, "utf8");
+  } catch {
+    return "";
+  }
+}
+function scrubbed(kinds) {
+  const what = kinds.length > 0 ? kinds.join(", ") : "nothing it recognised";
+  return [
+    "_Filed from a review with `report_finding`. The repository, the branch,",
+    "the pull request and the path of the file are never carried. What the",
+    `scrubber replaced in what is above: ${what}._`
+  ].join("\n");
+}
+function prepare(paths, id, complaint, why) {
+  const finding = readFinding(paths, id);
+  if (!finding) throw new Error(`no finding "${id}" in "${paths.target}"`);
+  const secrets = secretsOf(paths);
+  const source = sourceOf(paths, finding.anchor.file);
+  const theirs = forbidden(secrets);
+  const borrowed = importsIn(
+    source,
+    (name) => theirs.some((word) => name.toLowerCase().includes(word))
+  );
+  secrets.library = borrowed.flatMap(
+    (line) => line.split(/[^A-Za-z]+/).filter((word) => word.length >= 3)
+  );
+  const names2 = /* @__PURE__ */ new Map();
+  const rule = finding.rule ?? null;
+  const language = languageOf(finding.anchor.file) ?? "text";
+  const quoted2 = redact(borrowed.join("\n"), secrets, names2);
+  const code = redactCode(snippetOf(finding), secrets, names2);
+  const title = redact(finding.title, secrets, names2);
+  const said = redact(finding.body, secrets, names2);
+  const reason = redact(why, secrets, names2);
+  const note = finding.note ? redact(finding.note, secrets, names2) : null;
+  const kinds = /* @__PURE__ */ new Set([...code.kinds, ...title.kinds, ...said.kinds]);
+  if (note) for (const kind of note.kinds) kinds.add(kind);
+  const body = [
+    `**What is wrong:** ${COMPLAINTS[complaint]}`,
+    "",
+    rule ? `**Rule:** \`${rule}\`` : "**Rule:** none \u2014 the review wrote this one on its own",
+    `**Language:** ${language}`,
+    "",
+    "## What the review said",
+    "",
+    said.text.trim() || "_(nothing beyond the title)_",
+    "",
+    "## The code it said it about",
+    "",
+    "```" + language,
+    ...quoted2.text.trim() ? [quoted2.text.trimEnd(), ""] : [],
+    code.text,
+    "```",
+    "",
+    "## Why that is wrong",
+    "",
+    reason.text.trim(),
+    ...note ? [
+      "",
+      "## What the reader had already written on it",
+      "",
+      note.text.trim()
+    ] : [],
+    "",
+    "---",
+    "",
+    scrubbed([...kinds].sort())
+  ].join("\n");
+  return {
+    title: rule ? `${rule}: ${title.text}` : `Review finding: ${title.text}`,
+    body,
+    // The shared map means every pass reports the same running total, so the
+    // last word on it is the size of the map rather than a sum.
+    took: { masked: names2.size, kinds: [...kinds].sort() },
+    rule
+  };
+}
+async function file2(title, body, repo2 = HOME) {
+  const { stdout } = await run(
+    "gh",
+    ["issue", "create", "--repo", repo2, "--title", title, "--body", body],
+    { timeout: 2e4 }
+  );
+  const url2 = stdout.trim().split("\n").pop() ?? "";
+  if (!url2.startsWith("http")) {
+    throw new Error(`gh did not answer with an issue URL: ${stdout.trim()}`);
+  }
+  return url2;
+}
+var run, HOME, COMPLAINTS, WINDOW, DECLARES;
+var init_issue = __esm({
+  "packages/findings/report/issue.mts"() {
+    "use strict";
+    init_findings();
+    init_api2();
+    init_language();
+    init_redact();
+    run = promisify(execFile);
+    HOME = "passsy/pascal_rules";
+    COMPLAINTS = {
+      "false-positive": "the rule does not apply to this code at all",
+      "wrong-reasoning": "the rule applies, and what the finding says about it is wrong",
+      unclear: "the finding may be right and could not be acted on as written",
+      feedback: "something else about this rule"
+    };
+    WINDOW = 6;
+    DECLARES = /^\s*(?:abstract\s+|final\s+|sealed\s+|base\s+|interface\s+)*(?:class|mixin|extension|enum|struct|object|interface|protocol|def|func|fun|function)\b/;
+  }
+});
+
+// packages/findings/serve/web-assets.mts
+import { createRequire as createRequire2 } from "node:module";
+import { readFileSync as readFileSync7 } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { existsSync as existsSync5 } from "node:fs";
+function find(relative2) {
+  for (const root of ROOTS) {
+    const path13 = fileURLToPath(new URL(relative2, root));
+    if (existsSync5(path13)) return path13;
+  }
+  throw new MissingWebBuild(relative2);
+}
+function readAsset(relative2) {
+  const kept = held.get(relative2);
+  if (kept !== void 0) return kept;
+  const content = readFileSync7(find(relative2), "utf8");
+  held.set(relative2, content);
+  return content;
+}
+function reportStyle() {
+  return readAsset("report/report.css");
+}
+function reportScript() {
+  return readAsset("report/report.js");
+}
+function report() {
+  renderer ??= createRequire2(import.meta.url)(
+    find("ssr/report-ssr.cjs")
+  );
+  return renderer;
+}
+function renderReport(data) {
+  return report().renderReport(data);
+}
+var ROOTS, MissingWebBuild, held, renderer;
+var init_web_assets = __esm({
+  "packages/findings/serve/web-assets.mts"() {
+    "use strict";
+    ROOTS = [
+      // The source tree: this file sits in runtime/findings/serve, the build
+      // output beside it in runtime/findings/web/dist.
+      new URL("../web/dist/", import.meta.url),
+      // A release: the whole server is one bundled dist/findings-server.mjs with
+      // dist/web copied in beside it, so the assets sit next to the bundle
+      // wherever this module's source happened to live.
+      new URL("./web/", import.meta.url)
+    ];
+    MissingWebBuild = class extends Error {
+      constructor(what) {
+        super(
+          `the web build is missing ${what}. Run "npm run web:build" \u2014 the triage page and the report are compiled, not written by hand.`
+        );
+        this.name = "MissingWebBuild";
+      }
+    };
+    held = /* @__PURE__ */ new Map();
+    renderer = null;
+  }
+});
+
+// packages/findings/views/html.mts
+function escapeHtml(text2) {
+  return text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function toHtml(context, findings) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review ${escapeHtml(context.target)}</title>
+<style>${reportStyle()}</style>
+</head>
+<body>
+${renderReport({ ...context, findings })}
+<script type="application/json" id="report-data">${json2({
+    repo: context.repo,
+    target: context.target,
+    port: UI_PORT
+  })}</script>
+<script>${reportScript()}</script>
+</body>
+</html>
+`;
+}
+function json2(value) {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+var init_html = __esm({
+  "packages/findings/views/html.mts"() {
+    "use strict";
+    init_types();
+    init_port();
+    init_web_assets();
+  }
+});
+
+// packages/findings/views/sarif.mts
+function ruleIdOf(finding) {
+  return finding.rule ?? `review/${finding.priority}`;
+}
+function toSarif(target2, findings) {
+  const ruleIds = [...new Set(findings.map(ruleIdOf))].sort();
+  const rules = ruleIds.map((id) => ({
+    id,
+    shortDescription: {
+      text: id.startsWith("review/") ? `Review finding of priority ${id.slice("review/".length)}` : `Handbook rule ${id}`
+    }
+  }));
+  const results = findings.map((finding) => {
+    const failed = finding.verdict === "invalid" || finding.verdict === "tolerated";
+    const ruled = finding.history.findLast((entry) => entry.verdict);
+    return {
+      ruleId: ruleIdOf(finding),
+      ruleIndex: ruleIds.indexOf(ruleIdOf(finding)),
+      level: LEVELS2[finding.priority] ?? "warning",
+      message: { text: `${finding.id} ${finding.title}
+
+${finding.body}` },
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: { uri: finding.anchor.file },
+            // A viewer that cannot open the file still shows these, which is
+            // the whole point of exporting a report someone else will read.
+            region: {
+              startLine: finding.anchor.line,
+              ...finding.anchor.endLine ? { endLine: finding.anchor.endLine } : {},
+              snippet: { text: finding.snippet }
+            },
+            ...finding.context ? {
+              contextRegion: {
+                startLine: finding.context.start,
+                endLine: finding.context.start + finding.context.lines.length - 1,
+                snippet: { text: finding.context.lines.join("\n") }
+              }
+            } : {}
+          }
+        }
+      ],
+      // SARIF has the same shape: one location that owns the result, and the
+      // other places it is about, each carrying why it is there.
+      ...finding.related && finding.related.length > 0 ? {
+        relatedLocations: finding.related.map((location2, index) => ({
+          id: index + 1,
+          physicalLocation: {
+            artifactLocation: { uri: location2.file },
+            region: {
+              startLine: location2.line,
+              ...location2.endLine ? { endLine: location2.endLine } : {},
+              ...location2.context ? {
+                snippet: {
+                  text: location2.context.lines[location2.line - location2.context.start] ?? ""
+                }
+              } : {}
+            }
+          },
+          ...location2.note ? { message: { text: location2.note } } : {}
+        }))
+      } : {},
+      partialFingerprints: { [FINGERPRINT_KEY]: finding.fingerprint },
+      // Three ways a finding stops asking for a viewer's attention, and they
+      // are not the same thing: the review was wrong, the finding stands and
+      // is carried, or the code was fixed. All suppress, and the
+      // justification says which.
+      ...failed || finding.resolution === "resolved" ? {
+        suppressions: [
+          {
+            kind: "external",
+            status: "accepted",
+            justification: failed ? ruled?.note ?? finding.verdict : `resolved${finding.links.fixCommit ? ` by ${finding.links.fixCommit.slice(0, 12)}` : ""}`,
+            properties: {
+              reason: failed ? finding.verdict : "resolved"
+            }
+          }
+        ]
+      } : {},
+      properties: {
+        findingId: finding.id,
+        priority: finding.priority,
+        ...finding.tags ? { tags: finding.tags } : {},
+        evidence: finding.evidence,
+        verdict: finding.verdict,
+        resolution: finding.resolution,
+        ...finding.confirmedAt ? { confirmedAt: finding.confirmedAt } : {},
+        ...finding.provenTest ? { provenTest: finding.provenTest } : {},
+        ...finding.links.fixCommit ? { fixCommit: finding.links.fixCommit } : {},
+        ...finding.links.prComment ? { prComment: finding.links.prComment } : {},
+        ...finding.links.ruleIssue ? { ruleIssue: finding.links.ruleIssue } : {},
+        ...finding.staleAnchor ? { staleAnchor: true } : {},
+        ...finding.diff ? { diff: finding.diff } : {}
+      }
+    };
+  });
+  const log = {
+    $schema: "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+    version: "2.1.0",
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: "pascal-review",
+            informationUri: "https://github.com/passsy/pascal_rules",
+            rules
+          }
+        },
+        automationDetails: { id: `pascal-review/${target2}` },
+        results
+      }
+    ]
+  };
+  return `${JSON.stringify(log, null, 2)}
+`;
+}
+var LEVELS2, FINGERPRINT_KEY;
+var init_sarif = __esm({
+  "packages/findings/views/sarif.mts"() {
+    "use strict";
+    LEVELS2 = {
+      p0: "error",
+      p1: "warning",
+      p2: "warning",
+      p3: "note",
+      p4: "note"
+    };
+    FINGERPRINT_KEY = "pascalReview/v1";
+  }
+});
+
+// packages/findings/api.mts
+import {
+  existsSync as existsSync6,
+  readFileSync as readFileSync8,
+  readdirSync as readdirSync2,
+  realpathSync,
+  statSync
+} from "node:fs";
+import { createHash as createHash2 } from "node:crypto";
+import { join as join7, relative, resolve as resolve2, sep as sep2 } from "node:path";
+function now() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+function repoOf(args, fallback) {
+  const explicit = optionalStr(args, "repo");
+  if (explicit) return explicit;
+  if (fallback === "") {
+    throw new InputError(
+      'this server cannot tell which project you mean, because it was started from a plugin installation rather than from a repository. Pass "repo" with the absolute path of the repository you are reviewing.'
+    );
+  }
+  return fallback;
+}
+function pathsOf(args, repo2) {
+  return targetPaths(repoOf(args, repo2), str(args, "target"));
+}
+function mustFind(paths, id) {
+  const finding = readFinding(paths, id);
+  if (!finding) {
+    const known = listFindings(paths).map((each) => each.id);
+    throw new InputError(
+      `no finding "${id}" in target "${paths.target}". Known ids: ${known.join(", ") || "none yet"}.`
+    );
+  }
+  return finding;
+}
+function publish(paths) {
+  ensureTarget(paths);
+  let findings = listFindings(paths);
+  const at = now();
+  try {
+    for (let pass = 0; pass < MAX_PUBLISH_PASSES; pass++) {
+      writeView(
+        paths.html,
+        toHtml(
+          { repo: paths.repo, target: paths.target, generatedAt: at },
+          findings
+        )
+      );
+      writeView(paths.sarif, toSarif(paths.target, findings));
+      const latest = listFindings(paths);
+      if (JSON.stringify(latest) === JSON.stringify(findings)) break;
+      findings = latest;
+    }
+  } catch (error62) {
+    console.error(
+      `wellactually: the mutation is saved, but rebuilding the views of "${paths.target}" failed: ${error62 instanceof Error ? error62.message : String(error62)}`
+    );
+  }
+  upsertRegistry(paths.repo, paths.target, at);
+}
+function spanOf(location2) {
+  const line = positiveInt(location2, "line");
+  const endLine = location2["endLine"] === void 0 ? void 0 : positiveInt(location2, "endLine");
+  if (endLine === void 0) return { line };
+  if (endLine < line) {
+    throw new InputError(
+      `"endLine" (${endLine}) is before "line" (${line}). A marked block runs forwards.`
+    );
+  }
+  if (endLine - line + 1 > MAX_MARKED_LINES) {
+    throw new InputError(
+      `${endLine - line + 1} marked lines is too many. Mark at most ${MAX_MARKED_LINES}, and anchor on the part that is wrong rather than the whole region.`
+    );
+  }
+  return { line, endLine };
+}
+function relatedFrom(args, repo2, base2) {
+  return optionalArray(args, "related").map((entry) => {
+    const location2 = requireObject(entry);
+    const file3 = repoRelative(repo2, str(location2, "file"));
+    const span = spanOf(location2);
+    const note = optionalStr(location2, "note");
+    return {
+      file: file3,
+      ...span,
+      ...note ? { note } : {},
+      ...captureAt(repo2, file3, span, base2)
+    };
+  });
+}
+function tagsFrom(args) {
+  const given = optionalArray(args, "tags").map((tag) => String(tag).trim().replace(/\s+/g, " ").toLowerCase()).filter((tag) => tag !== "");
+  const tags = [...new Set(given)];
+  if (tags.length > MAX_TAGS) {
+    throw new InputError(
+      `${tags.length} tags is too many. Use at most ${MAX_TAGS}, and usually one: a tag is what this finding clusters with, not a description of it.`
+    );
+  }
+  const long = tags.find((tag) => tag.length > MAX_TAG_LENGTH);
+  if (long) {
+    throw new InputError(
+      `the tag "${long}" is longer than ${MAX_TAG_LENGTH} characters. A tag is a couple of words, e.g. "race" or "missing test"; what it is about belongs in the title.`
+    );
+  }
+  return tags;
+}
+function concernsChange(locations) {
+  if (!locations.some(Boolean)) return void 0;
+  return locations.includes("changed");
+}
+function noticeFor(authorship, preExisting, tagged) {
+  const anchor3 = authorship && ANCHOR_SAYS[authorship];
+  if (preExisting) {
+    return [
+      anchor3,
+      "No marked line is the author's own edit, so this finding is about the code, not about the change under review.",
+      tagged ? `Tagged "${PRE_EXISTING_TAG}".` : void 0,
+      `If an edit in this change is what causes the problem, add it with add_location \u2014 that takes the tag off \u2014 or re-anchor there with update_finding. If the problem predates the change, keep the tag and say so in the body.`
+    ].filter(Boolean).join(" ");
+  }
+  if (authorship === "whitespace-only" || authorship === "moved") {
+    return `${anchor3 ?? ""} A comment posted here lands on code the author never touched. Anchor on the author's own edit \u2014 one of this finding's related locations is one \u2014 and name this line in the text instead.`;
+  }
+  return void 0;
+}
+function createFindingStored(raw, repo2, publishAfter) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const anchor3 = object3(args, "anchor");
+  const evidence = oneOf(args, "evidence", EVIDENCE);
+  const provenTest = optionalStr(args, "provenTest");
+  if (evidence === "Proven" && !provenTest) {
+    throw new InputError(
+      'evidence "Proven" requires "provenTest" as "file:line" of the failing test. Use "Reasoned" when no test exists.'
+    );
+  }
+  const metadata = metadataAnchor(anchor3);
+  const file3 = metadata ? str(anchor3, "file") : repoRelative(paths.repo, str(anchor3, "file"));
+  const span = spanOf(anchor3);
+  const line = span.line;
+  const rule = optionalStr(args, "rule");
+  const snippet = metadata ? metadata.text.split("\n")[line - 1] : snippetAt(paths.repo, file3, line);
+  const fingerprint = fingerprintOf(rule, file3, snippet);
+  const clash = listFindings(paths).find(
+    (each) => each.fingerprint === fingerprint && each.anchor.line === line && each.title === str(args, "title")
+  );
+  if (clash) {
+    throw new InputError(
+      `${clash.id} already covers ${file3}:${line} with the same rule ("${clash.title}"). Add to that finding with add_location, or anchor this one on the line its own problem lives on.`
+    );
+  }
+  const promoted = optionalStr(args, "fromObservation");
+  const observation = promoted ? readObservation(paths, promoted) : null;
+  if (promoted && !observation) {
+    throw new InputError(
+      `no observation "${promoted}" in target "${paths.target}".`
+    );
+  }
+  const at = now();
+  const meta3 = readMeta(paths);
+  const base2 = optionalStr(args, "base") ?? meta3.base;
+  const stamped = {
+    ...meta3,
+    ...base2 ? { base: base2 } : {},
+    // The same instant the finding is stamped with, not a second reading of
+    // the clock: the review started when its first finding was written, and
+    // two timestamps a millisecond apart for one event is a lie about which.
+    startedAt: meta3.startedAt ?? at
+  };
+  if (stamped.base !== meta3.base || stamped.startedAt !== meta3.startedAt) {
+    writeMeta(paths, stamped);
+  }
+  const captured = metadata ? { context: { start: 1, lines: metadata.text.split("\n") } } : captureAt(paths.repo, file3, span, base2);
+  const related = relatedFrom(args, paths.repo, base2);
+  const reporter = optionalOneOf(args, "reporter", REPORTER) ?? "review";
+  const reporterName = optionalStr(args, "reporterName");
+  if (reporter === "pr-comment" && !reporterName) {
+    throw new InputError(
+      'reporter "pr-comment" requires "reporterName": the login of whoever left it. A comment nobody is named for cannot be answered.'
+    );
+  }
+  const preExisting = !metadata && concernsChange([
+    captured.authorship,
+    ...related.map((each) => each.authorship)
+  ]) === false;
+  const tags = tagsFrom(args);
+  const tagged = preExisting && !tags.includes(PRE_EXISTING_TAG) && tags.length < MAX_TAGS;
+  if (tagged) tags.push(PRE_EXISTING_TAG);
+  const letter = letterFor(optionalStr(args, "level"));
+  const draft = (id) => ({
+    id,
+    title: str(args, "title"),
+    body: str(args, "body"),
+    evidence,
+    priority: oneOf(args, "priority", PRIORITY),
+    ...tags.length > 0 ? { tags } : {},
+    ...rule ? { rule } : {},
+    ...provenTest ? { provenTest } : {},
+    anchor: {
+      ...metadata,
+      file: file3,
+      ...span,
+      commit: optionalStr(anchor3, "commit") ?? headCommit(paths.repo)
+    },
+    snippet,
+    ...captured,
+    ...related.length > 0 ? { related } : {},
+    fingerprint,
+    verdict: "undecided",
+    resolution: "unresolved",
+    history: [{ at, actor: "review", verdict: "undecided" }],
+    links: {},
+    ...promoted ? { fromObservation: promoted } : {},
+    ...optionalStr(args, "fromCandidate") ? { fromCandidate: optionalStr(args, "fromCandidate") } : {},
+    ...optionalStr(args, "verificationStatus") ? {
+      verification: {
+        status: optionalStr(args, "verificationStatus"),
+        ...optionalStr(args, "verificationReason") ? { reason: optionalStr(args, "verificationReason") } : {}
+      }
+    } : {},
+    ...reporter === "review" ? {} : { reporter },
+    ...reporterName ? { reporterName } : {},
+    createdAt: at
+  });
+  const finding = claim2(paths, letter, draft);
+  if (observation) {
+    writeObservation(paths, {
+      ...observation,
+      status: "promoted",
+      promotedTo: finding.id
+    });
+  }
+  if (publishAfter) publish(paths);
+  const notice = noticeFor(
+    finding.authorship,
+    preExisting,
+    tagged || tags.includes(PRE_EXISTING_TAG)
+  );
+  return notice ? { ...finding, notice } : finding;
+}
+function createFinding(raw, repo2) {
+  return createFindingStored(raw, repo2, true);
+}
+function candidateDraft(raw, id, at) {
+  const args = requireObject(raw);
+  const anchor3 = object3(args, "anchor");
+  const tags = tagsFrom(args);
+  const optionalPositiveInt = (input2, field) => input2[field] === void 0 ? void 0 : positiveInt(input2, field);
+  const related = optionalArray(args, "related").map((rawLocation) => {
+    const location2 = requireObject(rawLocation);
+    return {
+      file: str(location2, "file"),
+      line: positiveInt(location2, "line"),
+      ...optionalPositiveInt(location2, "endLine") !== void 0 ? { endLine: optionalPositiveInt(location2, "endLine") } : {},
+      ...optionalStr(location2, "note") ? { note: optionalStr(location2, "note") } : {}
+    };
+  });
+  return {
+    id,
+    source: str(args, "source"),
+    run: str(args, "run"),
+    unit: str(args, "unit"),
+    title: str(args, "title"),
+    body: str(args, "body"),
+    evidence: oneOf(args, "evidence", EVIDENCE),
+    priority: oneOf(args, "priority", PRIORITY),
+    ...tags.length ? { tags } : {},
+    ...optionalStr(args, "level") ? { level: optionalStr(args, "level") } : {},
+    ...optionalStr(args, "rule") ? { rule: optionalStr(args, "rule") } : {},
+    ...optionalStr(args, "provenTest") ? { provenTest: optionalStr(args, "provenTest") } : {},
+    anchor: {
+      ...metadataAnchor(anchor3),
+      file: str(anchor3, "file"),
+      line: positiveInt(anchor3, "line"),
+      ...optionalPositiveInt(anchor3, "endLine") !== void 0 ? { endLine: optionalPositiveInt(anchor3, "endLine") } : {},
+      ...optionalStr(anchor3, "commit") ? { commit: optionalStr(anchor3, "commit") } : {}
+    },
+    ...related.length ? { related } : {},
+    ...optionalStr(args, "scope") ? { scope: optionalStr(args, "scope") } : {},
+    ...optionalStr(args, "quote") ? { quote: optionalStr(args, "quote") } : {},
+    status: "pending",
+    createdAt: at,
+    updatedAt: at
+  };
+}
+function createCandidates(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const run3 = str(args, "run");
+  const candidates = optionalArray(args, "candidates");
+  if (candidates.length === 0) {
+    throw new InputError('"candidates" must contain at least one candidate.');
+  }
+  if (candidates.length > 100) {
+    throw new InputError('"candidates" may contain at most 100 candidates.');
+  }
+  const existingBySource = new Map(
+    listCandidates(paths).filter((candidate) => candidate.run === run3).map((candidate) => [candidate.source, candidate])
+  );
+  const created = [];
+  const errors = [];
+  for (const [index, rawCandidate] of candidates.entries()) {
+    try {
+      const source = str(requireObject(rawCandidate), "source");
+      const existing = existingBySource.get(source);
+      if (existing) {
+        created.push({
+          id: existing.id,
+          source: existing.source,
+          unit: existing.unit
+        });
+        continue;
+      }
+      let candidate = null;
+      for (let attempt = 0; attempt < CLAIM_ATTEMPTS && !candidate; attempt += 1) {
+        const at = now();
+        const next = candidateDraft(
+          { ...requireObject(rawCandidate), run: run3 },
+          allocateCandidateId(paths),
+          at
+        );
+        if (claimCandidate(paths, next)) candidate = next;
+      }
+      if (!candidate) {
+        throw new InputError(
+          "could not allocate a candidate id; retry the call."
+        );
+      }
+      existingBySource.set(candidate.source, candidate);
+      created.push({
+        id: candidate.id,
+        source: candidate.source,
+        unit: candidate.unit
+      });
+    } catch (error62) {
+      errors.push({
+        index,
+        message: error62 instanceof Error ? error62.message : String(error62)
+      });
+    }
+  }
+  if (created.length) upsertRegistry(paths.repo, paths.target, now());
+  return { created, errors };
+}
+function listCandidates2(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const run3 = optionalStr(args, "run");
+  const unit = optionalStr(args, "unit");
+  const status = optionalOneOf(args, "status", CANDIDATE_STATUS);
+  return listCandidates(paths).filter((candidate) => !run3 || candidate.run === run3).filter((candidate) => !unit || candidate.unit === unit).filter((candidate) => !status || candidate.status === status);
+}
+function resolveCandidates(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const decisions = optionalArray(args, "decisions");
+  if (decisions.length === 0) {
+    throw new InputError('"decisions" must contain at least one decision.');
+  }
+  if (decisions.length > 100) {
+    throw new InputError('"decisions" may contain at most 100 decisions.');
+  }
+  const target2 = str(args, "target");
+  const explicitRepo = optionalStr(args, "repo");
+  const base2 = optionalStr(args, "base");
+  const resolved = [];
+  const errors = [];
+  let published = false;
+  for (const [index, rawDecision] of decisions.entries()) {
+    let id;
+    try {
+      const decision = requireObject(rawDecision);
+      id = str(decision, "id");
+      const candidate = readCandidate(paths, id);
+      if (!candidate)
+        throw new InputError(
+          `no candidate "${id}" in target "${paths.target}".`
+        );
+      if (candidate.status !== "pending" && args["reverify"] !== true) {
+        resolved.push({
+          id: candidate.id,
+          status: candidate.status,
+          ...candidate.findingId ? { findingId: candidate.findingId } : {}
+        });
+        continue;
+      }
+      const status = oneOf(decision, "status", [
+        "confirmed",
+        "plausible",
+        "refuted"
+      ]);
+      const reason = optionalStr(decision, "reason");
+      const proof = optionalStr(decision, "proof");
+      if (status === "plausible" && !reason) {
+        throw new InputError(
+          `candidate ${id} is plausible and needs a reason.`
+        );
+      }
+      if (status === "refuted" && !proof && !reason) {
+        throw new InputError(
+          `candidate ${id} is refuted and needs proof or a reason.`
+        );
+      }
+      const at = now();
+      if (status === "refuted") {
+        if (candidate.findingId) {
+          const previous = mustFind(paths, candidate.findingId);
+          writeFinding(paths, { ...previous, verification: { status: "refuted", ...reason || proof ? { reason: reason ?? proof } : {} } });
+          published = true;
+        }
+        const updated2 = {
+          ...candidate,
+          status,
+          ...reason ? { verificationReason: reason } : {},
+          ...proof ? { proof } : {},
+          updatedAt: at
+        };
+        writeCandidate(paths, updated2);
+        resolved.push({ id, status });
+        continue;
+      }
+      const correction = decision["finding"] === void 0 ? {} : requireObject(decision["finding"]);
+      const final = { ...candidate, ...correction };
+      const scope = typeof final["scope"] === "string" ? final["scope"] : void 0;
+      const rawTags = Array.isArray(final["tags"]) ? final["tags"].filter((tag) => typeof tag === "string") : [];
+      const scopeTag = scope ? `scope:${scope}` : void 0;
+      const tags = scopeTag && !rawTags.includes(scopeTag) && rawTags.length < MAX_TAGS ? [...rawTags, scopeTag] : rawTags;
+      const duplicate = candidate.findingId ? mustFind(paths, candidate.findingId) : listFindings(paths).find(
+        (finding) => finding.title === final["title"] && finding.body === final["body"] && finding.rule === final["rule"] && finding.anchor.file === final["anchor"]?.file && finding.anchor.line === final["anchor"]?.line
+      );
+      const stored = (duplicate ? updateFinding({ ...correction, ...typeof correction["scope"] === "string" && correction["tags"] === void 0 ? { tags: [...(duplicate.tags ?? []).filter((tag) => !tag.startsWith("scope:")), `scope:${correction["scope"]}`] } : {}, id: duplicate.id, target: target2, ...explicitRepo ? { repo: explicitRepo } : {} }, repo2) : void 0) ?? createFindingStored(
+        {
+          ...final,
+          tags,
+          target: target2,
+          ...explicitRepo ? { repo: explicitRepo } : {},
+          ...base2 ? { base: base2 } : {},
+          fromCandidate: id,
+          verificationStatus: status,
+          ...reason ? { verificationReason: reason } : {}
+        },
+        repo2,
+        false
+      );
+      const { verificationBlock: _, ...unblocked } = stored;
+      writeFinding(paths, { ...unblocked, verification: {
+        status,
+        ...reason ? { reason } : {},
+        ...proof ? { proof } : {},
+        ...decision["method"] ? { method: decision["method"] } : {},
+        ...Array.isArray(args["proofs"]) ? { proofs: args["proofs"] } : {},
+        ...Array.isArray(args["limits"]) ? { limits: args["limits"] } : {}
+      } });
+      const updated = {
+        ...candidate,
+        ...correction,
+        status,
+        ...reason ? { verificationReason: reason } : {},
+        findingId: stored.id,
+        updatedAt: at
+      };
+      writeCandidate(paths, updated);
+      resolved.push({ id, status, findingId: stored.id });
+      published = true;
+    } catch (error62) {
+      errors.push({
+        index,
+        ...id ? { id } : {},
+        message: error62 instanceof Error ? error62.message : String(error62)
+      });
+    }
+  }
+  if (published) publish(paths);
+  return { resolved, errors };
+}
+function recordVerificationBlock(raw, repo2) {
+  const args = requireObject(raw), paths = pathsOf(args, repo2), reason = str(args, "reason");
+  const ids = optionalArray(args, "candidates").map(String), findings = /* @__PURE__ */ new Set(), errors = [];
+  for (const id of ids) {
+    let candidate = readCandidate(paths, id);
+    if (!candidate) {
+      errors.push(`Unknown candidate ${id}`);
+      continue;
+    }
+    if (candidate.status === "pending") {
+      const result = resolveCandidates({ target: paths.target, repo: paths.repo, decisions: [{ id, status: "plausible", reason: `Unverified: verification was blocked. ${reason}` }] }, paths.repo);
+      errors.push(...result.errors.map((error62) => error62.message));
+      candidate = readCandidate(paths, id);
+    }
+    if (!candidate.findingId) continue;
+    const finding = mustFind(paths, candidate.findingId);
+    writeFinding(paths, { ...finding, verificationBlock: { reason, at: now(), candidates: ids }, ...finding.verification?.status === "plausible" ? { verification: { status: "plausible", reason: `Unverified: verification was blocked. ${reason}` } } : {} });
+    findings.add(finding.id);
+  }
+  if (findings.size) publish(paths);
+  return { findings: [...findings], errors };
+}
+function claim2(paths, letter, draft) {
+  for (let attempt = 0; attempt < CLAIM_ATTEMPTS; attempt += 1) {
+    const finding = draft(allocateFindingId(paths, letter));
+    if (claimFinding(paths, finding)) return finding;
+  }
+  throw new InputError(
+    `could not take an id for a new "${letter}" finding after ${CLAIM_ATTEMPTS} tries. Something else is writing to this target as fast as this is.`
+  );
+}
+function addLocation(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const finding = mustFind(paths, str(args, "id"));
+  const [location2] = relatedFrom(
+    { related: [args] },
+    paths.repo,
+    readMeta(paths).base
+  );
+  if (!location2) throw new InputError('"file" and "line" are required.');
+  const updated = {
+    ...finding,
+    related: [...finding.related ?? [], location2]
+  };
+  let notice;
+  if (location2.authorship === "changed" && (finding.tags ?? []).includes(PRE_EXISTING_TAG)) {
+    const kept = (finding.tags ?? []).filter(
+      (each) => each !== PRE_EXISTING_TAG
+    );
+    if (kept.length > 0) updated.tags = kept;
+    else delete updated.tags;
+    notice = `The added location is the author's own edit, so the "${PRE_EXISTING_TAG}" tag came off: the finding concerns the change after all.`;
+  }
+  writeFinding(paths, updated);
+  publish(paths);
+  return notice ? { ...updated, notice } : updated;
+}
+function updateFinding(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const finding = mustFind(paths, str(args, "id"));
+  const changed = [];
+  const take = (field, given, current2) => {
+    if (given === void 0 || given === current2) return current2;
+    changed.push(field);
+    return given;
+  };
+  const evidence = take(
+    "evidence",
+    optionalOneOf(args, "evidence", EVIDENCE),
+    finding.evidence
+  );
+  const provenTest = take(
+    "provenTest",
+    optionalStr(args, "provenTest"),
+    finding.provenTest
+  );
+  if (evidence === "Proven" && !provenTest) {
+    throw new InputError(
+      'evidence "Proven" requires "provenTest" as "file:line" of the failing test. Use "Reasoned" when no test exists.'
+    );
+  }
+  const rule = take("rule", optionalStr(args, "rule"), finding.rule);
+  const title = take("title", optionalStr(args, "title"), finding.title);
+  const body = take("body", optionalStr(args, "body"), finding.body);
+  const priority = take(
+    "priority",
+    optionalOneOf(args, "priority", PRIORITY),
+    finding.priority
+  );
+  const tags = take(
+    "tags",
+    args["tags"] === void 0 ? void 0 : tagsFrom(args),
+    finding.tags
+  );
+  const moved = args["anchor"] === void 0 ? null : object3(args, "anchor");
+  const anchored = moved ? anchorOf(moved, paths, rule, finding) : {
+    anchor: finding.anchor,
+    snippet: finding.snippet,
+    fingerprint: finding.fingerprint
+  };
+  if (moved) changed.push("anchor");
+  if (changed.length === 0) return finding;
+  const captured = moved ? anchored.anchor.kind === "metadata" ? { context: { start: 1, lines: anchored.anchor.text.split("\n") }, diff: void 0, authorship: void 0 } : captureAt(
+    paths.repo,
+    anchored.anchor.file,
+    spanOf(moved),
+    readMeta(paths).base
+  ) : {
+    ...finding.context ? { context: finding.context } : {},
+    ...finding.diff ? { diff: finding.diff } : {}
+  };
+  const updated = {
+    ...finding,
+    title,
+    body,
+    evidence,
+    priority,
+    ...tags && tags.length > 0 ? { tags } : {},
+    ...rule ? { rule } : {},
+    ...provenTest ? { provenTest } : {},
+    anchor: anchored.anchor,
+    snippet: anchored.snippet,
+    fingerprint: anchored.fingerprint,
+    ...captured,
+    history: [
+      ...finding.history,
+      {
+        at: now(),
+        actor: optionalOneOf(args, "actor", ACTOR) ?? "review",
+        edited: [...new Set(changed)].sort()
+      }
+    ]
+  };
+  if (moved) {
+    if (!("context" in captured)) delete updated.context;
+    if (!("diff" in captured)) delete updated.diff;
+    if (!("authorship" in captured)) delete updated.authorship;
+  }
+  let notice;
+  if (moved) {
+    const concerns = concernsChange([
+      updated.authorship,
+      ...(updated.related ?? []).map((each) => each.authorship)
+    ]);
+    const worn = updated.tags ?? [];
+    if (concerns === true && worn.includes(PRE_EXISTING_TAG)) {
+      const kept = worn.filter((each) => each !== PRE_EXISTING_TAG);
+      if (kept.length > 0) updated.tags = kept;
+      else delete updated.tags;
+      notice = `The new anchor is the author's own edit, so the "${PRE_EXISTING_TAG}" tag came off: the finding concerns the change after all.`;
+    } else if (concerns === false) {
+      const tagged = !worn.includes(PRE_EXISTING_TAG) && worn.length < MAX_TAGS;
+      if (tagged) updated.tags = [...worn, PRE_EXISTING_TAG];
+      notice = noticeFor(
+        updated.authorship,
+        true,
+        tagged || worn.includes(PRE_EXISTING_TAG)
+      );
+    }
+  }
+  writeFinding(paths, updated);
+  publish(paths);
+  return notice ? { ...updated, notice } : updated;
+}
+function anchorOf(moved, paths, rule, finding) {
+  const metadata = metadataAnchor(moved);
+  const file3 = metadata ? str(moved, "file") : repoRelative(paths.repo, str(moved, "file"));
+  const span = spanOf(moved);
+  const snippet = metadata ? metadata.text.split("\n")[span.line - 1] : snippetAt(paths.repo, file3, span.line);
+  return {
+    anchor: {
+      ...metadata,
+      file: file3,
+      ...span,
+      commit: optionalStr(moved, "commit") ?? finding.anchor.commit
+    },
+    snippet,
+    fingerprint: fingerprintOf(rule, file3, snippet)
+  };
+}
+function metadataAnchor(anchor3) {
+  if (anchor3["kind"] === void 0) return void 0;
+  if (anchor3["kind"] !== "metadata") throw new InputError("Unknown anchor kind");
+  const subject = oneOf(anchor3, "subject", ["pr-title", "pr-body", "commit-message"]);
+  const original = str(anchor3, "text");
+  let url2;
+  try {
+    url2 = new URL(str(anchor3, "file"));
+  } catch {
+    throw new InputError("Metadata anchor file must be an authoritative HTTP(S) URL");
+  }
+  if (!["https:", "http:"].includes(url2.protocol)) throw new InputError("Metadata anchor requires an HTTP(S) URL");
+  const span = spanOf(anchor3);
+  if ((span.endLine ?? span.line) > original.split("\n").length) throw new InputError("Metadata anchor line is outside its original text");
+  return { kind: "metadata", subject, text: original };
+}
+function withoutCode(finding) {
+  const { context, diff, ...rest } = finding;
+  return {
+    ...rest,
+    ...rest.related ? {
+      related: rest.related.map(
+        ({ context: at, diff: hunk, ...place }) => place
+      )
+    } : {}
+  };
+}
+function listFindings2(raw, repo2) {
+  const args = requireObject(raw);
+  const root = repoOf(args, repo2);
+  const target2 = optionalStr(args, "target");
+  const verdict = optionalOneOf(args, "verdict", VERDICT);
+  const resolution = optionalOneOf(args, "resolution", RESOLUTION);
+  const priority = optionalOneOf(args, "priority", PRIORITY);
+  const tag = optionalStr(args, "tag")?.trim().toLowerCase();
+  const code = flag(args, "code");
+  const targets = target2 ? [targetPaths(root, target2).target] : listTargets(join7(root, REVIEW_DIR));
+  return targets.map((name) => {
+    const paths = targetPaths(root, name);
+    const findings = listFindings(paths).filter((finding) => !verdict || finding.verdict === verdict).filter((finding) => !resolution || finding.resolution === resolution).filter((finding) => !priority || finding.priority === priority).filter((finding) => !tag || (finding.tags ?? []).includes(tag)).map((finding) => code ? finding : withoutCode(finding));
+    return {
+      target: paths.target,
+      findings,
+      seen: readSeen(paths),
+      follow: readFollow(paths)
+    };
+  });
+}
+function getFinding(raw, repo2) {
+  const args = requireObject(raw);
+  return mustFind(pathsOf(args, repo2), str(args, "id"));
+}
+function setVerdict(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const finding = mustFind(paths, str(args, "id"));
+  const to = oneOf(args, "to", VERDICT);
+  const actor = oneOf(args, "actor", ACTOR);
+  checkVerdict(finding.verdict, to, actor);
+  const note = optionalStr(args, "note");
+  const updated = {
+    ...finding,
+    verdict: to,
+    history: [
+      ...finding.history,
+      {
+        at: now(),
+        actor,
+        verdict: to,
+        ...note ? { note } : {}
+      }
+    ]
+  };
+  writeFinding(paths, updated);
+  publish(paths);
+  return updated;
+}
+function setResolution(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const finding = mustFind(paths, str(args, "id"));
+  const to = oneOf(args, "to", RESOLUTION);
+  const actor = oneOf(args, "actor", ACTOR);
+  checkResolution(finding.resolution, to, actor);
+  const commit = optionalStr(args, "commit");
+  if (to === "resolved" && actor === "agent" && !commit) {
+    throw new InputError(
+      'resolving a finding as an agent needs "commit", the SHA of the commit that fixes it.'
+    );
+  }
+  const note = optionalStr(args, "note");
+  const updated = {
+    ...finding,
+    resolution: to,
+    history: [
+      ...finding.history,
+      {
+        at: now(),
+        actor,
+        resolution: to,
+        ...note ? { note } : {},
+        ...commit ? { commit } : {}
+      }
+    ],
+    links: { ...finding.links, ...commit ? { fixCommit: commit } : {} }
+  };
+  delete updated.confirmedAt;
+  writeFinding(paths, updated);
+  publish(paths);
+  return updated;
+}
+function setNote(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const finding = mustFind(paths, str(args, "id"));
+  const note = text(args, "note").trim();
+  if (note.length > MAX_NOTE) {
+    throw new InputError(
+      `that note is ${note.length} characters. Keep it under ${MAX_NOTE}; anything longer is an argument that belongs in a finding of its own.`
+    );
+  }
+  const updated = { ...finding };
+  if (note === "") {
+    delete updated.note;
+    delete updated.noteAt;
+  } else {
+    updated.note = note;
+    updated.noteAt = now();
+  }
+  writeFinding(paths, updated);
+  publish(paths);
+  return updated;
+}
+function linkFixCommit(raw, repo2) {
+  const args = requireObject(raw);
+  return setResolution(
+    { ...args, to: "resolved", actor: optionalStr(args, "actor") ?? "agent" },
+    repo2
+  );
+}
+function linkPrComment(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const finding = mustFind(paths, str(args, "id"));
+  const updated = {
+    ...finding,
+    // Posting the comment is reporting it, so the rung is stamped here rather
+    // than left for a second call nobody would remember to make. The existing
+    // stamp wins: this may be a link added to something reported days ago.
+    reportedAt: finding.reportedAt ?? now(),
+    links: { ...finding.links, prComment: str(args, "url") }
+  };
+  writeFinding(paths, updated);
+  publish(paths);
+  return updated;
+}
+function setStage(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const finding = mustFind(paths, str(args, "id"));
+  const to = oneOf(args, "to", STAGES);
+  const actor = oneOf(args, "actor", ACTOR);
+  const failed = finding.verdict === "invalid" || finding.verdict === "tolerated";
+  const back = failed ? "undecided" : null;
+  const verdict = to === "invalid" ? "invalid" : to === "tolerated" ? "tolerated" : to === "open" ? "undecided" : to === "accepted" ? "accepted" : back ?? finding.verdict;
+  const resolution = to === "fixed" ? "resolved" : "unresolved";
+  const reported = to === "reported" || to === "fixed" || to === "invalid" || to === "tolerated" ? finding.reportedAt ?? (to === "reported" ? now() : void 0) : void 0;
+  const at = now();
+  const history = [...finding.history];
+  if (verdict !== finding.verdict) {
+    checkVerdict(finding.verdict, verdict, actor);
+    history.push({ at, actor, verdict });
+  }
+  if (resolution !== finding.resolution) {
+    checkResolution(finding.resolution, resolution, actor);
+    history.push({ at, actor, resolution });
+  }
+  const updated = { ...finding, verdict, resolution, history };
+  if (reported) updated.reportedAt = reported;
+  else delete updated.reportedAt;
+  writeFinding(paths, updated);
+  publish(paths);
+  return updated;
+}
+function setReported(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const finding = mustFind(paths, str(args, "id"));
+  const reported = args["reported"] === void 0 ? true : flag(args, "reported");
+  const updated = { ...finding };
+  if (reported) updated.reportedAt = finding.reportedAt ?? now();
+  else delete updated.reportedAt;
+  writeFinding(paths, updated);
+  publish(paths);
+  return updated;
+}
+function createObservation(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  ensureTarget(paths);
+  const draft = (id) => ({
+    id,
+    text: str(args, "text"),
+    forLevel: str(args, "forLevel"),
+    status: "pending",
+    createdAt: now()
+  });
+  let observation = null;
+  for (let attempt = 0; attempt < CLAIM_ATTEMPTS && !observation; attempt += 1) {
+    const next = draft(allocateObservationId(paths));
+    if (claimObservation(paths, next)) observation = next;
+  }
+  if (!observation) {
+    throw new InputError(
+      `could not take an id for a new observation after ${CLAIM_ATTEMPTS} tries. Something else is writing to this target as fast as this is.`
+    );
+  }
+  upsertRegistry(paths.repo, paths.target, observation.createdAt);
+  return observation;
+}
+function listObservations2(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const forLevel = optionalStr(args, "forLevel");
+  const status = optionalOneOf(args, "status", OBSERVATION_STATUS);
+  return listObservations(paths).filter((each) => !forLevel || each.forLevel === forLevel).filter((each) => !status || each.status === status);
+}
+function dropObservation(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const id = str(args, "id");
+  const observation = readObservation(paths, id);
+  if (!observation) {
+    throw new InputError(`no observation "${id}" in target "${paths.target}".`);
+  }
+  if (observation.status !== "pending") {
+    throw new InputError(
+      `observation ${id} is already ${observation.status} and cannot be dropped.`
+    );
+  }
+  const dropped = {
+    ...observation,
+    status: "dropped",
+    dropReason: str(args, "reason")
+  };
+  writeObservation(paths, dropped);
+  return dropped;
+}
+function baselineCheck(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const current2 = new Set(
+    optionalArray(args, "currentFingerprints").map(String)
+  );
+  const saved = listFindings(paths);
+  for (const id of optionalArray(args, "currentFindingIds")) {
+    const finding = saved.find((each) => each.id === id);
+    if (!finding) throw new InputError(`Unknown current finding ${id}`);
+    current2.add(finding.fingerprint);
+  }
+  for (const entry of optionalArray(args, "current")) {
+    const anchor3 = requireObject(entry);
+    const metadata = metadataAnchor(anchor3);
+    const file3 = metadata ? str(anchor3, "file") : repoRelative(paths.repo, str(anchor3, "file"));
+    const line = positiveInt(anchor3, "line");
+    current2.add(
+      fingerprintOf(
+        optionalStr(anchor3, "rule"),
+        file3,
+        metadata ? metadata.text.split("\n")[line - 1] : snippetAt(paths.repo, file3, line)
+      )
+    );
+  }
+  const at = now();
+  const result = {
+    target: paths.target,
+    transitions: [],
+    confirmed: [],
+    seen: [],
+    stale: []
+  };
+  for (const finding of saved) {
+    const present = current2.has(finding.fingerprint);
+    const from = finding.resolution;
+    if (from === "resolved" && !present) {
+      if (finding.confirmedAt) continue;
+      writeFinding(paths, { ...finding, confirmedAt: at, lastSeen: at });
+      result.confirmed.push(finding.id);
+      continue;
+    }
+    if (from === "resolved" && present) {
+      writeFinding(paths, regress(finding, at));
+      result.transitions.push({ id: finding.id, from, to: "regressed" });
+      continue;
+    }
+    const updated = present ? { ...finding, lastSeen: at, staleAnchor: false } : { ...finding, staleAnchor: true };
+    writeFinding(paths, updated);
+    (present ? result.seen : result.stale).push(finding.id);
+  }
+  publish(paths);
+  return result;
+}
+function regress(finding, at) {
+  const regressed = {
+    ...finding,
+    resolution: "regressed",
+    lastSeen: at,
+    history: [
+      ...finding.history,
+      { at, actor: "review", resolution: "regressed" }
+    ]
+  };
+  delete regressed.confirmedAt;
+  return regressed;
+}
+function exportDismissals(raw, repo2) {
+  const args = requireObject(raw);
+  const since = optionalStr(args, "since");
+  const allRepos = args["allRepos"] === true || args["allRepos"] === "true";
+  const roots = allRepos ? readRegistry().repos.map((entry) => entry.path) : [repoOf(args, repo2)];
+  const rows = [];
+  for (const root of roots) {
+    if (!existsSync6(join7(root, REVIEW_DIR))) continue;
+    for (const name of listTargets(join7(root, REVIEW_DIR))) {
+      const paths = targetPaths(root, name);
+      for (const finding of listFindings(paths)) {
+        if (finding.verdict !== "invalid" && finding.verdict !== "tolerated")
+          continue;
+        const entry = finding.history.findLast((each) => each.verdict);
+        if (!entry) continue;
+        if (since && entry.at < since) continue;
+        const why = entry.note ?? finding.note;
+        rows.push({
+          repo: root,
+          target: paths.target,
+          id: finding.id,
+          title: finding.title,
+          ...finding.rule ? { rule: finding.rule } : {},
+          priority: finding.priority,
+          ...finding.tags ? { tags: finding.tags } : {},
+          evidence: finding.evidence,
+          verdict: finding.verdict,
+          ...finding.links.ruleIssue ? { ruleIssue: finding.links.ruleIssue } : {},
+          ...why ? { note: why } : {},
+          at: entry.at,
+          anchor: `${finding.anchor.file}:${finding.anchor.line}`
+        });
+      }
+    }
+  }
+  return rows.sort((a, b) => a.at.localeCompare(b.at));
+}
+function regenerateViews(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  publish(paths);
+  return { target: paths.target, html: paths.html, sarif: paths.sarif };
+}
+function enabledRules(raw, repo2) {
+  const args = requireObject(raw);
+  return reviewRules(repoOf(args, repo2));
+}
+function startReview(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  if (GLOBAL_ROOT === paths.repo || GLOBAL_ROOT.startsWith(paths.repo + sep2)) {
+    throw new InputError(
+      `WELLACTUALLY_FINDINGS_HOME points inside the repository under review (${GLOBAL_ROOT}). It is the machine-wide home the Review Inbox lists every repository from, not this repository's review directory \u2014 findings registered there are invisible to the inbox. Unset it and let it default to ~/.well-actually.`
+    );
+  }
+  ensureTarget(paths);
+  const meta3 = readMeta(paths);
+  const base2 = optionalStr(args, "base") ?? meta3.base;
+  const pr = prFrom(args);
+  const startedAt = meta3.startedAt ?? now();
+  writeMeta(paths, {
+    ...meta3,
+    ...base2 ? { base: base2 } : {},
+    startedAt,
+    ...pr || meta3.pr ? { pr: { ...meta3.pr, ...pr } } : {}
+  });
+  upsertRegistry(paths.repo, paths.target, now());
+  return summarise(paths, now());
+}
+function levelDocuments(paths) {
+  if (!existsSync6(paths.dir)) return [];
+  const found = [];
+  for (const entry of readdirSync2(paths.dir, { withFileTypes: true })) {
+    const level = /^Level-(\d+)\.md$/i.exec(entry.name)?.[1];
+    if (!entry.isFile() || level === void 0) continue;
+    const full = join7(paths.dir, entry.name);
+    const stats = statSync(full, { throwIfNoEntry: false });
+    if (!stats) continue;
+    found.push({
+      n: Number(level),
+      changed: stats.mtime.toISOString(),
+      text: readFileSync8(full, "utf8")
+    });
+  }
+  return found;
+}
+function linkIdOf(repo2, target2) {
+  return createHash2("sha256").update(`${repo2}\0${target2}`).digest("hex").slice(0, 16);
+}
+function inboxUrl(paths, finding) {
+  const url2 = `http://127.0.0.1:${String(UI_PORT)}/?repo=${encodeURIComponent(paths.repo)}&target=${encodeURIComponent(paths.target)}`;
+  return finding ? `${url2}&finding=${encodeURIComponent(finding)}` : url2;
+}
+function openInbox(raw, repo2) {
+  const args = requireObject(raw);
+  const rule = typeof args["rule"] === "string" ? args["rule"].trim() : "";
+  if (rule !== "") {
+    const known = readRule(rule.toUpperCase());
+    if (!known) {
+      throw new InputError(
+        `no rule ${rule}. list_rules gives the ones this project checks.`
+      );
+    }
+    const url3 = `http://127.0.0.1:${String(UI_PORT)}/rule/${encodeURIComponent(known.id)}`;
+    openInBrowser(url3);
+    return { opened: url3 };
+  }
+  const paths = pathsOf(args, repo2);
+  if (!existsSync6(paths.dir)) {
+    throw new InputError(
+      `no review "${paths.target}" in ${paths.repo}. start_review creates one; list the ones that exist in the Review Inbox.`
+    );
+  }
+  const finding = typeof args["finding"] === "string" ? args["finding"] : "";
+  if (finding !== "") mustFind(paths, finding);
+  const url2 = inboxUrl(paths, finding || void 0);
+  openInBrowser(url2);
+  return { opened: url2 };
+}
+function reviewStatus(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  if (!existsSync6(paths.dir)) {
+    throw new InputError(
+      `no review "${paths.target}" in ${paths.repo}. start_review creates one; list the ones that exist in the Review Inbox.`
+    );
+  }
+  const summary2 = summarise(paths, readMeta(paths).startedAt ?? now());
+  const documents = levelDocuments(paths);
+  const readme = statSync(join7(paths.dir, "README.md"), {
+    throwIfNoEntry: false
+  });
+  const activity = reviewActivity(paths);
+  const candidates = listCandidates(paths).filter((candidate) => candidate.status === "pending");
+  const finished = readme !== void 0 || Boolean(activity?.complete && candidates.length === 0);
+  const at = now();
+  const lastAt = [
+    summary2.lastAt,
+    ...activity ? [activity.updatedAt] : [],
+    ...candidates.map((candidate) => candidate.updatedAt),
+    ...documents.map((doc) => doc.changed),
+    ...readme ? [readme.mtime.toISOString()] : []
+  ].sort().pop();
+  const state = finished ? "done" : Date.parse(at) - Date.parse(lastAt) > QUIET_AFTER_MS ? "quiet" : "running";
+  const until = state === "running" ? at : lastAt;
+  const elapsedMs = Date.parse(until) - Date.parse(summary2.startedAt);
+  const findings = listFindings(paths).map((finding) => {
+    const slim = { ...finding, history: [] };
+    delete slim.diff;
+    delete slim.related;
+    return slim;
+  }).sort(
+    (a, b) => a.priority.localeCompare(b.priority) || a.createdAt.localeCompare(b.createdAt)
+  );
+  return {
+    repo: summary2.repo,
+    repoName: summary2.repoName,
+    target: summary2.target,
+    ...summary2.title ? { title: summary2.title } : {},
+    url: inboxUrl(paths),
+    link: `http://127.0.0.1:${String(UI_PORT)}/open/${linkIdOf(paths.repo, paths.target)}`,
+    state,
+    ...activity ? { phase: activity.phase } : {},
+    candidates,
+    startedAt: summary2.startedAt,
+    lastAt,
+    ...elapsedMs >= 0 && elapsedMs <= ONE_RUN_MS ? { elapsedMs } : {},
+    ...summary2.pr ? { pr: summary2.pr } : {},
+    ...summary2.verdict ? { verdict: summary2.verdict } : {},
+    // A review that finished without one level document was never run level
+    // by level, and six skipped levels would be six things that never were.
+    levels: activity || finished && documents.length === 0 ? [] : levelsOf({
+      startedAt: summary2.startedAt,
+      documents,
+      finished,
+      now: at
+    }),
+    findings
+  };
+}
+async function reportFinding(raw, repo2) {
+  const args = requireObject(raw);
+  const paths = pathsOf(args, repo2);
+  const id = str(args, "id");
+  const complaint = oneOf(
+    args,
+    "complaint",
+    Object.keys(COMPLAINTS)
+  );
+  const why = text(args, "why");
+  if (why.trim().length < 12) {
+    throw new InputError(
+      '"why" is the whole of what makes this worth filing: say what the rule got wrong about this code, in a sentence somebody who cannot see the code will understand.'
+    );
+  }
+  const report2 = prepare(paths, id, complaint, why);
+  const send = args["confirm"] === true || args["confirm"] === "true";
+  if (!send) {
+    return {
+      filed: null,
+      ...report2,
+      says: `Nothing has been sent. Read the body above \u2014 every word of it will be public on ${HOME} \u2014 and call this again with confirm: true to file it. The scrubber replaced ${String(report2.took.masked)} name${report2.took.masked === 1 ? "" : "s"}; it cannot know which of the rest are a client's.`
+    };
+  }
+  const url2 = await file2(report2.title, report2.body);
+  const finding = mustFind(paths, id);
+  writeFinding(paths, {
+    ...finding,
+    links: { ...finding.links, ruleIssue: url2 }
+  });
+  publish(paths);
+  return { filed: url2, ...report2, says: `Filed at ${url2}` };
+}
+function prFrom(args) {
+  if (args["pr"] === void 0) return null;
+  const given = object3(args, "pr");
+  const pr = {
+    ...given["number"] === void 0 ? {} : { number: positiveInt(given, "number") },
+    ...pick2(
+      given,
+      "url",
+      "title",
+      "author",
+      "state",
+      "headBranch",
+      "baseBranch"
+    )
+  };
+  const openedAt = dateFrom(given, "openedAt");
+  if (openedAt) pr.openedAt = openedAt;
+  const mergedAt = dateFrom(given, "mergedAt");
+  if (mergedAt) pr.mergedAt = mergedAt;
+  return pr;
+}
+function dateFrom(given, field) {
+  const raw = optionalStr(given, field);
+  if (!raw) return null;
+  const when = new Date(raw);
+  if (Number.isNaN(when.getTime())) {
+    throw new InputError(
+      `"${field}" must be a date, got "${raw}". GitHub gives it as "2026-08-12T09:14:03Z".`
+    );
+  }
+  return when.toISOString();
+}
+function pick2(given, ...fields) {
+  const taken = {};
+  for (const field of fields) {
+    const value = optionalStr(given, field);
+    if (value) Object.assign(taken, { [field]: value });
+  }
+  return taken;
+}
+function listReviews() {
+  const reviews = [];
+  for (const entry of readRegistry().repos) {
+    const reviewDir = join7(entry.path, REVIEW_DIR);
+    if (!existsSync6(reviewDir)) continue;
+    for (const target2 of listTargets(reviewDir)) {
+      reviews.push(
+        summarise(targetPaths(entry.path, target2), entry.lastReview)
+      );
+    }
+  }
+  return reviews.sort(
+    (a, b) => b.startedAt.localeCompare(a.startedAt) || b.lastAt.localeCompare(a.lastAt) || a.repo.localeCompare(b.repo)
+  );
+}
+function summarise(paths, lastReview) {
+  const findings = listFindings(paths);
+  const seen = readSeen(paths);
+  const meta3 = readMeta(paths);
+  const open2 = findings.filter((finding) => {
+    const group = groupOf(finding);
+    return group !== "resolved" && group !== "invalid" && group !== "tolerated";
+  });
+  const written = readmeFacts(paths);
+  const pr = recordedPr(paths, meta3);
+  const title = pr.title ?? written.heading;
+  const at = (finding) => finding.history[finding.history.length - 1]?.at ?? finding.createdAt;
+  const top = PRIORITY.find(
+    (priority) => open2.some((finding) => finding.priority === priority)
+  );
+  const tags = [
+    ...new Set(findings.flatMap((finding) => finding.tags ?? []))
+  ].sort();
+  return {
+    repo: paths.repo,
+    repoName: paths.repo.split(sep2).pop() ?? paths.repo,
+    target: paths.target,
+    ...title ? { title } : {},
+    startedAt: meta3.startedAt ?? findings.map((finding) => finding.createdAt).sort()[0] ?? lastReview,
+    lastAt: findings.map(at).sort().pop() ?? lastReview,
+    // Counted by the same function the page uses on the review it is holding,
+    // so a row of the rail cannot say one thing while the review open beside
+    // it says another.
+    counts: countsOf(findings, seen, readFollow(paths)),
+    ...top ? { top } : {},
+    ...tags.length > 0 ? { tags } : {},
+    ...Object.keys(pr).length > 0 ? { pr } : {},
+    ...meta3.branch ? { branch: meta3.branch } : {},
+    ...written.verdict ? { verdict: written.verdict } : {}
+  };
+}
+function recordedPr(paths, meta3) {
+  return { ...readmeFacts(paths).pr, ...(meta3 ?? readMeta(paths)).pr };
+}
+function readmeFacts(paths) {
+  let text2;
+  try {
+    text2 = readFileSync8(join7(paths.dir, "README.md"), "utf8");
+  } catch {
+    return { pr: {} };
+  }
+  const pr = {};
+  const url2 = /^-\s+Pull request:\s*<?(https?:\/\/\S+?)>?\s*$/m.exec(text2)?.[1];
+  if (url2) {
+    pr.url = url2;
+    const number4 = /\/pull\/(\d+)/.exec(url2)?.[1];
+    if (number4) pr.number = Number(number4);
+  }
+  const title = /^-\s+Title:\s*`?(.+?)`?\s*$/m.exec(text2)?.[1];
+  if (title) pr.title = title;
+  const heading = readmeHeading(text2);
+  const verdict = readmeVerdict(text2);
+  return {
+    pr,
+    ...heading ? { heading } : {},
+    ...verdict ? { verdict } : {}
+  };
+}
+function readmeHeading(text2) {
+  const heading = /^#\s+(.+?)\s*$/m.exec(text2)?.[1];
+  if (!heading) return void 0;
+  const rest = heading.replace(/^PR\s*#?\d+\s*/i, "").replace(/^[—–:-]\s*/, "").replace(/^(multi-level\s+)?review\b\s*[—–:-]?\s*/i, "").replace(/\s*[—–:-]?\s*(multi-level\s+)?review\s*$/i, "").trim();
+  return rest === "" ? void 0 : rest;
+}
+function readmeVerdict(text2) {
+  const line = /^##\s+Verdict\s*$\n+\*{0,2}(.+?)\*{0,2}\s*$/m.exec(text2)?.[1] ?? /^-\s+Review verdict:\s*\*{0,2}(.+?)\*{0,2}\s*$/m.exec(text2)?.[1];
+  if (!line) return void 0;
+  const trimmed = line.trim();
+  return trimmed === "" ? void 0 : trimmed;
+}
+var MAX_PUBLISH_PASSES, MAX_MARKED_LINES, PRE_EXISTING_TAG, ANCHOR_SAYS, CLAIM_ATTEMPTS, MAX_NOTE, STAGES, QUIET_AFTER_MS, ONE_RUN_MS;
+var init_api2 = __esm({
+  "packages/findings/api.mts"() {
+    "use strict";
+    init_types();
+    init_paths();
+    init_fingerprint();
+    init_context();
+    init_transitions();
+    init_findings();
+    init_registry();
+    init_rules();
+    init_reader();
+    init_groups();
+    init_counts();
+    init_levels();
+    init_port();
+    init_browser();
+    init_issue();
+    init_html();
+    init_sarif();
+    init_validate();
+    MAX_PUBLISH_PASSES = 5;
+    MAX_MARKED_LINES = 200;
+    PRE_EXISTING_TAG = "pre-existing";
+    ANCHOR_SAYS = {
+      "whitespace-only": "The anchor differs from the base only in whitespace: the author re-indented this code \u2014 wrapping or moving what was already there \u2014 and did not write it.",
+      moved: "The anchor is code the author moved here, not code they wrote: the same lines exist on the base side.",
+      untouched: "The anchor is identical to the base."
+    };
+    CLAIM_ATTEMPTS = 25;
+    MAX_NOTE = 2e4;
+    STAGES = [
+      "invalid",
+      "tolerated",
+      "open",
+      "accepted",
+      "reported",
+      "fixed"
+    ];
+    QUIET_AFTER_MS = 30 * 60 * 1e3;
+    ONE_RUN_MS = 12 * 60 * 60 * 1e3;
+  }
+});
+
+// packages/findings/queues.mts
+import fs5 from "node:fs";
+import path6 from "node:path";
+import { createHash as createHash3, randomUUID } from "node:crypto";
+import { execFileSync as execFileSync4 } from "node:child_process";
+function reviewSessionSummary(session) {
+  return { id: session.id, run: session.run, phase: session.phase, ...session.suggestions ? { suggestions: { count: session.suggestions.events.length, aggregatedAt: session.suggestions.aggregatedAt, sentAt: session.suggestions.sentAt, lastError: session.suggestions.lastError } } : {}, parallelProofs: session.parallelProofs, createdAt: session.createdAt, updatedAt: session.updatedAt, queues: session.queues.map((queue) => ({ id: queue.id, phase: queue.phase, workers: queue.workers, total: queue.items.length, completed: queue.items.filter((i) => i.completed).length, claimed: queue.items.filter((i) => !i.completed && !i.blocked && i.claim && Date.parse(i.claim.until) > Date.now()).length, pending: queue.items.filter((i) => !i.completed && !i.blocked && (!i.claim || Date.parse(i.claim.until) <= Date.now())).length, blocked: queue.items.filter((i) => i.blocked).length, limited: queue.items.filter((i) => i.completed && (i.completed.result.investigation?.status === "limited" || Array.isArray(i.completed.result.limits) && i.completed.result.limits.length > 0)).length })) };
+}
+function hasGit(repo2) {
+  try {
+    return Boolean(execFileSync4("git", ["rev-parse", "--verify", "HEAD"], { cwd: repo2, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim());
+  } catch {
+    return false;
+  }
+}
+function location(args, fallback) {
+  const repo2 = typeof args.repo === "string" ? path6.resolve(args.repo) : fallback;
+  if (!repo2) throw new InputError("repo is required");
+  const target2 = str(args, "target");
+  const session = str(args, "session");
+  if (!/^[a-f0-9]{64}$/.test(session)) throw new InputError("Invalid review session id");
+  const dir = path6.join(targetPaths(repo2, target2).dir, "sessions", session);
+  return { repo: repo2, target: target2, dir, file: path6.join(dir, "session.json") };
+}
+function read2(file3) {
+  return JSON.parse(fs5.readFileSync(file3, "utf8"));
+}
+function save(file3, session) {
+  session.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  const temp = `${file3}.${randomUUID()}.tmp`;
+  fs5.writeFileSync(temp, JSON.stringify(session, null, 2) + "\n");
+  fs5.renameSync(temp, file3);
+}
+function access(raw, repo2, callback) {
+  const args = requireObject(raw), at = location(args, repo2);
+  return locked(at.dir, () => {
+    const session = read2(at.file);
+    const result = callback(session, args);
+    save(at.file, session);
+    return result;
+  });
+}
+function claimReviewSession(raw, repo2) {
+  const args = requireObject(raw), run3 = str(args, "run"), id = hash2(run3);
+  const sets = optionalArray(args, "sets").map((value) => {
+    const set2 = requireObject(value), name = str(set2, "id");
+    const principles = optionalArray(set2, "principles").map((value2) => {
+      const principle = requireObject(value2), version2 = principle.version;
+      if (!Number.isInteger(version2) || Number(version2) < 1) throw new InputError("Each principle needs its pinned positive version");
+      return { id: str(principle, "id"), version: Number(version2) };
+    });
+    if (new Set(principles.map((p) => p.id)).size !== principles.length) throw new InputError("A set cannot repeat a principle");
+    return { id: name, principles };
+  });
+  if (!sets.length || new Set(sets.map((s) => s.id)).size !== sets.length) throw new InputError("Supply distinct review sets");
+  const at = location({ ...args, session: id }, repo2), manifest = hash2(JSON.stringify({ sets, scope: args.scope ?? null }));
+  upsertRegistry(at.repo, at.target, (/* @__PURE__ */ new Date()).toISOString());
+  return locked(at.dir, () => {
+    if (fs5.existsSync(at.file)) {
+      const old = read2(at.file);
+      if (old.manifest !== manifest) throw new InputError("Run already has a different queue manifest; start a new run");
+      return old;
+    }
+    const now2 = (/* @__PURE__ */ new Date()).toISOString();
+    const session = { id, run: run3, manifest, reportId: randomUUID(), ...typeof args.registry === "string" ? { reportRegistry: args.registry } : {}, createdAt: now2, updatedAt: now2, phase: "review", parallelProofs: hasGit(at.repo), queues: sets.map((set2) => ({ id: set2.id, phase: "review", workers: Math.max(1, Math.ceil(set2.principles.length / 20)), items: [{ id: "source", kind: "source" }, ...set2.principles.map((principle) => ({ id: principle.id, kind: "principle", principle }))] })) };
+    save(at.file, session);
+    return session;
+  });
+}
+function getReviewSession(raw, repo2) {
+  return read2(location(requireObject(raw), repo2).file);
+}
+function claimReviewWork(raw, repo2) {
+  return access(raw, repo2, (session, args) => {
+    const queue = session.queues.find((q) => q.id === str(args, "queue"));
+    if (!queue || queue.phase !== session.phase) throw new InputError("Queue is unavailable in this phase");
+    const worker = str(args, "worker"), now2 = Date.now();
+    const active = queue.items.find((item2) => !item2.completed && !item2.blocked && item2.claim?.worker === worker && Date.parse(item2.claim.until) > now2);
+    const item = active ?? queue.items.find((item2) => !item2.completed && !item2.blocked && (!item2.claim || Date.parse(item2.claim.until) <= now2));
+    if (!item) return { state: queue.items.every((item2) => item2.completed) ? "complete" : queue.items.filter((item2) => !item2.completed).every((item2) => item2.blocked) ? "blocked" : "waiting", remaining: queue.items.filter((item2) => !item2.completed).length };
+    if (!active) item.claim = { token: randomUUID(), worker, at: new Date(now2).toISOString(), until: new Date(now2 + LEASE_MS).toISOString() };
+    else item.claim.until = new Date(now2 + LEASE_MS).toISOString();
+    const { completed: _, ...work } = item;
+    return { state: "claimed", queue: queue.id, work };
+  });
+}
+function validateInvestigation(result, source) {
+  const inquiry = requireObject(result.investigation), status = str(inquiry, "status");
+  if (!["complete", "limited", "not_applicable"].includes(status)) throw new InputError("investigation.status must be complete, limited or not_applicable");
+  str(inquiry, "reason");
+  if (!strings(inquiry.limits) || status === "limited" !== inquiry.limits.length > 0) throw new InputError("Only limited investigations have unresolved limits; retain the limits and mark limited");
+  const questions = optionalArray(inquiry, "questions");
+  if (!questions.length) throw new InputError("Investigation needs at least one evidence-backed question");
+  for (const value of questions) {
+    const question = requireObject(value);
+    str(question, "question");
+    str(question, "answer");
+    if (!strings(question.evidence) || !question.evidence.length) throw new InputError("Every question needs evidence locations");
+  }
+  if (!strings(result.findings)) throw new InputError("findings must contain candidate ids only, or []");
+  if (source) {
+    if (status === "not_applicable") throw new InputError("Source review cannot be not_applicable");
+    return;
+  }
+  const verdict = str(result, "verdict");
+  if (!["not_applicable", "followed", "findings"].includes(verdict)) throw new InputError("Invalid principle verdict");
+  if (verdict === "not_applicable" !== (status === "not_applicable")) throw new InputError("Applicability verdict and investigation status disagree");
+  if (verdict === "findings" && !result.findings.length) throw new InputError("findings verdict needs an MCP candidate id");
+  if (verdict !== "findings" && result.findings.length) throw new InputError("Candidate references need a findings verdict");
+  if (verdict === "followed") str(result, "where");
+}
+function validateVerificationDecision(decision, repo2, target2) {
+  if (decision.status === "refuted") return;
+  const finding = requireObject(decision.finding), evidence = str(finding, "evidence"), method = str(decision, "method");
+  if (!["source", "executable", "unverified"].includes(method)) throw new InputError("method must be source, executable or unverified");
+  if (!["Proven", "Reasoned", "Speculative"].includes(evidence)) throw new InputError("finding.evidence must be exactly Proven, Reasoned or Speculative");
+  if (method === "executable" && (evidence !== "Proven" || !nonempty(finding.provenTest) || !nonempty(decision.proof))) throw new InputError("Executable proof requires evidence Proven, provenTest and proof; use source/unverified for partial evidence");
+  if (method !== "executable" && evidence === "Proven") throw new InputError("Proven requires an executable production-path probe");
+  if (method === "unverified" !== (decision.status === "plausible")) throw new InputError("Unverified findings must be plausible with an explicit reason");
+  const anchor3 = requireObject(finding.anchor), line = Number(anchor3.line), end = Number(anchor3.endLine ?? line);
+  let text2;
+  if (anchor3.kind === "metadata") text2 = str(anchor3, "text");
+  else {
+    const file3 = repoRelative(repo2, str(anchor3, "file"));
+    try {
+      text2 = fs5.readFileSync(path6.join(repo2, file3), "utf8");
+    } catch {
+      const base2 = readMeta(targetPaths(repo2, target2))?.base;
+      if (!base2) throw new InputError("Final anchor must point to reviewed source or a deleted base file");
+      try {
+        text2 = execFileSync4("git", ["show", `${base2}:${file3}`], { cwd: repo2, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+      } catch {
+        throw new InputError("Final anchor source is unavailable");
+      }
+    }
+  }
+  const lines = text2.replace(/\n$/, "").split("\n").length;
+  if (!Number.isInteger(line) || !Number.isInteger(end) || line < 1 || end < line || end > lines) throw new InputError("Final anchor range is outside the reviewed source; correct it before completion");
+}
+function verificationProblems(session, repo2, target2) {
+  const candidates = listCandidates2({ repo: repo2, target: target2, run: session.run }, repo2);
+  const findings = listFindings2({ repo: repo2, target: target2 }, repo2).flatMap((group) => group.findings);
+  const problems = [];
+  for (const item of session.queues.filter((q) => q.phase === "verification").flatMap((q) => q.items)) {
+    if (!item.completed) continue;
+    for (const value of optionalArray(item.completed.result, "decisions")) {
+      const decision = requireObject(value);
+      if (decision.status === "refuted") continue;
+      try {
+        validateVerificationDecision(decision, repo2, target2);
+        const candidate = candidates.find((c) => c.id === decision.id), finding = findings.find((f) => f.id === candidate?.findingId), final = requireObject(decision.finding);
+        if (!finding || candidate?.status !== decision.status || finding.verification?.status !== decision.status) throw new Error("Published finding is missing or has a different verification status");
+        for (const key of ["evidence", "provenTest", "title", "body"]) if (final[key] !== void 0 && final[key] !== finding[key]) throw new Error(`Published ${key} differs from verification`);
+        const anchor3 = requireObject(final.anchor);
+        for (const key of ["file", "line", "endLine", "kind", "subject", "text"]) if (anchor3[key] !== void 0 && anchor3[key] !== finding.anchor[key]) throw new Error(`Published anchor.${key} differs from verification`);
+        if (finding.verification?.method !== decision.method || JSON.stringify(finding.verification?.proofs) !== JSON.stringify(item.completed.result.proofs) || JSON.stringify(finding.verification?.limits) !== JSON.stringify(item.completed.result.limits)) throw new Error("Published finding is missing verification evidence or limits");
+      } catch (error62) {
+        problems.push(`${item.id}/${decision.id}: ${error62 instanceof Error ? error62.message : String(error62)}`);
+      }
+    }
+  }
+  return problems;
+}
+function completeReviewWork(raw, repo2) {
+  return access(raw, repo2, (session, args) => {
+    const queue = session.queues.find((q) => q.id === str(args, "queue"));
+    const item = queue?.items.find((i) => i.id === str(args, "item"));
+    if (!queue || !item) throw new InputError("Unknown queue item");
+    const token = str(args, "claim"), worker = str(args, "worker"), result = requireObject(args.result);
+    if (item.completed) {
+      if (item.completed.token === token && item.completed.worker === worker && JSON.stringify(item.completed.result) === JSON.stringify(result)) return { state: "completed", item: item.id };
+      throw new InputError("Item already completed by another submission");
+    }
+    if (item.blocked || queue.phase !== session.phase || item.claim?.token !== token || item.claim.worker !== worker || Date.parse(item.claim.until) <= Date.now()) throw new InputError("Claim expired, blocked or belongs to another worker; claim again");
+    const at = location(args, repo2);
+    const candidates = listCandidates2({ repo: at.repo, target: at.target, run: session.run }, at.repo);
+    if (item.kind !== "verification") {
+      validateInvestigation(result, item.kind === "source");
+      for (const id of result.findings) {
+        const candidate = candidates.find((c) => c.id === id);
+        if (!candidate || candidate.unit !== queue.id || item.principle && candidate.rule !== item.principle.id) throw new InputError(`${id} is not a candidate for this queue item`);
+      }
+    } else {
+      str(result, "summary");
+      if (!strings(result.limits) || !strings(result.proofs)) throw new InputError("Verification needs proofs and limits arrays");
+      const decisions = optionalArray(result, "decisions").map(requireObject);
+      const ids = decisions.map((d) => str(d, "id"));
+      if (new Set(ids).size !== ids.length || ids.length !== item.candidates.length || item.candidates.some((id) => !ids.includes(id))) throw new InputError("Decisions must cover every candidate in the claimed group exactly once");
+      for (const decision of decisions) validateVerificationDecision(decision, at.repo, at.target);
+      const resolved = resolveCandidates({ repo: at.repo, target: at.target, decisions, proofs: result.proofs, limits: result.limits, reverify: Boolean(item.previous?.length) }, at.repo);
+      if (resolved.errors.length) throw new InputError(JSON.stringify(resolved.errors));
+    }
+    item.completed = { worker, token, at: (/* @__PURE__ */ new Date()).toISOString(), result };
+    return { state: "completed", item: item.id };
+  });
+}
+function beginVerification(raw, repo2) {
+  return access(raw, repo2, (session, args) => {
+    if (session.queues.filter((q) => q.phase === "review").some((q) => q.items.some((item) => !item.completed))) throw new InputError("Review queues must be complete before aggregation");
+    const at = location(args, repo2), candidates = listCandidates2({ repo: at.repo, target: at.target, run: session.run }, at.repo);
+    const groups = optionalArray(args, "groups").map((value) => {
+      const group = requireObject(value);
+      if (!strings(group.candidates) || !group.candidates.length) throw new InputError("Each issue group needs candidate ids");
+      return { candidates: group.candidates, reason: str(group, "reason") };
+    });
+    const ids = groups.flatMap((g) => g.candidates);
+    if (ids.length !== candidates.length || new Set(ids).size !== ids.length || candidates.some((c) => !ids.includes(c.id))) throw new InputError("Issue groups must partition all run candidates exactly once");
+    const items = groups.map((group, i) => ({ id: `issue-${i + 1}`, kind: "verification", ...group }));
+    const old = session.queues.find((q) => q.phase === "verification");
+    if (old) {
+      if (JSON.stringify(old.items.map((i) => ({ candidates: i.candidates, reason: i.reason }))) !== JSON.stringify(groups)) throw new InputError("Verification queue already exists with different groups");
+      return session;
+    }
+    session.phase = "verification";
+    session.parallelProofs ??= hasGit(at.repo);
+    session.queues.push({ id: "verification", phase: "verification", workers: items.length ? session.parallelProofs ? Math.ceil(items.length / 10) : 1 : 0, items });
+    const pinned = new Map(session.queues.filter((q) => q.phase === "review").flatMap((q) => q.items.flatMap((i) => i.principle ? [i.principle] : [])).map((p) => [p.id, p]));
+    const byId = new Map(candidates.map((c) => [c.id, c]));
+    const aggregatedAt = (/* @__PURE__ */ new Date()).toISOString();
+    session.suggestions = { aggregatedAt, ...session.reportRegistry ? { registry: session.reportRegistry } : {}, events: groups.flatMap((group) => {
+      const members2 = group.candidates.map((id2) => byId.get(id2));
+      const rules = new Set(members2.flatMap((c) => c.rule ? [c.rule.replace(/@\d+$/, "")] : []));
+      const priority = ["p0", "p1", "p2", "p3", "p4"].find((p) => members2.some((c) => c.priority === p)) ?? "p3";
+      const id = hash2(`${session.reportId ?? session.id + session.createdAt}:${[...group.candidates].sort().join(":")}`);
+      return [...rules].filter((rule) => pinned.has(rule) && !rule.startsWith("local/")).map((principle) => ({ id, principle, priority }));
+    }) };
+    return session;
+  });
+}
+function noteSuggestionDelivery(raw, repo2, result) {
+  access(raw, repo2, (session) => {
+    if (!session.suggestions) return;
+    if (session.suggestions.registry && session.suggestions.registry !== result.registry) throw new InputError("Review report belongs to a different registry");
+    if (session.suggestions.sentAt && result.lastError) return;
+    Object.assign(session.suggestions, result);
+    if (result.sentAt) delete session.suggestions.lastError;
+  });
+}
+function retryVerification(raw, repo2) {
+  return access(raw, repo2, (session, args) => {
+    const reason = str(args, "reason"), ids = args.items;
+    if (!strings(ids) || !ids.length || new Set(ids).size !== ids.length) throw new InputError("Supply distinct verification issue ids");
+    const queue = session.queues.find((q) => q.phase === "verification");
+    if (!queue || session.phase !== "verification") throw new InputError("No verification queue");
+    const chosen = ids.map((id) => queue.items.find((item) => item.id === id));
+    if (chosen.some((item) => !item?.completed)) throw new InputError("Only completed verification issues can be retried");
+    for (const item of chosen) {
+      item.previous = [...item.previous ?? [], { reason, completed: item.completed, ...item.claim ? { claim: item.claim } : {} }];
+      delete item.completed;
+      delete item.claim;
+    }
+    const remaining = queue.items.filter((item) => !item.completed && !item.blocked).length;
+    session.parallelProofs ??= hasGit(location(args, repo2).repo);
+    queue.workers = remaining ? session.parallelProofs ? Math.ceil(remaining / 10) : 1 : 0;
+    return session;
+  });
+}
+function blockReviewWork(raw, repo2) {
+  return access(raw, repo2, (session, args) => {
+    const queue = session.queues.find((q) => q.id === str(args, "queue")), worker = str(args, "worker"), reason = str(args, "reason");
+    const item = queue?.items.find((i) => !i.completed && i.claim?.worker === worker);
+    if (!item) throw new InputError("Worker has no active queue item to block");
+    item.blocked = { reason, at: (/* @__PURE__ */ new Date()).toISOString(), worker };
+    if (item.kind === "verification") {
+      const at = location(args, repo2);
+      try {
+        const visible = recordVerificationBlock({ repo: at.repo, target: at.target, candidates: item.candidates, reason }, at.repo);
+        if (visible.errors.length) item.blocked.visibilityErrors = visible.errors;
+      } catch (error62) {
+        item.blocked.visibilityErrors = [error62 instanceof Error ? error62.message : String(error62)];
+      }
+    }
+    return session;
+  });
+}
+var LEASE_MS, hash2, nonempty, strings;
+var init_queues = __esm({
+  "packages/findings/queues.mts"() {
+    "use strict";
+    init_paths();
+    init_api2();
+    init_lock();
+    init_registry();
+    init_findings();
+    init_paths();
+    init_validate();
+    LEASE_MS = 15 * 6e4;
+    hash2 = (text2) => createHash3("sha256").update(text2).digest("hex");
+    nonempty = (value) => typeof value === "string" && value.trim().length > 0;
+    strings = (value) => Array.isArray(value) && value.every(nonempty);
+  }
+});
+
+// packages/cli/src/board/detections.ts
+import { randomBytes } from "node:crypto";
+import fs7 from "node:fs";
+import path8 from "node:path";
+function count(lines) {
+  const totals = /* @__PURE__ */ new Map();
+  for (const line of lines) {
+    if (/^\d{4}-\d{2}-\d{2} [a-f0-9]{64}$/.test(line)) {
+      totals.set(line, (totals.get(line) ?? 0) + 1);
+    }
+  }
+  return [...totals.entries()].map(([line, total]) => ({ day: line.slice(0, 10), hash: line.slice(11), count: total }));
+}
+async function drainDetections(send) {
+  const home = boardHome();
+  const log = path8.join(home, LOG);
+  if (fs7.existsSync(log)) {
+    fs7.renameSync(log, path8.join(home, `detections.sending.${Date.now().toString(36)}${randomBytes(4).toString("hex")}`));
+  }
+  const pending = fs7.existsSync(home) ? fs7.readdirSync(home).filter((name) => SENDING.test(name)) : [];
+  const counts = count(pending.flatMap((name) => fs7.readFileSync(path8.join(home, name), "utf8").split("\n")));
+  if (counts.length > 0) {
+    await send(counts);
+  }
+  for (const name of pending) {
+    fs7.rmSync(path8.join(home, name), { force: true });
+  }
+  return counts.reduce((sum, entry) => sum + entry.count, 0);
+}
+var LOG, SENDING, REPORT_EVERY_MS, WINDOW_MS;
+var init_detections = __esm({
+  "packages/cli/src/board/detections.ts"() {
+    "use strict";
+    init_board();
+    LOG = "detections.log";
+    SENDING = /^detections\.sending\.[a-z0-9]+$/;
+    REPORT_EVERY_MS = 5 * 6e4;
+    WINDOW_MS = 10 * 6e4;
+  }
+});
+
+// packages/cli/src/registry/review-reports.ts
+var review_reports_exports = {};
+__export(review_reports_exports, {
+  REVIEW_REPORT_MS: () => REVIEW_REPORT_MS,
+  reportPendingReviewSuggestions: () => reportPendingReviewSuggestions,
+  reviewActivityEvents: () => reviewActivityEvents
+});
+import fs8 from "node:fs";
+import path9 from "node:path";
+import { createHash as createHash4, randomUUID as randomUUID2 } from "node:crypto";
+function writeLedger(file3, ledger) {
+  fs8.mkdirSync(path9.dirname(file3), { recursive: true });
+  const temp = `${file3}.${randomUUID2()}.tmp`;
+  fs8.writeFileSync(temp, JSON.stringify(ledger, null, 2) + "\n", { mode: 384 });
+  fs8.renameSync(temp, file3);
+}
+function resolutionTimes(f) {
+  if (f.resolution !== "resolved") return null;
+  let first, current2, resolved = false;
+  for (const change of f.history) {
+    if (change.resolution === void 0) continue;
+    const next = change.resolution === "resolved";
+    if (next && !resolved) {
+      first ??= change.at;
+      current2 = change.at;
+    }
+    if (!next) current2 = void 0;
+    resolved = next;
+  }
+  return first && current2 ? { first, current: current2 } : null;
+}
+function reviewActivityEvents(session, repo2, target2, at = Date.now()) {
+  const pinned = new Map(session.queues.filter((q) => q.phase === "review").flatMap((q) => q.items.flatMap((i) => i.principle ? [i.principle] : [])).map((p) => [p.id, p]));
+  const reviewId = session.reportId ?? hash3(session.id + session.createdAt);
+  const events = [...pinned.values()].filter((p) => !p.id.startsWith("local/")).map((p) => ({ id: reviewId, type: "review_selection", principle: p.id, revision: p.version, occurred_at: session.createdAt }));
+  if (!session.suggestions) return events;
+  const candidates = new Map(listCandidates2({ repo: repo2, target: target2, run: session.run }, repo2).map((c) => [c.id, c]));
+  const findings = new Map(listFindings2({ repo: repo2, target: target2 }, repo2).flatMap((t) => t.findings).map((f) => [f.id, f]));
+  for (const suggestion of session.suggestions.events) {
+    const p = pinned.get(suggestion.principle);
+    if (!p) continue;
+    events.push({ id: suggestion.id, type: "review_suggestion", principle: p.id, revision: p.version, occurred_at: session.suggestions.aggregatedAt, priority: suggestion.priority });
+    const group = session.queues.find((q) => q.phase === "verification")?.items.find((i) => hash3(`${session.reportId ?? session.id + session.createdAt}:${[...i.candidates ?? []].sort().join(":")}`) === suggestion.id);
+    if (!group?.candidates?.length) continue;
+    const members2 = group.candidates.map((id) => candidates.get(id));
+    if (members2.some((c) => !c || c.status === "pending")) continue;
+    const applicable = members2.filter((c) => c.status !== "refuted");
+    if (!applicable.length || applicable.some((c) => !c.findingId || !findings.has(c.findingId))) continue;
+    const survivors = [...new Set(applicable.map((c) => c.findingId))].map((id) => findings.get(id));
+    const times = survivors.map(resolutionTimes);
+    if (times.some((t) => !t)) continue;
+    if (at - Math.max(...times.map((t) => Date.parse(t.current))) < REVIEW_REPORT_MS) continue;
+    const occurred_at = new Date(Math.max(...times.map((t) => Date.parse(t.first)))).toISOString();
+    const priority = ["p0", "p1", "p2", "p3", "p4"].find((p2) => survivors.some((f) => f.priority === p2)) ?? suggestion.priority;
+    events.push({ id: suggestion.id, type: "finding_fixed", principle: p.id, revision: p.version, occurred_at, priority });
+  }
+  return events;
+}
+function claimCycle(at) {
+  const dir = path9.join(boardHome(), "review-reporting");
+  return locked(dir, () => {
+    const file3 = path9.join(dir, "last-attempt");
+    const last = fs8.existsSync(file3) ? Number(fs8.readFileSync(file3, "utf8")) : 0;
+    if (at >= last && at - last < REVIEW_REPORT_MS) return false;
+    fs8.writeFileSync(file3, String(at));
+    return true;
+  });
+}
+async function reportPendingReviewSuggestions(send = sendReviewEvents, at = Date.now()) {
+  const config2 = readConfig();
+  if (!config2.stats || !config2.token || !claimCycle(at)) return 0;
+  let reported = 0;
+  for (const repo2 of readRegistry().repos) for (const target2 of repo2.targets) {
+    if (!fs8.existsSync(repo2.path)) continue;
+    let dir, names2;
+    try {
+      dir = targetPaths(repo2.path, target2).dir;
+      names2 = fs8.readdirSync(path9.join(dir, "sessions"));
+    } catch {
+      continue;
+    }
+    const file3 = path9.join(dir, "review-event-delivery.json"), lockDir = path9.join(dir, "review-event-delivery");
+    const sessions = [];
+    for (const name of names2.filter((n) => /^[a-f0-9]{64}$/.test(n))) {
+      try {
+        const s = getReviewSession({ repo: repo2.path, target: target2, session: name }, repo2.path);
+        if (!s.reportRegistry || s.reportRegistry === config2.registry) sessions.push(s);
+      } catch {
+      }
+    }
+    let pending;
+    try {
+      const events = sessions.flatMap((s) => reviewActivityEvents(s, repo2.path, target2, at));
+      pending = locked(lockDir, () => {
+        const ledger = readLedger(file3);
+        for (const event of events) ledger.entries[identity(event)] ??= { event, registry: config2.registry };
+        writeLedger(file3, ledger);
+        return Object.values(ledger.entries).filter((e) => e.registry === config2.registry && !e.sentAt);
+      });
+    } catch {
+      continue;
+    }
+    for (let i = 0; i < pending.length; i += 500) {
+      const batch = pending.slice(i, i + 500);
+      try {
+        const result = await send(batch.map((e) => e.event));
+        const rejected = new Map((result?.rejected ?? []).map((e) => [identity(e), e.reason]));
+        locked(lockDir, () => {
+          const ledger = readLedger(file3);
+          for (const { event } of batch) {
+            const entry = ledger.entries[identity(event)];
+            if (!entry || entry.sentAt) continue;
+            const error62 = rejected.get(identity(event));
+            if (error62) entry.error = error62;
+            else {
+              entry.sentAt = new Date(at).toISOString();
+              delete entry.error;
+              reported++;
+            }
+          }
+          writeLedger(file3, ledger);
+        });
+      } catch (error62) {
+        locked(lockDir, () => {
+          const ledger = readLedger(file3);
+          for (const { event } of batch) {
+            const entry = ledger.entries[identity(event)];
+            if (entry && !entry.sentAt) entry.error = error62 instanceof Error ? error62.message : String(error62);
+          }
+          writeLedger(file3, ledger);
+        });
+        break;
+      }
+    }
+    for (const session of sessions.filter((s) => s.suggestions)) {
+      const ledger = readLedger(file3);
+      const keys = session.suggestions.events.map((e) => identity({ id: e.id, type: "review_suggestion", principle: e.principle }));
+      const entries = keys.map((k) => ledger.entries[k]);
+      try {
+        if (entries.every((e) => e?.sentAt)) noteSuggestionDelivery({ repo: repo2.path, target: target2, session: session.id }, repo2.path, { registry: config2.registry, sentAt: new Date(at).toISOString() });
+        else {
+          const error62 = entries.find((e) => e?.error)?.error;
+          if (error62) noteSuggestionDelivery({ repo: repo2.path, target: target2, session: session.id }, repo2.path, { registry: config2.registry, lastError: error62 });
+        }
+      } catch {
+      }
+    }
+  }
+  return reported;
+}
+var REVIEW_REPORT_MS, hash3, identity, readLedger;
+var init_review_reports = __esm({
+  "packages/cli/src/registry/review-reports.ts"() {
+    "use strict";
+    init_board();
+    init_registry();
+    init_paths();
+    init_lock();
+    init_queues();
+    init_api2();
+    init_client();
+    REVIEW_REPORT_MS = 5 * 6e4;
+    hash3 = (s) => createHash4("sha256").update(s).digest("hex");
+    identity = (e) => `${e.type}:${e.id}:${e.principle}`;
+    readLedger = (file3) => {
+      try {
+        const data = JSON.parse(fs8.readFileSync(file3, "utf8"));
+        if (data && data.entries && typeof data.entries === "object") return data;
+      } catch {
+      }
+      return { entries: {} };
+    };
+  }
+});
+
+// packages/cli/src/registry/client.ts
+async function call(pathname, init = {}) {
+  const config2 = readConfig();
+  const token = init.token === void 0 ? config2.token : init.token;
+  const headers = { accept: "application/json" };
+  if (token) {
+    headers.authorization = `Bearer ${token}`;
+  }
+  if (init.body !== void 0) {
+    headers["content-type"] = "application/json";
+  }
+  const url2 = new URL(pathname, config2.registry);
+  const signal = init.timeoutMs ? AbortSignal.timeout(init.timeoutMs) : void 0;
+  for (let attempt = 0; ; attempt++) {
+    let response;
+    try {
+      response = await fetch(url2, {
+        method: init.method ?? "GET",
+        headers,
+        body: init.body === void 0 ? void 0 : JSON.stringify(init.body),
+        ...signal ? { signal } : {}
+      });
+    } catch (error62) {
+      throw new RegistryError(`cannot reach the registry at ${config2.registry}: ${error62.message}`);
+    }
+    if (response.status !== 502 && response.status !== 503 || attempt === WAKE_RETRIES.length) {
+      return response;
+    }
+    await new Promise((resolve3) => setTimeout(resolve3, WAKE_RETRIES[attempt]));
+  }
+}
+async function failure2(response) {
+  if (response.status === 401) {
+    if (tokenFromEnvironment()) {
+      return new RegistryError("the registry refused the token in WELLACTUALLY_TOKEN. It was revoked or is mistyped. Create a new one on your advisory board on the website.", 401);
+    }
+    return new RegistryError("not signed in, or the token was revoked. Sign in with the plugin's login skill.");
+  }
+  const body = await response.json().catch(() => null);
+  return new RegistryError(body?.error ?? `the registry answered ${response.status}`, response.status);
+}
+function requireToken() {
+  if (!readConfig().token) {
+    throw new RegistryError("not signed in. Sign in with the plugin's login skill.");
+  }
+}
+async function sync() {
+  requireToken();
+  const response = await call("/api/board");
+  if (!response.ok) {
+    throw await failure2(response);
+  }
+  const body = await response.json();
+  const remote = body.entries;
+  const registry2 = readConfig().registry;
+  const suggestions = (body.suggestions ?? []).map((expert) => ({ ...expert, url: new URL(`/e/${encodeURIComponent(expert.handle)}`, registry2).toString() }));
+  const downloaded = [];
+  for (const entry of remote) {
+    if (hasCached(entry.hash)) {
+      continue;
+    }
+    const bundleResponse = await call(`/api/bundles/${entry.hash}`);
+    if (!bundleResponse.ok) {
+      throw await failure2(bundleResponse);
+    }
+    const principle = await bundleResponse.json();
+    const actual = await hashPrinciple(principle.manifest, principle.advice, principle.bundle);
+    if (actual !== entry.hash) {
+      throw new RegistryError(`${entry.id} does not match its hash. Refusing to install it.`);
+    }
+    writeCached({ id: entry.id, version: entry.version, hash: entry.hash, manifest: principle.manifest, advice: principle.advice, bundle: principle.bundle });
+    downloaded.push(entry.id);
+  }
+  const before = readLockfile();
+  const local = before.entries.filter((entry) => entry.id.startsWith("local/"));
+  const remoteIds = new Set(remote.map((entry) => entry.id));
+  const removed = before.entries.filter((entry) => !entry.id.startsWith("local/") && !remoteIds.has(entry.id)).map((entry) => entry.id);
+  const synced = remote.map(({ id, version: version2, hash: hash4, enabled }) => ({ id, version: version2, hash: hash4, enabled }));
+  writeLockfile({ syncedAt: (/* @__PURE__ */ new Date()).toISOString(), entries: [...synced, ...local] });
+  return { entries: remote, downloaded, removed, reported: await reportDetections(), suggestions };
+}
+async function reportDetections() {
+  if (!readConfig().stats) {
+    return 0;
+  }
+  try {
+    await (await Promise.resolve().then(() => (init_review_reports(), review_reports_exports))).reportPendingReviewSuggestions();
+  } catch {
+  }
+  try {
+    return await drainDetections(async (detections) => {
+      const response = await call("/api/detections", { method: "POST", body: { detections } });
+      if (!response.ok) {
+        throw await failure2(response);
+      }
+    });
+  } catch {
+    return 0;
+  }
+}
+async function sendReviewEvents(events) {
+  const response = await call("/api/review-events", { method: "POST", body: { events }, timeoutMs: 1e4 });
+  if (!response.ok) throw await failure2(response);
+  const result = await response.json();
+  if (!Number.isSafeInteger(result.stored) || !Number.isSafeInteger(result.duplicates) || !Array.isArray(result.rejected) || result.stored < 0 || result.duplicates < 0 || result.stored + result.duplicates + result.rejected.length !== events.length) throw new RegistryError("Invalid review-event acknowledgement; report remains pending.");
+  return { rejected: result.rejected };
+}
+var RegistryError, WAKE_RETRIES;
+var init_client = __esm({
+  "packages/cli/src/registry/client.ts"() {
+    "use strict";
+    init_node();
+    init_board();
+    init_detections();
+    RegistryError = class extends Error {
+      /** The HTTP status the registry answered with, or null when it was not asked or did not answer. */
+      status;
+      constructor(message, status = null) {
+        super(message);
+        this.status = status;
+      }
+    };
+    WAKE_RETRIES = [1e3, 2e3, 4e3];
+  }
+});
+
 // skills/review/scripts/main.ts
-import path10 from "node:path";
+import path12 from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // skills/review/scripts/reviewer-runtime.ts
-import fs5 from "node:fs";
-import path6 from "node:path";
+import fs6 from "node:fs";
+import path7 from "node:path";
 import { execFileSync as execFileSync5, spawn as spawn2 } from "node:child_process";
 
 // node_modules/zod/v3/helpers/util.js
@@ -11255,8 +16152,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path11, errorMaps, issueData } = params;
-  const fullPath = [...path11, ...issueData.path || []];
+  const { data, path: path13, errorMaps, issueData } = params;
+  const fullPath = [...path13, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -11371,11 +16268,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path11, key) {
+  constructor(parent, value, path13, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path11;
+    this._path = path13;
     this._key = key;
   }
   get path() {
@@ -15329,10 +20226,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path11) {
-  if (!path11)
+function getElementAtPath(obj, path13) {
+  if (!path13)
     return obj;
-  return path11.reduce((acc, key) => acc?.[key], obj);
+  return path13.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -15672,11 +20569,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path11, issues) {
+function prefixIssues(path13, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path11);
+    iss.path.unshift(path13);
     return iss;
   });
 }
@@ -16126,16 +21023,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path11 = []) => {
+  const processError = (error63, path13 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path13, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
       } else {
-        const fullpath = [...path11, ...issue2.path];
+        const fullpath = [...path13, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -16174,17 +21071,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path11 = []) => {
+  const processError = (error63, path13 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path13, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path13, ...issue2.path]);
       } else {
-        const fullpath = [...path11, ...issue2.path];
+        const fullpath = [...path13, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -16223,8 +21120,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path11 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path11) {
+  const path13 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path13) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -31739,11 +36636,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path11) {
-  if (path11.length === 0) {
+function getDotPath(path13) {
+  if (path13.length === 0) {
     return "object root";
   }
-  return path11.reduce((acc, seg, index) => {
+  return path13.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -33970,13 +38867,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path11 = ref.slice(1).split("/").filter(Boolean);
-  if (path11.length === 0) {
+  const path13 = ref.slice(1).split("/").filter(Boolean);
+  if (path13.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path11[0] === defsKey) {
-    const key = path11[1] === void 0 ? void 0 : decodeJSONPointerSegment(path11[1]);
+  if (path13[0] === defsKey) {
+    const key = path13[1] === void 0 ? void 0 : decodeJSONPointerSegment(path13[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -40159,4117 +45056,30 @@ var StdioServerTransport = class {
   }
 };
 
-// packages/cli/src/board/board.ts
-import fs2 from "node:fs";
-import os from "node:os";
-import path3 from "node:path";
+// skills/review/scripts/reviewer-runtime.ts
+init_board();
 
-// packages/core/src/node.ts
-import { createRequire } from "node:module";
-import path from "node:path";
+// packages/findings/index.mts
+init_queues();
+init_api2();
+init_transitions();
+init_legacy();
+init_fingerprint();
+init_validate();
+init_registry();
+init_paths();
+init_port();
 
-// node_modules/@jitl/quickjs-singlefile-mjs-release-sync/dist/index.mjs
-var variant = { type: "sync", importFFI: () => Promise.resolve().then(() => (init_ffi(), ffi_exports)).then((mod) => mod.QuickJSFFI), importModuleLoader: () => Promise.resolve().then(() => (init_emscripten_module_Q67P5WYC(), emscripten_module_Q67P5WYC_exports)).then((mod) => mod.default) };
-var src_default = variant;
+// packages/findings/store/workspace.mts
+init_paths();
 
-// node_modules/quickjs-emscripten-core/dist/index.mjs
-init_dist();
-async function newQuickJSWASMModuleFromVariant(variantOrPromise) {
-  let variant2 = smartUnwrap(await variantOrPromise), [wasmModuleLoader, QuickJSFFI2, { QuickJSWASMModule: QuickJSWASMModule2 }] = await Promise.all([variant2.importModuleLoader().then(smartUnwrap), variant2.importFFI(), Promise.resolve().then(() => (init_module_ES6BEMUI(), module_ES6BEMUI_exports)).then(smartUnwrap)]), wasmModule = await wasmModuleLoader();
-  wasmModule.type = "sync";
-  let ffi = new QuickJSFFI2(wasmModule);
-  return new QuickJSWASMModule2(wasmModule, ffi);
-}
-function smartUnwrap(val) {
-  return val && "default" in val && val.default ? val.default && "default" in val.default && val.default.default ? val.default.default : val.default : val;
-}
-function shouldInterruptAfterDeadline(deadline) {
-  let deadlineAsNumber = typeof deadline == "number" ? deadline : deadline.getTime();
-  return function() {
-    return Date.now() > deadlineAsNumber;
-  };
-}
-
-// packages/core/src/build/engines.ts
-var engines = null;
-var quickjs = null;
-function setEngines(next) {
-  engines = next;
-  quickjs = null;
-}
-function currentEngines() {
-  if (!engines) {
-    throw new Error('No engines are set. Import "@wellactually/core/node", or call setEngines() before building or running a detector.');
-  }
-  return engines;
-}
-var WARM_UP = `(function () {
-  function* found(ctx) { for (const line of ctx.lines) { if (/\\bx\\b/.test(line)) { yield { line: 1, evidence: line.trim() }; } } }
-  return JSON.stringify([...found(JSON.parse('{"lines":["a x b","c"]}'))]);
-})()`;
-function loadSandbox() {
-  quickjs ??= currentEngines().quickjs().then((QuickJS) => {
-    const vm = QuickJS.newContext();
-    try {
-      const result = vm.evalCode(WARM_UP);
-      (result.error ?? result.value).dispose();
-    } finally {
-      vm.dispose();
-    }
-    return QuickJS;
-  });
-  return quickjs;
-}
-
-// packages/sdk/src/glob.ts
-var cache = /* @__PURE__ */ new Map();
-function matchesGlob(path11, pattern) {
-  let matcher = cache.get(pattern);
-  if (!matcher) {
-    matcher = compile2(pattern);
-    cache.set(pattern, matcher);
-  }
-  return matcher(path11);
-}
-function matchesGlobs(path11, globs) {
-  const excluded = globs.filter((glob) => glob.startsWith("!")).map((glob) => glob.slice(1));
-  if (excluded.some((glob) => matchesGlob(path11, glob))) {
-    return false;
-  }
-  const included = globs.filter((glob) => !glob.startsWith("!"));
-  return included.length === 0 || included.some((glob) => matchesGlob(path11, glob));
-}
-function parse3(pattern) {
-  const anchored = [...pattern.includes("/") ? pattern.replace(/^\.?\//, "") : `**/${pattern}`];
-  const root = [];
-  const open2 = [];
-  const current2 = () => open2.at(-1)?.at(-1) ?? root;
-  for (let i = 0; i < anchored.length; i++) {
-    const char = anchored[i] ?? "";
-    if (char === "*" && anchored[i + 1] === "*") {
-      const slashAfter = anchored[i + 2] === "/";
-      current2().push({ kind: slashAfter ? "folders" : "any" });
-      i += slashAfter ? 2 : 1;
-      continue;
-    }
-    if (char === "*") {
-      current2().push({ kind: "star" });
-    } else if (char === "?") {
-      current2().push({ kind: "one" });
-    } else if (char === "{") {
-      open2.push([[]]);
-    } else if (char === "}" && open2.length > 0) {
-      const options = open2.pop();
-      current2().push({ kind: "either", options });
-    } else if (char === "," && open2.length > 0) {
-      open2.at(-1)?.push([]);
-    } else {
-      current2().push({ kind: "char", char });
-    }
-  }
-  while (open2.length > 0) {
-    const [first = [], ...rest] = open2.pop();
-    current2().push({ kind: "char", char: "{" }, ...first, ...rest.flatMap((option) => [{ kind: "char", char: "," }, ...option]));
-  }
-  return root;
-}
-var anyChar = () => true;
-var notSlash = (char) => char !== "/";
-function compile2(pattern) {
-  const states = [{ moves: [], free: [] }];
-  const add = () => states.push({ moves: [], free: [] }) - 1;
-  const state = (index) => states[index];
-  const sequence = (pieces, next) => {
-    let after = next;
-    for (let i = pieces.length - 1; i >= 0; i--) {
-      after = piece(pieces[i], after);
-    }
-    return after;
-  };
-  const piece = (it, next) => {
-    const at = add();
-    switch (it.kind) {
-      case "char":
-        state(at).moves.push({ takes: (char) => char === it.char, to: next });
-        break;
-      case "one":
-        state(at).moves.push({ takes: notSlash, to: next });
-        break;
-      case "star":
-        state(at).moves.push({ takes: notSlash, to: at });
-        state(at).free.push(next);
-        break;
-      case "any":
-        state(at).moves.push({ takes: anyChar, to: at });
-        state(at).free.push(next);
-        break;
-      case "folders": {
-        const inside = add();
-        state(at).free.push(next, inside);
-        state(inside).moves.push({ takes: anyChar, to: inside }, { takes: (char) => char === "/", to: next });
-        break;
-      }
-      case "either":
-        for (const option of it.options) {
-          state(at).free.push(sequence(option, next));
-        }
-        break;
-    }
-    return at;
-  };
-  const start = sequence(parse3(pattern), 0);
-  const reach = (from) => {
-    const seen = /* @__PURE__ */ new Set();
-    const stack = [...from];
-    while (stack.length > 0) {
-      const index = stack.pop();
-      if (!seen.has(index)) {
-        seen.add(index);
-        stack.push(...state(index).free);
-      }
-    }
-    return seen;
-  };
-  return (path11) => {
-    let now2 = reach([start]);
-    for (const char of path11) {
-      const next = [];
-      for (const index of now2) {
-        for (const move of state(index).moves) {
-          if (move.takes(char)) {
-            next.push(move.to);
-          }
-        }
-      }
-      if (next.length === 0) {
-        return false;
-      }
-      now2 = reach(next);
-    }
-    return now2.has(0);
-  };
-}
-
-// packages/sdk/src/index.ts
-var API_VERSION = 4;
-var TEST_ROOT = "/project";
-function removedOf(event, change, allLines) {
-  if (event === "delete") {
-    return allLines;
-  }
-  if (event === "read") {
-    return [];
-  }
-  return change.removed ?? [];
-}
-function fileCtx(event, relativePath, content, change = {}, where = {}) {
-  const relative2 = relativePath.replaceAll("\\", "/").replace(/^\.?\/+/, "");
-  const root = where.root === void 0 ? TEST_ROOT : where.root;
-  const path11 = (where.absolute ?? `${root ?? ""}/${relative2}`).replaceAll("\\", "/");
-  const name = path11.slice(path11.lastIndexOf("/") + 1);
-  const dot = name.lastIndexOf(".");
-  const lines = content.split("\n");
-  const allLines = lines.map((text2, index) => ({ line: index + 1, text: text2 }));
-  return {
-    event,
-    file: {
-      path: path11,
-      relativePath: relative2,
-      name,
-      ext: dot > 0 ? name.slice(dot).toLowerCase() : "",
-      content,
-      lines,
-      written: event === "write" ? change.written ?? allLines : [],
-      removed: removedOf(event, change, allLines),
-      isNew: event === "write" && where.isNew === true
-    },
-    text: content,
-    command: null,
-    cwd: null,
-    project: root
-  };
-}
-
-// packages/core/src/build/licenses.ts
-var PERMISSIVE_LICENSES = ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "Apache-2.0", "Zlib", "Unlicense", "CC0-1.0", "BlueOak-1.0.0", "Python-2.0"];
-var CANONICAL = new Map(PERMISSIVE_LICENSES.map((id) => [id.toLowerCase(), id]));
-var RULE = "-".repeat(72);
-
-// packages/core/src/build/bundle.ts
-var BUNDLE_GLOBAL = "__principle";
-var MAX_BUNDLE_BYTES = 1024 * 1024;
-var SDK = "@wellactually/sdk";
-var SDK_NOW = `${SDK}/v${API_VERSION}`;
-
-// packages/core/src/detector/project.ts
-var MAX_FS_CALLS = 500;
-var MAX_FS_BYTES = 4 * 1024 * 1024;
-function normalizeAbsolute(path11) {
-  const out = [];
-  for (const part of path11.split("/")) {
-    if (part === "" || part === ".") {
-      continue;
-    }
-    if (part === "..") {
-      out.pop();
-      continue;
-    }
-    out.push(part);
-  }
-  return `/${out.join("/")}`;
-}
-function fsHost(cwd, project) {
-  let calls = 0;
-  let bytes = 0;
-  const answer = (request) => {
-    let op;
-    let asked;
-    try {
-      ({ op, path: asked } = JSON.parse(request));
-    } catch {
-      return { error: { code: "EINVAL", message: "EINVAL: invalid argument" } };
-    }
-    const shown = typeof asked === "string" ? asked : "";
-    const missing = { error: { code: "ENOENT", message: `ENOENT: no such file or directory, '${shown}'` } };
-    if (typeof asked !== "string" || project === null) {
-      return missing;
-    }
-    if (++calls > MAX_FS_CALLS) {
-      return { error: { code: "EMFILE", message: `EMFILE: a detector may ask for files at most ${MAX_FS_CALLS} times per run` } };
-    }
-    const path11 = normalizeAbsolute(asked.startsWith("/") ? asked : `${cwd}/${asked}`);
-    if (op === "stat") {
-      const stat = project.stat(path11);
-      return stat ? { stat } : missing;
-    }
-    if (op === "list") {
-      const entries = project.list(path11);
-      if (entries) {
-        return { entries };
-      }
-      return project.stat(path11) === null ? missing : { error: { code: "ENOTDIR", message: `ENOTDIR: not a directory, scandir '${shown}'` } };
-    }
-    if (op !== "read") {
-      return { error: { code: "ENOSYS", message: "ENOSYS: a detector can only read" } };
-    }
-    const text2 = project.read(path11);
-    if (text2 === null) {
-      return project.stat(path11)?.kind === "dir" ? { error: { code: "EISDIR", message: `EISDIR: illegal operation on a directory, read '${shown}'` } } : missing;
-    }
-    bytes += text2.length;
-    if (bytes > MAX_FS_BYTES) {
-      return { error: { code: "EFBIG", message: `EFBIG: a detector may read at most ${MAX_FS_BYTES / 1024 / 1024} MB per run` } };
-    }
-    return { text: text2 };
-  };
-  return (request) => JSON.stringify(answer(request));
-}
-
-// packages/core/src/detector/api.ts
-var MIN_API_VERSION = 3;
-function apiOf(manifest) {
-  return manifest.api ?? 1;
-}
-function unsupported(api) {
-  if (!Number.isInteger(api) || api < 1) {
-    return `it names a detector API version this host does not know: ${String(api)}`;
-  }
-  if (api > API_VERSION) {
-    return `it was built for detector API ${api} and this version of Well Actually runs up to ${API_VERSION}. Update the plugin.`;
-  }
-  if (api < MIN_API_VERSION) {
-    return `it was built for detector API ${api}, which is no longer run. Its expert has to release it again.`;
-  }
-  return null;
-}
-var DOWNGRADE = {
-  // Version 4 added the lines a write removed and the `delete` event. A detector of version 3 has no handler for a deletion, so it is never asked about one.
-  4: (ctx) => {
-    if (ctx.file === null) {
-      return ctx;
-    }
-    const { removed: _, ...file3 } = ctx.file;
-    return { ...ctx, file: file3 };
-  }
-};
-function ctxFor(api, ctx) {
-  let event = ctx;
-  for (let version2 = API_VERSION; version2 > api; version2--) {
-    const step = DOWNGRADE[version2];
-    if (!step) {
-      throw new Error(`there is no step from detector API ${version2} to ${version2 - 1}`);
-    }
-    event = step(event);
-  }
-  return event;
-}
-function environmentFor(api, ctx, project) {
-  return {
-    // `node:path` resolves against the project root, and `node:fs` asks the host.
-    strings: { __ctx: JSON.stringify(ctxFor(api, ctx)), __cwd: ctx.project ?? "/" },
-    functions: { __fs: fsHost(ctx.project ?? "/", project) }
-  };
-}
-var SDK2 = "@wellactually/sdk";
-var current = `"${SDK2}/v${API_VERSION}"`;
-
-// packages/core/src/detector/ctx.ts
-function applies(manifest, ctx) {
-  const file3 = ctx.file;
-  return (manifest.handlers ?? []).some((handler) => handler.event === ctx.event && (!file3 || matchesGlobs(file3.relativePath, handler.globs)));
-}
-
-// packages/core/src/detector/sandbox.ts
-var DEFAULT_LIMITS = {
-  ms: 100,
-  memoryBytes: 32 * 1024 * 1024
-};
-var MAX_FINDINGS = 20;
-var MAX_MATCH_LENGTH = 300;
-var MAX_THROWN_LENGTH = 1e3;
-var RUN = `JSON.stringify(${BUNDLE_GLOBAL}.run(JSON.parse(__ctx), ${MAX_FINDINGS}))`;
-var LOAD_LIMITS = { ...DEFAULT_LIMITS, ms: 2e3 };
-var HANDLERS = `JSON.stringify(${BUNDLE_GLOBAL}.handlers())`;
-function evaluateIn(QuickJS, script, environment, limits) {
-  const runtime = QuickJS.newRuntime();
-  runtime.setMemoryLimit(limits.memoryBytes);
-  runtime.setMaxStackSize(512 * 1024);
-  runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + limits.ms));
-  const vm = runtime.newContext();
-  let json4 = null;
-  let failure3 = { error: null };
-  try {
-    for (const [name, value] of Object.entries(environment.strings)) {
-      const handle = vm.newString(value);
-      vm.setProp(vm.global, name, handle);
-      handle.dispose();
-    }
-    for (const [name, implementation] of Object.entries(environment.functions)) {
-      const handle = vm.newFunction(name, (argument) => vm.newString(implementation(vm.getString(argument))));
-      vm.setProp(vm.global, name, handle);
-      handle.dispose();
-    }
-    const result = vm.evalCode(script, "detector.js");
-    if (result.error) {
-      const dumped = vm.dump(result.error);
-      if (result.error.alive) {
-        result.error.dispose();
-      }
-      failure3 = describeError(dumped, limits);
-    } else {
-      json4 = vm.getString(result.value);
-      result.value.dispose();
-    }
-  } catch (thrown) {
-    failure3 = describeError(thrown, limits);
-  } finally {
-    try {
-      vm.dispose();
-      runtime.dispose();
-    } catch (thrown) {
-      json4 = null;
-      if (failure3.error === null) {
-        failure3 = describeError(thrown, limits);
-      }
-    }
-  }
-  return { json: json4, ...failure3 };
-}
-async function runDetector(bundle, ctx, limits = DEFAULT_LIMITS, project = null, api = API_VERSION) {
-  return runDetectorIn(await loadSandbox(), bundle, ctx, limits, project, api);
-}
-function runDetectorIn(QuickJS, bundle, ctx, limits, project, api) {
-  const refused = unsupported(api);
-  if (refused !== null) {
-    return { findings: [], error: refused, dropped: [], ms: 0 };
-  }
-  const started = performance.now();
-  try {
-    const { json: json4, error: error62, thrown } = evaluateIn(QuickJS, `${bundle}
-;${RUN}`, environmentFor(api, ctx, project), limits);
-    const ms = performance.now() - started;
-    if (json4 === null) {
-      return { findings: [], error: error62 ?? "the detector returned nothing", ...thrown === void 0 ? {} : { thrown }, dropped: [], ms };
-    }
-    const { findings, dropped } = validateFindings(json4, ctx, project);
-    return { findings, error: null, dropped, ms };
-  } catch {
-    return { findings: [], error: "the host could not make sense of what the detector did", dropped: [], ms: performance.now() - started };
-  }
-}
-var TEST_LIMITS = {
-  ms: 5e3,
-  memoryBytes: 64 * 1024 * 1024
-};
-function jsonOf(value) {
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return "a value that is not text";
-  }
-}
-function textOf(value) {
-  return typeof value === "string" ? value : jsonOf(value);
-}
-function quoted(value) {
-  const text2 = jsonOf(value);
-  return text2.length > 60 ? `${text2.slice(0, 60)}\u2026` : text2;
-}
-function describeError(dumped, limits) {
-  const message = typeof dumped === "object" && dumped !== null && "message" in dumped ? textOf(dumped.message) : textOf(dumped);
-  if (message.includes("interrupted")) {
-    return { error: `the detector ran longer than ${limits.ms} ms and was stopped` };
-  }
-  if (message.includes("out of memory")) {
-    return { error: `the detector used more than ${limits.memoryBytes / 1024 / 1024} MB and was stopped` };
-  }
-  const name = typeof dumped === "object" && dumped !== null && "name" in dumped ? `${textOf(dumped.name)}: ` : "";
-  const thrown = `${name}${message}`;
-  return { error: "the detector threw an error", thrown: thrown.length > MAX_THROWN_LENGTH ? `${thrown.slice(0, MAX_THROWN_LENGTH)}\u2026` : thrown };
-}
-function fromRoot(file3, root) {
-  if (root !== null && file3.startsWith(`${root}/`)) {
-    return file3.slice(root.length + 1);
-  }
-  return file3;
-}
-function existingFile(file3, ctx, project) {
-  const base2 = ctx.project ?? ctx.cwd ?? "/";
-  const absolute = normalizeAbsolute(file3.startsWith("/") ? file3 : `${base2}/${file3}`);
-  const exists = absolute === ctx.file?.path || project !== null && project.stat(absolute) !== null;
-  return exists ? fromRoot(absolute, ctx.project) : null;
-}
-function everyLine(first, last, textOn) {
-  for (let line = first; line <= last; line++) {
-    if (textOn(line) === void 0) {
-      return false;
-    }
-  }
-  return true;
-}
-function linesFrom(first, last, textOn) {
-  const texts = [];
-  for (let line = first; line <= last; line++) {
-    texts.push(textOn(line) ?? "");
-  }
-  return texts;
-}
-function hasLines(ctx) {
-  return ctx.file !== null || ctx.event === "output";
-}
-function validateFindings(json4, ctx, project = null) {
-  const findings = [];
-  const dropped = [];
-  let parsed;
-  try {
-    parsed = JSON.parse(json4);
-  } catch {
-    return { findings, dropped: ["the detector did not return JSON"] };
-  }
-  if (!Array.isArray(parsed)) {
-    return { findings, dropped: ["the detector did not return a list of findings"] };
-  }
-  const lines = ctx.file?.lines ?? ctx.text.split("\n");
-  const removed = new Map((ctx.file?.removed ?? []).map((line) => [line.line, line.text]));
-  for (const raw of parsed) {
-    if (findings.length >= MAX_FINDINGS) {
-      dropped.push(`more than ${MAX_FINDINGS} findings; the rest were dropped`);
-      break;
-    }
-    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-      dropped.push("a finding that is not an object");
-      continue;
-    }
-    const candidate = raw;
-    const finding = {};
-    const onRemoved = candidate.removed === true;
-    if (candidate.removed !== void 0 && typeof candidate.removed !== "boolean") {
-      dropped.push(`the removed of a finding, which is true or false: ${quoted(candidate.removed)}`);
-    } else if (onRemoved && candidate.line === void 0) {
-      dropped.push("the removed of a finding without a line");
-    }
-    const textOn = (line) => {
-      if (onRemoved) {
-        return removed.get(line);
-      }
-      return lines[line - 1];
-    };
-    if (candidate.line !== void 0) {
-      const line = candidate.line;
-      if (!hasLines(ctx)) {
-        dropped.push(`the line of a finding on a ${ctx.event}, which has no lines to point at`);
-      } else if (typeof line !== "number" || !Number.isInteger(line) || textOn(line) === void 0) {
-        if (onRemoved) {
-          dropped.push(`line ${quoted(line)} of a finding, which the agent did not remove`);
-        } else {
-          dropped.push(`line ${quoted(line)} of a finding, which the ${ctx.file ? "file" : "output"} does not have`);
-        }
-      } else {
-        finding.line = line;
-        if (onRemoved) {
-          finding.removed = true;
-        }
-      }
-    }
-    if (candidate.endLine !== void 0) {
-      const endLine = candidate.endLine;
-      if (finding.line === void 0) {
-        dropped.push("the endLine of a finding without a line");
-      } else if (typeof endLine !== "number" || !Number.isInteger(endLine) || endLine < finding.line || !everyLine(finding.line, endLine, textOn)) {
-        dropped.push(`endLine ${quoted(endLine)} of a finding on line ${finding.line}`);
-      } else if (endLine > finding.line) {
-        finding.endLine = endLine;
-      }
-    }
-    if (candidate.match !== void 0) {
-      const match = typeof candidate.match === "string" ? candidate.match.trim() : "";
-      const scope = finding.line === void 0 ? [ctx.text, ...removed.values()] : linesFrom(finding.line, finding.endLine ?? finding.line, textOn);
-      if (match === "") {
-        dropped.push("an empty match");
-      } else if (match.includes("\n")) {
-        dropped.push(`a match that spans lines: ${JSON.stringify(match.slice(0, 60))}. Name the lines with line and endLine.`);
-      } else if (match.length > MAX_MATCH_LENGTH) {
-        dropped.push(`a match longer than ${MAX_MATCH_LENGTH} characters`);
-      } else if (!scope.some((text2) => text2.includes(match))) {
-        dropped.push(`a match that does not occur ${finding.line === void 0 ? "in the input" : finding.endLine === void 0 ? `on line ${finding.line}` : `in lines ${finding.line} to ${finding.endLine}`}: ${JSON.stringify(match.slice(0, 60))}`);
-      } else {
-        finding.match = match;
-      }
-    }
-    if (candidate.file !== void 0) {
-      const file3 = typeof candidate.file === "string" ? candidate.file.trim() : "";
-      if (file3 === "") {
-        dropped.push("the file of a finding, which is not a path");
-      } else if (file3.includes("\n")) {
-        dropped.push("the file of a finding, which spans lines");
-      } else if (file3.length > MAX_MATCH_LENGTH) {
-        dropped.push(`the file of a finding, a path longer than ${MAX_MATCH_LENGTH} characters`);
-      } else {
-        const shown = existingFile(file3, ctx, project);
-        if (shown !== null) {
-          finding.file = shown;
-        } else if (ctx.text.includes(file3)) {
-          finding.file = fromRoot(file3, ctx.project);
-        } else {
-          dropped.push(`the file of a finding, which does not exist and does not occur in the input: ${JSON.stringify(file3.slice(0, 60))}`);
-        }
-      }
-    }
-    if (candidate.depth !== void 0) {
-      if (candidate.depth !== "pointer" && candidate.depth !== "full") {
-        dropped.push(`the unknown depth ${quoted(candidate.depth)}`);
-      } else {
-        finding.depth = candidate.depth;
-      }
-    }
-    findings.push(finding);
-  }
-  return { findings, dropped };
-}
-
-// packages/core/src/principle/advice-length.ts
-var encoder = new TextEncoder();
-
-// packages/core/src/principle/principle.ts
-var MAX_TOTAL_BYTES = 512 * 1024;
-var MAX_PACKAGE_BYTES = 2 * 1024 * 1024;
-async function hashPrinciple(manifest, advice, bundle) {
-  const bytes = new TextEncoder().encode(JSON.stringify([manifest, advice, bundle]));
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-function hasDetector(manifest) {
-  return !Array.isArray(manifest.handlers) || manifest.handlers.length > 0;
-}
-
-// packages/core/src/build/fs.ts
-var readFrom = /* @__PURE__ */ new Set();
-
-// packages/core/src/node.ts
-var sandbox = null;
-setEngines({
-  // Loaded on first use. The hook only runs detectors and never builds one,
-  // and the plugin's single-file bundle cannot carry esbuild's native binary.
-  build: async (options) => (await loadEsbuild()).build(options),
-  // The build with the WebAssembly inlined, so the isolate also loads from a single bundled file.
-  quickjs: () => sandbox ??= newQuickJSWASMModuleFromVariant(src_default)
-});
-async function loadEsbuild() {
-  try {
-    return await import("esbuild");
-  } catch {
-    for (const dir of [...readFrom].reverse()) {
-      try {
-        return createRequire(path.join(dir, "package.json"))("esbuild");
-      } catch {
-      }
-    }
-    throw new Error(
-      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev github:passsy/wellactually#sdk vitest`."
-    );
-  }
-}
-
-// packages/cli/src/hook/finding.ts
-var MAX_QUOTED_LENGTH = 300;
-function describeFinding(ctx, finding) {
-  const place = describePlace(ctx, finding);
-  if (finding.file === void 0 || finding.file === ctx.file?.relativePath) {
-    return place ?? (ctx.file ? `the file ${ctx.file.relativePath}` : null);
-  }
-  if (place === null) {
-    return `the file ${finding.file}`;
-  }
-  return `the file ${finding.file}, from ${place}`;
-}
-function describePlace(ctx, finding) {
-  const match = finding.match === void 0 ? null : JSON.stringify(finding.match);
-  if (finding.line === void 0) {
-    return match;
-  }
-  const text2 = lineText(ctx, finding).trim();
-  const quoted2 = text2.length > MAX_QUOTED_LENGTH ? `${text2.slice(0, MAX_QUOTED_LENGTH)}\u2026` : text2;
-  const kind = finding.removed === true ? "removed line" : "line";
-  const where = finding.endLine === void 0 ? `${kind} ${finding.line}` : `${kind}s ${finding.line}-${finding.endLine}`;
-  const named = match !== null && finding.match !== text2 ? `${where}, ${match}` : where;
-  return quoted2 === "" ? named : `${named}: ${quoted2}`;
-}
-function lineText(ctx, finding) {
-  if (finding.removed === true) {
-    const removed = ctx.file?.removed.find((line) => line.line === finding.line);
-    return removed?.text ?? "";
-  }
-  const lines = ctx.file?.lines ?? ctx.text.split("\n");
-  return lines[(finding.line ?? 1) - 1] ?? "";
-}
-
-// packages/cli/src/board/files.ts
-import fs from "node:fs";
-import path2 from "node:path";
-function toPosix(file3) {
-  return file3.split(path2.sep).join("/");
-}
-var ROOT_MARKERS = [".wellactually.json", ".git"];
-function findProjectRoot(from) {
-  const start = path2.resolve(from);
-  for (const marker of ROOT_MARKERS) {
-    for (let dir = start; ; dir = path2.dirname(dir)) {
-      if (fs.existsSync(path2.join(dir, marker))) {
-        return dir;
-      }
-      if (dir === path2.dirname(dir)) {
-        break;
-      }
-    }
-  }
-  return null;
-}
-var MAX_READ_BYTES = 512 * 1024;
-function diskFiles() {
-  const kindOf = (stat) => stat.isFile() ? "file" : stat.isDirectory() ? "dir" : null;
-  const statOf = (file3) => {
-    try {
-      return fs.statSync(file3);
-    } catch {
-      return null;
-    }
-  };
-  return {
-    read: (file3) => {
-      const stat = statOf(file3);
-      if (!stat?.isFile() || stat.size > MAX_READ_BYTES) {
-        return null;
-      }
-      try {
-        const content = fs.readFileSync(file3, "utf8");
-        return content.includes("\0") ? null : content;
-      } catch {
-        return null;
-      }
-    },
-    stat: (file3) => {
-      const stat = statOf(file3);
-      const kind = stat ? kindOf(stat) : null;
-      return stat && kind ? { kind, size: stat.size } : null;
-    },
-    list: (dir) => {
-      if (!statOf(dir)?.isDirectory()) {
-        return null;
-      }
-      let names2;
-      try {
-        names2 = fs.readdirSync(dir).sort();
-      } catch {
-        return null;
-      }
-      const entries = [];
-      for (const name of names2) {
-        const stat = statOf(path2.join(dir, name));
-        const kind = stat ? kindOf(stat) : null;
-        if (kind) {
-          entries.push({ name, kind });
-        }
-      }
-      return entries;
-    }
-  };
-}
-
-// packages/cli/src/board/board.ts
-var DEFAULT_REGISTRY = "https://wellactually.dev";
-function boardHome() {
-  return process.env.WELLACTUALLY_HOME ?? path3.join(os.homedir(), ".wellactually");
-}
-function readJson(file3) {
-  let source;
-  try {
-    source = fs2.readFileSync(file3, "utf8");
-  } catch {
-    return null;
-  }
-  return JSON.parse(source);
-}
-function writeJson(file3, value) {
-  fs2.mkdirSync(path3.dirname(file3), { recursive: true });
-  const temporary = `${file3}.${process.pid}.tmp`;
-  fs2.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}
-`, { mode: 384 });
-  fs2.renameSync(temporary, file3);
-}
-function tokenFromEnvironment() {
-  return process.env.WELLACTUALLY_TOKEN?.trim() || null;
-}
-function readStoredConfig() {
-  return readJson(path3.join(boardHome(), "config.json"));
-}
-function readConfig() {
-  const stored = readStoredConfig();
-  return {
-    registry: process.env.WELLACTUALLY_REGISTRY ?? stored?.registry ?? DEFAULT_REGISTRY,
-    token: tokenFromEnvironment() ?? stored?.token ?? null,
-    handle: stored?.handle ?? null,
-    stats: stored?.stats ?? true
-  };
-}
-function readLockfile() {
-  return readJson(path3.join(boardHome(), "board.json")) ?? { syncedAt: null, entries: [] };
-}
-function writeLockfile(lockfile) {
-  writeJson(path3.join(boardHome(), "board.json"), lockfile);
-}
-function bundlePath(hash3) {
-  if (!/^[a-f0-9]{64}$/.test(hash3)) {
-    throw new Error(`"${hash3}" is not a principle hash`);
-  }
-  return path3.join(boardHome(), "bundles", `${hash3}.json`);
-}
-function hasCached(hash3) {
-  return fs2.existsSync(bundlePath(hash3));
-}
-function readCached(hash3) {
-  return readJson(bundlePath(hash3));
-}
-function writeCached(principle) {
-  writeJson(bundlePath(principle.hash), principle);
-}
-var BOARD_BUDGET_MS = 1500;
-var PARALLEL_FROM = 14;
-async function runBoard(ctx, lockfile = readLockfile(), off = /* @__PURE__ */ new Set(), pool = null, parallelFrom = PARALLEL_FROM, budgetMs = BOARD_BUDGET_MS) {
-  const disk = diskFiles();
-  const started = performance.now();
-  const run3 = { firings: [], failures: [], detectors: [], skipped: [], ms: 0 };
-  const applying = [];
-  const skipped = `skipped, the advisory board used its ${budgetMs} ms budget before reaching it`;
-  for (const entry of lockfile.entries) {
-    if (!entry.enabled || off.has(entry.id)) {
-      run3.skipped.push({ id: entry.id, reason: "off" });
-      continue;
-    }
-    const cached2 = readCached(entry.hash);
-    const principle = cached2 && { ...cached2, id: entry.id, version: entry.version };
-    if (!principle) {
-      run3.failures.push({ id: entry.id, error: "its bundle is not in the local cache; download it with the plugin's sync skill" });
-      run3.skipped.push({ id: entry.id, reason: "not cached" });
-      continue;
-    }
-    if (applies(principle.manifest, ctx)) {
-      applying.push(principle);
-    } else {
-      run3.skipped.push({ id: entry.id, reason: "globs" });
-    }
-  }
-  let results;
-  if (pool !== null && applying.length >= parallelFrom) {
-    const tasks = applying.map((principle) => ({ bundle: principle.bundle, api: apiOf(principle.manifest) }));
-    results = await pool.run(ctx, tasks, started + budgetMs, skipped);
-  } else {
-    results = [];
-    for (const principle of applying) {
-      results.push(
-        performance.now() - started > budgetMs ? { findings: [], error: skipped, dropped: [], ms: 0 } : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk, apiOf(principle.manifest))
-      );
-    }
-  }
-  applying.forEach((principle, index) => {
-    const result = results[index];
-    run3.detectors.push({ id: principle.id, version: principle.version, findings: result.findings, dropped: result.dropped, error: result.error, ...result.thrown === void 0 ? {} : { thrown: result.thrown }, ms: result.ms });
-    if (result.error) {
-      run3.failures.push({ id: principle.id, error: result.error });
-    } else if (result.findings.length > 0) {
-      run3.firings.push({ principle, findings: result.findings });
-    }
-  });
-  run3.ms = performance.now() - started;
-  return run3;
-}
-var SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
-
-// packages/findings/queues.mts
-import fs4 from "node:fs";
-import path5 from "node:path";
-import { createHash as createHash3, randomUUID } from "node:crypto";
-import { execFileSync as execFileSync4 } from "node:child_process";
-
-// packages/findings/store/paths.mts
-import { execFileSync } from "node:child_process";
-import { cpSync, existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { isAbsolute, join, resolve, sep } from "node:path";
-var REVIEW_DIR = ".well-actually";
-var LEGACY_REVIEW_DIR = ".pascal-review";
-var GLOBAL_ROOT = process.env.WELLACTUALLY_FINDINGS_HOME ?? join(homedir(), REVIEW_DIR);
-var REGISTRY_FILE = join(GLOBAL_ROOT, "registry.json");
-var LEGACY_REGISTRY_FILE = join(
-  homedir(),
-  LEGACY_REVIEW_DIR,
-  "registry.json"
-);
-function slugTarget(target2) {
-  const slug = target2.trim().replace(/[/\\]+/g, "-").replace(/[^A-Za-z0-9._-]/g, "-").replace(/^[.-]+/, "").replace(/-+/g, "-");
-  if (slug === "" || slug === "." || slug === "..") {
-    throw new Error(
-      `target "${target2}" does not name a directory. Use something like "pr-123" or a branch name.`
-    );
-  }
-  return slug;
-}
-function headCommit(root) {
-  try {
-    return execFileSync("git", ["rev-parse", "HEAD"], {
-      cwd: root,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
-    }).trim();
-  } catch {
-    return "unknown";
-  }
-}
-function targetPaths(repo2, target2) {
-  const slug = slugTarget(target2);
-  const dir = join(repo2, REVIEW_DIR, slug);
-  const legacy = join(repo2, LEGACY_REVIEW_DIR, slug);
-  if (!existsSync(dir) && existsSync(legacy)) {
-    try {
-      cpSync(legacy, dir, { recursive: true, preserveTimestamps: true });
-    } catch (error62) {
-      if (!existsSync(dir)) throw error62;
-    }
-  }
-  return {
-    repo: repo2,
-    target: slug,
-    dir,
-    findings: join(dir, "findings"),
-    candidates: join(dir, "candidates"),
-    observations: join(dir, "observations"),
-    meta: join(dir, "target.json"),
-    html: join(dir, "review.html"),
-    sarif: join(dir, "findings.sarif")
-  };
-}
-function repoRelative(repo2, file3) {
-  const absolute = isAbsolute(file3) ? file3 : join(repo2, file3);
-  const prefix = repo2.endsWith(sep) ? repo2 : repo2 + sep;
-  return absolute.startsWith(prefix) ? absolute.slice(prefix.length) : file3;
-}
-
-// packages/findings/api.mts
-import {
-  existsSync as existsSync6,
-  readFileSync as readFileSync8,
-  readdirSync as readdirSync2,
-  realpathSync,
-  statSync
-} from "node:fs";
-import { createHash as createHash2 } from "node:crypto";
-import { join as join7, relative, resolve as resolve2, sep as sep2 } from "node:path";
-
-// packages/findings/model/types.mts
-var EVIDENCE = ["Proven", "Reasoned", "Speculative"];
-var PRIORITY = ["p0", "p1", "p2", "p3", "p4"];
-var MAX_TAGS = 4;
-var MAX_TAG_LENGTH = 24;
-var VERDICT = [
-  "undecided",
-  "accepted",
-  "invalid",
-  "tolerated"
-];
-function modernVerdict(verdict, reason) {
-  if (verdict === "dismissed") {
-    return reason === "false-positive" ? "invalid" : "tolerated";
-  }
-  if (verdict === "parked") return "tolerated";
-  return verdict;
-}
-var RESOLUTION = ["unresolved", "resolved", "regressed"];
-var ACTOR = ["review", "human", "agent"];
-var REPORTER = ["review", "human", "pr-comment"];
-var OBSERVATION_STATUS = ["pending", "promoted", "dropped"];
-var CANDIDATE_STATUS = [
-  "pending",
-  "confirmed",
-  "plausible",
-  "refuted"
-];
-
-// packages/findings/model/fingerprint.mts
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join as join2 } from "node:path";
-function normalize(snippet) {
-  return snippet.trim().replace(/\s+/g, " ");
-}
-function fingerprintOf(rule, file3, snippet) {
-  const parts = `${rule ?? "adhoc"}:${file3}:${normalize(snippet)}`;
-  return createHash("sha256").update(parts).digest("hex");
-}
-function snippetAt(repo2, file3, line) {
-  try {
-    const lines = readFileSync(join2(repo2, file3), "utf8").split(/\r?\n/);
-    return lines[line - 1] ?? "";
-  } catch {
-    return "";
-  }
-}
-
-// packages/findings/model/context.mts
-import { execFileSync as execFileSync3 } from "node:child_process";
-import { readFileSync as readFileSync2 } from "node:fs";
-import { join as join3 } from "node:path";
-
-// packages/findings/model/authorship.mts
-import { execFileSync as execFileSync2 } from "node:child_process";
-function classifyAuthorship(repo2, base2, file3, span) {
-  const cut = base2.indexOf("..");
-  const ref = cut === -1 ? base2 : base2.slice(0, cut);
-  const mergeBase2 = git(repo2, ["merge-base", ref, "HEAD"])?.trim();
-  if (!mergeBase2) return void 0;
-  const authored = (flags, wholeFile = false) => authoredAny(repo2, `${mergeBase2}..HEAD`, file3, span, flags, wholeFile);
-  const literally = authored([]);
-  if (literally === void 0) return void 0;
-  if (!literally) return "untouched";
-  const beyondWhitespace = authored(["-w"]);
-  if (beyondWhitespace === void 0) return void 0;
-  if (!beyondWhitespace) return "whitespace-only";
-  const beyondMoves = authored(["-w", "-M", "-C", "-C"], true);
-  if (beyondMoves === void 0) return void 0;
-  if (!beyondMoves) return "moved";
-  return "changed";
-}
-function authoredAny(repo2, range2, file3, span, flags, wholeFile) {
-  const end = Math.max(span.line, span.endLine ?? span.line);
-  const out = git(repo2, [
-    "blame",
-    "--line-porcelain",
-    ...wholeFile ? [] : ["-L", `${span.line},${end}`],
-    ...flags,
-    range2,
-    "--",
-    file3
-  ]);
-  if (out === void 0) return void 0;
-  let lines = 0;
-  let boundary = 0;
-  let counted = false;
-  for (const each of out.split("\n")) {
-    const header = /^[0-9a-f]{40} \d+ (\d+)/.exec(each);
-    if (header) {
-      const at = Number(header[1]);
-      counted = at >= span.line && at <= end;
-      if (counted) lines += 1;
-    } else if (counted && each === "boundary") {
-      boundary += 1;
-    }
-  }
-  if (lines === 0) return void 0;
-  return lines > boundary;
-}
-function git(repo2, args) {
-  try {
-    return execFileSync2("git", args, {
-      cwd: repo2,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
-    });
-  } catch {
-    return void 0;
-  }
-}
-
-// packages/findings/model/context.mts
-var CONTEXT_RADIUS = 5;
-function lastLine(span) {
-  return Math.max(span.line, span.endLine ?? span.line);
-}
-function captureAt(repo2, file3, span, base2) {
-  const context = captureContext(repo2, file3, span);
-  const diff = base2 ? captureDiff(repo2, base2, file3, span) : void 0;
-  const authorship = base2 ? classifyAuthorship(repo2, base2, file3, span) : void 0;
-  return {
-    ...context ? { context } : {},
-    ...diff ? { diff } : {},
-    ...authorship ? { authorship } : {}
-  };
-}
-function captureContext(repo2, file3, span) {
-  let lines;
-  try {
-    lines = readFileSync2(join3(repo2, file3), "utf8").split(/\r?\n/);
-  } catch {
-    return void 0;
-  }
-  if (span.line > lines.length) return void 0;
-  const start = Math.max(1, span.line - CONTEXT_RADIUS);
-  const end = Math.min(lines.length, lastLine(span) + CONTEXT_RADIUS);
-  return { start, lines: lines.slice(start - 1, end) };
-}
-function range(base2) {
-  return base2.includes("..") ? base2 : `${base2}...HEAD`;
-}
-function captureDiff(repo2, base2, file3, span) {
-  let patch;
-  try {
-    patch = execFileSync3("git", ["diff", range(base2), "--", file3], {
-      cwd: repo2,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
-    });
-  } catch {
-    return void 0;
-  }
-  return hunksAround(patch, span);
-}
-function hunksAround(patch, span) {
-  const kept = [];
-  let current2 = null;
-  const end = lastLine(span);
-  for (const each of patch.split("\n")) {
-    const header = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(each);
-    if (header) {
-      const start = Number(header[1]);
-      const count3 = header[2] === void 0 ? 1 : Number(header[2]);
-      const overlaps = span.line < start + Math.max(count3, 1) && end >= start;
-      current2 = overlaps ? [each] : null;
-      if (current2) kept.push(current2);
-      continue;
-    }
-    current2?.push(each);
-  }
-  if (kept.length === 0) return void 0;
-  return kept.map((hunk) => hunk.join("\n").replace(/\s+$/, "")).join("\n");
-}
-
-// packages/findings/model/transitions.mts
-var RESOLUTION_EDGES = {
-  unresolved: [
-    {
-      to: "resolved",
-      by: ["agent", "human"],
-      why: "someone claims the code no longer has it"
-    }
-  ],
-  resolved: [
-    { to: "regressed", by: ["review"], why: "a review run found it again" },
-    { to: "unresolved", by: ["human"], why: "the fix did not hold up" }
-  ],
-  regressed: [
-    {
-      to: "resolved",
-      by: ["agent", "human"],
-      why: "a commit claims to fix it again"
-    },
-    { to: "unresolved", by: ["human"], why: "it goes back on the pile" }
-  ]
-};
-var TransitionError = class extends Error {
-};
-function checkVerdict(from, to, actor) {
-  if (from === to) {
-    throw new TransitionError(`the finding is already ${to}.`);
-  }
-  if (actor !== "human") {
-    throw new TransitionError(
-      `only "human" decides a verdict, because accepting or failing a finding is Pascal's call and nobody else's. You passed actor "${actor}".`
-    );
-  }
-}
-function checkResolution(from, to, actor) {
-  if (from === to) {
-    throw new TransitionError(`the finding is already ${to}.`);
-  }
-  const edges = RESOLUTION_EDGES[from];
-  const edge = edges.find((candidate) => candidate.to === to);
-  if (!edge) {
-    const reachable = edges.map((each) => `"${each.to}"`).join(", ");
-    throw new TransitionError(
-      `an ${from} finding cannot become ${to}. From ${from} it can only become ${reachable || "nothing"}.`
-    );
-  }
-  if (!edge.by.includes(actor)) {
-    const allowed = edge.by.map((each) => `"${each}"`).join(" or ");
-    throw new TransitionError(
-      `only ${allowed} can move a finding from ${from} to ${to}, because ${edge.why}. You passed actor "${actor}".`
-    );
-  }
-}
-
-// packages/findings/store/findings.mts
-import {
-  existsSync as existsSync2,
-  linkSync,
-  mkdirSync,
-  readFileSync as readFileSync3,
-  readdirSync,
-  renameSync,
-  rmSync,
-  writeFileSync
-} from "node:fs";
-import { join as join4 } from "node:path";
-
-// packages/findings/store/legacy.mts
-var RANKED = {
-  Blocker: "p0",
-  Degraded: "p1",
-  Tripwire: "p2",
-  Polish: "p3",
-  Nit: "p4"
-};
-var AXES = {
-  open: { verdict: "undecided", resolution: "unresolved" },
-  accepted: { verdict: "accepted", resolution: "unresolved" },
-  // The single-axis era had no reasons, so nothing can prove an old dismissal
-  // was a claim of invalidity. Tolerated is the verdict that demands nothing.
-  dismissed: { verdict: "tolerated", resolution: "unresolved" },
-  // Reaching fixed took an acceptance first, so the verdict is recovered
-  // rather than guessed. What cannot be recovered is a finding that was
-  // fixed without being accepted, because the old lifecycle had no way to
-  // say it.
-  fixed: { verdict: "accepted", resolution: "resolved" },
-  verified: { verdict: "accepted", resolution: "resolved", confirmed: true },
-  regressed: { verdict: "accepted", resolution: "regressed" }
-};
-var OPEN = { verdict: "undecided", resolution: "unresolved" };
-function axesOf(status) {
-  return AXES[status ?? "open"] ?? OPEN;
-}
-function upgradeEntry(entry) {
-  if (entry.verdict || entry.resolution || !entry.to) return entry;
-  const axes = axesOf(entry.to);
-  const moved = entry.to === "dismissed" ? (
-    // The one state that split in two, and the entry's own reason is the
-    // witness for which half it meant.
-    { verdict: modernVerdict("dismissed", entry.reason) }
-  ) : entry.to === "open" || entry.to === "accepted" ? { verdict: axes.verdict } : { resolution: axes.resolution };
-  const { to: _was, ...rest } = entry;
-  return { ...rest, ...moved };
-}
-function upgrade(finding) {
-  const old = finding;
-  if (finding.verdict && finding.resolution) return modern(ranked(finding));
-  const axes = axesOf(old.status);
-  const entries = old.history ?? [];
-  const history = entries.map(upgradeEntry);
-  const confirmedAt = axes.confirmed ? entries.findLast((entry) => entry.to === "verified")?.at ?? finding.createdAt : void 0;
-  const upgraded = {
-    ...ranked(finding),
-    verdict: old.status === "dismissed" ? modernVerdict(
-      "dismissed",
-      entries.findLast((entry) => entry.to === "dismissed")?.reason
-    ) : axes.verdict,
-    resolution: axes.resolution,
-    ...confirmedAt ? { confirmedAt } : {},
-    history
-  };
-  delete upgraded.status;
-  return modern(upgraded);
-}
-function modern(finding) {
-  const old = finding;
-  const reason = old.reason ?? finding.history.findLast(
-    (entry) => entry.verdict === finding.verdict && entry.reason
-  )?.reason;
-  const verdict = modernVerdict(finding.verdict, reason);
-  if (verdict === finding.verdict && old.reason === void 0) return finding;
-  const upgraded = { ...finding, verdict };
-  delete upgraded.reason;
-  return upgraded;
-}
-function ranked(finding) {
-  const old = finding;
-  if (finding.priority) return finding;
-  const upgraded = {
-    ...finding,
-    // An unrecognised name lands in the middle rather than at either end: the
-    // ordering is a guess either way, and a guess that shouts is worse.
-    priority: RANKED[old.impact ?? ""] ?? "p2"
-  };
-  delete upgraded.impact;
-  return upgraded;
-}
-
-// packages/findings/store/findings.mts
-var writeCounter = 0;
-function writeJson2(path11, value) {
-  const temp = `${path11}.${process.pid}.${writeCounter++}.tmp`;
-  writeFileSync(temp, `${JSON.stringify(value, null, 2)}
-`);
-  renameSync(temp, path11);
-}
-function writeView(path11, text2) {
-  const temp = `${path11}.${process.pid}.${writeCounter++}.tmp`;
-  writeFileSync(temp, text2);
-  renameSync(temp, path11);
-}
-function readJson2(path11) {
-  try {
-    return JSON.parse(readFileSync3(path11, "utf8"));
-  } catch {
-    return null;
-  }
-}
-function jsonFiles(dir) {
-  if (!existsSync2(dir)) return [];
-  return readdirSync(dir).filter((name) => name.endsWith(".json")).map((name) => join4(dir, name));
-}
-function numberOf(id) {
-  const digits = /(\d+)$/.exec(id);
-  return digits ? Number(digits[1]) : 0;
-}
-var PRIORITY_RANK = new Map(PRIORITY.map((each, index) => [each, index]));
-function byPriority(a, b) {
-  const rank = (PRIORITY_RANK.get(a.priority) ?? PRIORITY.length) - (PRIORITY_RANK.get(b.priority) ?? PRIORITY.length);
-  if (rank !== 0) return rank;
-  return a.id.localeCompare(b.id) || numberOf(a.id) - numberOf(b.id);
-}
-function ensureTarget(paths) {
-  mkdirSync(paths.findings, { recursive: true });
-  mkdirSync(paths.candidates, { recursive: true });
-  mkdirSync(paths.observations, { recursive: true });
-}
-function findingPath(paths, id) {
-  return join4(paths.findings, `${id}.json`);
-}
-function readFinding(paths, id) {
-  const finding = readJson2(findingPath(paths, id));
-  return finding && upgrade(finding);
-}
-function listFindings(paths) {
-  return jsonFiles(paths.findings).map((path11) => readJson2(path11)).filter((finding) => finding !== null).map(upgrade).sort(byPriority);
-}
-function writeFinding(paths, finding) {
-  ensureTarget(paths);
-  writeJson2(findingPath(paths, finding.id), finding);
-}
-function claimFinding(paths, finding) {
-  ensureTarget(paths);
-  const path11 = findingPath(paths, finding.id);
-  const temp = `${path11}.${process.pid}.${writeCounter++}.tmp`;
-  writeFileSync(temp, `${JSON.stringify(finding, null, 2)}
-`);
-  try {
-    linkSync(temp, path11);
-    return true;
-  } catch (error62) {
-    if (error62.code === "EEXIST") return false;
-    throw error62;
-  } finally {
-    rmSync(temp, { force: true });
-  }
-}
-function claimObservation(paths, observation) {
-  ensureTarget(paths);
-  const path11 = observationPath(paths, observation.id);
-  const temp = `${path11}.${process.pid}.${writeCounter++}.tmp`;
-  writeFileSync(temp, `${JSON.stringify(observation, null, 2)}
-`);
-  try {
-    linkSync(temp, path11);
-    return true;
-  } catch (error62) {
-    if (error62.code === "EEXIST") return false;
-    throw error62;
-  } finally {
-    rmSync(temp, { force: true });
-  }
-}
-function readMeta(paths) {
-  return readJson2(paths.meta) ?? {};
-}
-function writeMeta(paths, meta3) {
-  ensureTarget(paths);
-  writeJson2(paths.meta, meta3);
-}
-function listObservations(paths) {
-  return jsonFiles(paths.observations).map((path11) => readJson2(path11)).filter((each) => each !== null).sort((a, b) => numberOf(a.id) - numberOf(b.id));
-}
-function observationPath(paths, id) {
-  return join4(paths.observations, `${id}.json`);
-}
-function readObservation(paths, id) {
-  return readJson2(observationPath(paths, id));
-}
-function writeObservation(paths, observation) {
-  ensureTarget(paths);
-  writeJson2(observationPath(paths, observation.id), observation);
-}
-function candidatePath(paths, id) {
-  return join4(paths.candidates, `${id}.json`);
-}
-function readCandidate(paths, id) {
-  return readJson2(candidatePath(paths, id));
-}
-function listCandidates(paths) {
-  return jsonFiles(paths.candidates).map((path11) => readJson2(path11)).filter((candidate) => candidate !== null).sort((a, b) => numberOf(a.id) - numberOf(b.id));
-}
-function writeCandidate(paths, candidate) {
-  ensureTarget(paths);
-  writeJson2(candidatePath(paths, candidate.id), candidate);
-}
-function claimCandidate(paths, candidate) {
-  ensureTarget(paths);
-  const path11 = candidatePath(paths, candidate.id);
-  const temp = `${path11}.${process.pid}.${writeCounter++}.tmp`;
-  writeFileSync(temp, `${JSON.stringify(candidate, null, 2)}
-`);
-  try {
-    linkSync(temp, path11);
-    return true;
-  } catch (error62) {
-    if (error62.code === "EEXIST") return false;
-    throw error62;
-  } finally {
-    rmSync(temp, { force: true });
-  }
-}
-function allocateCandidateId(paths) {
-  const used = listCandidates(paths).map((candidate) => numberOf(candidate.id)).filter((number4) => Number.isFinite(number4));
-  return `C${String((used.length ? Math.max(...used) : 0) + 1)}`;
-}
-var LEVEL_LETTERS = {
-  "0": "G",
-  "1": "A",
-  "2": "H",
-  "3": "T",
-  "4": "L",
-  "5": "R"
-};
-function letterFor(level) {
-  if (level === void 0) return "G";
-  const trimmed = level.trim();
-  const known = LEVEL_LETTERS[trimmed];
-  if (known) return known;
-  return /^[A-Za-z]$/.test(trimmed) ? trimmed.toUpperCase() : "G";
-}
-function allocateFindingId(paths, letter) {
-  const used = listFindings(paths).filter((finding) => finding.id.startsWith(letter)).map((finding) => numberOf(finding.id));
-  return `${letter}${Math.max(0, ...used) + 1}`;
-}
-function allocateObservationId(paths) {
-  const used = listObservations(paths).map((each) => numberOf(each.id));
-  return `O${Math.max(0, ...used) + 1}`;
-}
-function listTargets(reviewDir) {
-  if (!existsSync2(reviewDir)) return [];
-  return readdirSync(reviewDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).filter((name) => existsSync2(join4(reviewDir, name, "findings"))).sort();
-}
-function reviewActivity(paths) {
-  const dir = join4(paths.dir, "sessions");
-  if (!existsSync2(dir)) return null;
-  const latest = readdirSync(dir).map((id) => readJson2(join4(dir, id, "session.json"))).filter((s) => s !== null).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-  return latest ? { updatedAt: latest.updatedAt, phase: latest.phase, complete: latest.phase === "verification" && latest.queues.every((q) => q.items.every((i) => i.completed)) } : null;
-}
-
-// packages/findings/store/registry.mts
-import { mkdirSync as mkdirSync2, readFileSync as readFileSync4, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
-function readRegistry() {
-  for (const file3 of [REGISTRY_FILE, LEGACY_REGISTRY_FILE]) {
-    try {
-      const parsed = JSON.parse(readFileSync4(file3, "utf8"));
-      if (Array.isArray(parsed.repos)) return parsed;
-    } catch {
-    }
-  }
-  return { repos: [] };
-}
-function upsertRegistry(repo2, target2, now2) {
-  const registry2 = readRegistry();
-  const existing = registry2.repos.find((entry) => entry.path === repo2);
-  if (existing) {
-    if (!existing.targets.includes(target2)) existing.targets.push(target2);
-    existing.targets.sort();
-    existing.lastReview = now2;
-  } else {
-    registry2.repos.push({ path: repo2, targets: [target2], lastReview: now2 });
-  }
-  registry2.repos.sort((a, b) => a.path.localeCompare(b.path));
-  write(registry2);
-  return registry2;
-}
-function write(registry2) {
-  mkdirSync2(GLOBAL_ROOT, { recursive: true });
-  const temp = `${REGISTRY_FILE}.${process.pid}.tmp`;
-  writeFileSync2(temp, `${JSON.stringify(registry2, null, 2)}
-`);
-  renameSync2(temp, REGISTRY_FILE);
-}
-
-// packages/cli/src/board/switches.ts
-import fs3 from "node:fs";
-import path4 from "node:path";
-var PROJECT_FILE = ".wellactually.json";
-function read(file3) {
-  try {
-    const stored = JSON.parse(fs3.readFileSync(file3, "utf8"));
-    return Array.isArray(stored.disabled) ? stored.disabled.filter((id) => typeof id === "string") : [];
-  } catch {
-    return [];
-  }
-}
-function projectRoot(cwd) {
-  return findProjectRoot(cwd) ?? path4.resolve(cwd);
-}
-function fileOf(scope, cwd) {
-  return scope === "global" ? path4.join(boardHome(), "disabled.json") : path4.join(projectRoot(cwd), PROJECT_FILE);
-}
-function switchedOff(cwd) {
-  const off = /* @__PURE__ */ new Map();
-  for (const scope of ["project", "global"]) {
-    for (const id of read(fileOf(scope, cwd))) {
-      off.set(id, [...off.get(id) ?? [], scope]);
-    }
-  }
-  return off;
-}
-
-// packages/findings/rules.mts
-function catalogue(repo2) {
-  const off = switchedOff(repo2);
-  return readLockfile().entries.flatMap((entry) => {
-    const cached2 = readCached(entry.hash);
-    if (!cached2) return [];
-    const scopes = off.get(entry.id) ?? [];
-    return [
-      {
-        id: entry.id,
-        title: cached2.manifest.title,
-        doc: entry.id,
-        enabled: entry.enabled && scopes.length === 0,
-        source: scopes.includes("project") ? "project" : scopes.includes("global") ? "global" : "board"
-      }
-    ];
-  });
-}
-function reviewRules(repo2) {
-  const rules = catalogue(repo2);
-  return {
-    repo: repo2,
-    enabled: rules.filter((rule) => rule.enabled).map((rule) => ({
-      id: rule.id,
-      title: rule.title,
-      file: rule.doc,
-      description: readRule(rule.id)?.description ?? null
-    })),
-    disabled: rules.filter((rule) => !rule.enabled).map((rule) => ({
-      id: rule.id,
-      title: rule.title,
-      source: rule.source,
-      turnedOffBy: null
-    }))
-  };
-}
-function readRule(id) {
-  const entry = readLockfile().entries.find((candidate) => candidate.id === id);
-  if (!entry) return null;
-  const cached2 = readCached(entry.hash);
-  if (!cached2) return null;
-  return {
-    id,
-    title: cached2.manifest.title,
-    doc: id,
-    description: cached2.manifest.summary,
-    body: cached2.advice
-  };
-}
-
-// packages/findings/store/reader.mts
-import {
-  existsSync as existsSync3,
-  mkdirSync as mkdirSync3,
-  readFileSync as readFileSync5,
-  renameSync as renameSync3,
-  writeFileSync as writeFileSync3
-} from "node:fs";
-import { dirname, join as join5 } from "node:path";
-
-// packages/findings/model/unread.mts
-function isUnseen(finding, seenAt) {
-  if (!seenAt) return true;
-  const edits = (finding.history ?? []).filter((entry) => entry.edited);
-  const last = edits.length ? edits[edits.length - 1] : null;
-  return last ? last.at > seenAt : false;
-}
-
-// packages/findings/store/reader.mts
-function seenPath(paths) {
-  return join5(paths.dir, "seen.json");
-}
-function followPath(paths) {
-  return join5(paths.dir, "follow.json");
-}
-function readFollow(paths) {
-  return readMap(followPath(paths));
-}
-function readSeen(paths) {
-  return readMap(seenPath(paths));
-}
-function readMap(path11) {
-  if (!existsSync3(path11)) return {};
-  try {
-    const parsed = JSON.parse(readFileSync5(path11, "utf8"));
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
-      return {};
-    const map2 = {};
-    for (const [id, at] of Object.entries(parsed)) {
-      if (typeof at === "string") map2[id] = at;
-    }
-    return map2;
-  } catch {
-    return {};
-  }
-}
-
-// packages/findings/model/groups.mts
-function groupOf(finding) {
-  if (finding.resolution === "regressed") return "back";
-  if (finding.resolution === "resolved") return "resolved";
-  if (finding.verdict === "invalid") return "invalid";
-  if (finding.verdict === "tolerated") return "tolerated";
-  if (finding.reportedAt) return "posted";
-  if (finding.verdict === "accepted") return "fix";
-  return "verdict";
-}
-
-// packages/findings/model/counts.mts
-function hasNote(finding) {
-  return (finding.note ?? "").trim() !== "";
-}
-function empty() {
-  return {
-    back: 0,
-    verdict: 0,
-    fix: 0,
-    posted: 0,
-    invalid: 0,
-    tolerated: 0,
-    resolved: 0
-  };
-}
-function countsOf(findings, seen, follow = {}) {
-  const piles = empty();
-  let unread = 0;
-  let noted = 0;
-  let marked = 0;
-  for (const finding of findings) {
-    piles[groupOf(finding)] += 1;
-    if (isUnseen(finding, seen[finding.id])) unread += 1;
-    if (hasNote(finding)) noted += 1;
-    if (follow[finding.id]) marked += 1;
-  }
-  return {
-    total: findings.length,
-    unread,
-    noted,
-    marked,
-    open: findings.length - piles.resolved - piles.invalid - piles.tolerated,
-    back: piles.back,
-    piles
-  };
-}
-
-// packages/findings/model/levels.mts
-var LEVELS = [
-  { n: 0, mark: "0", name: "Context" },
-  { n: 1, mark: "A", letter: "A", name: "Approach" },
-  { n: 2, mark: "H", letter: "H", name: "Architecture" },
-  { n: 3, mark: "T", letter: "T", name: "Tests" },
-  { n: 4, mark: "L", letter: "L", name: "Low-level" },
-  { n: 5, mark: "R", letter: "R", name: "Framework" }
-];
-var ONE_SITTING_MS = 6 * 60 * 60 * 1e3;
-function skipReasonOf(text2) {
-  const lines = text2.split("\n").map((line2) => line2.trim()).filter((line2) => line2 !== "" && !line2.startsWith("#"));
-  const said = lines.filter(
-    (line2) => !/^[-*]?\s*(date|commit|head|base)\b/i.test(line2)
-  );
-  if (said.length !== 1) return void 0;
-  const line = said[0] ?? "";
-  if (!/\bskip/i.test(line) || /\b(not|no|never)\s+skip/i.test(line)) {
-    return void 0;
-  }
-  return line.replace(/^[-*>]\s*/, "").replace(/^\**skipp?(ed|ing)?\**\s*[:.,–-]?\s*/i, "").trim();
-}
-function levelsOf(input2) {
-  const written = new Map(input2.documents.map((doc) => [doc.n, doc]));
-  const furthest = Math.max(-1, ...written.keys());
-  const running = input2.finished ? void 0 : LEVELS.find((level) => level.n > furthest)?.n;
-  let mark = Date.parse(input2.startedAt);
-  return LEVELS.map((level) => {
-    const doc = written.get(level.n);
-    if (!doc) {
-      if (level.n === running) {
-        return { ...level, state: "running", ...sitting(mark, input2.now) };
-      }
-      return {
-        ...level,
-        state: level.n < furthest || input2.finished ? "skipped" : "pending"
-      };
-    }
-    const from = mark;
-    mark = Date.parse(doc.changed);
-    const skipReason = skipReasonOf(doc.text);
-    if (skipReason !== void 0) {
-      return {
-        ...level,
-        state: "skipped",
-        ...skipReason === "" ? {} : { skipReason }
-      };
-    }
-    return { ...level, state: "done", ...sitting(from, doc.changed) };
-  });
-}
-function sitting(from, to) {
-  const ms = Date.parse(to) - from;
-  return ms >= 0 && ms <= ONE_SITTING_MS ? { ms } : {};
-}
-
-// packages/findings/serve/port.mts
-var REVIEW_PORTS = { claude: 8424, codex: 8425, opencode: 8426, pi: 8427, standalone: 8428 };
-function reviewHost(env = process.env, argv = process.argv) {
-  const index = argv.indexOf("--review-host");
-  const explicit = env.WELLACTUALLY_REVIEW_HOST ?? (index >= 0 ? argv[index + 1] : void 0);
-  if (explicit) {
-    if (!Object.hasOwn(REVIEW_PORTS, explicit)) throw new Error("Unknown findings review host");
-    return explicit;
-  }
-  if (env.CLAUDECODE || env.CLAUDE_CODE_ENTRYPOINT || env.CLAUDE_EFFORT) return "claude";
-  if (env.CODEX_THREAD_ID) return "codex";
-  return "standalone";
-}
-function reviewPort(env = process.env, argv = process.argv) {
-  const port = Number(env.WELLACTUALLY_REVIEW_PORT ?? REVIEW_PORTS[reviewHost(env, argv)]);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid findings server port");
-  return port;
-}
-var UI_PORT = reviewPort();
-
-// packages/findings/serve/browser.mts
-import { spawn } from "node:child_process";
-function openInBrowser(url2) {
-  const [command, ...args] = process.env["PASCAL_REVIEW_BROWSER"] ? [process.env["PASCAL_REVIEW_BROWSER"], url2] : process.platform === "darwin" ? ["open", url2] : process.platform === "win32" ? ["cmd", "/c", "start", "", url2] : ["xdg-open", url2];
-  const child = spawn(command ?? "open", args, {
-    detached: true,
-    stdio: "ignore"
-  });
-  child.on("error", () => {
-  });
-  child.unref();
-}
-
-// packages/findings/report/issue.mts
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { existsSync as existsSync4, readFileSync as readFileSync6 } from "node:fs";
-import { join as join6 } from "node:path";
-
-// packages/findings/model/language.mts
-function languageOf(path11) {
-  const name = path11.split("/").pop() ?? "";
-  const named = NAMED[name];
-  if (named) return named;
-  const ext = name.includes(".") ? name.split(".").pop()?.toLowerCase() ?? "" : "";
-  return EXT[ext] ?? null;
-}
-var NAMED = {
-  Dockerfile: "docker",
-  Containerfile: "docker",
-  Podfile: "ruby",
-  Gemfile: "ruby",
-  Rakefile: "ruby",
-  Brewfile: "ruby",
-  Fastfile: "ruby",
-  Appfile: "ruby",
-  Matchfile: "ruby"
-};
-var EXT = {
-  dart: "dart",
-  py: "python",
-  kt: "kotlin",
-  kts: "kotlin",
-  swift: "swift",
-  java: "java",
-  m: "objectivec",
-  mm: "objectivec",
-  // Ambiguous between C, C++ and Objective-C. C is the part all three agree
-  // on, and the keywords the other two add are a smaller loss than picking
-  // one of them and being wrong about most files called .h.
-  h: "c",
-  hpp: "cpp",
-  c: "c",
-  cc: "cpp",
-  cpp: "cpp",
-  cs: "csharp",
-  go: "go",
-  rs: "rust",
-  rb: "ruby",
-  php: "php",
-  sql: "sql",
-  gradle: "groovy",
-  groovy: "groovy",
-  graphql: "graphql",
-  gql: "graphql",
-  scss: "scss",
-  toml: "toml",
-  ini: "ini",
-  cfg: "ini",
-  properties: "properties",
-  ts: "typescript",
-  mts: "typescript",
-  cts: "typescript",
-  tsx: "tsx",
-  js: "javascript",
-  mjs: "javascript",
-  cjs: "javascript",
-  jsx: "jsx",
-  yaml: "yaml",
-  yml: "yaml",
-  json: "json",
-  sh: "bash",
-  bash: "bash",
-  zsh: "bash",
-  md: "markdown",
-  html: "markup",
-  xml: "markup",
-  // All XML, all already registered, and none of it was reaching the grammar.
-  // An iOS checkout alone carries hundreds of these.
-  svg: "markup",
-  plist: "markup",
-  storyboard: "markup",
-  xib: "markup",
-  xcscheme: "markup",
-  xcsettings: "markup",
-  css: "css",
-  diff: "diff",
-  patch: "diff"
-};
-
-// packages/findings/report/redact.mts
-var ORDINARY = /* @__PURE__ */ new Set([
-  "the",
-  "and",
-  "for",
-  "app",
-  "api",
-  "web",
-  "www",
-  "src",
-  "lib",
-  "core",
-  "main",
-  "test",
-  "tests",
-  "demo",
-  "dev",
-  "prod",
-  "staging",
-  "release",
-  "file",
-  "files",
-  "service",
-  "services",
-  "server",
-  "client",
-  "data",
-  "model",
-  "models",
-  "view",
-  "views",
-  "page",
-  "pages",
-  "util",
-  "utils",
-  "common",
-  "shared",
-  "base",
-  "new",
-  "old",
-  "mobile",
-  "android",
-  "ios",
-  "flutter",
-  "dart",
-  "kotlin",
-  "swift",
-  "python",
-  "backend",
-  "frontend",
-  "feature",
-  "features",
-  "project",
-  "repo",
-  "code",
-  "scan",
-  "upload",
-  "download",
-  "flow",
-  "form",
-  "user",
-  "users",
-  "admin",
-  "auth",
-  "login",
-  "sync",
-  "store",
-  "state",
-  "widget",
-  "screen",
-  "module",
-  "package"
-]);
-var CHECKOUT_SUFFIX = /-pr-?\d+$/i;
-function forbidden(secrets) {
-  const words = /* @__PURE__ */ new Set();
-  const library = new Set(
-    (secrets.library ?? []).map((one) => one.toLowerCase())
-  );
-  for (const source of secrets.from) {
-    const cleaned = source.replace(CHECKOUT_SUFFIX, "");
-    for (const piece of cleaned.split(/[^A-Za-z]+/)) {
-      const word = piece.toLowerCase();
-      if (word.length < 3) continue;
-      if (ORDINARY.has(word) || library.has(word)) continue;
-      words.add(word);
-    }
-    for (const piece of cleaned.split(/(?=[A-Z])|[^A-Za-z]+/)) {
-      const word = piece.toLowerCase();
-      if (word.length < 3 || ORDINARY.has(word) || library.has(word)) continue;
-      words.add(word);
-    }
-  }
-  const all = [...words].sort();
-  return all.filter(
-    (word) => !all.some((other) => other !== word && word.includes(other))
-  );
-}
-var URL_LIKE = /\b(?:https?:\/\/|www\.)[^\s"'`)\]]+/gi;
-var EMAIL_LIKE = /\b[\w.+-]+@[\w-]+\.[\w.]+\b/g;
-var ABSOLUTE_PATH = /(?:\/Users\/|\/home\/|[A-Z]:\\)[^\s"'`)\]]+/g;
-var LONG_DIGITS = /\b\d{6,}\b/g;
-var IDENTIFIER = /[A-Za-z_$][A-Za-z0-9_$]*/g;
-var PLACEHOLDERS = [
-  "foo",
-  "bar",
-  "baz",
-  "qux",
-  "quux",
-  "corge",
-  "grault",
-  "garply",
-  "waldo",
-  "fred",
-  "plugh",
-  "xyzzy",
-  "thud"
-];
-function placeholder(n) {
-  const word = PLACEHOLDERS[n % PLACEHOLDERS.length] ?? "foo";
-  const round = Math.floor(n / PLACEHOLDERS.length);
-  return round === 0 ? word : `${word}${String(round + 1)}`;
-}
-function shapeOf(name) {
-  const lead = /^_+/.exec(name)?.[0] ?? "";
-  const bare = name.slice(lead.length);
-  if (/^[A-Z0-9_$]+$/.test(bare) && bare.includes("_"))
-    return { shape: "screaming", lead };
-  if (/^[A-Z]/.test(bare)) return { shape: "pascal", lead };
-  if (bare.includes("_")) return { shape: "snake", lead };
-  return { shape: "camel", lead };
-}
-function maskName(name, n) {
-  const { shape, lead } = shapeOf(name);
-  const word = placeholder(n);
-  if (shape === "pascal") return lead + word[0].toUpperCase() + word.slice(1);
-  if (shape === "screaming") return lead + word.toUpperCase();
-  return lead + word;
-}
-function redact(text2, secrets, seen = /* @__PURE__ */ new Map()) {
-  const words = forbidden(secrets);
-  const kinds = /* @__PURE__ */ new Set();
-  let out = text2;
-  out = out.replace(URL_LIKE, () => {
-    kinds.add("links");
-    return "<link>";
-  });
-  out = out.replace(EMAIL_LIKE, () => {
-    kinds.add("addresses");
-    return "<address>";
-  });
-  out = out.replace(ABSOLUTE_PATH, () => {
-    kinds.add("paths");
-    return "<path>";
-  });
-  out = out.replace(LONG_DIGITS, () => {
-    kinds.add("long numbers");
-    return "<number>";
-  });
-  if (words.length > 0) {
-    out = out.replace(IDENTIFIER, (name) => {
-      const lower = name.toLowerCase();
-      if (!words.some((word) => lower.includes(word))) return name;
-      const already = seen.get(name);
-      if (already !== void 0) return already;
-      const mask = maskName(name, seen.size);
-      seen.set(name, mask);
-      kinds.add("names");
-      return mask;
-    });
-  }
-  return { text: out, masked: seen.size, kinds: [...kinds].sort() };
-}
-function redactCode(code, secrets, seen = /* @__PURE__ */ new Map()) {
-  const pass = redact(code, secrets, seen);
-  let dropped = false;
-  const text2 = pass.text.replace(
-    /(['"`])((?:\\.|(?!\1)[^\\])*)\1/g,
-    (whole, quote, body) => {
-      if (body.length <= 24 && !/\s\S+\s/.test(body)) return whole;
-      dropped = true;
-      return `${quote}\u2026${quote}`;
-    }
-  );
-  const kinds = dropped ? [...pass.kinds, "long strings"].sort() : pass.kinds;
-  return { ...pass, text: text2, kinds };
-}
-
-// packages/findings/report/issue.mts
-var run = promisify(execFile);
-var HOME = "passsy/pascal_rules";
-var COMPLAINTS = {
-  "false-positive": "the rule does not apply to this code at all",
-  "wrong-reasoning": "the rule applies, and what the finding says about it is wrong",
-  unclear: "the finding may be right and could not be acted on as written",
-  feedback: "something else about this rule"
-};
-function secretsOf(paths) {
-  const pr = recordedPr(paths);
-  return {
-    from: [
-      paths.repo.split("/").pop() ?? "",
-      paths.target,
-      pr.title ?? "",
-      pr.headBranch ?? "",
-      pr.baseBranch ?? "",
-      pr.author ?? ""
-    ].filter((one) => one !== "")
-  };
-}
-var WINDOW = 6;
-var DECLARES = /^\s*(?:abstract\s+|final\s+|sealed\s+|base\s+|interface\s+)*(?:class|mixin|extension|enum|struct|object|interface|protocol|def|func|fun|function)\b/;
-function scopeOf(lines, at) {
-  const opens = [];
-  const indent = (line) => /^\s*/.exec(line)?.[0].length ?? 0;
-  let floor = indent(lines[at] ?? "");
-  for (let i = at - 1; i >= 0; i--) {
-    const line = lines[i] ?? "";
-    if (line.trim() === "") continue;
-    const here = indent(line);
-    if (here >= floor) continue;
-    floor = here;
-    if (DECLARES.test(line)) opens.unshift(line.replace(/\s*\{\s*$/, " {"));
-    if (here === 0) break;
-  }
-  return opens;
-}
-function importsIn(source, mine) {
-  const found = [];
-  for (const line of source.split("\n")) {
-    const at = /^\s*(?:import|from|#include|using|require)\b.*$/.exec(line);
-    if (!at) continue;
-    const pkg = /package:([\w.]+)|from\s+['"]([\w.@/-]+)['"]|<([\w./]+)>/.exec(
-      line
-    );
-    const name = pkg?.[1] ?? pkg?.[2] ?? pkg?.[3];
-    if (!name || mine(name)) continue;
-    found.push(line.trim());
-  }
-  return [...new Set(found)];
-}
-function snippetOf(finding) {
-  const context = finding.context;
-  if (!context) return finding.snippet;
-  const at = finding.anchor.line - context.start;
-  const from = Math.max(0, at - WINDOW);
-  const to = Math.min(context.lines.length, at + WINDOW + 1);
-  const window = context.lines.slice(from, to);
-  const opens = scopeOf(context.lines, at).filter(
-    (line) => !window.includes(line)
-  );
-  return opens.length > 0 ? [...opens, "  // \u2026", ...window].join("\n") : window.join("\n");
-}
-function sourceOf(paths, file3) {
-  const path11 = join6(paths.repo, file3);
-  if (!existsSync4(path11)) return "";
-  try {
-    return readFileSync6(path11, "utf8");
-  } catch {
-    return "";
-  }
-}
-function scrubbed(kinds) {
-  const what = kinds.length > 0 ? kinds.join(", ") : "nothing it recognised";
-  return [
-    "_Filed from a review with `report_finding`. The repository, the branch,",
-    "the pull request and the path of the file are never carried. What the",
-    `scrubber replaced in what is above: ${what}._`
-  ].join("\n");
-}
-function prepare(paths, id, complaint, why) {
-  const finding = readFinding(paths, id);
-  if (!finding) throw new Error(`no finding "${id}" in "${paths.target}"`);
-  const secrets = secretsOf(paths);
-  const source = sourceOf(paths, finding.anchor.file);
-  const theirs = forbidden(secrets);
-  const borrowed = importsIn(
-    source,
-    (name) => theirs.some((word) => name.toLowerCase().includes(word))
-  );
-  secrets.library = borrowed.flatMap(
-    (line) => line.split(/[^A-Za-z]+/).filter((word) => word.length >= 3)
-  );
-  const names2 = /* @__PURE__ */ new Map();
-  const rule = finding.rule ?? null;
-  const language = languageOf(finding.anchor.file) ?? "text";
-  const quoted2 = redact(borrowed.join("\n"), secrets, names2);
-  const code = redactCode(snippetOf(finding), secrets, names2);
-  const title = redact(finding.title, secrets, names2);
-  const said = redact(finding.body, secrets, names2);
-  const reason = redact(why, secrets, names2);
-  const note = finding.note ? redact(finding.note, secrets, names2) : null;
-  const kinds = /* @__PURE__ */ new Set([...code.kinds, ...title.kinds, ...said.kinds]);
-  if (note) for (const kind of note.kinds) kinds.add(kind);
-  const body = [
-    `**What is wrong:** ${COMPLAINTS[complaint]}`,
-    "",
-    rule ? `**Rule:** \`${rule}\`` : "**Rule:** none \u2014 the review wrote this one on its own",
-    `**Language:** ${language}`,
-    "",
-    "## What the review said",
-    "",
-    said.text.trim() || "_(nothing beyond the title)_",
-    "",
-    "## The code it said it about",
-    "",
-    "```" + language,
-    ...quoted2.text.trim() ? [quoted2.text.trimEnd(), ""] : [],
-    code.text,
-    "```",
-    "",
-    "## Why that is wrong",
-    "",
-    reason.text.trim(),
-    ...note ? [
-      "",
-      "## What the reader had already written on it",
-      "",
-      note.text.trim()
-    ] : [],
-    "",
-    "---",
-    "",
-    scrubbed([...kinds].sort())
-  ].join("\n");
-  return {
-    title: rule ? `${rule}: ${title.text}` : `Review finding: ${title.text}`,
-    body,
-    // The shared map means every pass reports the same running total, so the
-    // last word on it is the size of the map rather than a sum.
-    took: { masked: names2.size, kinds: [...kinds].sort() },
-    rule
-  };
-}
-async function file2(title, body, repo2 = HOME) {
-  const { stdout } = await run(
-    "gh",
-    ["issue", "create", "--repo", repo2, "--title", title, "--body", body],
-    { timeout: 2e4 }
-  );
-  const url2 = stdout.trim().split("\n").pop() ?? "";
-  if (!url2.startsWith("http")) {
-    throw new Error(`gh did not answer with an issue URL: ${stdout.trim()}`);
-  }
-  return url2;
-}
-
-// packages/findings/serve/web-assets.mts
-import { createRequire as createRequire2 } from "node:module";
-import { readFileSync as readFileSync7 } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { existsSync as existsSync5 } from "node:fs";
-var ROOTS = [
-  // The source tree: this file sits in runtime/findings/serve, the build
-  // output beside it in runtime/findings/web/dist.
-  new URL("../web/dist/", import.meta.url),
-  // A release: the whole server is one bundled dist/findings-server.mjs with
-  // dist/web copied in beside it, so the assets sit next to the bundle
-  // wherever this module's source happened to live.
-  new URL("./web/", import.meta.url)
-];
-var MissingWebBuild = class extends Error {
-  constructor(what) {
-    super(
-      `the web build is missing ${what}. Run "npm run web:build" \u2014 the triage page and the report are compiled, not written by hand.`
-    );
-    this.name = "MissingWebBuild";
-  }
-};
-function find(relative2) {
-  for (const root of ROOTS) {
-    const path11 = fileURLToPath(new URL(relative2, root));
-    if (existsSync5(path11)) return path11;
-  }
-  throw new MissingWebBuild(relative2);
-}
-var held = /* @__PURE__ */ new Map();
-function readAsset(relative2) {
-  const kept = held.get(relative2);
-  if (kept !== void 0) return kept;
-  const content = readFileSync7(find(relative2), "utf8");
-  held.set(relative2, content);
-  return content;
-}
-function reportStyle() {
-  return readAsset("report/report.css");
-}
-function reportScript() {
-  return readAsset("report/report.js");
-}
-var renderer = null;
-function report() {
-  renderer ??= createRequire2(import.meta.url)(
-    find("ssr/report-ssr.cjs")
-  );
-  return renderer;
-}
-function renderReport(data) {
-  return report().renderReport(data);
-}
-
-// packages/findings/views/html.mts
-function escapeHtml(text2) {
-  return text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-function toHtml(context, findings) {
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Review ${escapeHtml(context.target)}</title>
-<style>${reportStyle()}</style>
-</head>
-<body>
-${renderReport({ ...context, findings })}
-<script type="application/json" id="report-data">${json2({
-    repo: context.repo,
-    target: context.target,
-    port: UI_PORT
-  })}</script>
-<script>${reportScript()}</script>
-</body>
-</html>
-`;
-}
-function json2(value) {
-  return JSON.stringify(value).replace(/</g, "\\u003c");
-}
-
-// packages/findings/views/sarif.mts
-var LEVELS2 = {
-  p0: "error",
-  p1: "warning",
-  p2: "warning",
-  p3: "note",
-  p4: "note"
-};
-var FINGERPRINT_KEY = "pascalReview/v1";
-function ruleIdOf(finding) {
-  return finding.rule ?? `review/${finding.priority}`;
-}
-function toSarif(target2, findings) {
-  const ruleIds = [...new Set(findings.map(ruleIdOf))].sort();
-  const rules = ruleIds.map((id) => ({
-    id,
-    shortDescription: {
-      text: id.startsWith("review/") ? `Review finding of priority ${id.slice("review/".length)}` : `Handbook rule ${id}`
-    }
-  }));
-  const results = findings.map((finding) => {
-    const failed = finding.verdict === "invalid" || finding.verdict === "tolerated";
-    const ruled = finding.history.findLast((entry) => entry.verdict);
-    return {
-      ruleId: ruleIdOf(finding),
-      ruleIndex: ruleIds.indexOf(ruleIdOf(finding)),
-      level: LEVELS2[finding.priority] ?? "warning",
-      message: { text: `${finding.id} ${finding.title}
-
-${finding.body}` },
-      locations: [
-        {
-          physicalLocation: {
-            artifactLocation: { uri: finding.anchor.file },
-            // A viewer that cannot open the file still shows these, which is
-            // the whole point of exporting a report someone else will read.
-            region: {
-              startLine: finding.anchor.line,
-              ...finding.anchor.endLine ? { endLine: finding.anchor.endLine } : {},
-              snippet: { text: finding.snippet }
-            },
-            ...finding.context ? {
-              contextRegion: {
-                startLine: finding.context.start,
-                endLine: finding.context.start + finding.context.lines.length - 1,
-                snippet: { text: finding.context.lines.join("\n") }
-              }
-            } : {}
-          }
-        }
-      ],
-      // SARIF has the same shape: one location that owns the result, and the
-      // other places it is about, each carrying why it is there.
-      ...finding.related && finding.related.length > 0 ? {
-        relatedLocations: finding.related.map((location2, index) => ({
-          id: index + 1,
-          physicalLocation: {
-            artifactLocation: { uri: location2.file },
-            region: {
-              startLine: location2.line,
-              ...location2.endLine ? { endLine: location2.endLine } : {},
-              ...location2.context ? {
-                snippet: {
-                  text: location2.context.lines[location2.line - location2.context.start] ?? ""
-                }
-              } : {}
-            }
-          },
-          ...location2.note ? { message: { text: location2.note } } : {}
-        }))
-      } : {},
-      partialFingerprints: { [FINGERPRINT_KEY]: finding.fingerprint },
-      // Three ways a finding stops asking for a viewer's attention, and they
-      // are not the same thing: the review was wrong, the finding stands and
-      // is carried, or the code was fixed. All suppress, and the
-      // justification says which.
-      ...failed || finding.resolution === "resolved" ? {
-        suppressions: [
-          {
-            kind: "external",
-            status: "accepted",
-            justification: failed ? ruled?.note ?? finding.verdict : `resolved${finding.links.fixCommit ? ` by ${finding.links.fixCommit.slice(0, 12)}` : ""}`,
-            properties: {
-              reason: failed ? finding.verdict : "resolved"
-            }
-          }
-        ]
-      } : {},
-      properties: {
-        findingId: finding.id,
-        priority: finding.priority,
-        ...finding.tags ? { tags: finding.tags } : {},
-        evidence: finding.evidence,
-        verdict: finding.verdict,
-        resolution: finding.resolution,
-        ...finding.confirmedAt ? { confirmedAt: finding.confirmedAt } : {},
-        ...finding.provenTest ? { provenTest: finding.provenTest } : {},
-        ...finding.links.fixCommit ? { fixCommit: finding.links.fixCommit } : {},
-        ...finding.links.prComment ? { prComment: finding.links.prComment } : {},
-        ...finding.links.ruleIssue ? { ruleIssue: finding.links.ruleIssue } : {},
-        ...finding.staleAnchor ? { staleAnchor: true } : {},
-        ...finding.diff ? { diff: finding.diff } : {}
-      }
-    };
-  });
-  const log = {
-    $schema: "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
-    version: "2.1.0",
-    runs: [
-      {
-        tool: {
-          driver: {
-            name: "pascal-review",
-            informationUri: "https://github.com/passsy/pascal_rules",
-            rules
-          }
-        },
-        automationDetails: { id: `pascal-review/${target2}` },
-        results
-      }
-    ]
-  };
-  return `${JSON.stringify(log, null, 2)}
-`;
-}
-
-// packages/findings/validate.mts
-var InputError = class extends Error {
-};
-function requireObject(input2) {
-  if (typeof input2 !== "object" || input2 === null || Array.isArray(input2)) {
-    throw new InputError("arguments must be an object.");
-  }
-  return input2;
-}
-function str(input2, field) {
-  const value = input2[field];
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new InputError(
-      `"${field}" is required and must be a non-empty string, got ${describe3(value)}.`
-    );
-  }
-  return value;
-}
-function text(input2, field) {
-  const value = input2[field];
-  if (typeof value !== "string") {
-    throw new InputError(
-      `"${field}" is required and must be a string, got ${describe3(value)}. Pass "" to clear it.`
-    );
-  }
-  return value;
-}
-function optionalStr(input2, field) {
-  const value = input2[field];
-  if (value === void 0 || value === null || value === "") return void 0;
-  if (typeof value !== "string") {
-    throw new InputError(
-      `"${field}" must be a string when given, got ${describe3(value)}.`
-    );
-  }
-  return value;
-}
-function positiveInt(input2, field) {
-  const value = input2[field];
-  const parsed = typeof value === "string" ? Number(value) : value;
-  if (typeof parsed !== "number" || !Number.isInteger(parsed) || parsed < 1) {
-    throw new InputError(
-      `"${field}" must be a whole number of 1 or more, got ${describe3(value)}.`
-    );
-  }
-  return parsed;
-}
-function oneOf(input2, field, allowed) {
-  const value = input2[field];
-  if (typeof value !== "string" || !allowed.includes(value)) {
-    throw new InputError(
-      `"${field}" must be one of ${list(allowed)}, got ${describe3(value)}.`
-    );
-  }
-  return value;
-}
-function optionalOneOf(input2, field, allowed) {
-  const value = input2[field];
-  if (value === void 0 || value === null || value === "") return void 0;
-  return oneOf(input2, field, allowed);
-}
-function object3(input2, field) {
-  const value = input2[field];
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new InputError(
-      `"${field}" is required and must be an object, got ${describe3(value)}.`
-    );
-  }
-  return value;
-}
-function flag(input2, field) {
-  const value = input2[field];
-  if (value === void 0 || value === null) return false;
-  if (typeof value === "boolean") return value;
-  if (value === "true") return true;
-  if (value === "false") return false;
-  throw new InputError(
-    `"${field}" must be true or false when given, got ${describe3(value)}.`
-  );
-}
-function optionalArray(input2, field) {
-  const value = input2[field];
-  if (value === void 0 || value === null) return [];
-  if (!Array.isArray(value)) {
-    throw new InputError(
-      `"${field}" must be an array when given, got ${describe3(value)}.`
-    );
-  }
-  return value;
-}
-function list(values) {
-  return values.map((value) => `"${value}"`).join(", ");
-}
-function describe3(value) {
-  if (value === void 0) return "nothing";
-  if (value === null) return "null";
-  if (typeof value === "string") return `"${value}"`;
-  if (Array.isArray(value)) return "an array";
-  if (typeof value === "object") return "an object";
-  return String(value);
-}
-
-// packages/findings/api.mts
-function now() {
-  return (/* @__PURE__ */ new Date()).toISOString();
-}
-function repoOf(args, fallback) {
-  const explicit = optionalStr(args, "repo");
-  if (explicit) return explicit;
-  if (fallback === "") {
-    throw new InputError(
-      'this server cannot tell which project you mean, because it was started from a plugin installation rather than from a repository. Pass "repo" with the absolute path of the repository you are reviewing.'
-    );
-  }
-  return fallback;
-}
-function pathsOf(args, repo2) {
-  return targetPaths(repoOf(args, repo2), str(args, "target"));
-}
-function mustFind(paths, id) {
-  const finding = readFinding(paths, id);
-  if (!finding) {
-    const known = listFindings(paths).map((each) => each.id);
-    throw new InputError(
-      `no finding "${id}" in target "${paths.target}". Known ids: ${known.join(", ") || "none yet"}.`
-    );
-  }
-  return finding;
-}
-var MAX_PUBLISH_PASSES = 5;
-function publish(paths) {
-  ensureTarget(paths);
-  let findings = listFindings(paths);
-  const at = now();
-  try {
-    for (let pass = 0; pass < MAX_PUBLISH_PASSES; pass++) {
-      writeView(
-        paths.html,
-        toHtml(
-          { repo: paths.repo, target: paths.target, generatedAt: at },
-          findings
-        )
-      );
-      writeView(paths.sarif, toSarif(paths.target, findings));
-      const latest = listFindings(paths);
-      if (JSON.stringify(latest) === JSON.stringify(findings)) break;
-      findings = latest;
-    }
-  } catch (error62) {
-    console.error(
-      `wellactually: the mutation is saved, but rebuilding the views of "${paths.target}" failed: ${error62 instanceof Error ? error62.message : String(error62)}`
-    );
-  }
-  upsertRegistry(paths.repo, paths.target, at);
-}
-var MAX_MARKED_LINES = 200;
-function spanOf(location2) {
-  const line = positiveInt(location2, "line");
-  const endLine = location2["endLine"] === void 0 ? void 0 : positiveInt(location2, "endLine");
-  if (endLine === void 0) return { line };
-  if (endLine < line) {
-    throw new InputError(
-      `"endLine" (${endLine}) is before "line" (${line}). A marked block runs forwards.`
-    );
-  }
-  if (endLine - line + 1 > MAX_MARKED_LINES) {
-    throw new InputError(
-      `${endLine - line + 1} marked lines is too many. Mark at most ${MAX_MARKED_LINES}, and anchor on the part that is wrong rather than the whole region.`
-    );
-  }
-  return { line, endLine };
-}
-function relatedFrom(args, repo2, base2) {
-  return optionalArray(args, "related").map((entry) => {
-    const location2 = requireObject(entry);
-    const file3 = repoRelative(repo2, str(location2, "file"));
-    const span = spanOf(location2);
-    const note = optionalStr(location2, "note");
-    return {
-      file: file3,
-      ...span,
-      ...note ? { note } : {},
-      ...captureAt(repo2, file3, span, base2)
-    };
-  });
-}
-function tagsFrom(args) {
-  const given = optionalArray(args, "tags").map((tag) => String(tag).trim().replace(/\s+/g, " ").toLowerCase()).filter((tag) => tag !== "");
-  const tags = [...new Set(given)];
-  if (tags.length > MAX_TAGS) {
-    throw new InputError(
-      `${tags.length} tags is too many. Use at most ${MAX_TAGS}, and usually one: a tag is what this finding clusters with, not a description of it.`
-    );
-  }
-  const long = tags.find((tag) => tag.length > MAX_TAG_LENGTH);
-  if (long) {
-    throw new InputError(
-      `the tag "${long}" is longer than ${MAX_TAG_LENGTH} characters. A tag is a couple of words, e.g. "race" or "missing test"; what it is about belongs in the title.`
-    );
-  }
-  return tags;
-}
-var PRE_EXISTING_TAG = "pre-existing";
-function concernsChange(locations) {
-  if (!locations.some(Boolean)) return void 0;
-  return locations.includes("changed");
-}
-var ANCHOR_SAYS = {
-  "whitespace-only": "The anchor differs from the base only in whitespace: the author re-indented this code \u2014 wrapping or moving what was already there \u2014 and did not write it.",
-  moved: "The anchor is code the author moved here, not code they wrote: the same lines exist on the base side.",
-  untouched: "The anchor is identical to the base."
-};
-function noticeFor(authorship, preExisting, tagged) {
-  const anchor3 = authorship && ANCHOR_SAYS[authorship];
-  if (preExisting) {
-    return [
-      anchor3,
-      "No marked line is the author's own edit, so this finding is about the code, not about the change under review.",
-      tagged ? `Tagged "${PRE_EXISTING_TAG}".` : void 0,
-      `If an edit in this change is what causes the problem, add it with add_location \u2014 that takes the tag off \u2014 or re-anchor there with update_finding. If the problem predates the change, keep the tag and say so in the body.`
-    ].filter(Boolean).join(" ");
-  }
-  if (authorship === "whitespace-only" || authorship === "moved") {
-    return `${anchor3 ?? ""} A comment posted here lands on code the author never touched. Anchor on the author's own edit \u2014 one of this finding's related locations is one \u2014 and name this line in the text instead.`;
-  }
-  return void 0;
-}
-function createFindingStored(raw, repo2, publishAfter) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const anchor3 = object3(args, "anchor");
-  const evidence = oneOf(args, "evidence", EVIDENCE);
-  const provenTest = optionalStr(args, "provenTest");
-  if (evidence === "Proven" && !provenTest) {
-    throw new InputError(
-      'evidence "Proven" requires "provenTest" as "file:line" of the failing test. Use "Reasoned" when no test exists.'
-    );
-  }
-  const metadata = metadataAnchor(anchor3);
-  const file3 = metadata ? str(anchor3, "file") : repoRelative(paths.repo, str(anchor3, "file"));
-  const span = spanOf(anchor3);
-  const line = span.line;
-  const rule = optionalStr(args, "rule");
-  const snippet = metadata ? metadata.text.split("\n")[line - 1] : snippetAt(paths.repo, file3, line);
-  const fingerprint = fingerprintOf(rule, file3, snippet);
-  const clash = listFindings(paths).find(
-    (each) => each.fingerprint === fingerprint && each.anchor.line === line && each.title === str(args, "title")
-  );
-  if (clash) {
-    throw new InputError(
-      `${clash.id} already covers ${file3}:${line} with the same rule ("${clash.title}"). Add to that finding with add_location, or anchor this one on the line its own problem lives on.`
-    );
-  }
-  const promoted = optionalStr(args, "fromObservation");
-  const observation = promoted ? readObservation(paths, promoted) : null;
-  if (promoted && !observation) {
-    throw new InputError(
-      `no observation "${promoted}" in target "${paths.target}".`
-    );
-  }
-  const at = now();
-  const meta3 = readMeta(paths);
-  const base2 = optionalStr(args, "base") ?? meta3.base;
-  const stamped = {
-    ...meta3,
-    ...base2 ? { base: base2 } : {},
-    // The same instant the finding is stamped with, not a second reading of
-    // the clock: the review started when its first finding was written, and
-    // two timestamps a millisecond apart for one event is a lie about which.
-    startedAt: meta3.startedAt ?? at
-  };
-  if (stamped.base !== meta3.base || stamped.startedAt !== meta3.startedAt) {
-    writeMeta(paths, stamped);
-  }
-  const captured = metadata ? { context: { start: 1, lines: metadata.text.split("\n") } } : captureAt(paths.repo, file3, span, base2);
-  const related = relatedFrom(args, paths.repo, base2);
-  const reporter = optionalOneOf(args, "reporter", REPORTER) ?? "review";
-  const reporterName = optionalStr(args, "reporterName");
-  if (reporter === "pr-comment" && !reporterName) {
-    throw new InputError(
-      'reporter "pr-comment" requires "reporterName": the login of whoever left it. A comment nobody is named for cannot be answered.'
-    );
-  }
-  const preExisting = !metadata && concernsChange([
-    captured.authorship,
-    ...related.map((each) => each.authorship)
-  ]) === false;
-  const tags = tagsFrom(args);
-  const tagged = preExisting && !tags.includes(PRE_EXISTING_TAG) && tags.length < MAX_TAGS;
-  if (tagged) tags.push(PRE_EXISTING_TAG);
-  const letter = letterFor(optionalStr(args, "level"));
-  const draft = (id) => ({
-    id,
-    title: str(args, "title"),
-    body: str(args, "body"),
-    evidence,
-    priority: oneOf(args, "priority", PRIORITY),
-    ...tags.length > 0 ? { tags } : {},
-    ...rule ? { rule } : {},
-    ...provenTest ? { provenTest } : {},
-    anchor: {
-      ...metadata,
-      file: file3,
-      ...span,
-      commit: optionalStr(anchor3, "commit") ?? headCommit(paths.repo)
-    },
-    snippet,
-    ...captured,
-    ...related.length > 0 ? { related } : {},
-    fingerprint,
-    verdict: "undecided",
-    resolution: "unresolved",
-    history: [{ at, actor: "review", verdict: "undecided" }],
-    links: {},
-    ...promoted ? { fromObservation: promoted } : {},
-    ...optionalStr(args, "fromCandidate") ? { fromCandidate: optionalStr(args, "fromCandidate") } : {},
-    ...optionalStr(args, "verificationStatus") ? {
-      verification: {
-        status: optionalStr(args, "verificationStatus"),
-        ...optionalStr(args, "verificationReason") ? { reason: optionalStr(args, "verificationReason") } : {}
-      }
-    } : {},
-    ...reporter === "review" ? {} : { reporter },
-    ...reporterName ? { reporterName } : {},
-    createdAt: at
-  });
-  const finding = claim2(paths, letter, draft);
-  if (observation) {
-    writeObservation(paths, {
-      ...observation,
-      status: "promoted",
-      promotedTo: finding.id
-    });
-  }
-  if (publishAfter) publish(paths);
-  const notice = noticeFor(
-    finding.authorship,
-    preExisting,
-    tagged || tags.includes(PRE_EXISTING_TAG)
-  );
-  return notice ? { ...finding, notice } : finding;
-}
-function createFinding(raw, repo2) {
-  return createFindingStored(raw, repo2, true);
-}
-function candidateDraft(raw, id, at) {
-  const args = requireObject(raw);
-  const anchor3 = object3(args, "anchor");
-  const tags = tagsFrom(args);
-  const optionalPositiveInt = (input2, field) => input2[field] === void 0 ? void 0 : positiveInt(input2, field);
-  const related = optionalArray(args, "related").map((rawLocation) => {
-    const location2 = requireObject(rawLocation);
-    return {
-      file: str(location2, "file"),
-      line: positiveInt(location2, "line"),
-      ...optionalPositiveInt(location2, "endLine") !== void 0 ? { endLine: optionalPositiveInt(location2, "endLine") } : {},
-      ...optionalStr(location2, "note") ? { note: optionalStr(location2, "note") } : {}
-    };
-  });
-  return {
-    id,
-    source: str(args, "source"),
-    run: str(args, "run"),
-    unit: str(args, "unit"),
-    title: str(args, "title"),
-    body: str(args, "body"),
-    evidence: oneOf(args, "evidence", EVIDENCE),
-    priority: oneOf(args, "priority", PRIORITY),
-    ...tags.length ? { tags } : {},
-    ...optionalStr(args, "level") ? { level: optionalStr(args, "level") } : {},
-    ...optionalStr(args, "rule") ? { rule: optionalStr(args, "rule") } : {},
-    ...optionalStr(args, "provenTest") ? { provenTest: optionalStr(args, "provenTest") } : {},
-    anchor: {
-      ...metadataAnchor(anchor3),
-      file: str(anchor3, "file"),
-      line: positiveInt(anchor3, "line"),
-      ...optionalPositiveInt(anchor3, "endLine") !== void 0 ? { endLine: optionalPositiveInt(anchor3, "endLine") } : {},
-      ...optionalStr(anchor3, "commit") ? { commit: optionalStr(anchor3, "commit") } : {}
-    },
-    ...related.length ? { related } : {},
-    ...optionalStr(args, "scope") ? { scope: optionalStr(args, "scope") } : {},
-    ...optionalStr(args, "quote") ? { quote: optionalStr(args, "quote") } : {},
-    status: "pending",
-    createdAt: at,
-    updatedAt: at
-  };
-}
-function createCandidates(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const run3 = str(args, "run");
-  const candidates = optionalArray(args, "candidates");
-  if (candidates.length === 0) {
-    throw new InputError('"candidates" must contain at least one candidate.');
-  }
-  if (candidates.length > 100) {
-    throw new InputError('"candidates" may contain at most 100 candidates.');
-  }
-  const existingBySource = new Map(
-    listCandidates(paths).filter((candidate) => candidate.run === run3).map((candidate) => [candidate.source, candidate])
-  );
-  const created = [];
-  const errors = [];
-  for (const [index, rawCandidate] of candidates.entries()) {
-    try {
-      const source = str(requireObject(rawCandidate), "source");
-      const existing = existingBySource.get(source);
-      if (existing) {
-        created.push({
-          id: existing.id,
-          source: existing.source,
-          unit: existing.unit
-        });
-        continue;
-      }
-      let candidate = null;
-      for (let attempt = 0; attempt < CLAIM_ATTEMPTS && !candidate; attempt += 1) {
-        const at = now();
-        const next = candidateDraft(
-          { ...requireObject(rawCandidate), run: run3 },
-          allocateCandidateId(paths),
-          at
-        );
-        if (claimCandidate(paths, next)) candidate = next;
-      }
-      if (!candidate) {
-        throw new InputError(
-          "could not allocate a candidate id; retry the call."
-        );
-      }
-      existingBySource.set(candidate.source, candidate);
-      created.push({
-        id: candidate.id,
-        source: candidate.source,
-        unit: candidate.unit
-      });
-    } catch (error62) {
-      errors.push({
-        index,
-        message: error62 instanceof Error ? error62.message : String(error62)
-      });
-    }
-  }
-  if (created.length) upsertRegistry(paths.repo, paths.target, now());
-  return { created, errors };
-}
-function listCandidates2(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const run3 = optionalStr(args, "run");
-  const unit = optionalStr(args, "unit");
-  const status = optionalOneOf(args, "status", CANDIDATE_STATUS);
-  return listCandidates(paths).filter((candidate) => !run3 || candidate.run === run3).filter((candidate) => !unit || candidate.unit === unit).filter((candidate) => !status || candidate.status === status);
-}
-function resolveCandidates(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const decisions = optionalArray(args, "decisions");
-  if (decisions.length === 0) {
-    throw new InputError('"decisions" must contain at least one decision.');
-  }
-  if (decisions.length > 100) {
-    throw new InputError('"decisions" may contain at most 100 decisions.');
-  }
-  const target2 = str(args, "target");
-  const explicitRepo = optionalStr(args, "repo");
-  const base2 = optionalStr(args, "base");
-  const resolved = [];
-  const errors = [];
-  let published = false;
-  for (const [index, rawDecision] of decisions.entries()) {
-    let id;
-    try {
-      const decision = requireObject(rawDecision);
-      id = str(decision, "id");
-      const candidate = readCandidate(paths, id);
-      if (!candidate)
-        throw new InputError(
-          `no candidate "${id}" in target "${paths.target}".`
-        );
-      if (candidate.status !== "pending" && args["reverify"] !== true) {
-        resolved.push({
-          id: candidate.id,
-          status: candidate.status,
-          ...candidate.findingId ? { findingId: candidate.findingId } : {}
-        });
-        continue;
-      }
-      const status = oneOf(decision, "status", [
-        "confirmed",
-        "plausible",
-        "refuted"
-      ]);
-      const reason = optionalStr(decision, "reason");
-      const proof = optionalStr(decision, "proof");
-      if (status === "plausible" && !reason) {
-        throw new InputError(
-          `candidate ${id} is plausible and needs a reason.`
-        );
-      }
-      if (status === "refuted" && !proof && !reason) {
-        throw new InputError(
-          `candidate ${id} is refuted and needs proof or a reason.`
-        );
-      }
-      const at = now();
-      if (status === "refuted") {
-        if (candidate.findingId) {
-          const previous = mustFind(paths, candidate.findingId);
-          writeFinding(paths, { ...previous, verification: { status: "refuted", ...reason || proof ? { reason: reason ?? proof } : {} } });
-          published = true;
-        }
-        const updated2 = {
-          ...candidate,
-          status,
-          ...reason ? { verificationReason: reason } : {},
-          ...proof ? { proof } : {},
-          updatedAt: at
-        };
-        writeCandidate(paths, updated2);
-        resolved.push({ id, status });
-        continue;
-      }
-      const correction = decision["finding"] === void 0 ? {} : requireObject(decision["finding"]);
-      const final = { ...candidate, ...correction };
-      const scope = typeof final["scope"] === "string" ? final["scope"] : void 0;
-      const rawTags = Array.isArray(final["tags"]) ? final["tags"].filter((tag) => typeof tag === "string") : [];
-      const scopeTag = scope ? `scope:${scope}` : void 0;
-      const tags = scopeTag && !rawTags.includes(scopeTag) && rawTags.length < MAX_TAGS ? [...rawTags, scopeTag] : rawTags;
-      const duplicate = candidate.findingId ? mustFind(paths, candidate.findingId) : listFindings(paths).find(
-        (finding) => finding.title === final["title"] && finding.body === final["body"] && finding.rule === final["rule"] && finding.anchor.file === final["anchor"]?.file && finding.anchor.line === final["anchor"]?.line
-      );
-      const stored = (duplicate ? updateFinding({ ...correction, ...typeof correction["scope"] === "string" && correction["tags"] === void 0 ? { tags: [...(duplicate.tags ?? []).filter((tag) => !tag.startsWith("scope:")), `scope:${correction["scope"]}`] } : {}, id: duplicate.id, target: target2, ...explicitRepo ? { repo: explicitRepo } : {} }, repo2) : void 0) ?? createFindingStored(
-        {
-          ...final,
-          tags,
-          target: target2,
-          ...explicitRepo ? { repo: explicitRepo } : {},
-          ...base2 ? { base: base2 } : {},
-          fromCandidate: id,
-          verificationStatus: status,
-          ...reason ? { verificationReason: reason } : {}
-        },
-        repo2,
-        false
-      );
-      const { verificationBlock: _, ...unblocked } = stored;
-      writeFinding(paths, { ...unblocked, verification: {
-        status,
-        ...reason ? { reason } : {},
-        ...proof ? { proof } : {},
-        ...decision["method"] ? { method: decision["method"] } : {},
-        ...Array.isArray(args["proofs"]) ? { proofs: args["proofs"] } : {},
-        ...Array.isArray(args["limits"]) ? { limits: args["limits"] } : {}
-      } });
-      const updated = {
-        ...candidate,
-        ...correction,
-        status,
-        ...reason ? { verificationReason: reason } : {},
-        findingId: stored.id,
-        updatedAt: at
-      };
-      writeCandidate(paths, updated);
-      resolved.push({ id, status, findingId: stored.id });
-      published = true;
-    } catch (error62) {
-      errors.push({
-        index,
-        ...id ? { id } : {},
-        message: error62 instanceof Error ? error62.message : String(error62)
-      });
-    }
-  }
-  if (published) publish(paths);
-  return { resolved, errors };
-}
-function recordVerificationBlock(raw, repo2) {
-  const args = requireObject(raw), paths = pathsOf(args, repo2), reason = str(args, "reason");
-  const ids = optionalArray(args, "candidates").map(String), findings = /* @__PURE__ */ new Set(), errors = [];
-  for (const id of ids) {
-    let candidate = readCandidate(paths, id);
-    if (!candidate) {
-      errors.push(`Unknown candidate ${id}`);
-      continue;
-    }
-    if (candidate.status === "pending") {
-      const result = resolveCandidates({ target: paths.target, repo: paths.repo, decisions: [{ id, status: "plausible", reason: `Unverified: verification was blocked. ${reason}` }] }, paths.repo);
-      errors.push(...result.errors.map((error62) => error62.message));
-      candidate = readCandidate(paths, id);
-    }
-    if (!candidate.findingId) continue;
-    const finding = mustFind(paths, candidate.findingId);
-    writeFinding(paths, { ...finding, verificationBlock: { reason, at: now(), candidates: ids }, ...finding.verification?.status === "plausible" ? { verification: { status: "plausible", reason: `Unverified: verification was blocked. ${reason}` } } : {} });
-    findings.add(finding.id);
-  }
-  if (findings.size) publish(paths);
-  return { findings: [...findings], errors };
-}
-var CLAIM_ATTEMPTS = 25;
-function claim2(paths, letter, draft) {
-  for (let attempt = 0; attempt < CLAIM_ATTEMPTS; attempt += 1) {
-    const finding = draft(allocateFindingId(paths, letter));
-    if (claimFinding(paths, finding)) return finding;
-  }
-  throw new InputError(
-    `could not take an id for a new "${letter}" finding after ${CLAIM_ATTEMPTS} tries. Something else is writing to this target as fast as this is.`
-  );
-}
-function addLocation(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const finding = mustFind(paths, str(args, "id"));
-  const [location2] = relatedFrom(
-    { related: [args] },
-    paths.repo,
-    readMeta(paths).base
-  );
-  if (!location2) throw new InputError('"file" and "line" are required.');
-  const updated = {
-    ...finding,
-    related: [...finding.related ?? [], location2]
-  };
-  let notice;
-  if (location2.authorship === "changed" && (finding.tags ?? []).includes(PRE_EXISTING_TAG)) {
-    const kept = (finding.tags ?? []).filter(
-      (each) => each !== PRE_EXISTING_TAG
-    );
-    if (kept.length > 0) updated.tags = kept;
-    else delete updated.tags;
-    notice = `The added location is the author's own edit, so the "${PRE_EXISTING_TAG}" tag came off: the finding concerns the change after all.`;
-  }
-  writeFinding(paths, updated);
-  publish(paths);
-  return notice ? { ...updated, notice } : updated;
-}
-function updateFinding(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const finding = mustFind(paths, str(args, "id"));
-  const changed = [];
-  const take = (field, given, current2) => {
-    if (given === void 0 || given === current2) return current2;
-    changed.push(field);
-    return given;
-  };
-  const evidence = take(
-    "evidence",
-    optionalOneOf(args, "evidence", EVIDENCE),
-    finding.evidence
-  );
-  const provenTest = take(
-    "provenTest",
-    optionalStr(args, "provenTest"),
-    finding.provenTest
-  );
-  if (evidence === "Proven" && !provenTest) {
-    throw new InputError(
-      'evidence "Proven" requires "provenTest" as "file:line" of the failing test. Use "Reasoned" when no test exists.'
-    );
-  }
-  const rule = take("rule", optionalStr(args, "rule"), finding.rule);
-  const title = take("title", optionalStr(args, "title"), finding.title);
-  const body = take("body", optionalStr(args, "body"), finding.body);
-  const priority = take(
-    "priority",
-    optionalOneOf(args, "priority", PRIORITY),
-    finding.priority
-  );
-  const tags = take(
-    "tags",
-    args["tags"] === void 0 ? void 0 : tagsFrom(args),
-    finding.tags
-  );
-  const moved = args["anchor"] === void 0 ? null : object3(args, "anchor");
-  const anchored = moved ? anchorOf(moved, paths, rule, finding) : {
-    anchor: finding.anchor,
-    snippet: finding.snippet,
-    fingerprint: finding.fingerprint
-  };
-  if (moved) changed.push("anchor");
-  if (changed.length === 0) return finding;
-  const captured = moved ? anchored.anchor.kind === "metadata" ? { context: { start: 1, lines: anchored.anchor.text.split("\n") }, diff: void 0, authorship: void 0 } : captureAt(
-    paths.repo,
-    anchored.anchor.file,
-    spanOf(moved),
-    readMeta(paths).base
-  ) : {
-    ...finding.context ? { context: finding.context } : {},
-    ...finding.diff ? { diff: finding.diff } : {}
-  };
-  const updated = {
-    ...finding,
-    title,
-    body,
-    evidence,
-    priority,
-    ...tags && tags.length > 0 ? { tags } : {},
-    ...rule ? { rule } : {},
-    ...provenTest ? { provenTest } : {},
-    anchor: anchored.anchor,
-    snippet: anchored.snippet,
-    fingerprint: anchored.fingerprint,
-    ...captured,
-    history: [
-      ...finding.history,
-      {
-        at: now(),
-        actor: optionalOneOf(args, "actor", ACTOR) ?? "review",
-        edited: [...new Set(changed)].sort()
-      }
-    ]
-  };
-  if (moved) {
-    if (!("context" in captured)) delete updated.context;
-    if (!("diff" in captured)) delete updated.diff;
-    if (!("authorship" in captured)) delete updated.authorship;
-  }
-  let notice;
-  if (moved) {
-    const concerns = concernsChange([
-      updated.authorship,
-      ...(updated.related ?? []).map((each) => each.authorship)
-    ]);
-    const worn = updated.tags ?? [];
-    if (concerns === true && worn.includes(PRE_EXISTING_TAG)) {
-      const kept = worn.filter((each) => each !== PRE_EXISTING_TAG);
-      if (kept.length > 0) updated.tags = kept;
-      else delete updated.tags;
-      notice = `The new anchor is the author's own edit, so the "${PRE_EXISTING_TAG}" tag came off: the finding concerns the change after all.`;
-    } else if (concerns === false) {
-      const tagged = !worn.includes(PRE_EXISTING_TAG) && worn.length < MAX_TAGS;
-      if (tagged) updated.tags = [...worn, PRE_EXISTING_TAG];
-      notice = noticeFor(
-        updated.authorship,
-        true,
-        tagged || worn.includes(PRE_EXISTING_TAG)
-      );
-    }
-  }
-  writeFinding(paths, updated);
-  publish(paths);
-  return notice ? { ...updated, notice } : updated;
-}
-function anchorOf(moved, paths, rule, finding) {
-  const metadata = metadataAnchor(moved);
-  const file3 = metadata ? str(moved, "file") : repoRelative(paths.repo, str(moved, "file"));
-  const span = spanOf(moved);
-  const snippet = metadata ? metadata.text.split("\n")[span.line - 1] : snippetAt(paths.repo, file3, span.line);
-  return {
-    anchor: {
-      ...metadata,
-      file: file3,
-      ...span,
-      commit: optionalStr(moved, "commit") ?? finding.anchor.commit
-    },
-    snippet,
-    fingerprint: fingerprintOf(rule, file3, snippet)
-  };
-}
-function metadataAnchor(anchor3) {
-  if (anchor3["kind"] === void 0) return void 0;
-  if (anchor3["kind"] !== "metadata") throw new InputError("Unknown anchor kind");
-  const subject = oneOf(anchor3, "subject", ["pr-title", "pr-body", "commit-message"]);
-  const original = str(anchor3, "text");
-  let url2;
-  try {
-    url2 = new URL(str(anchor3, "file"));
-  } catch {
-    throw new InputError("Metadata anchor file must be an authoritative HTTP(S) URL");
-  }
-  if (!["https:", "http:"].includes(url2.protocol)) throw new InputError("Metadata anchor requires an HTTP(S) URL");
-  const span = spanOf(anchor3);
-  if ((span.endLine ?? span.line) > original.split("\n").length) throw new InputError("Metadata anchor line is outside its original text");
-  return { kind: "metadata", subject, text: original };
-}
-function withoutCode(finding) {
-  const { context, diff, ...rest } = finding;
-  return {
-    ...rest,
-    ...rest.related ? {
-      related: rest.related.map(
-        ({ context: at, diff: hunk, ...place }) => place
-      )
-    } : {}
-  };
-}
-function listFindings2(raw, repo2) {
-  const args = requireObject(raw);
-  const root = repoOf(args, repo2);
-  const target2 = optionalStr(args, "target");
-  const verdict = optionalOneOf(args, "verdict", VERDICT);
-  const resolution = optionalOneOf(args, "resolution", RESOLUTION);
-  const priority = optionalOneOf(args, "priority", PRIORITY);
-  const tag = optionalStr(args, "tag")?.trim().toLowerCase();
-  const code = flag(args, "code");
-  const targets = target2 ? [targetPaths(root, target2).target] : listTargets(join7(root, REVIEW_DIR));
-  return targets.map((name) => {
-    const paths = targetPaths(root, name);
-    const findings = listFindings(paths).filter((finding) => !verdict || finding.verdict === verdict).filter((finding) => !resolution || finding.resolution === resolution).filter((finding) => !priority || finding.priority === priority).filter((finding) => !tag || (finding.tags ?? []).includes(tag)).map((finding) => code ? finding : withoutCode(finding));
-    return {
-      target: paths.target,
-      findings,
-      seen: readSeen(paths),
-      follow: readFollow(paths)
-    };
-  });
-}
-function getFinding(raw, repo2) {
-  const args = requireObject(raw);
-  return mustFind(pathsOf(args, repo2), str(args, "id"));
-}
-function setVerdict(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const finding = mustFind(paths, str(args, "id"));
-  const to = oneOf(args, "to", VERDICT);
-  const actor = oneOf(args, "actor", ACTOR);
-  checkVerdict(finding.verdict, to, actor);
-  const note = optionalStr(args, "note");
-  const updated = {
-    ...finding,
-    verdict: to,
-    history: [
-      ...finding.history,
-      {
-        at: now(),
-        actor,
-        verdict: to,
-        ...note ? { note } : {}
-      }
-    ]
-  };
-  writeFinding(paths, updated);
-  publish(paths);
-  return updated;
-}
-function setResolution(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const finding = mustFind(paths, str(args, "id"));
-  const to = oneOf(args, "to", RESOLUTION);
-  const actor = oneOf(args, "actor", ACTOR);
-  checkResolution(finding.resolution, to, actor);
-  const commit = optionalStr(args, "commit");
-  if (to === "resolved" && actor === "agent" && !commit) {
-    throw new InputError(
-      'resolving a finding as an agent needs "commit", the SHA of the commit that fixes it.'
-    );
-  }
-  const note = optionalStr(args, "note");
-  const updated = {
-    ...finding,
-    resolution: to,
-    history: [
-      ...finding.history,
-      {
-        at: now(),
-        actor,
-        resolution: to,
-        ...note ? { note } : {},
-        ...commit ? { commit } : {}
-      }
-    ],
-    links: { ...finding.links, ...commit ? { fixCommit: commit } : {} }
-  };
-  delete updated.confirmedAt;
-  writeFinding(paths, updated);
-  publish(paths);
-  return updated;
-}
-var MAX_NOTE = 2e4;
-function setNote(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const finding = mustFind(paths, str(args, "id"));
-  const note = text(args, "note").trim();
-  if (note.length > MAX_NOTE) {
-    throw new InputError(
-      `that note is ${note.length} characters. Keep it under ${MAX_NOTE}; anything longer is an argument that belongs in a finding of its own.`
-    );
-  }
-  const updated = { ...finding };
-  if (note === "") {
-    delete updated.note;
-    delete updated.noteAt;
-  } else {
-    updated.note = note;
-    updated.noteAt = now();
-  }
-  writeFinding(paths, updated);
-  publish(paths);
-  return updated;
-}
-function linkFixCommit(raw, repo2) {
-  const args = requireObject(raw);
-  return setResolution(
-    { ...args, to: "resolved", actor: optionalStr(args, "actor") ?? "agent" },
-    repo2
-  );
-}
-function linkPrComment(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const finding = mustFind(paths, str(args, "id"));
-  const updated = {
-    ...finding,
-    // Posting the comment is reporting it, so the rung is stamped here rather
-    // than left for a second call nobody would remember to make. The existing
-    // stamp wins: this may be a link added to something reported days ago.
-    reportedAt: finding.reportedAt ?? now(),
-    links: { ...finding.links, prComment: str(args, "url") }
-  };
-  writeFinding(paths, updated);
-  publish(paths);
-  return updated;
-}
-var STAGES = [
-  "invalid",
-  "tolerated",
-  "open",
-  "accepted",
-  "reported",
-  "fixed"
-];
-function setStage(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const finding = mustFind(paths, str(args, "id"));
-  const to = oneOf(args, "to", STAGES);
-  const actor = oneOf(args, "actor", ACTOR);
-  const failed = finding.verdict === "invalid" || finding.verdict === "tolerated";
-  const back = failed ? "undecided" : null;
-  const verdict = to === "invalid" ? "invalid" : to === "tolerated" ? "tolerated" : to === "open" ? "undecided" : to === "accepted" ? "accepted" : back ?? finding.verdict;
-  const resolution = to === "fixed" ? "resolved" : "unresolved";
-  const reported = to === "reported" || to === "fixed" || to === "invalid" || to === "tolerated" ? finding.reportedAt ?? (to === "reported" ? now() : void 0) : void 0;
-  const at = now();
-  const history = [...finding.history];
-  if (verdict !== finding.verdict) {
-    checkVerdict(finding.verdict, verdict, actor);
-    history.push({ at, actor, verdict });
-  }
-  if (resolution !== finding.resolution) {
-    checkResolution(finding.resolution, resolution, actor);
-    history.push({ at, actor, resolution });
-  }
-  const updated = { ...finding, verdict, resolution, history };
-  if (reported) updated.reportedAt = reported;
-  else delete updated.reportedAt;
-  writeFinding(paths, updated);
-  publish(paths);
-  return updated;
-}
-function setReported(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const finding = mustFind(paths, str(args, "id"));
-  const reported = args["reported"] === void 0 ? true : flag(args, "reported");
-  const updated = { ...finding };
-  if (reported) updated.reportedAt = finding.reportedAt ?? now();
-  else delete updated.reportedAt;
-  writeFinding(paths, updated);
-  publish(paths);
-  return updated;
-}
-function createObservation(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  ensureTarget(paths);
-  const draft = (id) => ({
-    id,
-    text: str(args, "text"),
-    forLevel: str(args, "forLevel"),
-    status: "pending",
-    createdAt: now()
-  });
-  let observation = null;
-  for (let attempt = 0; attempt < CLAIM_ATTEMPTS && !observation; attempt += 1) {
-    const next = draft(allocateObservationId(paths));
-    if (claimObservation(paths, next)) observation = next;
-  }
-  if (!observation) {
-    throw new InputError(
-      `could not take an id for a new observation after ${CLAIM_ATTEMPTS} tries. Something else is writing to this target as fast as this is.`
-    );
-  }
-  upsertRegistry(paths.repo, paths.target, observation.createdAt);
-  return observation;
-}
-function listObservations2(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const forLevel = optionalStr(args, "forLevel");
-  const status = optionalOneOf(args, "status", OBSERVATION_STATUS);
-  return listObservations(paths).filter((each) => !forLevel || each.forLevel === forLevel).filter((each) => !status || each.status === status);
-}
-function dropObservation(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const id = str(args, "id");
-  const observation = readObservation(paths, id);
-  if (!observation) {
-    throw new InputError(`no observation "${id}" in target "${paths.target}".`);
-  }
-  if (observation.status !== "pending") {
-    throw new InputError(
-      `observation ${id} is already ${observation.status} and cannot be dropped.`
-    );
-  }
-  const dropped = {
-    ...observation,
-    status: "dropped",
-    dropReason: str(args, "reason")
-  };
-  writeObservation(paths, dropped);
-  return dropped;
-}
-function baselineCheck(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const current2 = new Set(
-    optionalArray(args, "currentFingerprints").map(String)
-  );
-  const saved = listFindings(paths);
-  for (const id of optionalArray(args, "currentFindingIds")) {
-    const finding = saved.find((each) => each.id === id);
-    if (!finding) throw new InputError(`Unknown current finding ${id}`);
-    current2.add(finding.fingerprint);
-  }
-  for (const entry of optionalArray(args, "current")) {
-    const anchor3 = requireObject(entry);
-    const metadata = metadataAnchor(anchor3);
-    const file3 = metadata ? str(anchor3, "file") : repoRelative(paths.repo, str(anchor3, "file"));
-    const line = positiveInt(anchor3, "line");
-    current2.add(
-      fingerprintOf(
-        optionalStr(anchor3, "rule"),
-        file3,
-        metadata ? metadata.text.split("\n")[line - 1] : snippetAt(paths.repo, file3, line)
-      )
-    );
-  }
-  const at = now();
-  const result = {
-    target: paths.target,
-    transitions: [],
-    confirmed: [],
-    seen: [],
-    stale: []
-  };
-  for (const finding of saved) {
-    const present = current2.has(finding.fingerprint);
-    const from = finding.resolution;
-    if (from === "resolved" && !present) {
-      if (finding.confirmedAt) continue;
-      writeFinding(paths, { ...finding, confirmedAt: at, lastSeen: at });
-      result.confirmed.push(finding.id);
-      continue;
-    }
-    if (from === "resolved" && present) {
-      writeFinding(paths, regress(finding, at));
-      result.transitions.push({ id: finding.id, from, to: "regressed" });
-      continue;
-    }
-    const updated = present ? { ...finding, lastSeen: at, staleAnchor: false } : { ...finding, staleAnchor: true };
-    writeFinding(paths, updated);
-    (present ? result.seen : result.stale).push(finding.id);
-  }
-  publish(paths);
-  return result;
-}
-function regress(finding, at) {
-  const regressed = {
-    ...finding,
-    resolution: "regressed",
-    lastSeen: at,
-    history: [
-      ...finding.history,
-      { at, actor: "review", resolution: "regressed" }
-    ]
-  };
-  delete regressed.confirmedAt;
-  return regressed;
-}
-function exportDismissals(raw, repo2) {
-  const args = requireObject(raw);
-  const since = optionalStr(args, "since");
-  const allRepos = args["allRepos"] === true || args["allRepos"] === "true";
-  const roots = allRepos ? readRegistry().repos.map((entry) => entry.path) : [repoOf(args, repo2)];
-  const rows = [];
-  for (const root of roots) {
-    if (!existsSync6(join7(root, REVIEW_DIR))) continue;
-    for (const name of listTargets(join7(root, REVIEW_DIR))) {
-      const paths = targetPaths(root, name);
-      for (const finding of listFindings(paths)) {
-        if (finding.verdict !== "invalid" && finding.verdict !== "tolerated")
-          continue;
-        const entry = finding.history.findLast((each) => each.verdict);
-        if (!entry) continue;
-        if (since && entry.at < since) continue;
-        const why = entry.note ?? finding.note;
-        rows.push({
-          repo: root,
-          target: paths.target,
-          id: finding.id,
-          title: finding.title,
-          ...finding.rule ? { rule: finding.rule } : {},
-          priority: finding.priority,
-          ...finding.tags ? { tags: finding.tags } : {},
-          evidence: finding.evidence,
-          verdict: finding.verdict,
-          ...finding.links.ruleIssue ? { ruleIssue: finding.links.ruleIssue } : {},
-          ...why ? { note: why } : {},
-          at: entry.at,
-          anchor: `${finding.anchor.file}:${finding.anchor.line}`
-        });
-      }
-    }
-  }
-  return rows.sort((a, b) => a.at.localeCompare(b.at));
-}
-function regenerateViews(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  publish(paths);
-  return { target: paths.target, html: paths.html, sarif: paths.sarif };
-}
-function enabledRules(raw, repo2) {
-  const args = requireObject(raw);
-  return reviewRules(repoOf(args, repo2));
-}
-function startReview(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  if (GLOBAL_ROOT === paths.repo || GLOBAL_ROOT.startsWith(paths.repo + sep2)) {
-    throw new InputError(
-      `WELLACTUALLY_FINDINGS_HOME points inside the repository under review (${GLOBAL_ROOT}). It is the machine-wide home the Review Inbox lists every repository from, not this repository's review directory \u2014 findings registered there are invisible to the inbox. Unset it and let it default to ~/.well-actually.`
-    );
-  }
-  ensureTarget(paths);
-  const meta3 = readMeta(paths);
-  const base2 = optionalStr(args, "base") ?? meta3.base;
-  const pr = prFrom(args);
-  const startedAt = meta3.startedAt ?? now();
-  writeMeta(paths, {
-    ...meta3,
-    ...base2 ? { base: base2 } : {},
-    startedAt,
-    ...pr || meta3.pr ? { pr: { ...meta3.pr, ...pr } } : {}
-  });
-  upsertRegistry(paths.repo, paths.target, now());
-  return summarise(paths, now());
-}
-var QUIET_AFTER_MS = 30 * 60 * 1e3;
-var ONE_RUN_MS = 12 * 60 * 60 * 1e3;
-function levelDocuments(paths) {
-  if (!existsSync6(paths.dir)) return [];
-  const found = [];
-  for (const entry of readdirSync2(paths.dir, { withFileTypes: true })) {
-    const level = /^Level-(\d+)\.md$/i.exec(entry.name)?.[1];
-    if (!entry.isFile() || level === void 0) continue;
-    const full = join7(paths.dir, entry.name);
-    const stats = statSync(full, { throwIfNoEntry: false });
-    if (!stats) continue;
-    found.push({
-      n: Number(level),
-      changed: stats.mtime.toISOString(),
-      text: readFileSync8(full, "utf8")
-    });
-  }
-  return found;
-}
-function linkIdOf(repo2, target2) {
-  return createHash2("sha256").update(`${repo2}\0${target2}`).digest("hex").slice(0, 16);
-}
-function inboxUrl(paths, finding) {
-  const url2 = `http://127.0.0.1:${String(UI_PORT)}/?repo=${encodeURIComponent(paths.repo)}&target=${encodeURIComponent(paths.target)}`;
-  return finding ? `${url2}&finding=${encodeURIComponent(finding)}` : url2;
-}
-function openInbox(raw, repo2) {
-  const args = requireObject(raw);
-  const rule = typeof args["rule"] === "string" ? args["rule"].trim() : "";
-  if (rule !== "") {
-    const known = readRule(rule.toUpperCase());
-    if (!known) {
-      throw new InputError(
-        `no rule ${rule}. list_rules gives the ones this project checks.`
-      );
-    }
-    const url3 = `http://127.0.0.1:${String(UI_PORT)}/rule/${encodeURIComponent(known.id)}`;
-    openInBrowser(url3);
-    return { opened: url3 };
-  }
-  const paths = pathsOf(args, repo2);
-  if (!existsSync6(paths.dir)) {
-    throw new InputError(
-      `no review "${paths.target}" in ${paths.repo}. start_review creates one; list the ones that exist in the Review Inbox.`
-    );
-  }
-  const finding = typeof args["finding"] === "string" ? args["finding"] : "";
-  if (finding !== "") mustFind(paths, finding);
-  const url2 = inboxUrl(paths, finding || void 0);
-  openInBrowser(url2);
-  return { opened: url2 };
-}
-function reviewStatus(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  if (!existsSync6(paths.dir)) {
-    throw new InputError(
-      `no review "${paths.target}" in ${paths.repo}. start_review creates one; list the ones that exist in the Review Inbox.`
-    );
-  }
-  const summary2 = summarise(paths, readMeta(paths).startedAt ?? now());
-  const documents = levelDocuments(paths);
-  const readme = statSync(join7(paths.dir, "README.md"), {
-    throwIfNoEntry: false
-  });
-  const activity = reviewActivity(paths);
-  const candidates = listCandidates(paths).filter((candidate) => candidate.status === "pending");
-  const finished = readme !== void 0 || Boolean(activity?.complete && candidates.length === 0);
-  const at = now();
-  const lastAt = [
-    summary2.lastAt,
-    ...activity ? [activity.updatedAt] : [],
-    ...candidates.map((candidate) => candidate.updatedAt),
-    ...documents.map((doc) => doc.changed),
-    ...readme ? [readme.mtime.toISOString()] : []
-  ].sort().pop();
-  const state = finished ? "done" : Date.parse(at) - Date.parse(lastAt) > QUIET_AFTER_MS ? "quiet" : "running";
-  const until = state === "running" ? at : lastAt;
-  const elapsedMs = Date.parse(until) - Date.parse(summary2.startedAt);
-  const findings = listFindings(paths).map((finding) => {
-    const slim = { ...finding, history: [] };
-    delete slim.diff;
-    delete slim.related;
-    return slim;
-  }).sort(
-    (a, b) => a.priority.localeCompare(b.priority) || a.createdAt.localeCompare(b.createdAt)
-  );
-  return {
-    repo: summary2.repo,
-    repoName: summary2.repoName,
-    target: summary2.target,
-    ...summary2.title ? { title: summary2.title } : {},
-    url: inboxUrl(paths),
-    link: `http://127.0.0.1:${String(UI_PORT)}/open/${linkIdOf(paths.repo, paths.target)}`,
-    state,
-    ...activity ? { phase: activity.phase } : {},
-    candidates,
-    startedAt: summary2.startedAt,
-    lastAt,
-    ...elapsedMs >= 0 && elapsedMs <= ONE_RUN_MS ? { elapsedMs } : {},
-    ...summary2.pr ? { pr: summary2.pr } : {},
-    ...summary2.verdict ? { verdict: summary2.verdict } : {},
-    // A review that finished without one level document was never run level
-    // by level, and six skipped levels would be six things that never were.
-    levels: activity || finished && documents.length === 0 ? [] : levelsOf({
-      startedAt: summary2.startedAt,
-      documents,
-      finished,
-      now: at
-    }),
-    findings
-  };
-}
-async function reportFinding(raw, repo2) {
-  const args = requireObject(raw);
-  const paths = pathsOf(args, repo2);
-  const id = str(args, "id");
-  const complaint = oneOf(
-    args,
-    "complaint",
-    Object.keys(COMPLAINTS)
-  );
-  const why = text(args, "why");
-  if (why.trim().length < 12) {
-    throw new InputError(
-      '"why" is the whole of what makes this worth filing: say what the rule got wrong about this code, in a sentence somebody who cannot see the code will understand.'
-    );
-  }
-  const report2 = prepare(paths, id, complaint, why);
-  const send = args["confirm"] === true || args["confirm"] === "true";
-  if (!send) {
-    return {
-      filed: null,
-      ...report2,
-      says: `Nothing has been sent. Read the body above \u2014 every word of it will be public on ${HOME} \u2014 and call this again with confirm: true to file it. The scrubber replaced ${String(report2.took.masked)} name${report2.took.masked === 1 ? "" : "s"}; it cannot know which of the rest are a client's.`
-    };
-  }
-  const url2 = await file2(report2.title, report2.body);
-  const finding = mustFind(paths, id);
-  writeFinding(paths, {
-    ...finding,
-    links: { ...finding.links, ruleIssue: url2 }
-  });
-  publish(paths);
-  return { filed: url2, ...report2, says: `Filed at ${url2}` };
-}
-function prFrom(args) {
-  if (args["pr"] === void 0) return null;
-  const given = object3(args, "pr");
-  const pr = {
-    ...given["number"] === void 0 ? {} : { number: positiveInt(given, "number") },
-    ...pick2(
-      given,
-      "url",
-      "title",
-      "author",
-      "state",
-      "headBranch",
-      "baseBranch"
-    )
-  };
-  const openedAt = dateFrom(given, "openedAt");
-  if (openedAt) pr.openedAt = openedAt;
-  const mergedAt = dateFrom(given, "mergedAt");
-  if (mergedAt) pr.mergedAt = mergedAt;
-  return pr;
-}
-function dateFrom(given, field) {
-  const raw = optionalStr(given, field);
-  if (!raw) return null;
-  const when = new Date(raw);
-  if (Number.isNaN(when.getTime())) {
-    throw new InputError(
-      `"${field}" must be a date, got "${raw}". GitHub gives it as "2026-08-12T09:14:03Z".`
-    );
-  }
-  return when.toISOString();
-}
-function pick2(given, ...fields) {
-  const taken = {};
-  for (const field of fields) {
-    const value = optionalStr(given, field);
-    if (value) Object.assign(taken, { [field]: value });
-  }
-  return taken;
-}
-function listReviews() {
-  const reviews = [];
-  for (const entry of readRegistry().repos) {
-    const reviewDir = join7(entry.path, REVIEW_DIR);
-    if (!existsSync6(reviewDir)) continue;
-    for (const target2 of listTargets(reviewDir)) {
-      reviews.push(
-        summarise(targetPaths(entry.path, target2), entry.lastReview)
-      );
-    }
-  }
-  return reviews.sort(
-    (a, b) => b.startedAt.localeCompare(a.startedAt) || b.lastAt.localeCompare(a.lastAt) || a.repo.localeCompare(b.repo)
-  );
-}
-function summarise(paths, lastReview) {
-  const findings = listFindings(paths);
-  const seen = readSeen(paths);
-  const meta3 = readMeta(paths);
-  const open2 = findings.filter((finding) => {
-    const group = groupOf(finding);
-    return group !== "resolved" && group !== "invalid" && group !== "tolerated";
-  });
-  const written = readmeFacts(paths);
-  const pr = recordedPr(paths, meta3);
-  const title = pr.title ?? written.heading;
-  const at = (finding) => finding.history[finding.history.length - 1]?.at ?? finding.createdAt;
-  const top = PRIORITY.find(
-    (priority) => open2.some((finding) => finding.priority === priority)
-  );
-  const tags = [
-    ...new Set(findings.flatMap((finding) => finding.tags ?? []))
-  ].sort();
-  return {
-    repo: paths.repo,
-    repoName: paths.repo.split(sep2).pop() ?? paths.repo,
-    target: paths.target,
-    ...title ? { title } : {},
-    startedAt: meta3.startedAt ?? findings.map((finding) => finding.createdAt).sort()[0] ?? lastReview,
-    lastAt: findings.map(at).sort().pop() ?? lastReview,
-    // Counted by the same function the page uses on the review it is holding,
-    // so a row of the rail cannot say one thing while the review open beside
-    // it says another.
-    counts: countsOf(findings, seen, readFollow(paths)),
-    ...top ? { top } : {},
-    ...tags.length > 0 ? { tags } : {},
-    ...Object.keys(pr).length > 0 ? { pr } : {},
-    ...meta3.branch ? { branch: meta3.branch } : {},
-    ...written.verdict ? { verdict: written.verdict } : {}
-  };
-}
-function recordedPr(paths, meta3) {
-  return { ...readmeFacts(paths).pr, ...(meta3 ?? readMeta(paths)).pr };
-}
-function readmeFacts(paths) {
-  let text2;
-  try {
-    text2 = readFileSync8(join7(paths.dir, "README.md"), "utf8");
-  } catch {
-    return { pr: {} };
-  }
-  const pr = {};
-  const url2 = /^-\s+Pull request:\s*<?(https?:\/\/\S+?)>?\s*$/m.exec(text2)?.[1];
-  if (url2) {
-    pr.url = url2;
-    const number4 = /\/pull\/(\d+)/.exec(url2)?.[1];
-    if (number4) pr.number = Number(number4);
-  }
-  const title = /^-\s+Title:\s*`?(.+?)`?\s*$/m.exec(text2)?.[1];
-  if (title) pr.title = title;
-  const heading = readmeHeading(text2);
-  const verdict = readmeVerdict(text2);
-  return {
-    pr,
-    ...heading ? { heading } : {},
-    ...verdict ? { verdict } : {}
-  };
-}
-function readmeHeading(text2) {
-  const heading = /^#\s+(.+?)\s*$/m.exec(text2)?.[1];
-  if (!heading) return void 0;
-  const rest = heading.replace(/^PR\s*#?\d+\s*/i, "").replace(/^[—–:-]\s*/, "").replace(/^(multi-level\s+)?review\b\s*[—–:-]?\s*/i, "").replace(/\s*[—–:-]?\s*(multi-level\s+)?review\s*$/i, "").trim();
-  return rest === "" ? void 0 : rest;
-}
-function readmeVerdict(text2) {
-  const line = /^##\s+Verdict\s*$\n+\*{0,2}(.+?)\*{0,2}\s*$/m.exec(text2)?.[1] ?? /^-\s+Review verdict:\s*\*{0,2}(.+?)\*{0,2}\s*$/m.exec(text2)?.[1];
-  if (!line) return void 0;
-  const trimmed = line.trim();
-  return trimmed === "" ? void 0 : trimmed;
-}
-
-// packages/findings/queues.mts
-function reviewSessionSummary(session) {
-  return { id: session.id, run: session.run, phase: session.phase, parallelProofs: session.parallelProofs, createdAt: session.createdAt, updatedAt: session.updatedAt, queues: session.queues.map((queue) => ({ id: queue.id, phase: queue.phase, workers: queue.workers, total: queue.items.length, completed: queue.items.filter((i) => i.completed).length, claimed: queue.items.filter((i) => !i.completed && !i.blocked && i.claim && Date.parse(i.claim.until) > Date.now()).length, pending: queue.items.filter((i) => !i.completed && !i.blocked && (!i.claim || Date.parse(i.claim.until) <= Date.now())).length, blocked: queue.items.filter((i) => i.blocked).length, limited: queue.items.filter((i) => i.completed && (i.completed.result.investigation?.status === "limited" || Array.isArray(i.completed.result.limits) && i.completed.result.limits.length > 0)).length })) };
-}
-var LEASE_MS = 15 * 6e4;
-function hasGit(repo2) {
-  try {
-    return Boolean(execFileSync4("git", ["rev-parse", "--verify", "HEAD"], { cwd: repo2, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim());
-  } catch {
-    return false;
-  }
-}
-var hash2 = (text2) => createHash3("sha256").update(text2).digest("hex");
-var nonempty = (value) => typeof value === "string" && value.trim().length > 0;
-var strings = (value) => Array.isArray(value) && value.every(nonempty);
-function locked(dir, action) {
-  fs4.mkdirSync(dir, { recursive: true });
-  const lock = path5.join(dir, ".lock");
-  const start = Date.now();
-  while (true) {
-    try {
-      fs4.mkdirSync(lock);
-      fs4.writeFileSync(path5.join(lock, "owner"), String(process.pid));
-      break;
-    } catch (error62) {
-      if (error62.code !== "EEXIST") throw error62;
-      const recovery = path5.join(dir, ".recovery");
-      let ownsRecovery = false;
-      try {
-        fs4.mkdirSync(recovery);
-        ownsRecovery = true;
-        const pid = Number(fs4.readFileSync(path5.join(lock, "owner"), "utf8"));
-        if (Number.isInteger(pid) && pid > 0) {
-          try {
-            process.kill(pid, 0);
-          } catch (failure3) {
-            if (failure3.code === "ESRCH") fs4.rmSync(lock, { recursive: true, force: true });
-          }
-        }
-      } catch {
-        if (ownsRecovery) {
-          try {
-            if (Date.now() - fs4.statSync(lock).mtimeMs > 6e4 && !fs4.existsSync(path5.join(lock, "owner"))) fs4.rmSync(lock, { recursive: true, force: true });
-          } catch {
-          }
-        }
-      } finally {
-        if (ownsRecovery) fs4.rmSync(recovery, { recursive: true, force: true });
-      }
-      if (Date.now() - start > 5e3) throw new InputError("Review session is busy; retry this call");
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
-    }
-  }
-  try {
-    return action();
-  } finally {
-    fs4.rmSync(lock, { recursive: true, force: true });
-  }
-}
-function location(args, fallback) {
-  const repo2 = typeof args.repo === "string" ? path5.resolve(args.repo) : fallback;
-  if (!repo2) throw new InputError("repo is required");
-  const target2 = str(args, "target");
-  const session = str(args, "session");
-  if (!/^[a-f0-9]{64}$/.test(session)) throw new InputError("Invalid review session id");
-  const dir = path5.join(targetPaths(repo2, target2).dir, "sessions", session);
-  return { repo: repo2, target: target2, dir, file: path5.join(dir, "session.json") };
-}
-function read2(file3) {
-  return JSON.parse(fs4.readFileSync(file3, "utf8"));
-}
-function save(file3, session) {
-  session.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-  const temp = `${file3}.${randomUUID()}.tmp`;
-  fs4.writeFileSync(temp, JSON.stringify(session, null, 2) + "\n");
-  fs4.renameSync(temp, file3);
-}
-function access(raw, repo2, callback) {
-  const args = requireObject(raw), at = location(args, repo2);
-  return locked(at.dir, () => {
-    const session = read2(at.file);
-    const result = callback(session, args);
-    save(at.file, session);
-    return result;
-  });
-}
-function claimReviewSession(raw, repo2) {
-  const args = requireObject(raw), run3 = str(args, "run"), id = hash2(run3);
-  const sets = optionalArray(args, "sets").map((value) => {
-    const set2 = requireObject(value), name = str(set2, "id");
-    const principles = optionalArray(set2, "principles").map((value2) => {
-      const principle = requireObject(value2), version2 = principle.version;
-      if (!Number.isInteger(version2) || Number(version2) < 1) throw new InputError("Each principle needs its pinned positive version");
-      return { id: str(principle, "id"), version: Number(version2) };
-    });
-    if (new Set(principles.map((p) => p.id)).size !== principles.length) throw new InputError("A set cannot repeat a principle");
-    return { id: name, principles };
-  });
-  if (!sets.length || new Set(sets.map((s) => s.id)).size !== sets.length) throw new InputError("Supply distinct review sets");
-  const at = location({ ...args, session: id }, repo2), manifest = hash2(JSON.stringify({ sets, scope: args.scope ?? null }));
-  return locked(at.dir, () => {
-    if (fs4.existsSync(at.file)) {
-      const old = read2(at.file);
-      if (old.manifest !== manifest) throw new InputError("Run already has a different queue manifest; start a new run");
-      return old;
-    }
-    const now2 = (/* @__PURE__ */ new Date()).toISOString();
-    const session = { id, run: run3, manifest, createdAt: now2, updatedAt: now2, phase: "review", parallelProofs: hasGit(at.repo), queues: sets.map((set2) => ({ id: set2.id, phase: "review", workers: Math.max(1, Math.ceil(set2.principles.length / 20)), items: [{ id: "source", kind: "source" }, ...set2.principles.map((principle) => ({ id: principle.id, kind: "principle", principle }))] })) };
-    save(at.file, session);
-    return session;
-  });
-}
-function getReviewSession(raw, repo2) {
-  return read2(location(requireObject(raw), repo2).file);
-}
-function claimReviewWork(raw, repo2) {
-  return access(raw, repo2, (session, args) => {
-    const queue = session.queues.find((q) => q.id === str(args, "queue"));
-    if (!queue || queue.phase !== session.phase) throw new InputError("Queue is unavailable in this phase");
-    const worker = str(args, "worker"), now2 = Date.now();
-    const active = queue.items.find((item2) => !item2.completed && !item2.blocked && item2.claim?.worker === worker && Date.parse(item2.claim.until) > now2);
-    const item = active ?? queue.items.find((item2) => !item2.completed && !item2.blocked && (!item2.claim || Date.parse(item2.claim.until) <= now2));
-    if (!item) return { state: queue.items.every((item2) => item2.completed) ? "complete" : queue.items.filter((item2) => !item2.completed).every((item2) => item2.blocked) ? "blocked" : "waiting", remaining: queue.items.filter((item2) => !item2.completed).length };
-    if (!active) item.claim = { token: randomUUID(), worker, at: new Date(now2).toISOString(), until: new Date(now2 + LEASE_MS).toISOString() };
-    else item.claim.until = new Date(now2 + LEASE_MS).toISOString();
-    const { completed: _, ...work } = item;
-    return { state: "claimed", queue: queue.id, work };
-  });
-}
-function validateInvestigation(result, source) {
-  const inquiry = requireObject(result.investigation), status = str(inquiry, "status");
-  if (!["complete", "limited", "not_applicable"].includes(status)) throw new InputError("investigation.status must be complete, limited or not_applicable");
-  str(inquiry, "reason");
-  if (!strings(inquiry.limits) || status === "limited" !== inquiry.limits.length > 0) throw new InputError("Only limited investigations have unresolved limits; retain the limits and mark limited");
-  const questions = optionalArray(inquiry, "questions");
-  if (!questions.length) throw new InputError("Investigation needs at least one evidence-backed question");
-  for (const value of questions) {
-    const question = requireObject(value);
-    str(question, "question");
-    str(question, "answer");
-    if (!strings(question.evidence) || !question.evidence.length) throw new InputError("Every question needs evidence locations");
-  }
-  if (!strings(result.findings)) throw new InputError("findings must contain candidate ids only, or []");
-  if (source) {
-    if (status === "not_applicable") throw new InputError("Source review cannot be not_applicable");
-    return;
-  }
-  const verdict = str(result, "verdict");
-  if (!["not_applicable", "followed", "findings"].includes(verdict)) throw new InputError("Invalid principle verdict");
-  if (verdict === "not_applicable" !== (status === "not_applicable")) throw new InputError("Applicability verdict and investigation status disagree");
-  if (verdict === "findings" && !result.findings.length) throw new InputError("findings verdict needs an MCP candidate id");
-  if (verdict !== "findings" && result.findings.length) throw new InputError("Candidate references need a findings verdict");
-  if (verdict === "followed") str(result, "where");
-}
-function validateVerificationDecision(decision, repo2, target2) {
-  if (decision.status === "refuted") return;
-  const finding = requireObject(decision.finding), evidence = str(finding, "evidence"), method = str(decision, "method");
-  if (!["source", "executable", "unverified"].includes(method)) throw new InputError("method must be source, executable or unverified");
-  if (!["Proven", "Reasoned", "Speculative"].includes(evidence)) throw new InputError("finding.evidence must be exactly Proven, Reasoned or Speculative");
-  if (method === "executable" && (evidence !== "Proven" || !nonempty(finding.provenTest) || !nonempty(decision.proof))) throw new InputError("Executable proof requires evidence Proven, provenTest and proof; use source/unverified for partial evidence");
-  if (method !== "executable" && evidence === "Proven") throw new InputError("Proven requires an executable production-path probe");
-  if (method === "unverified" !== (decision.status === "plausible")) throw new InputError("Unverified findings must be plausible with an explicit reason");
-  const anchor3 = requireObject(finding.anchor), line = Number(anchor3.line), end = Number(anchor3.endLine ?? line);
-  let text2;
-  if (anchor3.kind === "metadata") text2 = str(anchor3, "text");
-  else {
-    const file3 = repoRelative(repo2, str(anchor3, "file"));
-    try {
-      text2 = fs4.readFileSync(path5.join(repo2, file3), "utf8");
-    } catch {
-      const base2 = readMeta(targetPaths(repo2, target2))?.base;
-      if (!base2) throw new InputError("Final anchor must point to reviewed source or a deleted base file");
-      try {
-        text2 = execFileSync4("git", ["show", `${base2}:${file3}`], { cwd: repo2, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-      } catch {
-        throw new InputError("Final anchor source is unavailable");
-      }
-    }
-  }
-  const lines = text2.replace(/\n$/, "").split("\n").length;
-  if (!Number.isInteger(line) || !Number.isInteger(end) || line < 1 || end < line || end > lines) throw new InputError("Final anchor range is outside the reviewed source; correct it before completion");
-}
-function verificationProblems(session, repo2, target2) {
-  const candidates = listCandidates2({ repo: repo2, target: target2, run: session.run }, repo2);
-  const findings = listFindings2({ repo: repo2, target: target2 }, repo2).flatMap((group) => group.findings);
-  const problems = [];
-  for (const item of session.queues.filter((q) => q.phase === "verification").flatMap((q) => q.items)) {
-    if (!item.completed) continue;
-    for (const value of optionalArray(item.completed.result, "decisions")) {
-      const decision = requireObject(value);
-      if (decision.status === "refuted") continue;
-      try {
-        validateVerificationDecision(decision, repo2, target2);
-        const candidate = candidates.find((c) => c.id === decision.id), finding = findings.find((f) => f.id === candidate?.findingId), final = requireObject(decision.finding);
-        if (!finding || candidate?.status !== decision.status || finding.verification?.status !== decision.status) throw new Error("Published finding is missing or has a different verification status");
-        for (const key of ["evidence", "provenTest", "title", "body"]) if (final[key] !== void 0 && final[key] !== finding[key]) throw new Error(`Published ${key} differs from verification`);
-        const anchor3 = requireObject(final.anchor);
-        for (const key of ["file", "line", "endLine", "kind", "subject", "text"]) if (anchor3[key] !== void 0 && anchor3[key] !== finding.anchor[key]) throw new Error(`Published anchor.${key} differs from verification`);
-        if (finding.verification?.method !== decision.method || JSON.stringify(finding.verification?.proofs) !== JSON.stringify(item.completed.result.proofs) || JSON.stringify(finding.verification?.limits) !== JSON.stringify(item.completed.result.limits)) throw new Error("Published finding is missing verification evidence or limits");
-      } catch (error62) {
-        problems.push(`${item.id}/${decision.id}: ${error62 instanceof Error ? error62.message : String(error62)}`);
-      }
-    }
-  }
-  return problems;
-}
-function completeReviewWork(raw, repo2) {
-  return access(raw, repo2, (session, args) => {
-    const queue = session.queues.find((q) => q.id === str(args, "queue"));
-    const item = queue?.items.find((i) => i.id === str(args, "item"));
-    if (!queue || !item) throw new InputError("Unknown queue item");
-    const token = str(args, "claim"), worker = str(args, "worker"), result = requireObject(args.result);
-    if (item.completed) {
-      if (item.completed.token === token && item.completed.worker === worker && JSON.stringify(item.completed.result) === JSON.stringify(result)) return { state: "completed", item: item.id };
-      throw new InputError("Item already completed by another submission");
-    }
-    if (item.blocked || queue.phase !== session.phase || item.claim?.token !== token || item.claim.worker !== worker || Date.parse(item.claim.until) <= Date.now()) throw new InputError("Claim expired, blocked or belongs to another worker; claim again");
-    const at = location(args, repo2);
-    const candidates = listCandidates2({ repo: at.repo, target: at.target, run: session.run }, at.repo);
-    if (item.kind !== "verification") {
-      validateInvestigation(result, item.kind === "source");
-      for (const id of result.findings) {
-        const candidate = candidates.find((c) => c.id === id);
-        if (!candidate || candidate.unit !== queue.id || item.principle && candidate.rule !== item.principle.id) throw new InputError(`${id} is not a candidate for this queue item`);
-      }
-    } else {
-      str(result, "summary");
-      if (!strings(result.limits) || !strings(result.proofs)) throw new InputError("Verification needs proofs and limits arrays");
-      const decisions = optionalArray(result, "decisions").map(requireObject);
-      const ids = decisions.map((d) => str(d, "id"));
-      if (new Set(ids).size !== ids.length || ids.length !== item.candidates.length || item.candidates.some((id) => !ids.includes(id))) throw new InputError("Decisions must cover every candidate in the claimed group exactly once");
-      for (const decision of decisions) validateVerificationDecision(decision, at.repo, at.target);
-      const resolved = resolveCandidates({ repo: at.repo, target: at.target, decisions, proofs: result.proofs, limits: result.limits, reverify: Boolean(item.previous?.length) }, at.repo);
-      if (resolved.errors.length) throw new InputError(JSON.stringify(resolved.errors));
-    }
-    item.completed = { worker, token, at: (/* @__PURE__ */ new Date()).toISOString(), result };
-    return { state: "completed", item: item.id };
-  });
-}
-function beginVerification(raw, repo2) {
-  return access(raw, repo2, (session, args) => {
-    if (session.queues.filter((q) => q.phase === "review").some((q) => q.items.some((item) => !item.completed))) throw new InputError("Review queues must be complete before aggregation");
-    const at = location(args, repo2), candidates = listCandidates2({ repo: at.repo, target: at.target, run: session.run }, at.repo);
-    const groups = optionalArray(args, "groups").map((value) => {
-      const group = requireObject(value);
-      if (!strings(group.candidates) || !group.candidates.length) throw new InputError("Each issue group needs candidate ids");
-      return { candidates: group.candidates, reason: str(group, "reason") };
-    });
-    const ids = groups.flatMap((g) => g.candidates);
-    if (ids.length !== candidates.length || new Set(ids).size !== ids.length || candidates.some((c) => !ids.includes(c.id))) throw new InputError("Issue groups must partition all run candidates exactly once");
-    const items = groups.map((group, i) => ({ id: `issue-${i + 1}`, kind: "verification", ...group }));
-    const old = session.queues.find((q) => q.phase === "verification");
-    if (old) {
-      if (JSON.stringify(old.items.map((i) => ({ candidates: i.candidates, reason: i.reason }))) !== JSON.stringify(groups)) throw new InputError("Verification queue already exists with different groups");
-      return session;
-    }
-    session.phase = "verification";
-    session.parallelProofs ??= hasGit(at.repo);
-    session.queues.push({ id: "verification", phase: "verification", workers: items.length ? session.parallelProofs ? Math.ceil(items.length / 10) : 1 : 0, items });
-    return session;
-  });
-}
-function retryVerification(raw, repo2) {
-  return access(raw, repo2, (session, args) => {
-    const reason = str(args, "reason"), ids = args.items;
-    if (!strings(ids) || !ids.length || new Set(ids).size !== ids.length) throw new InputError("Supply distinct verification issue ids");
-    const queue = session.queues.find((q) => q.phase === "verification");
-    if (!queue || session.phase !== "verification") throw new InputError("No verification queue");
-    const chosen = ids.map((id) => queue.items.find((item) => item.id === id));
-    if (chosen.some((item) => !item?.completed)) throw new InputError("Only completed verification issues can be retried");
-    for (const item of chosen) {
-      item.previous = [...item.previous ?? [], { reason, completed: item.completed, ...item.claim ? { claim: item.claim } : {} }];
-      delete item.completed;
-      delete item.claim;
-    }
-    const remaining = queue.items.filter((item) => !item.completed && !item.blocked).length;
-    session.parallelProofs ??= hasGit(location(args, repo2).repo);
-    queue.workers = remaining ? session.parallelProofs ? Math.ceil(remaining / 10) : 1 : 0;
-    return session;
-  });
-}
-function blockReviewWork(raw, repo2) {
-  return access(raw, repo2, (session, args) => {
-    const queue = session.queues.find((q) => q.id === str(args, "queue")), worker = str(args, "worker"), reason = str(args, "reason");
-    const item = queue?.items.find((i) => !i.completed && i.claim?.worker === worker);
-    if (!item) throw new InputError("Worker has no active queue item to block");
-    item.blocked = { reason, at: (/* @__PURE__ */ new Date()).toISOString(), worker };
-    if (item.kind === "verification") {
-      const at = location(args, repo2);
-      try {
-        const visible = recordVerificationBlock({ repo: at.repo, target: at.target, candidates: item.candidates, reason }, at.repo);
-        if (visible.errors.length) item.blocked.visibilityErrors = visible.errors;
-      } catch (error62) {
-        item.blocked.visibilityErrors = [error62 instanceof Error ? error62.message : String(error62)];
-      }
-    }
-    return session;
-  });
-}
+// packages/findings/tools.mts
+init_api2();
+init_types();
+init_issue();
 
 // packages/findings/queue-tools.mts
+init_queues();
 var string4 = { type: "string" };
 var base = { repo: string4, target: string4, session: string4 };
 var owner = { ...base, queue: string4, worker: string4 };
@@ -45100,40 +45910,69 @@ var TOOLS = [
 ];
 var TOOL_NAMES = TOOLS.map((tool2) => tool2.name);
 
+// packages/findings/serve/mcp.mts
+init_web_assets();
+
+// packages/findings/serve/http.mts
+init_paths();
+init_port();
+init_api2();
+
 // packages/findings/pr.mts
+init_api2();
+init_findings();
 import { execFile as execFile2 } from "node:child_process";
 import { promisify as promisify2 } from "node:util";
 var run2 = promisify2(execFile2);
 var GOOD_FOR = 5 * 6e4;
 var SWEEP = 10 * 6e4;
 
+// packages/findings/serve/pwa.mts
+init_port();
+init_web_assets();
+
+// packages/findings/serve/http.mts
+init_rules();
+init_web_assets();
+init_html();
+
+// packages/findings/serve/server.mts
+init_port();
+
+// packages/findings/index.mts
+init_html();
+init_sarif();
+init_context();
+init_authorship();
+init_types();
+
 // skills/review/scripts/reviewer-runtime.ts
-var json3 = (file3) => JSON.parse(fs5.readFileSync(file3, "utf8"));
-var contained = (root, file3) => file3 === root || file3.startsWith(root + path6.sep);
+var json3 = (file3) => JSON.parse(fs6.readFileSync(file3, "utf8"));
+var contained = (root, file3) => file3 === root || file3.startsWith(root + path7.sep);
 function reviewerAccess(dir, jobId) {
-  dir = fs5.realpathSync(dir);
-  const plan = json3(path6.join(dir, "plan.json"));
-  const job = json3(path6.join(dir, "jobs.json")).find((each) => each.id === jobId);
+  dir = fs6.realpathSync(dir);
+  const plan = json3(path7.join(dir, "plan.json"));
+  const job = json3(path7.join(dir, "jobs.json")).find((each) => each.id === jobId);
   if (!job) throw new Error("Unknown reviewer job");
-  const tracking = json3(path6.join(dir, "tracking.json"));
-  const root = fs5.realpathSync(plan.root);
-  const readable = /* @__PURE__ */ new Set(["task.md", "context.md", "plan.json", "tracking.json", "jobs.json", "principles.md", ...fs5.existsSync(path6.join(dir, "sets.json")) ? ["sets.json"] : [], `agents/reviewer-${jobId}/INSTRUCTIONS.md`, ...job.parts]);
+  const tracking = json3(path7.join(dir, "tracking.json"));
+  const root = fs6.realpathSync(plan.root);
+  const readable = /* @__PURE__ */ new Set(["task.md", "context.md", "plan.json", "tracking.json", "jobs.json", "principles.md", ...fs6.existsSync(path7.join(dir, "sets.json")) ? ["sets.json"] : [], `agents/reviewer-${jobId}/INSTRUCTIONS.md`, ...job.parts]);
   const queueArgs = { repo: root, target: tracking.target, session: tracking.session, queue: job.queue, worker: jobId };
   const current2 = () => getReviewSession(queueArgs, root).queues.find((q) => q.id === job.queue)?.items.find((item) => !item.completed && !item.blocked && item.claim?.worker === jobId && Date.parse(item.claim.until) > Date.now());
   const sourcePath = (input2) => {
-    const file3 = fs5.realpathSync(path6.resolve(root, input2));
-    if (!contained(root, file3) || contained(dir, file3) || path6.relative(root, file3).split(path6.sep).some((part) => [".git", ".well-actually", ".pascal-review", "node_modules"].includes(part))) throw new Error("Source path is outside the review's readable source");
+    const file3 = fs6.realpathSync(path7.resolve(root, input2));
+    if (!contained(root, file3) || contained(dir, file3) || path7.relative(root, file3).split(path7.sep).some((part) => [".git", ".well-actually", ".pascal-review", "node_modules"].includes(part))) throw new Error("Source path is outside the review's readable source");
     return file3;
   };
   return {
     read(input2, start = 1, count3 = 200) {
-      const proposed = path6.resolve(dir, input2);
-      const canonical = fs5.existsSync(proposed) ? fs5.realpathSync(proposed) : proposed;
-      const relative2 = path6.relative(dir, canonical);
+      const proposed = path7.resolve(dir, input2);
+      const canonical = fs6.existsSync(proposed) ? fs6.realpathSync(proposed) : proposed;
+      const relative2 = path7.relative(dir, canonical);
       const file3 = readable.has(relative2) ? canonical : sourcePath(input2);
       if (readable.has(relative2) && !contained(dir, file3)) throw new Error("Artifact symlink escapes review directory");
-      if (fs5.statSync(file3).size > 2e6) throw new Error("File is too large");
-      return fs5.readFileSync(file3, "utf8").split("\n").slice(start - 1, start - 1 + count3).map((line, i) => `${start + i}: ${line}`).join("\n");
+      if (fs6.statSync(file3).size > 2e6) throw new Error("File is too large");
+      return fs6.readFileSync(file3, "utf8").split("\n").slice(start - 1, start - 1 + count3).map((line, i) => `${start + i}: ${line}`).join("\n");
     },
     search(query, input2 = ".") {
       try {
@@ -45145,15 +45984,15 @@ function reviewerAccess(dir, jobId) {
     },
     before(input2) {
       if (plan.before) {
-        const before = fs5.realpathSync(plan.before);
-        const file3 = fs5.realpathSync(path6.resolve(before, input2));
+        const before = fs6.realpathSync(plan.before);
+        const file3 = fs6.realpathSync(path7.resolve(before, input2));
         if (!contained(before, file3)) throw new Error("Previous-source path is outside the before root");
-        if (fs5.statSync(file3).size > 2e6) throw new Error("Previous source is too large");
-        return fs5.readFileSync(file3, "utf8");
+        if (fs6.statSync(file3).size > 2e6) throw new Error("Previous source is too large");
+        return fs6.readFileSync(file3, "utf8");
       }
-      const resolved = path6.resolve(root, input2);
+      const resolved = path7.resolve(root, input2);
       if (!contained(root, resolved)) throw new Error("Previous-source path is outside the source root");
-      const relative2 = path6.relative(root, resolved);
+      const relative2 = path7.relative(root, resolved);
       if (!plan.target.base) throw new Error("No Git comparison base");
       return execFileSync5("git", ["--no-pager", "show", `${plan.target.base}:${relative2}`], { cwd: root, encoding: "utf8", maxBuffer: 2e6 });
     },
@@ -45182,12 +46021,12 @@ function reviewerAccess(dir, jobId) {
     verdict(value) {
       if (job.queue) throw new Error("Queue workers submit coverage with complete_review_work; no verdict files");
       if (value.job !== jobId) throw new Error("Coverage belongs to another job");
-      const output2 = path6.join(dir, "verdicts");
-      fs5.mkdirSync(output2, { recursive: true });
-      if (!contained(dir, fs5.realpathSync(output2))) throw new Error("Verdict directory escapes review directory");
-      const file3 = path6.join(output2, `${jobId}.json`);
-      if (fs5.existsSync(file3) && fs5.lstatSync(file3).isSymbolicLink()) throw new Error("Verdict is a symlink");
-      fs5.writeFileSync(file3, JSON.stringify(value, null, 2) + "\n");
+      const output2 = path7.join(dir, "verdicts");
+      fs6.mkdirSync(output2, { recursive: true });
+      if (!contained(dir, fs6.realpathSync(output2))) throw new Error("Verdict directory escapes review directory");
+      const file3 = path7.join(output2, `${jobId}.json`);
+      if (fs6.existsSync(file3) && fs6.lstatSync(file3).isSymbolicLink()) throw new Error("Verdict is a symlink");
+      fs6.writeFileSync(file3, JSON.stringify(value, null, 2) + "\n");
       return "Coverage saved";
     }
   };
@@ -45208,7 +46047,7 @@ async function serveReviewer(dir, job) {
   await server.connect(new StdioServerTransport());
 }
 async function serveVerification(dir, worker) {
-  const plan = json3(path6.join(dir, "plan.json")), tracking = json3(path6.join(dir, "tracking.json"));
+  const plan = json3(path7.join(dir, "plan.json")), tracking = json3(path7.join(dir, "tracking.json"));
   const args = { repo: plan.root, target: tracking.target, session: tracking.session, queue: "verification", worker };
   const server = new McpServer({ name: "wellactually-proof-worker", version: "1.0.0" });
   const reply = (value) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
@@ -45234,7 +46073,7 @@ async function serveVerification(dir, worker) {
 }
 function claudeWorkerArgs(script, dir, job, model, effort, prompt, verification, proofSandbox) {
   if (verification && proofSandbox !== "danger-full-access") throw new Error("Claude proof workers require a full-access host; workspace-write enforcement is unavailable");
-  const mcp = { mcpServers: { review: { command: process.execPath, args: [script, verification ? "--verification-server" : "--reviewer-server", path6.resolve(dir), "--job", job] } } };
+  const mcp = { mcpServers: { review: { command: process.execPath, args: [script, verification ? "--verification-server" : "--reviewer-server", path7.resolve(dir), "--job", job] } } };
   return ["-p", "--model", model, "--effort", effort, "--strict-mcp-config", "--mcp-config", JSON.stringify(mcp), "--tools", verification ? "Bash,Read,Grep,Glob" : "", "--allowedTools", verification ? "Bash,Read,Grep,Glob,mcp__review" : "mcp__review", "--setting-sources", "", "--settings", JSON.stringify({ disableAllHooks: true }), "--disable-slash-commands", "--no-session-persistence", "--output-format", "stream-json", "--verbose", prompt];
 }
 function claudeEvents(event, calls) {
@@ -45257,13 +46096,13 @@ async function runReviewer(dir, job, script, model, effort, verification = false
   if (!verification) reviewerAccess(dir, job);
   const folder = verification ? job : `reviewer-${job}`;
   if (verification && !/^verification-worker-[1-9][0-9]*$/.test(job)) throw new Error("Invalid verification worker id");
-  if (!fs5.existsSync(path6.join(dir, "agents", folder, "INSTRUCTIONS.md"))) throw new Error("Missing worker instructions");
-  const workspace = verification && fs5.existsSync(path6.join(dir, "agents", folder, "workspace.json")) ? json3(path6.join(dir, "agents", folder, "workspace.json")).root : dir;
-  const args = ["exec", "--ignore-user-config", "--ignore-rules", "--ephemeral", "--skip-git-repo-check", "--sandbox", verification ? proofSandbox : "read-only", ...verification ? ["--add-dir", path6.resolve(dir)] : [], ...!verification ? ["--disable", "shell_tool", "--disable", "unified_exec"] : [], "--disable", "plugins", "--disable", "multi_agent", "--disable", "multi_agent_v2", "-c", "agents.enabled=false", "-c", "agents.max_depth=0", "-c", 'web_search="disabled"', "-m", model, "--json", "-c", `model_reasoning_effort=${JSON.stringify(effort)}`, "-c", `mcp_servers.review={default_tools_approval_mode="approve",required=true,command=${JSON.stringify(process.execPath)},args=${JSON.stringify([script, verification ? "--verification-server" : "--reviewer-server", path6.resolve(dir), "--job", job])}}`, `Read ${path6.join(path6.resolve(dir), "agents", folder, "INSTRUCTIONS.md")} ${verification ? "using shell/read tools" : "using review.read_text"} and execute that reviewer assignment. All paths in instructions may be absolute. ${verification ? "Execution tools are available for focused proofs; keep tracked product files unchanged. The MCP gateway limits candidates/advice to your currently claimed issue." : "Use only review MCP tools. No execution tool is provided."} Save candidates immediately using create_candidates. Queue jobs repeatedly claim_review_work and complete_review_work until waiting or complete. Legacy jobs use write_verdict. Queue tools take no repo/session/queue/worker arguments; the gateway supplies them. The gateway supplies repo, target, run and unit; do not supply them. Source paths are relative to the source root; artifact paths relative to the review directory. Do not attempt execution through other tools.`];
+  if (!fs6.existsSync(path7.join(dir, "agents", folder, "INSTRUCTIONS.md"))) throw new Error("Missing worker instructions");
+  const workspace = verification && fs6.existsSync(path7.join(dir, "agents", folder, "workspace.json")) ? json3(path7.join(dir, "agents", folder, "workspace.json")).root : dir;
+  const args = ["exec", "--ignore-user-config", "--ignore-rules", "--ephemeral", "--skip-git-repo-check", "--sandbox", verification ? proofSandbox : "read-only", ...verification ? ["--add-dir", path7.resolve(dir)] : [], ...!verification ? ["--disable", "shell_tool", "--disable", "unified_exec"] : [], "--disable", "plugins", "--disable", "multi_agent", "--disable", "multi_agent_v2", "-c", "agents.enabled=false", "-c", "agents.max_depth=0", "-c", 'web_search="disabled"', "-m", model, "--json", "-c", `model_reasoning_effort=${JSON.stringify(effort)}`, "-c", `mcp_servers.review={default_tools_approval_mode="approve",required=true,command=${JSON.stringify(process.execPath)},args=${JSON.stringify([script, verification ? "--verification-server" : "--reviewer-server", path7.resolve(dir), "--job", job])}}`, `Read ${path7.join(path7.resolve(dir), "agents", folder, "INSTRUCTIONS.md")} ${verification ? "using shell/read tools" : "using review.read_text"} and execute that reviewer assignment. All paths in instructions may be absolute. ${verification ? "Execution tools are available for focused proofs; keep tracked product files unchanged. The MCP gateway limits candidates/advice to your currently claimed issue." : "Use only review MCP tools. No execution tool is provided."} Save candidates immediately using create_candidates. Queue jobs repeatedly claim_review_work and complete_review_work until waiting or complete. Legacy jobs use write_verdict. Queue tools take no repo/session/queue/worker arguments; the gateway supplies them. The gateway supplies repo, target, run and unit; do not supply them. Source paths are relative to the source root; artifact paths relative to the review directory. Do not attempt execution through other tools.`];
   return new Promise((resolve3, reject) => {
     const commandArgs = provider === "claude" ? claudeWorkerArgs(script, dir, job, model, effort, args.at(-1), verification, proofSandbox) : args;
-    const child = spawn2(provider, commandArgs, { cwd: path6.resolve(workspace), env: { ...process.env, WELLACTUALLY_REVIEW_HOST: provider }, stdio: ["ignore", "pipe", "inherit"], signal });
-    const audit = fs5.createWriteStream(path6.join(dir, `agents/${folder}/tool-audit.jsonl`));
+    const child = spawn2(provider, commandArgs, { cwd: path7.resolve(workspace), env: { ...process.env, WELLACTUALLY_REVIEW_HOST: provider }, stdio: ["ignore", "pipe", "inherit"], signal });
+    const audit = fs6.createWriteStream(path7.join(dir, `agents/${folder}/tool-audit.jsonl`));
     let pending = "";
     let coverageSaved = false;
     const calls = /* @__PURE__ */ new Map();
@@ -45309,18 +46148,18 @@ function failureKind(events) {
   return /possible cybersecurity risk|content was flagged|safeguard|safety.{0,30}(reject|block)|policy.{0,30}(reject|violation)/i.test(errors) ? "blocked" : "transient";
 }
 async function runWorkerPool(dir, script, model, effort, verification = false, proofSandbox = "workspace-write", provider = "codex") {
-  dir = path6.resolve(dir);
-  const tracking = json3(path6.join(dir, "tracking.json")), plan = json3(path6.join(dir, "plan.json"));
+  dir = path7.resolve(dir);
+  const tracking = json3(path7.join(dir, "tracking.json")), plan = json3(path7.join(dir, "plan.json"));
   const sessionArgs = { repo: plan.root, target: tracking.target, session: tracking.session };
-  const jobs = verification ? Array.from({ length: getReviewSession(sessionArgs, plan.root).queues.find((q) => q.phase === "verification").workers }, (_, i) => ({ id: `verification-worker-${i + 1}`, queue: "verification" })) : json3(path6.join(dir, "jobs.json"));
+  const jobs = verification ? Array.from({ length: getReviewSession(sessionArgs, plan.root).queues.find((q) => q.phase === "verification").workers }, (_, i) => ({ id: `verification-worker-${i + 1}`, queue: "verification" })) : json3(path7.join(dir, "jobs.json"));
   const abort = new AbortController(), stop = () => abort.abort();
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
   try {
     const results = await Promise.all(jobs.map(async (job) => {
-      const audit = path6.join(dir, "agents", verification ? job.id : `reviewer-${job.id}`, "tool-audit.jsonl");
-      if (fs5.existsSync(audit)) {
-        const prior = fs5.readFileSync(audit, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+      const audit = path7.join(dir, "agents", verification ? job.id : `reviewer-${job.id}`, "tool-audit.jsonl");
+      if (fs6.existsSync(audit)) {
+        const prior = fs6.readFileSync(audit, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
         if (failureKind(prior) === "blocked") {
           const reason = prior.filter((e) => e.error).map((e) => e.error).filter(Boolean).join("\n");
           try {
@@ -45333,7 +46172,7 @@ async function runWorkerPool(dir, script, model, effort, verification = false, p
         }
       }
       for (let attempt = 1; attempt <= 3 && !abort.signal.aborted; attempt++) {
-        if (fs5.existsSync(audit)) fs5.renameSync(audit, `${audit}.before-${Date.now()}-${attempt}`);
+        if (fs6.existsSync(audit)) fs6.renameSync(audit, `${audit}.before-${Date.now()}-${attempt}`);
         process.stdout.write(JSON.stringify({ event: "worker_start", worker: job.id, attempt, at: (/* @__PURE__ */ new Date()).toISOString() }) + "\n");
         let code;
         try {
@@ -45345,7 +46184,7 @@ async function runWorkerPool(dir, script, model, effort, verification = false, p
         }
         process.stdout.write(JSON.stringify({ event: "worker_exit", worker: job.id, attempt, code, at: (/* @__PURE__ */ new Date()).toISOString() }) + "\n");
         if (abort.signal.aborted) return code || 1;
-        const events = fs5.existsSync(audit) ? fs5.readFileSync(audit, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
+        const events = fs6.existsSync(audit) ? fs6.readFileSync(audit, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
         if (failureKind(events) === "blocked") {
           const reason = events.filter((e) => e.error).map((e) => e.error).filter(Boolean).join("\n");
           try {
@@ -45368,155 +46207,23 @@ async function runWorkerPool(dir, script, model, effort, verification = false, p
 }
 
 // skills/review/scripts/main.ts
+init_board();
+init_client();
 import { parseArgs } from "node:util";
 
-// packages/cli/src/board/detections.ts
-import { randomBytes } from "node:crypto";
-import fs6 from "node:fs";
-import path7 from "node:path";
-var LOG = "detections.log";
-var SENDING = /^detections\.sending\.[a-z0-9]+$/;
-var REPORT_EVERY_MS = 5 * 6e4;
-var WINDOW_MS = 10 * 6e4;
-function count(lines) {
-  const totals = /* @__PURE__ */ new Map();
-  for (const line of lines) {
-    if (/^\d{4}-\d{2}-\d{2} [a-f0-9]{64}$/.test(line)) {
-      totals.set(line, (totals.get(line) ?? 0) + 1);
-    }
-  }
-  return [...totals.entries()].map(([line, total]) => ({ day: line.slice(0, 10), hash: line.slice(11), count: total }));
-}
-async function drainDetections(send) {
-  const home = boardHome();
-  const log = path7.join(home, LOG);
-  if (fs6.existsSync(log)) {
-    fs6.renameSync(log, path7.join(home, `detections.sending.${Date.now().toString(36)}${randomBytes(4).toString("hex")}`));
-  }
-  const pending = fs6.existsSync(home) ? fs6.readdirSync(home).filter((name) => SENDING.test(name)) : [];
-  const counts = count(pending.flatMap((name) => fs6.readFileSync(path7.join(home, name), "utf8").split("\n")));
-  if (counts.length > 0) {
-    await send(counts);
-  }
-  for (const name of pending) {
-    fs6.rmSync(path7.join(home, name), { force: true });
-  }
-  return counts.reduce((sum, entry) => sum + entry.count, 0);
-}
-
-// packages/cli/src/registry/client.ts
-var RegistryError = class extends Error {
-  /** The HTTP status the registry answered with, or null when it was not asked or did not answer. */
-  status;
-  constructor(message, status = null) {
-    super(message);
-    this.status = status;
-  }
-};
-async function call(pathname, init = {}) {
-  const config2 = readConfig();
-  const token = init.token === void 0 ? config2.token : init.token;
-  const headers = { accept: "application/json" };
-  if (token) {
-    headers.authorization = `Bearer ${token}`;
-  }
-  if (init.body !== void 0) {
-    headers["content-type"] = "application/json";
-  }
-  const url2 = new URL(pathname, config2.registry);
-  for (let attempt = 0; ; attempt++) {
-    let response;
-    try {
-      response = await fetch(url2, {
-        method: init.method ?? "GET",
-        headers,
-        body: init.body === void 0 ? void 0 : JSON.stringify(init.body)
-      });
-    } catch (error62) {
-      throw new RegistryError(`cannot reach the registry at ${config2.registry}: ${error62.message}`);
-    }
-    if (response.status !== 502 && response.status !== 503 || attempt === WAKE_RETRIES.length) {
-      return response;
-    }
-    await new Promise((resolve3) => setTimeout(resolve3, WAKE_RETRIES[attempt]));
-  }
-}
-var WAKE_RETRIES = [1e3, 2e3, 4e3];
-async function failure2(response) {
-  if (response.status === 401) {
-    if (tokenFromEnvironment()) {
-      return new RegistryError("the registry refused the token in WELLACTUALLY_TOKEN. It was revoked or is mistyped. Create a new one on your advisory board on the website.", 401);
-    }
-    return new RegistryError("not signed in, or the token was revoked. Sign in with the plugin's login skill.");
-  }
-  const body = await response.json().catch(() => null);
-  return new RegistryError(body?.error ?? `the registry answered ${response.status}`, response.status);
-}
-function requireToken() {
-  if (!readConfig().token) {
-    throw new RegistryError("not signed in. Sign in with the plugin's login skill.");
-  }
-}
-async function sync() {
-  requireToken();
-  const response = await call("/api/board");
-  if (!response.ok) {
-    throw await failure2(response);
-  }
-  const body = await response.json();
-  const remote = body.entries;
-  const registry2 = readConfig().registry;
-  const suggestions = (body.suggestions ?? []).map((expert) => ({ ...expert, url: new URL(`/e/${encodeURIComponent(expert.handle)}`, registry2).toString() }));
-  const downloaded = [];
-  for (const entry of remote) {
-    if (hasCached(entry.hash)) {
-      continue;
-    }
-    const bundleResponse = await call(`/api/bundles/${entry.hash}`);
-    if (!bundleResponse.ok) {
-      throw await failure2(bundleResponse);
-    }
-    const principle = await bundleResponse.json();
-    const actual = await hashPrinciple(principle.manifest, principle.advice, principle.bundle);
-    if (actual !== entry.hash) {
-      throw new RegistryError(`${entry.id} does not match its hash. Refusing to install it.`);
-    }
-    writeCached({ id: entry.id, version: entry.version, hash: entry.hash, manifest: principle.manifest, advice: principle.advice, bundle: principle.bundle });
-    downloaded.push(entry.id);
-  }
-  const before = readLockfile();
-  const local = before.entries.filter((entry) => entry.id.startsWith("local/"));
-  const remoteIds = new Set(remote.map((entry) => entry.id));
-  const removed = before.entries.filter((entry) => !entry.id.startsWith("local/") && !remoteIds.has(entry.id)).map((entry) => entry.id);
-  const synced = remote.map(({ id, version: version2, hash: hash3, enabled }) => ({ id, version: version2, hash: hash3, enabled }));
-  writeLockfile({ syncedAt: (/* @__PURE__ */ new Date()).toISOString(), entries: [...synced, ...local] });
-  return { entries: remote, downloaded, removed, reported: await reportDetections(), suggestions };
-}
-async function reportDetections() {
-  if (!readConfig().stats) {
-    return 0;
-  }
-  try {
-    return await drainDetections(async (detections) => {
-      const response = await call("/api/detections", { method: "POST", body: { detections } });
-      if (!response.ok) {
-        throw await failure2(response);
-      }
-    });
-  } catch {
-    return 0;
-  }
-}
-
 // skills/review/scripts/review.ts
+init_node();
+init_finding();
 import { execFileSync as execFileSync6 } from "node:child_process";
-import { createHash as createHash4, randomUUID as randomUUID2 } from "node:crypto";
-import fs8 from "node:fs";
+import { createHash as createHash5, randomUUID as randomUUID3 } from "node:crypto";
+import fs10 from "node:fs";
 import os2 from "node:os";
-import path9 from "node:path";
+import path11 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // packages/cli/src/hook/turn.ts
+init_board();
+init_files();
 var SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
 function parsePatch(patch) {
   const files = [];
@@ -45604,26 +46311,30 @@ function unquote(text2) {
   return Buffer.from(bytes).toString("utf8");
 }
 
+// skills/review/scripts/review.ts
+init_board();
+init_files();
+
 // skills/review/scripts/inputs.ts
-import fs7 from "node:fs";
-import path8 from "node:path";
+import fs9 from "node:fs";
+import path10 from "node:path";
 var LIMIT = 512 * 1024;
 var SKIP = /* @__PURE__ */ new Set([".git", ".hg", ".svn", "node_modules", ".dart_tool", "build", "dist", "vendor", ".venv", "venv"]);
 function safePath(root, file3) {
-  const full = path8.resolve(root, file3);
-  if (full === root || !full.startsWith(root + path8.sep)) throw new Error(`File must be inside the review root: ${file3}`);
-  if (fs7.existsSync(full)) {
-    const real = fs7.realpathSync(full);
-    if (!real.startsWith(fs7.realpathSync(root) + path8.sep)) throw new Error(`File escapes review root through a symlink: ${file3}`);
+  const full = path10.resolve(root, file3);
+  if (full === root || !full.startsWith(root + path10.sep)) throw new Error(`File must be inside the review root: ${file3}`);
+  if (fs9.existsSync(full)) {
+    const real = fs9.realpathSync(full);
+    if (!real.startsWith(fs9.realpathSync(root) + path10.sep)) throw new Error(`File escapes review root through a symlink: ${file3}`);
   }
   return full;
 }
 function read3(root, file3) {
   const full = safePath(root, file3);
   try {
-    if (!fs7.statSync(full).isFile()) return { reason: "not a regular file" };
-    if (fs7.statSync(full).size > LIMIT) return { reason: "larger than 512 KB" };
-    const content = fs7.readFileSync(full, "utf8");
+    if (!fs9.statSync(full).isFile()) return { reason: "not a regular file" };
+    if (fs9.statSync(full).size > LIMIT) return { reason: "larger than 512 KB" };
+    const content = fs9.readFileSync(full, "utf8");
     return content.includes("\0") ? { reason: "binary" } : { content };
   } catch (error62) {
     return { reason: `could not be read: ${error62 instanceof Error ? error62.message : String(error62)}` };
@@ -45632,20 +46343,20 @@ function read3(root, file3) {
 function names(root, selected) {
   const found = /* @__PURE__ */ new Set();
   const walk = (full, explicit) => {
-    const rel = path8.relative(root, full).split(path8.sep).join("/");
-    if (fs7.lstatSync(full).isSymbolicLink()) {
+    const rel = path10.relative(root, full).split(path10.sep).join("/");
+    if (fs9.lstatSync(full).isSymbolicLink()) {
       if (explicit) throw new Error(`Select the real file instead of a symlink: ${rel}`);
       return;
     }
     if (full !== root) safePath(root, rel);
-    if (fs7.statSync(full).isDirectory()) {
-      for (const entry of fs7.readdirSync(full, { withFileTypes: true })) {
-        if (!SKIP.has(entry.name)) walk(path8.join(full, entry.name), false);
+    if (fs9.statSync(full).isDirectory()) {
+      for (const entry of fs9.readdirSync(full, { withFileTypes: true })) {
+        if (!SKIP.has(entry.name)) walk(path10.join(full, entry.name), false);
       }
-    } else if (fs7.statSync(full).isFile()) found.add(rel);
+    } else if (fs9.statSync(full).isFile()) found.add(rel);
   };
   for (const file3 of selected) {
-    const full = path8.resolve(root, file3);
+    const full = path10.resolve(root, file3);
     if (full !== root) safePath(root, file3);
     walk(full, true);
   }
@@ -45672,15 +46383,15 @@ function normalizePatch(text2) {
   return result.join("\n");
 }
 function collectInput(cwd, options) {
-  const root = fs7.realpathSync(path8.resolve(cwd));
-  if (!fs7.statSync(root).isDirectory()) throw new Error("Review root must be a directory");
+  const root = fs9.realpathSync(path10.resolve(cwd));
+  if (!fs9.statSync(root).isDirectory()) throw new Error("Review root must be a directory");
   if (options.patch && options.paths?.length) throw new Error("Use either --patch or selected paths, not both");
   const after = /* @__PURE__ */ new Map();
   const before = /* @__PURE__ */ new Map();
   const omitted = [];
   let files, blocks;
   if (options.patch) {
-    const patch = normalizePatch(fs7.readFileSync(path8.resolve(options.patch), "utf8"));
+    const patch = normalizePatch(fs9.readFileSync(path10.resolve(options.patch), "utf8"));
     const chunks = patch.split(/^(?=diff --git )/m).filter((text2) => text2.startsWith("diff --git "));
     files = chunks.map((text2) => {
       const entry = parsePatch(text2)[0];
@@ -45698,7 +46409,7 @@ function collectInput(cwd, options) {
     blocks = chunks.map((text2, index) => ({ file: files[index].path, text: text2.endsWith("\n") ? text2 : text2 + "\n" }));
     for (const file3 of files) {
       after.set(file3.path, file3.status === "deleted" ? { reason: "deleted in supplied patch" } : read3(root, file3.path));
-      before.set(file3.path, options.beforeRoot ? read3(path8.resolve(options.beforeRoot), file3.from ?? file3.path) : { reason: "previous full content not supplied; inspect the patch" });
+      before.set(file3.path, options.beforeRoot ? read3(path10.resolve(options.beforeRoot), file3.from ?? file3.path) : { reason: "previous full content not supplied; inspect the patch" });
       const now2 = after.get(file3.path);
       if (file3.status !== "deleted") {
         if (!now2 || !("content" in now2)) throw new Error(`Reviewed content unavailable for ${file3.path}; supply the actual after files`);
@@ -45732,6 +46443,9 @@ function collectInput(cwd, options) {
 }
 
 // skills/review/scripts/review.ts
+init_switches();
+init_queues();
+init_api2();
 var REVIEW_BUDGET_MS = 1e4;
 var MAX_FILE_BYTES = 512 * 1024;
 function git2(root, args) {
@@ -45795,11 +46509,11 @@ function readAt(root, ref, file3) {
   let content;
   try {
     if (ref === null) {
-      const full = path9.join(root, file3);
-      if (fs8.statSync(full).size > MAX_FILE_BYTES) {
+      const full = path11.join(root, file3);
+      if (fs10.statSync(full).size > MAX_FILE_BYTES) {
         return { reason: `larger than ${MAX_FILE_BYTES / 1024} KB` };
       }
-      content = fs8.readFileSync(full, "utf8");
+      content = fs10.readFileSync(full, "utf8");
     } else {
       content = git2(root, ["show", `${ref}:${file3}`]);
     }
@@ -45897,7 +46611,7 @@ function omissionOf(file3, content, generated) {
   if (generated.has(file3)) {
     return "marked linguist-generated";
   }
-  if (LOCKFILES.has(path9.posix.basename(file3))) {
+  if (LOCKFILES.has(path11.posix.basename(file3))) {
     return "a lockfile";
   }
   const top = content?.split("\n", HEADER_LINES).join("\n") ?? "";
@@ -45959,19 +46673,19 @@ function packDiff(blocks, max = PART_BYTES) {
   return sorted.length === 0 ? [] : pack(sorted, 0);
 }
 function writeParts(dir, into, parts) {
-  fs8.mkdirSync(path9.join(dir, into), { recursive: true });
+  fs10.mkdirSync(path11.join(dir, into), { recursive: true });
   const written = [];
   parts.forEach((part, index2) => {
     const file3 = `${into}/part-${String(index2 + 1).padStart(2, "0")}.patch`;
     const text2 = part.map((block) => block.text).join("");
-    fs8.writeFileSync(path9.join(dir, file3), text2);
+    fs10.writeFileSync(path11.join(dir, file3), text2);
     written.push({ file: file3, bytes: Buffer.byteLength(text2), files: [...new Set(part.map((block) => block.file))] });
   });
   const index = ["# Parts of the change", "", "Read every part in full. Each holds whole folders or files, or whole hunks of one long file.", ""];
   for (const part of written) {
     index.push(`- ${part.file}: ${Math.round(part.bytes / 1024)} KB: ${part.files.join(", ")}`);
   }
-  fs8.writeFileSync(path9.join(dir, into, "index.md"), `${index.join("\n")}
+  fs10.writeFileSync(path11.join(dir, into, "index.md"), `${index.join("\n")}
 `);
   return written;
 }
@@ -45993,7 +46707,7 @@ function fileOf2(id) {
   return `principles/${id.replace(/[^A-Za-z0-9_.-]/g, "__")}.md`;
 }
 async function planReview(cwd, spec, dir, lockfile = readLockfile(), label) {
-  const out = dir ? path9.resolve(dir) : defaultReviewDirectory();
+  const out = dir ? path11.resolve(dir) : defaultReviewDirectory();
   let root = findProjectRoot(cwd);
   if (root === null || gitOrNull(root, ["rev-parse", "--is-inside-work-tree"]) !== "true") {
     throw new Error("A review needs a git repository. Run it inside one.");
@@ -46002,12 +46716,12 @@ async function planReview(cwd, spec, dir, lockfile = readLockfile(), label) {
   const target2 = { ...resolved, base: git2(root, ["rev-parse", resolved.base]).trim(), head: resolved.head === null ? null : git2(root, ["rev-parse", resolved.head]).trim() };
   if (target2.head !== null) {
     const gitDir = git2(root, ["rev-parse", "--absolute-git-dir"]).trim();
-    const commonDir = path9.resolve(root, git2(root, ["rev-parse", "--git-common-dir"]).trim());
+    const commonDir = path11.resolve(root, git2(root, ["rev-parse", "--git-common-dir"]).trim());
     const reusable = gitDir !== commonDir && git2(root, ["rev-parse", "HEAD"]).trim() === target2.head && git2(root, ["status", "--porcelain"]).trim() === "";
     if (!reusable) {
       const checkout = `${out}-checkout`;
-      if (fs8.existsSync(checkout)) throw new Error("Review checkout already exists; choose a fresh output directory");
-      fs8.mkdirSync(path9.dirname(checkout), { recursive: true });
+      if (fs10.existsSync(checkout)) throw new Error("Review checkout already exists; choose a fresh output directory");
+      fs10.mkdirSync(path11.dirname(checkout), { recursive: true });
       git2(root, ["worktree", "add", "--detach", checkout, target2.head]);
       root = checkout;
     }
@@ -46024,25 +46738,25 @@ async function planReview(cwd, spec, dir, lockfile = readLockfile(), label) {
 async function planInputReview(root, options = {}, dir, lockfile = readLockfile()) {
   const plan = await prepareCollected(collectInput(root, options), dir, lockfile);
   if (options.beforeRoot) {
-    plan.before = toPosix(path9.resolve(options.beforeRoot));
-    fs8.writeFileSync(path9.join(plan.dir, "plan.json"), `${JSON.stringify(plan, null, 2)}
+    plan.before = toPosix(path11.resolve(options.beforeRoot));
+    fs10.writeFileSync(path11.join(plan.dir, "plan.json"), `${JSON.stringify(plan, null, 2)}
 `);
   }
   return plan;
 }
 function defaultReviewDirectory() {
-  return path9.join(os2.homedir(), ".wellactually", "reviews", `${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}-${randomUUID2().slice(0, 8)}`);
+  return path11.join(os2.homedir(), ".wellactually", "reviews", `${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}-${randomUUID3().slice(0, 8)}`);
 }
 async function prepareCollected(input2, dir, lockfile) {
   const { root, target: target2, files } = input2;
-  const out = dir ? path9.resolve(dir) : defaultReviewDirectory();
-  if (path9.resolve(out) === path9.resolve(root)) throw new Error("Review output must not overwrite the project root");
-  if (fs8.existsSync(path9.join(out, "plan.json"))) throw new Error("Review directory is already prepared; choose a new output directory");
-  fs8.mkdirSync(out, { recursive: true });
+  const out = dir ? path11.resolve(dir) : defaultReviewDirectory();
+  if (path11.resolve(out) === path11.resolve(root)) throw new Error("Review output must not overwrite the project root");
+  if (fs10.existsSync(path11.join(out, "plan.json"))) throw new Error("Review directory is already prepared; choose a new output directory");
+  fs10.mkdirSync(out, { recursive: true });
   const { principles, skipped, failures, unchecked } = lockfile === null ? { principles: [], skipped: [], failures: [], unchecked: [] } : await loadBoard(input2, out, lockfile);
   const readable = input2.readable;
   const diffText = readable.blocks.map((block) => block.text).join("");
-  fs8.writeFileSync(path9.join(out, "diff.patch"), diffText);
+  fs10.writeFileSync(path11.join(out, "diff.patch"), diffText);
   const parts = writeParts(out, "diff", packDiff(readable.blocks));
   copySteps(out);
   const plan = {
@@ -46060,7 +46774,7 @@ async function prepareCollected(input2, dir, lockfile) {
     tokens: { diff: tokensOf(Buffer.byteLength(diffText)), advice: principles.reduce((sum, principle) => sum + (principle.adviceTokens ?? adviceTokens(out, principle.file)), 0) },
     dir: toPosix(out)
   };
-  fs8.writeFileSync(path9.join(out, "plan.json"), `${JSON.stringify(plan, null, 2)}
+  fs10.writeFileSync(path11.join(out, "plan.json"), `${JSON.stringify(plan, null, 2)}
 `);
   return plan;
 }
@@ -46140,12 +46854,12 @@ async function loadBoard(input2, out, lockfile) {
     tags: principle.tags,
     hits: principle.hits
   });
-  fs8.writeFileSync(path9.join(out, "detectors-triggered.json"), JSON.stringify(
+  fs10.writeFileSync(path11.join(out, "detectors-triggered.json"), JSON.stringify(
     detectors.filter((principle) => principle.hits.length > 0).map(summary2),
     null,
     2
   ) + "\n");
-  fs8.writeFileSync(path9.join(out, "detectors-no-findings.json"), JSON.stringify(
+  fs10.writeFileSync(path11.join(out, "detectors-no-findings.json"), JSON.stringify(
     detectors.filter((principle) => principle.hits.length === 0 && files.length > 0 && unchecked.length === 0 && !failures.some((failure3) => failure3.id === principle.id)).map(summary2),
     null,
     2
@@ -46154,11 +46868,11 @@ async function loadBoard(input2, out, lockfile) {
 }
 async function loadPrinciples(dir, lockfile = readLockfile()) {
   const plan = readJson3(dir, "plan.json");
-  const input2 = plan.target.kind === "git" ? { root: plan.root, target: plan.target, files: changedFiles(plan.root, plan.target), readable: { blocks: [], omitted: plan.omitted }, read: (file3, previous) => readAt(plan.root, previous ? plan.target.base : plan.target.head, file3) } : collectInput(plan.root, plan.target.kind === "patch" ? { patch: path9.join(dir, "diff.patch"), beforeRoot: plan.before } : { paths: plan.files.map((file3) => file3.path) });
+  const input2 = plan.target.kind === "git" ? { root: plan.root, target: plan.target, files: changedFiles(plan.root, plan.target), readable: { blocks: [], omitted: plan.omitted }, read: (file3, previous) => readAt(plan.root, previous ? plan.target.base : plan.target.head, file3) } : collectInput(plan.root, plan.target.kind === "patch" ? { patch: path11.join(dir, "diff.patch"), beforeRoot: plan.before } : { paths: plan.files.map((file3) => file3.path) });
   Object.assign(plan, await loadBoard(input2, dir, lockfile));
   plan.principlesLoaded = true;
   plan.tokens.advice = plan.principles.reduce((sum, principle) => sum + (principle.adviceTokens ?? adviceTokens(dir, principle.file)), 0);
-  fs8.writeFileSync(path9.join(dir, "plan.json"), JSON.stringify(plan, null, 2) + "\n");
+  fs10.writeFileSync(path11.join(dir, "plan.json"), JSON.stringify(plan, null, 2) + "\n");
   return plan;
 }
 function count2(n, one, many = `${one}s`) {
@@ -46193,18 +46907,18 @@ function renderPlan(plan) {
   return lines.join("\n");
 }
 function adviceTokens(dir, file3) {
-  return tokensOf(fs8.statSync(path9.join(dir, file3)).size);
+  return tokensOf(fs10.statSync(path11.join(dir, file3)).size);
 }
 var STEP_FILES = ["gather-information.md", "prepare-working-tree.md", "filter-principles.md", "splitter.md", "queue-session.md", "queue-reviewer.md", "aggregator.md", "verification-worker.md"];
 function stepsSource() {
-  let dir = path9.dirname(fileURLToPath2(import.meta.url));
+  let dir = path11.dirname(fileURLToPath2(import.meta.url));
   for (let depth = 0; depth < 5; depth++) {
     for (const candidate of [".", "skills/review", "skills/wellactually-review"]) {
-      if (fs8.existsSync(path9.join(dir, candidate, "reviewer.md"))) {
-        return path9.join(dir, candidate);
+      if (fs10.existsSync(path11.join(dir, candidate, "reviewer.md"))) {
+        return path11.join(dir, candidate);
       }
     }
-    dir = path9.dirname(dir);
+    dir = path11.dirname(dir);
   }
   return null;
 }
@@ -46213,29 +46927,29 @@ function copySteps(out) {
   if (source === null) {
     return;
   }
-  fs8.mkdirSync(path9.join(out, "steps"), { recursive: true });
+  fs10.mkdirSync(path11.join(out, "steps"), { recursive: true });
   for (const [index, file3] of STEP_FILES.entries()) {
-    fs8.copyFileSync(path9.join(source, file3), path9.join(out, "steps", `${index + 1}_${file3}`));
+    fs10.copyFileSync(path11.join(source, file3), path11.join(out, "steps", `${index + 1}_${file3}`));
   }
 }
 var DEFAULT_BUDGET = 1e5;
 function readJson3(dir, file3) {
-  const full = path9.join(dir, file3);
-  if (!fs8.existsSync(full)) {
+  const full = path11.join(dir, file3);
+  if (!fs10.existsSync(full)) {
     throw new Error(`${file3} is missing in ${dir}. Run the step that writes it first.`);
   }
-  return JSON.parse(fs8.readFileSync(full, "utf8"));
+  return JSON.parse(fs10.readFileSync(full, "utf8"));
 }
 function routeReview(dir, budget = DEFAULT_BUDGET) {
   let plan = readJson3(dir, "plan.json");
   if (plan.principlesLoaded === false) throw new Error("Load principles with --load-principles before routing.");
-  const legacy = fs8.existsSync(path9.join(dir, "scope.json"));
+  const legacy = fs10.existsSync(path11.join(dir, "scope.json"));
   let scope;
   if (legacy) scope = readJson3(dir, "scope.json");
   else {
-    const file3 = path9.join(dir, "principles.md");
-    if (!fs8.existsSync(file3)) throw new Error("principles.md is missing; finish relevance filtering first.");
-    const ids = fs8.readFileSync(file3, "utf8").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const file3 = path11.join(dir, "principles.md");
+    if (!fs10.existsSync(file3)) throw new Error("principles.md is missing; finish relevance filtering first.");
+    const ids = fs10.readFileSync(file3, "utf8").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
     if (new Set(ids).size !== ids.length || ids.some((id) => !plan.principles.some((principle) => principle.id === id))) throw new Error("principles.md must contain unique current-board ids only, one per line.");
     for (const principle of plan.principles) if (principle.hits.length > 0 && !ids.includes(principle.id)) throw new Error("principles.md omitted triggered principle " + principle.id);
     scope = { inScope: ids, outOfScope: plan.principles.filter((principle) => !ids.includes(principle.id)).map((principle) => ({ id: principle.id, reason: "Filtered by coordinator" })) };
@@ -46245,24 +46959,24 @@ function routeReview(dir, budget = DEFAULT_BUDGET) {
   const kept = [...scope.inScope.filter((id) => byId.has(id)), ...plan.principles.filter((principle) => !placed.has(principle.id)).map((principle) => principle.id)];
   const excluded = new Set(scope.outOfScope.map((entry) => entry.id));
   for (const file3 of ["detectors-triggered.json", "detectors-no-findings.json"]) {
-    if (fs8.existsSync(path9.join(dir, file3))) {
+    if (fs10.existsSync(path11.join(dir, file3))) {
       const entries = readJson3(dir, file3).filter((entry) => !excluded.has(entry.id));
-      fs8.writeFileSync(path9.join(dir, file3), JSON.stringify(entries, null, 2) + "\n");
+      fs10.writeFileSync(path11.join(dir, file3), JSON.stringify(entries, null, 2) + "\n");
     }
   }
   for (const principle of plan.principles) {
     if (excluded.has(principle.id)) {
-      const advice2 = path9.resolve(dir, principle.file);
-      if (advice2.startsWith(`${path9.resolve(dir)}${path9.sep}`)) {
-        fs8.rmSync(advice2, { force: true });
+      const advice2 = path11.resolve(dir, principle.file);
+      if (advice2.startsWith(`${path11.resolve(dir)}${path11.sep}`)) {
+        fs10.rmSync(advice2, { force: true });
       }
     }
   }
   plan = { ...plan, principles: plan.principles.filter((principle) => !excluded.has(principle.id)), skipped: [], failures: (plan.failures ?? []).filter((failure3) => !excluded.has(failure3.id)) };
-  fs8.writeFileSync(path9.join(dir, "plan.json"), `${JSON.stringify(plan, null, 2)}
+  fs10.writeFileSync(path11.join(dir, "plan.json"), `${JSON.stringify(plan, null, 2)}
 `);
-  fs8.writeFileSync(path9.join(dir, "principles.md"), kept.join("\n") + (kept.length ? "\n" : ""));
-  if (legacy) fs8.writeFileSync(path9.join(dir, "scope.json"), `${JSON.stringify({ inScope: kept, outOfScope: [] }, null, 2)}
+  fs10.writeFileSync(path11.join(dir, "principles.md"), kept.join("\n") + (kept.length ? "\n" : ""));
+  if (legacy) fs10.writeFileSync(path11.join(dir, "scope.json"), `${JSON.stringify({ inScope: kept, outOfScope: [] }, null, 2)}
 `);
   const groups = [];
   if (plan.reviewProtocol === 4) {
@@ -46272,8 +46986,8 @@ function routeReview(dir, budget = DEFAULT_BUDGET) {
     const route2 = plan.tokens.diff <= budget / 2 ? "single" : "sets";
     const jobs2 = route2 === "single" ? queueJobs("all", plan.parts.map((part) => part.file), kept.length, null) : [];
     const result2 = { route: route2, scheduling: "queue", budget, tokens: { diff: plan.tokens.diff, advice: advice2 }, groups: [], setBytes: Math.floor(budget / 2) * BYTES_PER_TOKEN, jobs: jobs2 };
-    fs8.writeFileSync(path9.join(dir, "route.json"), JSON.stringify(result2, null, 2) + "\n");
-    fs8.writeFileSync(path9.join(dir, "jobs.json"), JSON.stringify(jobs2, null, 2) + "\n");
+    fs10.writeFileSync(path11.join(dir, "route.json"), JSON.stringify(result2, null, 2) + "\n");
+    fs10.writeFileSync(path11.join(dir, "jobs.json"), JSON.stringify(jobs2, null, 2) + "\n");
     return result2;
   }
   let groupTokens = 0;
@@ -46294,10 +47008,10 @@ function routeReview(dir, budget = DEFAULT_BUDGET) {
   const route = plan.tokens.diff <= room ? "single" : "sets";
   const jobs = route === "single" ? (groups.length === 0 && plan.reviewProtocol === 3 ? [[]] : groups).map((principles, index) => ({ id: groups.length <= 1 ? "all" : `all-g${index + 1}`, parts: plan.parts.map((part) => part.file), principles, set: null })) : [];
   const result = { route, budget, tokens: { diff: plan.tokens.diff, advice }, groups, setBytes: room * BYTES_PER_TOKEN, jobs };
-  fs8.writeFileSync(path9.join(dir, "route.json"), `${JSON.stringify(result, null, 2)}
+  fs10.writeFileSync(path11.join(dir, "route.json"), `${JSON.stringify(result, null, 2)}
 `);
   if (route === "single") {
-    fs8.writeFileSync(path9.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}
+    fs10.writeFileSync(path11.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}
 `);
   }
   return result;
@@ -46318,7 +47032,7 @@ function buildSets(dir) {
   const chosen = readJson3(dir, "sets.json");
   const blocks = /* @__PURE__ */ new Map();
   for (const part of plan.parts) {
-    const text2 = fs8.readFileSync(path9.join(dir, part.file), "utf8");
+    const text2 = fs10.readFileSync(path11.join(dir, part.file), "utf8");
     for (const piece of text2.split(/^(?=diff --git )/m)) {
       const name = /^diff --git a\/.* b\/(.*)$/m.exec(piece)?.[1];
       if (name !== void 0) {
@@ -46364,7 +47078,7 @@ function buildSets(dir) {
     });
   });
   if (plan.reviewProtocol === 4) jobs.push({ id: "crossing", parts: [], principles: [], set: "crossing", queue: "crossing" });
-  fs8.writeFileSync(path9.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}
+  fs10.writeFileSync(path11.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}
 `);
   return jobs;
 }
@@ -46376,7 +47090,7 @@ function renderSets(jobs) {
   return `${count2(sets, "change set")}, ${count2(jobs.length, "reviewer")} listed in jobs.json.`;
 }
 function setupAgents(dir) {
-  dir = path9.resolve(dir);
+  dir = path11.resolve(dir);
   const plan = readJson3(dir, "plan.json");
   const jobs = readJson3(dir, "jobs.json");
   const route = readJson3(dir, "route.json");
@@ -46389,46 +47103,46 @@ function setupAgents(dir) {
   if (route.route === "sets") assignments.push({ folder: "reviewer-crossing", role: "reviewer", assignment: "Do the crossing review pass.", parts: plan.parts.map((part) => part.file) });
   assignments.push({ folder: "verifier", role: "verifier", assignment: `Aggregate and verify every candidate from all reviewers and all units (${units.join(", ")}), only after every reviewer finishes. You are the only verifier.`, parts: plan.parts.map((part) => part.file) });
   return assignments.map((agent) => {
-    const folder = path9.join(dir, "agents", agent.folder);
-    fs8.mkdirSync(folder, { recursive: true });
+    const folder = path11.join(dir, "agents", agent.folder);
+    fs10.mkdirSync(folder, { recursive: true });
     const dependencies = ["findings"];
     const sections = [agent.role, ...dependencies].map((role, index) => {
-      let body = fs8.readFileSync(path9.join(source, `${role}.md`), "utf8").replaceAll("<dir>", dir);
+      let body = fs10.readFileSync(path11.join(source, `${role}.md`), "utf8").replaceAll("<dir>", dir);
       for (const [name, number4] of [["reviewer", 6], ["findings", 5]]) {
-        body = body.replaceAll(path9.join(dir, "steps", `${number4}_${name}.md`), `the ${name} section in this file`);
+        body = body.replaceAll(path11.join(dir, "steps", `${number4}_${name}.md`), `the ${name} section in this file`);
         body = body.replaceAll(`steps/${number4}_${name}.md`, `the ${name} section in this file`);
       }
       return `## ${index === 0 ? "Your role" : "Reference only: " + role}
 
 ${body}`;
     });
-    const inputs = ["task.md", ...fs8.existsSync(path9.join(dir, "context.md")) ? ["context.md"] : [], "plan.json", "principles.md", "tracking.json", "jobs.json", ...agent.parts];
-    const header = [`# ${agent.folder}`, "", agent.assignment, `Review directory: ${dir}`, `Working source directory: ${plan.root}`, `Your scratch directory: ${folder}`, "", "Only the Your role section assigns work. Other sections supply writing, probe and MCP guidance; do not perform their separate roles.", "Shared inputs and required outputs remain relative to the review directory, not this agent folder. Do not copy shared source, diff, principle bodies or findings into this folder.", "", "## Shared inputs", "", ...inputs.map((file4) => `- [${file4}](${path9.join(dir, file4)})`), ""];
-    const file3 = path9.join(folder, "INSTRUCTIONS.md");
-    fs8.writeFileSync(file3, header.join("\n") + "\n" + sections.join("\n\n"));
+    const inputs = ["task.md", ...fs10.existsSync(path11.join(dir, "context.md")) ? ["context.md"] : [], "plan.json", "principles.md", "tracking.json", "jobs.json", ...agent.parts];
+    const header = [`# ${agent.folder}`, "", agent.assignment, `Review directory: ${dir}`, `Working source directory: ${plan.root}`, `Your scratch directory: ${folder}`, "", "Only the Your role section assigns work. Other sections supply writing, probe and MCP guidance; do not perform their separate roles.", "Shared inputs and required outputs remain relative to the review directory, not this agent folder. Do not copy shared source, diff, principle bodies or findings into this folder.", "", "## Shared inputs", "", ...inputs.map((file4) => `- [${file4}](${path11.join(dir, file4)})`), ""];
+    const file3 = path11.join(folder, "INSTRUCTIONS.md");
+    fs10.writeFileSync(file3, header.join("\n") + "\n" + sections.join("\n\n"));
     return file3;
   });
 }
 function setupQueueAgents(dir, plan, jobs, source) {
   const tracking = readJson3(dir, "tracking.json");
   const units = [...new Set(jobs.map((job) => job.queue))];
-  const scope = createHash4("sha256").update(JSON.stringify(plan.target)).update(fs8.readFileSync(path9.join(dir, "diff.patch"))).digest("hex");
+  const scope = createHash5("sha256").update(JSON.stringify(plan.target)).update(fs10.readFileSync(path11.join(dir, "diff.patch"))).digest("hex");
   const session = claimReviewSession({ repo: plan.root, target: tracking.target, run: tracking.run, scope, sets: units.map((id) => ({ id, principles: id === "crossing" ? [] : plan.principles.map((p) => ({ id: p.id, version: p.version })) })) }, plan.root);
-  fs8.writeFileSync(path9.join(dir, "tracking.json"), JSON.stringify({ ...tracking, session: session.id }, null, 2) + "\n");
+  fs10.writeFileSync(path11.join(dir, "tracking.json"), JSON.stringify({ ...tracking, session: session.id }, null, 2) + "\n");
   const assignments = [...jobs.map((job) => ({ folder: `reviewer-${job.id}`, role: "queue-reviewer", job: job.id, queue: job.queue, parts: job.parts })), { folder: "aggregator", role: "aggregator", job: "aggregator", queue: "", parts: [] }];
   return assignments.map((agent) => {
-    const folder = path9.join(dir, "agents", agent.folder);
-    fs8.mkdirSync(folder, { recursive: true });
-    const inputs = ["task.md", ...fs8.existsSync(path9.join(dir, "context.md")) ? ["context.md"] : [], "plan.json", "tracking.json", "jobs.json", ...fs8.existsSync(path9.join(dir, "sets.json")) ? ["sets.json"] : [], ...agent.parts];
-    const header = [`# ${agent.folder}`, `Review directory: ${dir}`, `Source root: ${plan.root}`, `Worker: ${agent.job}`, `Queue: ${agent.queue}`, "", "## Inputs", ...inputs.map((file4) => `- [${file4}](${path9.join(dir, file4)})`), ""];
-    const body = fs8.readFileSync(path9.join(source, `${agent.role}.md`), "utf8").replaceAll("<dir>", dir);
-    const file3 = path9.join(folder, "INSTRUCTIONS.md");
-    fs8.writeFileSync(file3, header.join("\n") + "\n" + body);
+    const folder = path11.join(dir, "agents", agent.folder);
+    fs10.mkdirSync(folder, { recursive: true });
+    const inputs = ["task.md", ...fs10.existsSync(path11.join(dir, "context.md")) ? ["context.md"] : [], "plan.json", "tracking.json", "jobs.json", ...fs10.existsSync(path11.join(dir, "sets.json")) ? ["sets.json"] : [], ...agent.parts];
+    const header = [`# ${agent.folder}`, `Review directory: ${dir}`, `Source root: ${plan.root}`, `Worker: ${agent.job}`, `Queue: ${agent.queue}`, "", "## Inputs", ...inputs.map((file4) => `- [${file4}](${path11.join(dir, file4)})`), ""];
+    const body = fs10.readFileSync(path11.join(source, `${agent.role}.md`), "utf8").replaceAll("<dir>", dir);
+    const file3 = path11.join(folder, "INSTRUCTIONS.md");
+    fs10.writeFileSync(file3, header.join("\n") + "\n" + body);
     return file3;
   });
 }
 function setupVerificationAgents(dir) {
-  dir = path9.resolve(dir);
+  dir = path11.resolve(dir);
   const plan = readJson3(dir, "plan.json"), tracking = readJson3(dir, "tracking.json");
   const session = getReviewSession({ repo: plan.root, target: tracking.target, session: tracking.session }, plan.root);
   const queue = session.queues.find((q) => q.phase === "verification");
@@ -46436,12 +47150,12 @@ function setupVerificationAgents(dir) {
   const source = stepsSource();
   if (!source) throw new Error("Missing skill templates");
   return Array.from({ length: queue.workers }, (_, index) => {
-    const id = `verification-worker-${index + 1}`, folder = path9.join(dir, "agents", id);
-    fs8.mkdirSync(folder, { recursive: true });
+    const id = `verification-worker-${index + 1}`, folder = path11.join(dir, "agents", id);
+    fs10.mkdirSync(folder, { recursive: true });
     const workingRoot = prepareProofWorktree(plan, folder);
-    const file3 = path9.join(folder, "INSTRUCTIONS.md");
-    fs8.writeFileSync(path9.join(folder, "workspace.json"), JSON.stringify({ root: workingRoot, isolated: workingRoot !== plan.root }, null, 2) + "\n");
-    fs8.writeFileSync(file3, `# ${id}
+    const file3 = path11.join(folder, "INSTRUCTIONS.md");
+    fs10.writeFileSync(path11.join(folder, "workspace.json"), JSON.stringify({ root: workingRoot, isolated: workingRoot !== plan.root }, null, 2) + "\n");
+    fs10.writeFileSync(file3, `# ${id}
 Worker: ${id}
 Queue: verification
 Review directory: ${dir}
@@ -46450,33 +47164,33 @@ Proof working root: ${workingRoot}
 Execute tests/probes from the proof working root. Do not mutate the reviewed source or another worker's checkout.
 Read ${dir}/tracking.json, ${dir}/task.md, ${dir}/plan.json and optional context.md.
 
-` + fs8.readFileSync(path9.join(source, "verification-worker.md"), "utf8").replaceAll("<dir>", dir));
+` + fs10.readFileSync(path11.join(source, "verification-worker.md"), "utf8").replaceAll("<dir>", dir));
     return file3;
   });
 }
 function prepareProofWorktree(plan, folder) {
   const gitRoot = gitOrNull(plan.root, ["rev-parse", "--show-toplevel"]), head = gitOrNull(plan.root, ["rev-parse", "--verify", "HEAD"]);
   if (!gitRoot || !head) return plan.root;
-  const checkout = path9.join(folder, "checkout");
-  if (!fs8.existsSync(checkout)) execFileSync6("git", ["worktree", "add", "--detach", checkout, head.trim()], { cwd: plan.root, stdio: ["ignore", "pipe", "pipe"] });
+  const checkout = path11.join(folder, "checkout");
+  if (!fs10.existsSync(checkout)) execFileSync6("git", ["worktree", "add", "--detach", checkout, head.trim()], { cwd: plan.root, stdio: ["ignore", "pipe", "pipe"] });
   else if (gitOrNull(checkout, ["rev-parse", "HEAD"])?.trim() !== head.trim()) throw new Error("Existing proof worktree has a different HEAD; choose a fresh worker directory");
-  const actualRoot = fs8.realpathSync(plan.root), actualGitRoot = fs8.realpathSync(gitRoot.trim());
-  const relativeRoot = path9.relative(actualGitRoot, actualRoot), workingRoot = path9.join(fs8.realpathSync(checkout), relativeRoot);
-  if (relativeRoot === ".." || relativeRoot.startsWith(".." + path9.sep)) throw new Error("Reviewed root is outside its Git repository");
+  const actualRoot = fs10.realpathSync(plan.root), actualGitRoot = fs10.realpathSync(gitRoot.trim());
+  const relativeRoot = path11.relative(actualGitRoot, actualRoot), workingRoot = path11.join(fs10.realpathSync(checkout), relativeRoot);
+  if (relativeRoot === ".." || relativeRoot.startsWith(".." + path11.sep)) throw new Error("Reviewed root is outside its Git repository");
   if (plan.target.kind !== "git" || plan.target.head === null) for (const file3 of plan.files) {
-    const from = path9.resolve(actualRoot, file3.path), to = path9.resolve(workingRoot, file3.path);
-    if (!from.startsWith(actualRoot + path9.sep) || !to.startsWith(path9.resolve(workingRoot) + path9.sep)) throw new Error("Proof overlay escapes project root");
-    if (!fs8.existsSync(from)) fs8.rmSync(to, { force: true });
+    const from = path11.resolve(actualRoot, file3.path), to = path11.resolve(workingRoot, file3.path);
+    if (!from.startsWith(actualRoot + path11.sep) || !to.startsWith(path11.resolve(workingRoot) + path11.sep)) throw new Error("Proof overlay escapes project root");
+    if (!fs10.existsSync(from)) fs10.rmSync(to, { force: true });
     else {
-      if (!fs8.lstatSync(from).isFile() || !fs8.realpathSync(from).startsWith(actualRoot + path9.sep)) throw new Error(`Cannot isolate non-regular input ${file3.path}`);
-      fs8.mkdirSync(path9.dirname(to), { recursive: true });
-      if (!fs8.realpathSync(path9.dirname(to)).startsWith(fs8.realpathSync(workingRoot)) || fs8.existsSync(to) && fs8.lstatSync(to).isSymbolicLink()) throw new Error("Proof overlay follows a symlink outside its checkout");
-      fs8.copyFileSync(from, to);
+      if (!fs10.lstatSync(from).isFile() || !fs10.realpathSync(from).startsWith(actualRoot + path11.sep)) throw new Error(`Cannot isolate non-regular input ${file3.path}`);
+      fs10.mkdirSync(path11.dirname(to), { recursive: true });
+      if (!fs10.realpathSync(path11.dirname(to)).startsWith(fs10.realpathSync(workingRoot)) || fs10.existsSync(to) && fs10.lstatSync(to).isSymbolicLink()) throw new Error("Proof overlay follows a symlink outside its checkout");
+      fs10.copyFileSync(from, to);
     }
-    if (file3.from && file3.from !== file3.path && !fs8.existsSync(path9.join(actualRoot, file3.from))) {
-      const previous = path9.resolve(workingRoot, file3.from);
-      if (!previous.startsWith(path9.resolve(workingRoot) + path9.sep)) throw new Error("Rename escapes proof root");
-      fs8.rmSync(previous, { force: true });
+    if (file3.from && file3.from !== file3.path && !fs10.existsSync(path11.join(actualRoot, file3.from))) {
+      const previous = path11.resolve(workingRoot, file3.from);
+      if (!previous.startsWith(path11.resolve(workingRoot) + path11.sep)) throw new Error("Rename escapes proof root");
+      fs10.rmSync(previous, { force: true });
     }
   }
   return workingRoot;
@@ -46490,10 +47204,10 @@ function parseBudget(text2) {
   return Math.round(Number(match[1]) * scale);
 }
 function checkReview(dir, stage) {
-  const queuedPlan = fs8.existsSync(path9.join(dir, "plan.json")) ? readJson3(dir, "plan.json") : null;
+  const queuedPlan = fs10.existsSync(path11.join(dir, "plan.json")) ? readJson3(dir, "plan.json") : null;
   if (queuedPlan?.reviewProtocol === 4) {
     if (!["review", "verify"].includes(stage)) throw new Error("Queue reviews have review and verify stages only");
-    for (const obsolete of ["verdicts", "verified", "findings.json", "ratings.json"]) if (fs8.existsSync(path9.join(dir, obsolete))) throw new Error(`${obsolete} is obsolete in queue reviews; progress belongs in MCP`);
+    for (const obsolete of ["verdicts", "verified", "findings.json", "ratings.json"]) if (fs10.existsSync(path11.join(dir, obsolete))) throw new Error(`${obsolete} is obsolete in queue reviews; progress belongs in MCP`);
     const tracking = readJson3(dir, "tracking.json");
     const session = getReviewSession({ repo: queuedPlan.root, target: tracking.target, session: tracking.session }, queuedPlan.root);
     const queues = session.queues.filter((q) => q.phase === "review" || stage === "verify");
@@ -46519,7 +47233,7 @@ function checkReview(dir, stage) {
   if (!["single", "sets"].includes(route.route) || !Array.isArray(jobs) || jobs.length === 0 && (route.route !== "single" || !Array.isArray(route.groups) || route.groups.length !== 0)) {
     throw new Error("Review routing is incomplete: zero jobs require a single route with no principle groups.");
   }
-  const planFile = fs8.existsSync(path9.join(dir, "plan.json")) ? readJson3(dir, "plan.json") : null;
+  const planFile = fs10.existsSync(path11.join(dir, "plan.json")) ? readJson3(dir, "plan.json") : null;
   const inquiries = /* @__PURE__ */ new Map();
   const nonempty2 = (value) => typeof value === "string" && value.trim().length > 0;
   const texts = (value) => Array.isArray(value) && value.every(nonempty2);
@@ -46549,16 +47263,16 @@ function checkReview(dir, stage) {
   };
   const requireText = (file3) => {
     try {
-      if (fs8.readFileSync(path9.join(dir, file3), "utf8").trim() === "") {
+      if (fs10.readFileSync(path11.join(dir, file3), "utf8").trim() === "") {
         problems.push(`${file3} is empty`);
       }
     } catch {
       problems.push(`${file3} is missing or unreadable`);
     }
   };
-  if (fs8.existsSync(path9.join(dir, "plan.json"))) {
+  if (fs10.existsSync(path11.join(dir, "plan.json"))) {
     const plan = load("plan.json");
-    const scope = fs8.existsSync(path9.join(dir, "scope.json")) ? load("scope.json") : { inScope: [], outOfScope: [] };
+    const scope = fs10.existsSync(path11.join(dir, "scope.json")) ? load("scope.json") : { inScope: [], outOfScope: [] };
     if (plan !== null && scope !== null) {
       const excluded = new Set(scope.outOfScope.map((entry) => entry.id));
       for (const principle of plan.principles) {
@@ -46650,7 +47364,7 @@ function checkReview(dir, stage) {
     for (const unit of units) {
       const results = `probes/${unit}/results.md`;
       try {
-        if (fs8.readFileSync(path9.join(dir, results), "utf8").trim() === "") {
+        if (fs10.readFileSync(path11.join(dir, results), "utf8").trim() === "") {
           problems.push(`${results} is empty`);
         }
       } catch {
@@ -46661,9 +47375,9 @@ function checkReview(dir, stage) {
       verdicts(stem, unit, [], unit);
     }
   }
-  const verdictDir = path9.join(dir, "verdicts");
-  if (fs8.existsSync(verdictDir)) {
-    for (const file3 of fs8.readdirSync(verdictDir).filter((file4) => file4.endsWith(".json"))) {
+  const verdictDir = path11.join(dir, "verdicts");
+  if (fs10.existsSync(verdictDir)) {
+    for (const file3 of fs10.readdirSync(verdictDir).filter((file4) => file4.endsWith(".json"))) {
       const stem = file3.slice(0, -5);
       if (!expectedFiles.has(stem) && (through >= 1 || !stem.startsWith("testing-")) && !(planFile?.reviewProtocol === 3 && stem.startsWith("testing-"))) {
         problems.push(`Unexpected verdicts/${file3}; it is not an assigned job or testing unit`);
@@ -46699,7 +47413,7 @@ function checkReview(dir, stage) {
       }
     }
   }
-  if (through >= 2 && fs8.existsSync(path9.join(dir, "verified"))) {
+  if (through >= 2 && fs10.existsSync(path11.join(dir, "verified"))) {
     problems.push("verified/ is obsolete; verification decisions belong in Findings MCP");
   }
   if (problems.length > 0) {
@@ -46819,7 +47533,7 @@ No --git/--patch means a snapshot of selected current files, not a change agains
     print(plan2, renderPlan(plan2));
     return 0;
   }
-  const root = path10.resolve(values.root ?? process.cwd());
+  const root = path12.resolve(values.root ?? process.cwd());
   const plan = values.git ? await planReview(root, values.git, values.out, null, values.label) : await planInputReview(root, { paths: values.files, patch: values.patch, beforeRoot: values["before-root"], label: values.label }, values.out, null);
   print(plan, renderPlan(plan));
   return 0;

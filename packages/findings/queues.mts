@@ -4,6 +4,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { targetPaths } from "./store/paths.mts";
 import { listCandidates, listFindings, resolveCandidates, recordVerificationBlock } from "./api.mts";
+import { locked } from "./store/lock.mts";
+import { upsertRegistry } from "./store/registry.mts";
 import { readMeta } from "./store/findings.mts";
 import { repoRelative } from "./store/paths.mts";
 import { InputError, requireObject, str, optionalArray } from "./validate.mts";
@@ -27,48 +29,21 @@ export interface ReviewSession {
   createdAt: string;
   updatedAt: string;
   phase: "review" | "verification";
+  reportId?: string;
+  reportRegistry?: string;
+  suggestions?: { events: { id: string; principle: string; priority: "p0" | "p1" | "p2" | "p3" | "p4" }[]; aggregatedAt: string; registry?: string; sentAt?: string; lastError?: string };
   parallelProofs?: boolean;
   ratings?: Record<string, { version: number; rating: "up" | "down" | "not_applicable"; reason: string; state: "sending" | "sent" | "not_sent" | "uncertain"; at: string; response?: string }>;
   queues: { id: string; phase: "review" | "verification"; workers: number; items: QueueItem[] }[];
 }
 export function reviewSessionSummary(session: ReviewSession): unknown {
-  return { id: session.id, run: session.run, phase: session.phase, parallelProofs: session.parallelProofs, createdAt: session.createdAt, updatedAt: session.updatedAt, queues: session.queues.map(queue => ({ id: queue.id, phase: queue.phase, workers: queue.workers, total: queue.items.length, completed: queue.items.filter(i => i.completed).length, claimed: queue.items.filter(i => !i.completed && !i.blocked && i.claim && Date.parse(i.claim.until) > Date.now()).length, pending: queue.items.filter(i => !i.completed && !i.blocked && (!i.claim || Date.parse(i.claim.until) <= Date.now())).length, blocked: queue.items.filter(i => i.blocked).length, limited: queue.items.filter(i => i.completed && ((i.completed.result.investigation as Json | undefined)?.status === "limited" || (Array.isArray(i.completed.result.limits) && i.completed.result.limits.length > 0))).length })) };
+  return { id: session.id, run: session.run, phase: session.phase, ...(session.suggestions ? { suggestions: { count: session.suggestions.events.length, aggregatedAt: session.suggestions.aggregatedAt, sentAt: session.suggestions.sentAt, lastError: session.suggestions.lastError } } : {}), parallelProofs: session.parallelProofs, createdAt: session.createdAt, updatedAt: session.updatedAt, queues: session.queues.map(queue => ({ id: queue.id, phase: queue.phase, workers: queue.workers, total: queue.items.length, completed: queue.items.filter(i => i.completed).length, claimed: queue.items.filter(i => !i.completed && !i.blocked && i.claim && Date.parse(i.claim.until) > Date.now()).length, pending: queue.items.filter(i => !i.completed && !i.blocked && (!i.claim || Date.parse(i.claim.until) <= Date.now())).length, blocked: queue.items.filter(i => i.blocked).length, limited: queue.items.filter(i => i.completed && ((i.completed.result.investigation as Json | undefined)?.status === "limited" || (Array.isArray(i.completed.result.limits) && i.completed.result.limits.length > 0))).length })) };
 }
 const LEASE_MS = 15 * 60_000;
 function hasGit(repo: string): boolean { try { return Boolean(execFileSync("git", ["rev-parse", "--verify", "HEAD"], { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim()); } catch { return false; } }
 const hash = (text: string): string => createHash("sha256").update(text).digest("hex");
 const nonempty = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(nonempty);
-
-/** Every server process shares the same lock. Never steal a lock from a living process. */
-function locked<T>(dir: string, action: () => T): T {
-  fs.mkdirSync(dir, { recursive: true });
-  const lock = path.join(dir, ".lock");
-  const start = Date.now();
-  while (true) {
-    try { fs.mkdirSync(lock); fs.writeFileSync(path.join(lock, "owner"), String(process.pid)); break; }
-    catch (error: any) {
-      if (error.code !== "EEXIST") throw error;
-      const recovery = path.join(dir, ".recovery");
-      let ownsRecovery = false;
-      try {
-        fs.mkdirSync(recovery); ownsRecovery = true;
-        // Re-read inside the recovery guard: another process may already have recovered it.
-        const pid = Number(fs.readFileSync(path.join(lock, "owner"), "utf8"));
-        if (Number.isInteger(pid) && pid > 0) {
-          try { process.kill(pid, 0); } catch (failure: any) { if (failure.code === "ESRCH") fs.rmSync(lock, { recursive: true, force: true }); }
-        }
-      } catch {
-        if (ownsRecovery) {
-          try { if (Date.now() - fs.statSync(lock).mtimeMs > 60_000 && !fs.existsSync(path.join(lock, "owner"))) fs.rmSync(lock, { recursive: true, force: true }); } catch { /* Owner released between reads. */ }
-        }
-      } finally { if (ownsRecovery) fs.rmSync(recovery, { recursive: true, force: true }); }
-      if (Date.now() - start > 5000) throw new InputError("Review session is busy; retry this call");
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
-    }
-  }
-  try { return action(); } finally { fs.rmSync(lock, { recursive: true, force: true }); }
-}
 
 function location(args: Json, fallback: string): { repo: string; target: string; dir: string; file: string } {
   const repo = typeof args.repo === "string" ? path.resolve(args.repo) : fallback;
@@ -106,10 +81,11 @@ export function claimReviewSession(raw: unknown, repo: string): ReviewSession {
   });
   if (!sets.length || new Set(sets.map(s => s.id)).size !== sets.length) throw new InputError("Supply distinct review sets");
   const at = location({ ...args, session: id }, repo), manifest = hash(JSON.stringify({ sets, scope: args.scope ?? null }));
+  upsertRegistry(at.repo, at.target, new Date().toISOString());
   return locked(at.dir, () => {
     if (fs.existsSync(at.file)) { const old = read(at.file); if (old.manifest !== manifest) throw new InputError("Run already has a different queue manifest; start a new run"); return old; }
     const now = new Date().toISOString();
-    const session: ReviewSession = { id, run, manifest, createdAt: now, updatedAt: now, phase: "review", parallelProofs: hasGit(at.repo), queues: sets.map(set => ({ id: set.id, phase: "review", workers: Math.max(1, Math.ceil(set.principles.length / 20)), items: [{ id: "source", kind: "source" }, ...set.principles.map(principle => ({ id: principle.id, kind: "principle" as const, principle }))] })) };
+    const session: ReviewSession = { id, run, manifest, reportId: randomUUID(), ...(typeof args.registry === "string" ? { reportRegistry: args.registry } : {}), createdAt: now, updatedAt: now, phase: "review", parallelProofs: hasGit(at.repo), queues: sets.map(set => ({ id: set.id, phase: "review", workers: Math.max(1, Math.ceil(set.principles.length / 20)), items: [{ id: "source", kind: "source" }, ...set.principles.map(principle => ({ id: principle.id, kind: "principle" as const, principle }))] })) };
     save(at.file, session); return session;
   });
 }
@@ -277,7 +253,29 @@ export function beginVerification(raw: unknown, repo: string): ReviewSession {
     session.phase = "verification";
     session.parallelProofs ??= hasGit(at.repo);
     session.queues.push({ id: "verification", phase: "verification", workers: items.length ? session.parallelProofs ? Math.ceil(items.length / 10) : 1 : 0, items });
+    const pinned = new Map(session.queues.filter(q => q.phase === "review").flatMap(q => q.items.flatMap(i => i.principle ? [i.principle] : [])).map(p => [p.id, p]));
+    const byId = new Map(candidates.map(c => [c.id, c]));
+    const aggregatedAt = new Date().toISOString();
+    session.suggestions = { aggregatedAt, ...(session.reportRegistry ? { registry: session.reportRegistry } : {}), events: groups.flatMap(group => {
+      const members = group.candidates.map(id => byId.get(id)!);
+      const rules = new Set(members.flatMap(c => c.rule ? [c.rule.replace(/@\d+$/, "")] : []));
+      const priority = (["p0", "p1", "p2", "p3", "p4"] as const).find(p => members.some(c => c.priority === p)) ?? "p3";
+      const id = hash(`${session.reportId ?? session.id + session.createdAt}:${[...group.candidates].sort().join(":")}`);
+      return [...rules].filter(rule => pinned.has(rule) && !rule.startsWith("local/")).map(principle => ({ id, principle, priority }));
+    }) };
+
     return session;
+  });
+}
+
+/** Acknowledgements do not change findings or human triage. */
+export function noteSuggestionDelivery(raw: unknown, repo: string, result: { registry: string; sentAt?: string; lastError?: string }): void {
+  access(raw, repo, session => {
+    if (!session.suggestions) return;
+    if (session.suggestions.registry && session.suggestions.registry !== result.registry) throw new InputError("Review report belongs to a different registry");
+    if (session.suggestions.sentAt && result.lastError) return;
+    Object.assign(session.suggestions, result);
+    if (result.sentAt) delete session.suggestions.lastError;
   });
 }
 

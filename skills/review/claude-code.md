@@ -2,7 +2,7 @@
 
 Start fresh information-gathering and optional splitter agents with the Agent tool, `subagent_type: general-purpose`, and `model: haiku`.
 Start one fresh aggregation-only agent with the session's model after the review gate passes.
-Only the coordinator rates principles, through `rate_review_principle` after verification.
+Review activity is reported automatically after aggregation; do not send review helpfulness ratings.
 Tell all child agents not to call either rating tool.
 
 ## Restricted review and proof pools
@@ -33,5 +33,5 @@ Cancellation stops the pool.
 Use the host's background completion notification when needed, then check authoritative MCP coverage with `--check <dir> --stage review` or `verify`.
 Do not treat a successful process exit or an agent's self-reported count as completion.
 
-After verification, use saved finding IDs for baseline reconciliation and session rating records for rating counts.
+After verification, use saved finding IDs for baseline reconciliation.
 Report proof limits, pending or blocked work, replacements and measured stage timings.
