@@ -12,7 +12,7 @@ var __exportAll = (all, no_symbols) => {
 	return target;
 };
 //#endregion
-//#region ../../node_modules/react/cjs/react.production.js
+//#region node_modules/react/cjs/react.production.js
 /**
 * @license React
 * react.production.js
@@ -399,7 +399,7 @@ var require_react_production = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.version = "19.3.1";
 }));
 //#endregion
-//#region ../../node_modules/react/cjs/react.development.js
+//#region node_modules/react/cjs/react.development.js
 /**
 * @license React
 * react.development.js
@@ -1179,13 +1179,13 @@ var require_react_development = /* @__PURE__ */ __commonJSMin(((exports, module)
 	})();
 }));
 //#endregion
-//#region ../../node_modules/react/index.js
+//#region node_modules/react/index.js
 var require_react = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	if (process.env.NODE_ENV === "production") module.exports = require_react_production();
 	else module.exports = require_react_development();
 }));
 //#endregion
-//#region ../../node_modules/react-dom/cjs/react-dom.production.js
+//#region node_modules/react-dom/cjs/react-dom.production.js
 /**
 * @license React
 * react-dom.production.js
@@ -1338,7 +1338,7 @@ var require_react_dom_production = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.version = "19.3.1";
 }));
 //#endregion
-//#region ../../node_modules/react-dom/cjs/react-dom.development.js
+//#region node_modules/react-dom/cjs/react-dom.development.js
 /**
 * @license React
 * react-dom.development.js
@@ -1527,7 +1527,7 @@ var require_react_dom_development = /* @__PURE__ */ __commonJSMin(((exports) => 
 	})();
 }));
 //#endregion
-//#region ../../node_modules/react-dom/index.js
+//#region node_modules/react-dom/index.js
 var require_react_dom = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	function checkDCE() {
 		if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined" || typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE !== "function") return;
@@ -1544,7 +1544,7 @@ var require_react_dom = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	} else module.exports = require_react_dom_development();
 }));
 //#endregion
-//#region ../../node_modules/react-dom/cjs/react-dom-server-legacy.node.production.js
+//#region node_modules/react-dom/cjs/react-dom-server-legacy.node.production.js
 /**
 * @license React
 * react-dom-server-legacy.node.production.js
@@ -5638,7 +5638,7 @@ var require_react_dom_server_legacy_node_production = /* @__PURE__ */ __commonJS
 	exports.version = "19.3.1";
 }));
 //#endregion
-//#region ../../node_modules/react-dom/cjs/react-dom-server.node.production.js
+//#region node_modules/react-dom/cjs/react-dom-server.node.production.js
 /**
 * @license React
 * react-dom-server.node.production.js
@@ -10237,7 +10237,7 @@ var require_react_dom_server_node_production = /* @__PURE__ */ __commonJSMin(((e
 	exports.version = "19.3.1";
 }));
 //#endregion
-//#region ../../node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js
+//#region node_modules/react-dom/cjs/react-dom-server-legacy.node.development.js
 /**
 * @license React
 * react-dom-server-legacy.node.development.js
@@ -15735,7 +15735,7 @@ var require_react_dom_server_legacy_node_development = /* @__PURE__ */ __commonJ
 	})();
 }));
 //#endregion
-//#region ../../node_modules/react-dom/cjs/react-dom-server.node.development.js
+//#region node_modules/react-dom/cjs/react-dom-server.node.development.js
 /**
 * @license React
 * react-dom-server.node.development.js
@@ -21598,7 +21598,7 @@ var require_react_dom_server_node_development = /* @__PURE__ */ __commonJSMin(((
 	})();
 }));
 //#endregion
-//#region ../../node_modules/react-dom/server.node.js
+//#region node_modules/react-dom/server.node.js
 var require_server_node = /* @__PURE__ */ __commonJSMin(((exports) => {
 	var l;
 	var s;
@@ -21618,7 +21618,7 @@ var require_server_node = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.resume = s.resume;
 }));
 //#endregion
-//#region web/src/shared/markdown/parse.ts
+//#region packages/findings/web/src/shared/markdown/parse.ts
 var import_react = require_react();
 var import_server_node = require_server_node();
 /** A rule id as it appears in prose, e.g. PW-D001. */
@@ -21914,7 +21914,7 @@ function parse$2(body) {
 	return out;
 }
 //#endregion
-//#region ../../node_modules/property-information/lib/util/schema.js
+//#region node_modules/property-information/lib/util/schema.js
 /**
 * @import {Schema as SchemaType, Space} from 'property-information'
 */
@@ -21940,7 +21940,7 @@ Schema.prototype.normal = {};
 Schema.prototype.property = {};
 Schema.prototype.space = void 0;
 //#endregion
-//#region ../../node_modules/property-information/lib/util/merge.js
+//#region node_modules/property-information/lib/util/merge.js
 /**
 * @import {Info, Space} from 'property-information'
 */
@@ -21964,7 +21964,7 @@ function merge(definitions, space) {
 	return new Schema(property, normal, space);
 }
 //#endregion
-//#region ../../node_modules/property-information/lib/normalize.js
+//#region node_modules/property-information/lib/normalize.js
 /**
 * Get the cleaned case insensitive form of an attribute or property.
 *
@@ -21978,7 +21978,7 @@ function normalize(value) {
 	return value.toLowerCase();
 }
 //#endregion
-//#region ../../node_modules/property-information/lib/util/info.js
+//#region node_modules/property-information/lib/util/info.js
 /**
 * @import {Info as InfoType} from 'property-information'
 */
@@ -22010,7 +22010,7 @@ Info.prototype.property = "";
 Info.prototype.spaceSeparated = false;
 Info.prototype.space = void 0;
 //#endregion
-//#region ../../node_modules/property-information/lib/util/types.js
+//#region node_modules/property-information/lib/util/types.js
 var types_exports = /* @__PURE__ */ __exportAll({
 	boolean: () => boolean,
 	booleanish: () => booleanish,
@@ -22032,7 +22032,7 @@ function increment() {
 	return 2 ** ++powers;
 }
 //#endregion
-//#region ../../node_modules/property-information/lib/util/defined-info.js
+//#region node_modules/property-information/lib/util/defined-info.js
 /**
 * @import {Space} from 'property-information'
 */
@@ -22078,7 +22078,7 @@ function mark(values, key, value) {
 	if (value) values[key] = value;
 }
 //#endregion
-//#region ../../node_modules/property-information/lib/util/create.js
+//#region node_modules/property-information/lib/util/create.js
 /**
 * @import {Info, Space} from 'property-information'
 */
@@ -22127,7 +22127,7 @@ function create(definition) {
 	return new Schema(properties, normals, definition.space);
 }
 //#endregion
-//#region ../../node_modules/property-information/lib/aria.js
+//#region node_modules/property-information/lib/aria.js
 var aria = create({
 	properties: {
 		ariaActiveDescendant: null,
@@ -22185,7 +22185,7 @@ var aria = create({
 	}
 });
 //#endregion
-//#region ../../node_modules/property-information/lib/util/case-sensitive-transform.js
+//#region node_modules/property-information/lib/util/case-sensitive-transform.js
 /**
 * @param {Record<string, string>} attributes
 *   Attributes.
@@ -22198,7 +22198,7 @@ function caseSensitiveTransform(attributes, attribute) {
 	return attribute in attributes ? attributes[attribute] : attribute;
 }
 //#endregion
-//#region ../../node_modules/property-information/lib/util/case-insensitive-transform.js
+//#region node_modules/property-information/lib/util/case-insensitive-transform.js
 /**
 * @param {Record<string, string>} attributes
 *   Attributes.
@@ -22211,7 +22211,7 @@ function caseInsensitiveTransform(attributes, property) {
 	return caseSensitiveTransform(attributes, property.toLowerCase());
 }
 //#endregion
-//#region ../../node_modules/property-information/lib/html.js
+//#region node_modules/property-information/lib/html.js
 var html$1 = create({
 	attributes: {
 		acceptcharset: "accept-charset",
@@ -22533,7 +22533,7 @@ var html$1 = create({
 	transform: caseInsensitiveTransform
 });
 //#endregion
-//#region ../../node_modules/property-information/lib/svg.js
+//#region node_modules/property-information/lib/svg.js
 var svg$1 = create({
 	attributes: {
 		accentHeight: "accent-height",
@@ -23093,7 +23093,7 @@ var svg$1 = create({
 	transform: caseSensitiveTransform
 });
 //#endregion
-//#region ../../node_modules/property-information/lib/xlink.js
+//#region node_modules/property-information/lib/xlink.js
 var xlink = create({
 	properties: {
 		xLinkActuate: null,
@@ -23110,7 +23110,7 @@ var xlink = create({
 	}
 });
 //#endregion
-//#region ../../node_modules/property-information/lib/xmlns.js
+//#region node_modules/property-information/lib/xmlns.js
 var xmlns = create({
 	attributes: { xmlnsxlink: "xmlns:xlink" },
 	properties: {
@@ -23121,7 +23121,7 @@ var xmlns = create({
 	transform: caseInsensitiveTransform
 });
 //#endregion
-//#region ../../node_modules/property-information/lib/xml.js
+//#region node_modules/property-information/lib/xml.js
 var xml = create({
 	properties: {
 		xmlBase: null,
@@ -23134,7 +23134,7 @@ var xml = create({
 	}
 });
 //#endregion
-//#region ../../node_modules/property-information/lib/find.js
+//#region node_modules/property-information/lib/find.js
 /**
 * @import {Schema} from 'property-information'
 */
@@ -23211,7 +23211,7 @@ function camelcase($0) {
 	return $0.charAt(1).toUpperCase();
 }
 //#endregion
-//#region ../../node_modules/property-information/index.js
+//#region node_modules/property-information/index.js
 var html = merge([
 	aria,
 	html$1,
@@ -23227,7 +23227,7 @@ var svg = merge([
 	xml
 ], "svg");
 //#endregion
-//#region ../../node_modules/comma-separated-tokens/index.js
+//#region node_modules/comma-separated-tokens/index.js
 /**
 * @typedef Options
 *   Configuration for `stringify`.
@@ -23269,7 +23269,7 @@ function parse$1(value) {
 	return tokens;
 }
 //#endregion
-//#region ../../node_modules/hast-util-parse-selector/lib/index.js
+//#region node_modules/hast-util-parse-selector/lib/index.js
 /**
 * @typedef {import('hast').Element} Element
 * @typedef {import('hast').Properties} Properties
@@ -23344,7 +23344,7 @@ function parseSelector(selector, defaultTagName) {
 	};
 }
 //#endregion
-//#region ../../node_modules/space-separated-tokens/index.js
+//#region node_modules/space-separated-tokens/index.js
 /**
 * Parse space-separated tokens to an array of strings.
 *
@@ -23358,7 +23358,7 @@ function parse(value) {
 	return input ? input.split(/[ \t\n\r\f]+/g) : [];
 }
 //#endregion
-//#region ../../node_modules/hastscript/lib/create-h.js
+//#region node_modules/hastscript/lib/create-h.js
 /**
 * @import {Element, Nodes, RootContent, Root} from 'hast'
 * @import {Info, Schema} from 'property-information'
@@ -23605,7 +23605,7 @@ function createAdjustMap(values) {
 	return result;
 }
 //#endregion
-//#region ../../node_modules/hastscript/lib/svg-case-sensitive-tag-names.js
+//#region node_modules/hastscript/lib/svg-case-sensitive-tag-names.js
 /**
 * List of case-sensitive SVG tag names.
 *
@@ -23653,7 +23653,7 @@ var svgCaseSensitiveTagNames = [
 	"textPath"
 ];
 //#endregion
-//#region ../../node_modules/hastscript/lib/index.js
+//#region node_modules/hastscript/lib/index.js
 /**
 * @typedef {import('./jsx-classic.js').Element} h.JSX.Element
 * @typedef {import('./jsx-classic.js').ElementChildrenAttribute} h.JSX.ElementChildrenAttribute
@@ -23670,7 +23670,7 @@ var svgCaseSensitiveTagNames = [
 var h = createH(html, "div");
 createH(svg, "g", svgCaseSensitiveTagNames);
 //#endregion
-//#region ../../node_modules/character-entities-legacy/index.js
+//#region node_modules/character-entities-legacy/index.js
 /**
 * List of legacy HTML named character references that don’t need a trailing semicolon.
 *
@@ -23785,7 +23785,7 @@ var characterEntitiesLegacy = [
 	"yuml"
 ];
 //#endregion
-//#region ../../node_modules/character-reference-invalid/index.js
+//#region node_modules/character-reference-invalid/index.js
 /**
 * Map of invalid numeric character references to their replacements, according to HTML.
 *
@@ -23822,7 +23822,7 @@ var characterReferenceInvalid = {
 	159: "Ÿ"
 };
 //#endregion
-//#region ../../node_modules/is-decimal/index.js
+//#region node_modules/is-decimal/index.js
 /**
 * Check if the given character code, or the character code at the first
 * character, is decimal.
@@ -23835,7 +23835,7 @@ function isDecimal(character) {
 	return code >= 48 && code <= 57;
 }
 //#endregion
-//#region ../../node_modules/is-hexadecimal/index.js
+//#region node_modules/is-hexadecimal/index.js
 /**
 * Check if the given character code, or the character code at the first
 * character, is hexadecimal.
@@ -23848,7 +23848,7 @@ function isHexadecimal(character) {
 	return code >= 97 && code <= 102 || code >= 65 && code <= 70 || code >= 48 && code <= 57;
 }
 //#endregion
-//#region ../../node_modules/is-alphabetical/index.js
+//#region node_modules/is-alphabetical/index.js
 /**
 * Check if the given character code, or the character code at the first
 * character, is alphabetical.
@@ -23861,7 +23861,7 @@ function isAlphabetical(character) {
 	return code >= 97 && code <= 122 || code >= 65 && code <= 90;
 }
 //#endregion
-//#region ../../node_modules/is-alphanumerical/index.js
+//#region node_modules/is-alphanumerical/index.js
 /**
 * Check if the given character code, or the character code at the first
 * character, is alphanumerical.
@@ -23873,7 +23873,7 @@ function isAlphanumerical(character) {
 	return isAlphabetical(character) || isDecimal(character);
 }
 //#endregion
-//#region ../../node_modules/character-entities/index.js
+//#region node_modules/character-entities/index.js
 /**
 * Map of named character references.
 *
@@ -26007,7 +26007,7 @@ var characterEntities = {
 	zwnj: "‌"
 };
 //#endregion
-//#region ../../node_modules/decode-named-character-reference/index.js
+//#region node_modules/decode-named-character-reference/index.js
 var own = {}.hasOwnProperty;
 /**
 * Decode a single character reference (without the `&` or `;`).
@@ -26024,7 +26024,7 @@ function decodeNamedCharacterReference(value) {
 	return own.call(characterEntities, value) ? characterEntities[value] : false;
 }
 //#endregion
-//#region ../../node_modules/parse-entities/lib/index.js
+//#region node_modules/parse-entities/lib/index.js
 /**
 * @import {Point} from 'unist'
 * @import {Options} from '../index.js'
@@ -26251,7 +26251,7 @@ function disallowed(code) {
 	return code >= 1 && code <= 8 || code === 11 || code >= 13 && code <= 31 || code >= 127 && code <= 159 || code >= 64976 && code <= 65007 || (code & 65535) === 65535 || (code & 65535) === 65534;
 }
 //#endregion
-//#region ../../node_modules/refractor/lib/prism-core.js
+//#region node_modules/refractor/lib/prism-core.js
 var uniqueId = 0;
 var plainTextGrammar = {};
 var _ = {
@@ -26845,7 +26845,7 @@ function toArray(list) {
 }
 var Prism = _;
 //#endregion
-//#region ../../node_modules/refractor/lib/core.js
+//#region node_modules/refractor/lib/core.js
 /**
 * @import {Element, Root, Text} from 'hast'
 * @import {Grammar, Languages} from 'prismjs'
@@ -27055,7 +27055,7 @@ function attributes(record) {
 	return record;
 }
 //#endregion
-//#region model/language.mts
+//#region packages/findings/model/language.mts
 /**
 * What a file is written in, judged by its name.
 *
@@ -27144,7 +27144,7 @@ var EXT = {
 	patch: "diff"
 };
 //#endregion
-//#region ../../node_modules/refractor/lang/bash.js
+//#region node_modules/refractor/lang/bash.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -27333,7 +27333,7 @@ function bash(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/css.js
+//#region node_modules/refractor/lang/css.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -27400,7 +27400,7 @@ function css(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/clike.js
+//#region node_modules/refractor/lang/clike.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -27436,7 +27436,7 @@ function clike(Prism) {
 	};
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/dart.js
+//#region node_modules/refractor/lang/dart.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -27502,7 +27502,7 @@ function dart(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/diff.js
+//#region node_modules/refractor/lang/diff.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -27553,7 +27553,7 @@ function diff(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/javascript.js
+//#region node_modules/refractor/lang/javascript.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -27673,7 +27673,7 @@ function javascript(Prism) {
 	Prism.languages.js = Prism.languages.javascript;
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/json.js
+//#region node_modules/refractor/lang/json.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -27708,7 +27708,7 @@ function json(Prism) {
 	Prism.languages.webmanifest = Prism.languages.json;
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/markup.js
+//#region node_modules/refractor/lang/markup.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -27879,7 +27879,7 @@ value: function(attrName, lang) {
 	Prism.languages.rss = Prism.languages.xml;
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/jsx.js
+//#region node_modules/refractor/lang/jsx.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -27978,7 +27978,7 @@ function jsx(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/markdown.js
+//#region node_modules/refractor/lang/markdown.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -28252,7 +28252,7 @@ function markdown(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/python.js
+//#region node_modules/refractor/lang/python.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -28322,7 +28322,7 @@ function python(Prism) {
 	Prism.languages.py = Prism.languages.python;
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/c.js
+//#region node_modules/refractor/lang/c.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -28390,7 +28390,7 @@ function c(Prism) {
 	delete Prism.languages.c["boolean"];
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/cpp.js
+//#region node_modules/refractor/lang/cpp.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -28468,7 +28468,7 @@ function cpp(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/csharp.js
+//#region node_modules/refractor/lang/csharp.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -28765,7 +28765,7 @@ function csharp(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/docker.js
+//#region node_modules/refractor/lang/docker.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -28860,7 +28860,7 @@ function docker(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/go.js
+//#region node_modules/refractor/lang/go.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -28892,7 +28892,7 @@ function go(Prism) {
 	delete Prism.languages.go["class-name"];
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/graphql.js
+//#region node_modules/refractor/lang/graphql.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29068,7 +29068,7 @@ function graphql(Prism) {
 	});
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/groovy.js
+//#region node_modules/refractor/lang/groovy.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29130,7 +29130,7 @@ function groovy(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/ini.js
+//#region node_modules/refractor/lang/ini.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29178,7 +29178,7 @@ function ini(Prism) {
 	};
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/java.js
+//#region node_modules/refractor/lang/java.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29290,7 +29290,7 @@ function java(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/kotlin.js
+//#region node_modules/refractor/lang/kotlin.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29369,7 +29369,7 @@ function kotlin(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/objectivec.js
+//#region node_modules/refractor/lang/objectivec.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29390,7 +29390,7 @@ function objectivec(Prism) {
 	Prism.languages.objc = Prism.languages.objectivec;
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/markup-templating.js
+//#region node_modules/refractor/lang/markup-templating.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29480,7 +29480,7 @@ value: function(env, language) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/php.js
+//#region node_modules/refractor/lang/php.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29774,7 +29774,7 @@ function php(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/properties.js
+//#region node_modules/refractor/lang/properties.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29797,7 +29797,7 @@ function properties(Prism) {
 	};
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/ruby.js
+//#region node_modules/refractor/lang/ruby.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -29968,7 +29968,7 @@ function ruby(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/rust.js
+//#region node_modules/refractor/lang/rust.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -30072,7 +30072,7 @@ function rust(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/scss.js
+//#region node_modules/refractor/lang/scss.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -30138,7 +30138,7 @@ function scss(Prism) {
 	Prism.languages.scss["atrule"].inside.rest = Prism.languages.scss;
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/sql.js
+//#region node_modules/refractor/lang/sql.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -30175,7 +30175,7 @@ function sql(Prism) {
 	};
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/swift.js
+//#region node_modules/refractor/lang/swift.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -30279,7 +30279,7 @@ function swift(Prism) {
 	});
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/toml.js
+//#region node_modules/refractor/lang/toml.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -30332,7 +30332,7 @@ function toml(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/typescript.js
+//#region node_modules/refractor/lang/typescript.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -30385,7 +30385,7 @@ function typescript(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/tsx.js
+//#region node_modules/refractor/lang/tsx.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -30406,7 +30406,7 @@ function tsx(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region ../../node_modules/refractor/lang/yaml.js
+//#region node_modules/refractor/lang/yaml.js
 /**
 * @import {Refractor} from '../lib/core.js'
 */
@@ -30493,7 +30493,7 @@ function yaml(Prism) {
 	})(Prism);
 }
 //#endregion
-//#region web/src/shared/code/highlight.ts
+//#region packages/findings/web/src/shared/code/highlight.ts
 /**
 * Syntax colour for every place the pages show code.
 *
@@ -30593,7 +30593,7 @@ function tokenLines(code, language) {
 	return lines;
 }
 //#endregion
-//#region ../../node_modules/react/cjs/react-jsx-runtime.production.js
+//#region node_modules/react/cjs/react-jsx-runtime.production.js
 /**
 * @license React
 * react-jsx-runtime.production.js
@@ -30628,7 +30628,7 @@ var require_react_jsx_runtime_production = /* @__PURE__ */ __commonJSMin(((expor
 	exports.jsxs = jsxProd;
 }));
 //#endregion
-//#region ../../node_modules/react/cjs/react-jsx-runtime.development.js
+//#region node_modules/react/cjs/react-jsx-runtime.development.js
 /**
 * @license React
 * react-jsx-runtime.development.js
@@ -30840,7 +30840,7 @@ var require_react_jsx_runtime_development = /* @__PURE__ */ __commonJSMin(((expo
 	})();
 }));
 //#endregion
-//#region web/src/shared/code/Line.tsx
+//#region packages/findings/web/src/shared/code/Line.tsx
 var import_jsx_runtime = (/* @__PURE__ */ __commonJSMin(((exports, module) => {
 	if (process.env.NODE_ENV === "production") module.exports = require_react_jsx_runtime_production();
 	else module.exports = require_react_jsx_runtime_development();
@@ -30854,7 +30854,7 @@ function Line({ toks }) {
 	}, index) : tok.text);
 }
 //#endregion
-//#region web/src/shared/markdown/Markdown.tsx
+//#region packages/findings/web/src/shared/markdown/Markdown.tsx
 /**
 * A finding body, rendered.
 *
@@ -31010,7 +31010,7 @@ function Markdown({ body }) {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: blocks.map((block, at) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(One$1, { block }, at)) });
 }
 //#endregion
-//#region ../../node_modules/clsx/dist/clsx.mjs
+//#region node_modules/clsx/dist/clsx.mjs
 function r(e) {
 	var t, f, n = "";
 	if ("string" == typeof e || "number" == typeof e) n += e;
@@ -31025,7 +31025,7 @@ function clsx() {
 	return n;
 }
 //#endregion
-//#region ../../node_modules/tailwind-merge/dist/bundle-mjs.mjs
+//#region node_modules/tailwind-merge/dist/bundle-mjs.mjs
 /**
 * Concatenates two arrays faster than the array spread operator.
 */
@@ -34484,7 +34484,7 @@ var getDefaultConfig = () => {
 };
 var twMerge = /*#__PURE__*/ createTailwindMerge(getDefaultConfig);
 //#endregion
-//#region web/src/shared/cn.ts
+//#region packages/findings/web/src/shared/cn.ts
 /**
 * Class names, merged so the last one wins.
 *
@@ -34497,7 +34497,7 @@ function cn(...classes) {
 	return twMerge(clsx(classes));
 }
 //#endregion
-//#region web/src/shared/chunk/Chunk.tsx
+//#region packages/findings/web/src/shared/chunk/Chunk.tsx
 /**
 * A place in the code, as it read when the finding was written.
 *
@@ -34637,7 +34637,7 @@ function Chunks({ anchor, related, withDiff, onOpen }) {
 	}, `${place.file}:${place.line}`))] });
 }
 //#endregion
-//#region ../../node_modules/class-variance-authority/dist/index.mjs
+//#region node_modules/class-variance-authority/dist/index.mjs
 /**
 * Copyright 2022 Joe Bell. All rights reserved.
 *
@@ -34690,7 +34690,7 @@ var cva = (base, config) => (props) => {
 	}, []), props === null || props === void 0 ? void 0 : props.class, props === null || props === void 0 ? void 0 : props.className);
 };
 //#endregion
-//#region model/types.mts
+//#region packages/findings/model/types.mts
 /**
 * The sentence a reader is owed for the two deceptive answers.
 *
@@ -34703,7 +34703,7 @@ var AUTHORSHIP_SAYS = {
 	moved: "The author moved this code here — it predates the change."
 };
 //#endregion
-//#region model/groups.mts
+//#region packages/findings/model/groups.mts
 /**
 * The six piles a finding can be in, and how a finding lands in one.
 *
@@ -34759,7 +34759,7 @@ function groupOf(finding) {
 	return "verdict";
 }
 //#endregion
-//#region web/src/shared/chips.tsx
+//#region packages/findings/web/src/shared/chips.tsx
 /**
 * The line box is given a height outright, so a row of chips is a row of one
 * height whatever type is set in it: the rule id and the small evidence chip
@@ -34891,7 +34891,7 @@ function Rule({ id, report, onPick, href }) {
 	});
 }
 //#endregion
-//#region web/src/shared/VerificationNotice.tsx
+//#region packages/findings/web/src/shared/VerificationNotice.tsx
 /** A request being blocked says nothing about whether the product claim is true. */
 function VerificationNotice({ finding }) {
 	if (finding.verificationBlock) return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
@@ -34925,7 +34925,7 @@ function VerificationNotice({ finding }) {
 	return null;
 }
 //#endregion
-//#region web/src/report/Report.tsx
+//#region packages/findings/web/src/report/Report.tsx
 /**
 * The generated report: the same components as the triage page, rendered by
 * Node when a finding is written.
@@ -35172,7 +35172,7 @@ function RulePage({ rule }) {
 	});
 }
 //#endregion
-//#region web/src/report/entry-server.tsx
+//#region packages/findings/web/src/report/entry-server.tsx
 /**
 * What Node calls to turn findings into a report.
 *
