@@ -26,7 +26,9 @@ const shared = {
   logLevel: "warning",
 };
 
+await import("../packages/findings/web/build.mjs");
 await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/main.ts")], outfile });
+fs.cpSync(path.join(root, "packages/findings/web/dist"), path.join(root, "dist/web"), { recursive: true });
 // A worker loads its script from scratch, so it gets only the isolate. The hook looks for it beside the command.
 const worker = path.join(path.dirname(outfile), "wellactually-worker.mjs");
 await build({ ...shared, entryPoints: [path.join(root, "packages/cli/src/worker.ts")], outfile: worker });
@@ -51,10 +53,10 @@ fs.mkdirSync(path.join(opencode, "dist"), { recursive: true });
 for (const file of ["wellactually.mjs", "wellactually-worker.mjs", "wellactually-log.mjs"]) {
   fs.copyFileSync(path.join(root, "dist", file), path.join(opencode, "dist", file));
 }
+fs.cpSync(path.join(root, "dist/web"), path.join(opencode, "dist/web"), { recursive: true });
 fs.renameSync(path.join(root, "dist/opencode.mjs"), path.join(opencode, "dist/opencode.mjs"));
 fs.renameSync(path.join(root, "dist/opencode-tui.mjs"), path.join(opencode, "dist/tui.mjs"));
 await build({ ...shared, entryPoints: [path.join(root, "skills/review/scripts/main.ts")], outfile: path.join(root, "skills/review/scripts/review.mjs") });
-await build({ ...shared, entryPoints: [path.join(root, "skills/review/scripts/finalize.ts")], outfile: path.join(root, "skills/review/scripts/finalize.mjs") });
 syncSkills(root);
 
 console.log(`built dist: ${[outfile, worker, logWriter, ...plugins].map((file) => path.basename(file)).join(", ")}, and copied the command and the skills into opencode`);

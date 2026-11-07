@@ -155,7 +155,7 @@ export default async function wellactually(pi: PiApi): Promise<void> {
  */
 async function registerMcpTools(pi: PiApi, root: string): Promise<void> {
   const { file, args } = command(root);
-  const client = new McpClient(file, [...args, "mcp"], { name: "pi", version: VERSION }, process.cwd());
+  const client = new McpClient(file, [...args, "mcp", "--review-host", "pi"], { name: "pi", version: VERSION }, process.cwd());
   let tools;
   try {
     tools = await client.listTools();

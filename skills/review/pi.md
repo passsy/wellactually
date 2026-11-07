@@ -6,6 +6,5 @@ Tell the user that before you start, because the advice and the diff will fill t
 Do every step yourself, in the order of the skill, one job at a time:
 
 - Read each worker instruction once before doing that job.
-- Write each job's result to its file before you start the next job.
-  When the conversation is compacted, the verdicts already written are safe: read `jobs.json` and the files in `verdicts/` to see which jobs are done, and go on with the next.
+- Complete each queue item in MCP before claiming the next. After compaction, get_review_session and claim_review_work recover durable progress. There are no local verdict files.
 - Read only what the current job names, then go on to the next job.

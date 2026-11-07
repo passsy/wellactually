@@ -14,7 +14,6 @@ export interface CollectedInput {
   target: ReviewTarget;
   files: ChangedFile[];
   readable: { blocks: { file: string; text: string }[]; omitted: { file: string; reason: string }[] };
-  context: string;
   read: (file: string, previous: boolean) => { content: string } | { reason: string };
 }
 const LIMIT = 512 * 1024;
@@ -136,6 +135,5 @@ export function collectInput(cwd: string, options: InputOptions): CollectedInput
     }
   }
   const target: ReviewTarget = { kind: options.patch ? "patch" : "snapshot", base: null, head: null, label: options.label ?? (options.patch ? "supplied comparison" : `current contents of ${(options.paths ?? ["."]).join(", ")}`) };
-  const context = ["# Review scope", "", `Root: ${root}`, `Mode: ${target.kind}`, `Request: ${target.label}`, "", "Files:", ...files.map((file) => `- ${file.path}`), "", ...(options.patch ? [] : ["No baseline was supplied. Review present behavior; do not claim that a defect was introduced by a change.", "Common dependency, build and version-control directories and symlinks were excluded from folder discovery. Explicit files can be selected instead."])].join("\n") + "\n";
-  return { root, target, files, readable: { blocks, omitted }, context, read: (file, previous) => (previous ? before : after).get(file) ?? { reason: "not supplied in review input" } };
+  return { root, target, files, readable: { blocks, omitted }, read: (file, previous) => (previous ? before : after).get(file) ?? { reason: "not supplied in review input" } };
 }

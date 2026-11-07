@@ -1,0 +1,280 @@
+/**
+ * The board, flat, with just enough light on it to say which way is up.
+ *
+ * Its own stylesheet rather than utilities, because this is the one piece of
+ * real drawing on the page and it is all custom properties, pseudo-states and
+ * two inset shadows that swap roles with the theme. Written as classes it can
+ * be read; written as a string of utilities it could only be diffed.
+ *
+ * The shape carries the object, not the shading: a board, a cut running its
+ * length, holes on the cut, and one disc that moves along it. A control that
+ * has to be lit to be understood is a control whose shape is not doing its
+ * job, so there are no gradients and no bevels here.
+ *
+ * What is left says one thing: the holes and the slit are openings, lit as
+ * openings are — the near wall dark at the top, the far wall catching light at
+ * the bottom. Which of those two carries it swaps with the theme, and getting
+ * that wrong is why this looked right in light and flat in dark.
+ *
+ * Nothing is drawn on the head. It is already the only thing on the board that
+ * moves and the only thing wearing a colour, and lighting it as well was the
+ * shading starting to do the shape's work again.
+ */
+
+.track {
+  /* A hole takes a head with room to spare, which is what lets it drop in
+     rather than wedge. The slit is narrower than the head, which is what
+     keeps the head on the board. The gap between holes is board, and it has
+     to be wide enough to see the slit crossing it: with the holes any closer
+     the cut disappears and five holes read as five buttons in a row. */
+  --hole: 2rem;
+  --head: 1.5rem;
+  --slit: 0.32rem;
+  --hole-gap: 0.5rem;
+  --board-pad: 0.3rem;
+
+  /* The break before the first stop. Enough that the run of board reads as a
+     break rather than as a wider gap, and no more: a hole's worth of it left
+     the two ends of the track looking like two separate controls. */
+  --blank: 0.5rem;
+
+  /* What the board is lying on. The board itself is not painted: the page is
+     the board, and the only things drawn are what was cut out of it. A filled
+     pill behind the holes was a second surface saying nothing the holes and
+     the slit between them were not already saying. */
+  --seat: var(--bg);
+
+  /* What is seen down a hole, and along the slit. Always darker than the
+     surface it is cut into, in either theme, because that is the one thing
+     that makes an opening an opening rather than a disc lying on top. */
+  --cut: color-mix(in srgb, #000 16%, var(--seat));
+
+  /* How an opening is lit, as two edges: the near wall in shadow at the top,
+     and the far wall catching the light at the bottom. Both are needed, and
+     which of them carries the depth swaps with the theme. On a pale surface
+     the shadow does nearly all of it. On a dark one it cannot: a black shadow
+     inside an almost-black hole is nothing at all, so there the lit far wall
+     is the whole cue and the hole is kept a little off the floor to leave
+     room for it. */
+  --sink: inset 0 2px 3px color-mix(in srgb, #000 30%, transparent);
+  --lip: inset 0 -1px 0 color-mix(in srgb, #fff 75%, transparent);
+
+  --tone: var(--fg);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hole-gap);
+  padding: var(--board-pad);
+  touch-action: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .track {
+    /* Darker than the page it is cut into, and no darker than it has to be:
+       taken all the way down there is nothing left for a shadow to be darker
+       than, which is exactly how this looked before — perfect in light and
+       dead flat in dark. */
+    --cut: color-mix(in srgb, #000 38%, var(--seat));
+    --sink: inset 0 2px 4px color-mix(in srgb, #000 75%, transparent);
+    --lip: inset 0 -1px 0 color-mix(in srgb, #fff 18%, transparent);
+  }
+}
+
+:root[data-theme="dark"] .track {
+  --cut: color-mix(in srgb, #000 38%, var(--seat));
+  --sink: inset 0 2px 4px color-mix(in srgb, #000 75%, transparent);
+  --lip: inset 0 -1px 0 color-mix(in srgb, #fff 18%, transparent);
+}
+
+/* The slit, from the centre of the first hole to the centre of the last. It
+   joins every hole, including the ones that are not there: the blank between
+   two stops is board with the cut still running through it. */
+.track .slit {
+  position: absolute;
+  top: 50%;
+  height: var(--slit);
+  border-radius: 999px;
+  left: calc(var(--board-pad) + var(--hole) / 2);
+  right: calc(var(--board-pad) + var(--hole) / 2);
+  transform: translateY(-50%);
+  background: var(--cut);
+  box-shadow: var(--sink), var(--lip);
+}
+
+.track .hole {
+  position: relative;
+  width: var(--hole);
+  height: var(--hole);
+  flex: none;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--cut);
+  color: color-mix(in srgb, var(--fg) 55%, transparent);
+  font-size: 0.92rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--sink), var(--lip);
+}
+
+/* Every mark on this control, in a hole or on the pin, sits dead centre.
+
+   A pixel of upward nudge was tried here, argued from the lighting — shadow
+   above, light below reads as an opening, and a centred mark seemed to slip
+   down it. Looked at, the nudge overshot: the marks read as pushed up, worst
+   on the ✕ whose glyph already carries its weight high. Dead centre wins,
+   and the head and the holes share it so a mark never jumps when the pin
+   slides over a stop. */
+.track .engraved {
+  display: grid;
+  place-items: center;
+}
+
+/* What the stop under the cursor means, hung over it.
+
+   The holes are engraved with marks, and a mark is a reminder rather than a
+   definition — it works once you know the control and says nothing the first
+   time. The board used to lean on the platform's own tooltip for that, which
+   arrives about a second late, in a different typeface, and never at all over
+   the head: the pin covers the hole it is in, so the one stop nobody could
+   get a word out of was the one they were on.
+
+   Drawn in the page's tooltip colours rather than the board's, because it is
+   not part of the object. The board is wood with holes in it; this is a label
+   somebody is holding over it, and it goes away the moment the cursor does. */
+.track .hint {
+  position: absolute;
+  bottom: calc(100% - var(--board-pad) + 0.3rem);
+  /* Centred over the hole it names, then pulled back by however much of it
+     was off the screen. */
+  transform: translateX(calc(-50% + var(--nudge, 0px)));
+  z-index: 2;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-md, 6px);
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.72rem;
+  line-height: 1.1;
+  white-space: nowrap;
+  /* It names what is under the cursor, so it must never be under the cursor
+     itself — catching the pointer would take the hover off the hole and the
+     label would flicker itself out of existence. */
+  pointer-events: none;
+  animation: track-hint 0.12s ease-out;
+}
+
+@keyframes track-hint {
+  from {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--nudge, 0px)), 2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track .hint {
+    animation: none;
+  }
+}
+
+/* Board, and nothing in it. The head slides over it and cannot stop, which is
+   what says the stop before it is off the climb rather than the bottom of it. */
+.track .blank {
+  width: var(--blank);
+  height: var(--hole);
+  flex: none;
+}
+
+/* Always readable, whatever is sitting in the hole. The head covers it while
+   it is there and uncovers it the moment it is pulled away, so a hole is never
+   a blank circle nobody can name. */
+.track .hole:hover {
+  color: var(--fg);
+}
+
+.track .hole:focus-visible {
+  outline: 2px solid var(--todo);
+  outline-offset: 2px;
+}
+
+/* Every engraving is cut the same depth.
+   The holes behind the head used to be lettered brighter than the ones ahead
+   of it, which sounded right — you have been there — and read as two shades of
+   grey with no rule anybody could see. It was also saying, dimly, what the
+   head's position already says loudly: everything left of the pin is done.
+   One colour for every hole the head is not in, and the pin is the only thing
+   on the board that moves or changes. */
+
+/* The one hole that says something the head's position cannot: it was here,
+   and it is not any more. */
+.track .hole.flagged {
+  color: #ef6c00;
+}
+
+/* The head. A pin of the same stuff as everything else, and the colour is on
+   its icon rather than on the disc: the icon is what says which stop this is,
+   and a whole disc of colour was shouting that at a size where the position
+   had already said it. */
+.track .head {
+  position: absolute;
+  left: 0;
+
+  /* Half a pixel above the middle, which is the one place in this file where
+     the drawing is allowed to argue with the geometry. A hole is lit as an
+     opening: shadow along the near wall at the top, light along the far wall
+     at the bottom. Dead centre, the gap above the head reads darker and
+     deeper than the gap below it and the head looks like it has sunk. This is
+     the smallest nudge that answers that and stays a nudge — measured, the
+     head is 0.5px high; looked at, it is in the middle. */
+  top: calc(50% - 0.5px);
+  z-index: 1;
+  width: var(--head);
+  height: var(--head);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.88rem;
+  line-height: 1;
+  /* Only the vertical half of it. The horizontal half is written by the
+     component, because a transform composed out of a custom property is a
+     transform that cannot be transitioned. */
+  transform: translateY(-50%);
+
+  /* Lifted towards the light in either theme, rather than towards the
+     foreground: mixing in the text colour lightens a dark page and darkens a
+     pale one, which left the head the one thing on a light board reading as a
+     shadow of itself. It sits at least as light as the page it is on, and the
+     dark hole around it is what gives it its edge. */
+  background: color-mix(in srgb, #fff 14%, var(--seat));
+  color: var(--tone);
+  cursor: grab;
+
+  /* Snapping in. Overshoots a little and settles, the way a sprung pin drops
+     into a hole rather than arriving at one. */
+  transition: transform 0.26s cubic-bezier(0.34, 1.42, 0.64, 1);
+}
+
+.track .head:hover {
+  filter: brightness(1.12);
+}
+
+/* Held: no transition, because the head is following a finger and anything
+   smoothing that is lag. Placed: no transition, because the head is being put
+   somewhere rather than travelling there. */
+.track.dragging .head,
+.track.nofx .head {
+  transition: none;
+}
+
+.track.dragging .head,
+.track.dragging {
+  cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track .head {
+    transition: none;
+  }
+}

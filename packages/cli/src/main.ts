@@ -39,6 +39,7 @@ import {
 import { logHookFailure, runHook, startInBackground } from "./hook/hook.ts";
 import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
+import { main as findingsServer } from "../../findings/serve/server.mts";
 import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "./registry/client.ts";
 
@@ -95,6 +96,7 @@ async function main(): Promise<number> {
     args: rest,
     allowPositionals: true,
     options: {
+      "review-host": { type: "string" },
       json: { type: "boolean", default: false },
       read: { type: "boolean", default: false },
       draft: { type: "boolean", default: false },
@@ -400,6 +402,9 @@ async function main(): Promise<number> {
     }
     case "mcp":
       await serveMcp();
+      return 0;
+    case "findings-ui":
+      await findingsServer(["--ui"]);
       return 0;
     case undefined:
     case "help":

@@ -124,7 +124,7 @@ function compacted(sessionID: string, cwd: string): void {
 /** The MCP server, started by OpenCode the way the other agents start it. */
 function mcpCommand(root: string): string[] {
   const { file, args } = command(root);
-  return [file, ...args, "mcp"];
+  return [file, ...args, "mcp", "--review-host", "opencode"];
 }
 
 /** The text of a tool result in OpenCode 2, which is a string or a list of parts. */

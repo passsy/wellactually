@@ -6,7 +6,8 @@
         "./dist/wellactually.mjs",
         "mcp"
       ],
-      "cwd": "."
+      "cwd": ".",
+      "env": { "WELLACTUALLY_REVIEW_HOST": "codex" }
     }
   }
 }

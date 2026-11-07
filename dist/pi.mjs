@@ -4119,7 +4119,7 @@ async function wellactually(pi) {
 }
 async function registerMcpTools(pi, root) {
   const { file, args } = command(root);
-  const client = new McpClient(file, [...args, "mcp"], { name: "pi", version: VERSION }, process.cwd());
+  const client = new McpClient(file, [...args, "mcp", "--review-host", "pi"], { name: "pi", version: VERSION }, process.cwd());
   let tools;
   try {
     tools = await client.listTools();

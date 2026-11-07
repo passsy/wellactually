@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -11,6 +12,8 @@ import { type Lockfile, readCached, readLockfile, runBoard } from "../../../pack
 import { findProjectRoot, toPosix } from "../../../packages/cli/src/board/files.ts";
 import { collectInput, type CollectedInput, type InputOptions } from "./inputs.ts";
 import { switchedOff } from "../../../packages/cli/src/board/switches.ts";
+import { claimReviewSession, getReviewSession, verificationProblems } from "../../../packages/findings/queues.mts";
+import { listCandidates } from "../../../packages/findings/api.mts";
 
 /**
  * What a review compares: `base` against `head`, or against the working tree
@@ -54,14 +57,15 @@ export interface ReviewPrinciple {
   hits: ReviewHit[];
   /** The file with its full advice, relative to the review directory. */
   file: string;
+  adviceTokens?: number;
 }
 
 export interface ReviewPlan {
   /** Version 2 requires evidence-backed questions and their verification for every principle. */
-  reviewProtocol?: 2;
+  reviewProtocol?: 2 | 3 | 4;
+  principlesLoaded?: boolean;
   root: string;
-  /** Frozen reviewed file contents, separate from live caller context. */
-  source?: string;
+  /** Supplied previous directory for non-Git comparisons, when available. */
   before?: string;
   target: ReviewTarget;
   files: { path: string; status: ChangedFile["status"]; from?: string }[];
@@ -85,23 +89,6 @@ export interface ReviewPlan {
 /** The whole advisory board gets this long per file of the change. The hook gets 1.5 s per event, a review is not waited on per file. */
 export const REVIEW_BUDGET_MS = 10_000;
 const MAX_FILE_BYTES = 512 * 1024;
-const MANIFESTS = new Set([
-  "package.json",
-  "pubspec.yaml",
-  "Cargo.toml",
-  "go.mod",
-  "pyproject.toml",
-  "requirements.txt",
-  "Gemfile",
-  "composer.json",
-  "build.gradle",
-  "build.gradle.kts",
-  "pom.xml",
-  "Package.swift",
-  "deno.json",
-  "mix.exs",
-]);
-
 function git(root: string, args: string[]): string {
   return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 256 * 1024 * 1024 });
 }
@@ -428,49 +415,6 @@ function generatedFiles(root: string, files: ChangedFile[]): Set<string> {
   return generated;
 }
 
-/** What the planner needs to know about the project to tell which principles cannot apply to it. */
-function projectFacts(root: string, target: ReviewTarget, files: ChangedFile[]): string {
-  const ref = target.head ?? "HEAD";
-  const tracked = git(root, ["-c", "core.quotepath=false", "ls-tree", "-r", "--name-only", ref]).split("\n").filter((file) => file !== "");
-  const top = [...new Set(tracked.map((file) => (file.includes("/") ? `${file.slice(0, file.indexOf("/"))}/` : file)))].sort();
-  const manifests = tracked.filter((file) => {
-    const isManifest = MANIFESTS.has(path.posix.basename(file));
-    const isVendored = file.includes("node_modules/");
-    const isShallow = file.split("/").length <= 4;
-    return isManifest && !isVendored && isShallow;
-  });
-  const extensions = new Map<string, number>();
-  for (const file of tracked) {
-    const ext = path.posix.extname(file) || "(none)";
-    extensions.set(ext, (extensions.get(ext) ?? 0) + 1);
-  }
-  const common = [...extensions.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
-  const lines = [
-    "# The project",
-    "",
-    `Top level: ${top.join(", ")}`,
-    "",
-    `Project files: ${manifests.length > 0 ? manifests.join(", ") : "none found"}`,
-    "",
-    `File types in the repository: ${common.map(([ext, count]) => `${ext} ${count}`).join(", ")}`,
-    "",
-    `Files this change touches: ${files.map((file) => file.path).join(", ")}`,
-  ];
-  for (const manifest of manifests.slice(0, 8)) {
-    const content = contentAt(root, target.head, manifest);
-    if (content !== null) {
-      lines.push("", `## ${manifest}`, "", "```", content.split("\n").slice(0, 60).join("\n"), "```");
-    }
-  }
-  const readme = tracked.find((file) => /^readme(\.md)?$/i.test(file));
-  const readmeText = readme === undefined ? null : contentAt(root, target.head, readme);
-  if (readme !== undefined && readmeText !== null) {
-    const firstLines = readmeText.split("\n").slice(0, 40).join("\n");
-    lines.push("", `## ${readme}, first lines`, "", firstLines);
-  }
-  return `${lines.join("\n")}\n`;
-}
-
 function fileOf(id: string): string {
   return `principles/${id.replace(/[^A-Za-z0-9_.-]/g, "__")}.md`;
 }
@@ -484,46 +428,87 @@ function fileOf(id: string): string {
  * detector. Deciding which ones cannot apply to this project is the
  * reviewing agent's job, because nothing in a principle says so reliably.
  */
-export async function planReview(cwd: string, spec?: string, dir?: string, lockfile: Lockfile = readLockfile(), label?: string): Promise<ReviewPlan> {
-  const root = findProjectRoot(cwd);
+export async function planReview(cwd: string, spec?: string, dir?: string, lockfile: Lockfile | null = readLockfile(), label?: string): Promise<ReviewPlan> {
+  const out = dir ? path.resolve(dir) : defaultReviewDirectory();
+  let root = findProjectRoot(cwd);
   if (root === null || gitOrNull(root, ["rev-parse", "--is-inside-work-tree"]) !== "true") {
     throw new Error("A review needs a git repository. Run it inside one.");
   }
   const resolved = resolveTarget(root, spec);
   const target = { ...resolved, base: git(root, ["rev-parse", resolved.base as string]).trim(), head: resolved.head === null ? null : git(root, ["rev-parse", resolved.head]).trim() };
+  if (target.head !== null) {
+    const gitDir = git(root, ["rev-parse", "--absolute-git-dir"]).trim();
+    const commonDir = path.resolve(root, git(root, ["rev-parse", "--git-common-dir"]).trim());
+    const reusable = gitDir !== commonDir && git(root, ["rev-parse", "HEAD"]).trim() === target.head && git(root, ["status", "--porcelain"]).trim() === "";
+    if (!reusable) {
+      // A sibling keeps source and artifacts distinct, and survives system temp cleanup.
+      const checkout = `${out}-checkout`;
+      if (fs.existsSync(checkout)) throw new Error("Review checkout already exists; choose a fresh output directory");
+      fs.mkdirSync(path.dirname(checkout), { recursive: true });
+      git(root, ["worktree", "add", "--detach", checkout, target.head]);
+      root = checkout;
+    }
+  }
   const files = changedFiles(root, target);
   return prepareCollected({ root, target: { ...target, kind: "git", label: label ?? target.label }, files,
-    readable: readableDiff(root, target, files), context: projectFacts(root, target, files),
-    read: (file, previous) => readAt(root, previous ? target.base : target.head, file) }, dir, lockfile);
+    readable: readableDiff(root, target, files),
+    read: (file, previous) => readAt(root, previous ? target.base : target.head, file) }, out, lockfile);
 }
 
-export async function planInputReview(root: string, options: InputOptions = {}, dir?: string, lockfile: Lockfile = readLockfile()): Promise<ReviewPlan> {
-  return prepareCollected(collectInput(root, options), dir, lockfile);
+export async function planInputReview(root: string, options: InputOptions = {}, dir?: string, lockfile: Lockfile | null = readLockfile()): Promise<ReviewPlan> {
+  const plan = await prepareCollected(collectInput(root, options), dir, lockfile);
+  if (options.beforeRoot) {
+    plan.before = toPosix(path.resolve(options.beforeRoot));
+    fs.writeFileSync(path.join(plan.dir, "plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
+  }
+  return plan;
 }
 
-async function prepareCollected(input: CollectedInput, dir: string | undefined, lockfile: Lockfile): Promise<ReviewPlan> {
+function defaultReviewDirectory(): string {
+  return path.join(os.homedir(), ".wellactually", "reviews", `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`);
+}
+
+async function prepareCollected(input: CollectedInput, dir: string | undefined, lockfile: Lockfile | null): Promise<ReviewPlan> {
   const { root, target, files } = input;
-  const out = dir ? path.resolve(dir) : fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-"));
+  const out = dir ? path.resolve(dir) : defaultReviewDirectory();
   if (path.resolve(out) === path.resolve(root)) throw new Error("Review output must not overwrite the project root");
   if (fs.existsSync(path.join(out, "plan.json"))) throw new Error("Review directory is already prepared; choose a new output directory");
-  for (const sub of ["principles", "verdicts", "verified"]) {
-    fs.mkdirSync(path.join(out, sub), { recursive: true });
-  }
+  fs.mkdirSync(out, { recursive: true });
 
-  const source = path.join(out, "source");
+  const { principles, skipped, failures, unchecked } = lockfile === null
+    ? { principles: [], skipped: [], failures: [], unchecked: [] }
+    : await loadBoard(input, out, lockfile);
+  const readable = input.readable;
+  const diffText = readable.blocks.map((block) => block.text).join("");
+  fs.writeFileSync(path.join(out, "diff.patch"), diffText);
+  const parts = writeParts(out, "diff", packDiff(readable.blocks));
+  copySteps(out);
+  const plan: ReviewPlan = {
+    reviewProtocol: 4,
+    principlesLoaded: lockfile !== null,
+    root: toPosix(root),
+    target,
+    files: files.map(({ path: file, status, from }) => ({ path: file, status, ...(from ? { from } : {}) })),
+    omitted: readable.omitted,
+    unchecked,
+    principles,
+    skipped,
+    failures,
+    parts,
+    tokens: { diff: tokensOf(Buffer.byteLength(diffText)), advice: principles.reduce((sum, principle) => sum + (principle.adviceTokens ?? adviceTokens(out, principle.file)), 0) },
+    dir: toPosix(out),
+  };
+  fs.writeFileSync(path.join(out, "plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
+  return plan;
+}
+
+async function loadBoard(input: CollectedInput, out: string, lockfile: Lockfile) {
+  const { root, files } = input;
   const captured = new Map<string, { content: string } | { reason: string }>();
   const previous = new Map<string, { content: string } | { reason: string }>();
   for (const file of files) {
     const now = input.read(file.path, false), was = input.read(file.path, true);
     captured.set(file.path, now); previous.set(file.path, was);
-    if ("content" in now) {
-      const dest = path.join(source, file.path);
-      fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.writeFileSync(dest, now.content);
-    }
-    if ("content" in was) {
-      const dest = path.join(out, "before", file.path);
-      fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.writeFileSync(dest, was.content);
-    }
   }
   const off = new Set(switchedOff(root).keys());
   const skipped: ReviewPlan["skipped"] = [];
@@ -584,54 +569,30 @@ async function prepareCollected(input: CollectedInput, dir: string | undefined, 
     }
   }
 
-  for (const principle of principles) {
-    const hits = principle.hits.map((hit) => `- ${hit.file}: ${hit.text}`);
-    const body = [
-      `<principle id="${principle.id}" title=${JSON.stringify(principle.title)} tags="${principle.tags.join(", ")}" detector="${principle.detector ? "yes" : "no"}">`,
-      "",
-      advice.get(principle.id) ?? "",
-      "",
-      ...(hits.length > 0 ? ["Its detector fired in this change. Each hit is a candidate: confirm it or dismiss it with a reason.", "", ...hits, ""] : []),
-      "</principle>",
-    ];
-    fs.writeFileSync(path.join(out, principle.file), `${body.join("\n")}\n`);
-  }
+  for (const principle of principles) principle.adviceTokens = tokensOf(Buffer.byteLength(advice.get(principle.id) ?? ""));
 
-  const readable = input.readable;
-  const diffText = readable.blocks.map((block) => block.text).join("");
-  fs.writeFileSync(path.join(out, "diff.patch"), diffText);
-  const parts = writeParts(out, "diff", packDiff(readable.blocks));
-  copySteps(out);
-  fs.writeFileSync(path.join(out, "project.md"), input.context);
-  const plan: ReviewPlan = {
-    reviewProtocol: 2,
-    root: toPosix(root),
-    source: toPosix(source),
-    before: toPosix(path.join(out, "before")),
-    target,
-    files: files.map(({ path: file, status, from }) => ({ path: file, status, ...(from ? { from } : {}) })),
-    omitted: readable.omitted,
-    unchecked,
-    principles,
-    skipped,
-    failures,
-    parts,
-    tokens: { diff: tokensOf(Buffer.byteLength(diffText)), advice: principles.reduce((sum, principle) => sum + adviceTokens(out, principle.file), 0) },
-    dir: toPosix(out),
-  };
-  fs.writeFileSync(path.join(out, "principles.md"), renderIndex(plan));
-  fs.writeFileSync(path.join(out, "plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
-  return plan;
+  const detectors = principles.filter(principle => principle.detector);
+  const summary = (principle: ReviewPrinciple) => ({
+    id: principle.id, version: principle.version, title: principle.title, tags: principle.tags,
+    hits: principle.hits,
+  });
+  fs.writeFileSync(path.join(out, "detectors-triggered.json"), JSON.stringify(
+    detectors.filter(principle => principle.hits.length > 0).map(summary), null, 2) + "\n");
+  fs.writeFileSync(path.join(out, "detectors-no-findings.json"), JSON.stringify(
+    detectors.filter(principle => principle.hits.length === 0 && files.length > 0 && unchecked.length === 0 && !failures.some(failure => failure.id === principle.id)).map(summary), null, 2) + "\n");
+  return { principles, skipped, failures, unchecked };
 }
 
-/** One line per principle, for the agent to decide which cannot apply to the project and how to group the rest. */
-function renderIndex(plan: ReviewPlan): string {
-  const lines = ["# The principles", "", "id | detector hits | tags | title: summary", ""];
-  for (const principle of plan.principles) {
-    const hits = principle.detector ? String(principle.hits.length) : "no detector";
-    lines.push(`- ${principle.id} | ${hits} | ${principle.tags.join(", ") || "no tags"} | ${principle.title}: ${principle.summary}`);
-  }
-  return `${lines.join("\n")}\n`;
+export async function loadPrinciples(dir: string, lockfile: Lockfile = readLockfile()): Promise<ReviewPlan> {
+  const plan = readJson<ReviewPlan>(dir, "plan.json");
+  const input: CollectedInput = plan.target.kind === "git"
+    ? { root: plan.root, target: plan.target, files: changedFiles(plan.root, plan.target), readable: { blocks: [], omitted: plan.omitted }, read: (file, previous) => readAt(plan.root, previous ? plan.target.base : plan.target.head, file) }
+    : collectInput(plan.root, plan.target.kind === "patch" ? { patch: path.join(dir, "diff.patch"), beforeRoot: plan.before } : { paths: plan.files.map(file => file.path) });
+  Object.assign(plan, await loadBoard(input, dir, lockfile));
+  plan.principlesLoaded = true;
+  plan.tokens.advice = plan.principles.reduce((sum, principle) => sum + (principle.adviceTokens ?? adviceTokens(dir, principle.file)), 0);
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan, null, 2) + "\n");
+  return plan;
 }
 
 function count(n: number, one: string, many = `${one}s`): string {
@@ -650,7 +611,9 @@ export function renderPlan(plan: ReviewPlan): string {
   if (plan.files.length === 0) {
     lines.push(plan.target.kind === "snapshot" ? "No reviewable source files in the selected scope; inspect exclusions in plan.json." : "The change is empty: there is nothing to review.");
   }
-  if (plan.principles.length === 0 && plan.skipped.length === 0) {
+  if (plan.principlesLoaded === false) {
+    lines.push("Working tree and diff prepared. Step 3: run --load-principles before relevance filtering and routing.");
+  } else if (plan.principles.length === 0 && plan.skipped.length === 0) {
     lines.push("No advisory board on this machine. Sign in with the login skill, or on a CI runner set WELLACTUALLY_TOKEN to a token from the website, and run the review again.");
   }
   const notes = [
@@ -671,7 +634,7 @@ function adviceTokens(dir: string, file: string): number {
 }
 
 /** The instructions of each step of the review, which ship beside the review skill. */
-const STEP_FILES = ["splitter.md", "reviewer.md", "verifier.md", "testing.md", "findings.md"];
+const STEP_FILES = ["gather-information.md", "prepare-working-tree.md", "filter-principles.md", "splitter.md", "queue-session.md", "queue-reviewer.md", "aggregator.md", "verification-worker.md"];
 
 /** The folder of the review skill: beside the command in the plugin, or in this repository. */
 function stepsSource(): string | null {
@@ -694,8 +657,8 @@ function copySteps(out: string): void {
     return;
   }
   fs.mkdirSync(path.join(out, "steps"), { recursive: true });
-  for (const file of STEP_FILES) {
-    fs.copyFileSync(path.join(source, file), path.join(out, "steps", file));
+  for (const [index, file] of STEP_FILES.entries()) {
+    fs.copyFileSync(path.join(source, file), path.join(out, "steps", `${index + 1}_${file}`));
   }
 }
 
@@ -708,6 +671,7 @@ export const DEFAULT_BUDGET = 100_000;
 
 /** One reviewer's work: which parts of the diff it reads, with which principles. */
 export interface ReviewJob {
+  queue?: string;
   id: string;
   parts: string[];
   principles: string[];
@@ -716,6 +680,7 @@ export interface ReviewJob {
 }
 
 export interface ReviewRoute {
+  scheduling?: "queue";
   route: "single" | "sets";
   budget: number;
   tokens: { diff: number; advice: number };
@@ -749,21 +714,57 @@ function readJson<T>(dir: string, file: string): T {
  * beside the largest group, else the change is cut into change sets first.
  */
 export function routeReview(dir: string, budget: number = DEFAULT_BUDGET): ReviewRoute {
-  const plan = readJson<ReviewPlan>(dir, "plan.json");
-  const scope = fs.existsSync(path.join(dir, "scope.json"))
-    ? readJson<Scope>(dir, "scope.json")
-    : { inScope: plan.principles.map((principle) => principle.id), outOfScope: [] };
-  if (!fs.existsSync(path.join(dir, "scope.json"))) {
-    fs.writeFileSync(path.join(dir, "scope.json"), `${JSON.stringify(scope, null, 2)}\n`);
+  let plan = readJson<ReviewPlan>(dir, "plan.json");
+  if (plan.principlesLoaded === false) throw new Error("Load principles with --load-principles before routing.");
+  const legacy = fs.existsSync(path.join(dir, "scope.json"));
+  let scope: Scope;
+  if (legacy) scope = readJson<Scope>(dir, "scope.json");
+  else {
+    const file = path.join(dir, "principles.md");
+    if (!fs.existsSync(file)) throw new Error("principles.md is missing; finish relevance filtering first.");
+    const ids = fs.readFileSync(file, "utf8").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if (new Set(ids).size !== ids.length || ids.some(id => !plan.principles.some(principle => principle.id === id))) throw new Error("principles.md must contain unique current-board ids only, one per line.");
+    for (const principle of plan.principles) if (principle.hits.length > 0 && !ids.includes(principle.id)) throw new Error("principles.md omitted triggered principle " + principle.id);
+    scope = { inScope: ids, outOfScope: plan.principles.filter(principle => !ids.includes(principle.id)).map(principle => ({ id: principle.id, reason: "Filtered by coordinator" })) };
   }
   const byId = new Map(plan.principles.map((principle) => [principle.id, principle]));
   const placed = new Set([...scope.inScope, ...scope.outOfScope.map((out) => out.id)]);
   // A principle the router forgot is checked, not dropped.
   const kept = [...scope.inScope.filter((id) => byId.has(id)), ...plan.principles.filter((principle) => !placed.has(principle.id)).map((principle) => principle.id)];
+  const excluded = new Set(scope.outOfScope.map((entry) => entry.id));
+  for (const file of ["detectors-triggered.json", "detectors-no-findings.json"]) {
+    if (fs.existsSync(path.join(dir, file))) {
+      const entries = readJson<{ id: string }[]>(dir, file).filter(entry => !excluded.has(entry.id));
+      fs.writeFileSync(path.join(dir, file), JSON.stringify(entries, null, 2) + "\n");
+    }
+  }
+  for (const principle of plan.principles) {
+    if (excluded.has(principle.id)) {
+      const advice = path.resolve(dir, principle.file);
+      if (advice.startsWith(`${path.resolve(dir)}${path.sep}`)) {
+        fs.rmSync(advice, { force: true });
+      }
+    }
+  }
+  plan = { ...plan, principles: plan.principles.filter((principle) => !excluded.has(principle.id)), skipped: [], failures: (plan.failures ?? []).filter(failure => !excluded.has(failure.id)) };
+  fs.writeFileSync(path.join(dir, "plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
+  fs.writeFileSync(path.join(dir, "principles.md"), kept.join("\n") + (kept.length ? "\n" : ""));
+  if (legacy) fs.writeFileSync(path.join(dir, "scope.json"), `${JSON.stringify({ inScope: kept, outOfScope: [] }, null, 2)}\n`);
   const groups: string[][] = [];
+  if (plan.reviewProtocol === 4) {
+    const advice = kept.reduce((sum, id) => sum + (byId.get(id)!.adviceTokens ?? 0), 0);
+    const largest = Math.max(0, ...kept.map(id => byId.get(id)!.adviceTokens ?? 0));
+    if (largest > budget / 2) throw new Error("One principle exceeds half the reviewer budget; increase --budget or shorten its advice before reviewing");
+    const route = plan.tokens.diff <= budget / 2 ? "single" : "sets";
+    const jobs = route === "single" ? queueJobs("all", plan.parts.map(part => part.file), kept.length, null) : [];
+    const result: ReviewRoute = { route, scheduling: "queue", budget, tokens: { diff: plan.tokens.diff, advice }, groups: [], setBytes: Math.floor(budget / 2) * BYTES_PER_TOKEN, jobs };
+    fs.writeFileSync(path.join(dir, "route.json"), JSON.stringify(result, null, 2) + "\n");
+    fs.writeFileSync(path.join(dir, "jobs.json"), JSON.stringify(jobs, null, 2) + "\n");
+    return result;
+  }
   let groupTokens = 0;
   for (const id of kept) {
-    const tokens = adviceTokens(dir, (byId.get(id) as ReviewPrinciple).file);
+    const tokens = (byId.get(id) as ReviewPrinciple).adviceTokens ?? adviceTokens(dir, (byId.get(id) as ReviewPrinciple).file);
     const last = groups.at(-1);
     if (last === undefined || groupTokens + tokens > budget / 2) {
       groups.push([id]);
@@ -773,12 +774,12 @@ export function routeReview(dir: string, budget: number = DEFAULT_BUDGET): Revie
       groupTokens += tokens;
     }
   }
-  const advice = kept.reduce((sum, id) => sum + adviceTokens(dir, (byId.get(id) as ReviewPrinciple).file), 0);
-  const largest = Math.max(0, ...groups.map((group) => group.reduce((sum, id) => sum + adviceTokens(dir, (byId.get(id) as ReviewPrinciple).file), 0)));
+  const advice = kept.reduce((sum, id) => sum + ((byId.get(id) as ReviewPrinciple).adviceTokens ?? adviceTokens(dir, (byId.get(id) as ReviewPrinciple).file)), 0);
+  const largest = Math.max(0, ...groups.map((group) => group.reduce((sum, id) => sum + ((byId.get(id) as ReviewPrinciple).adviceTokens ?? adviceTokens(dir, (byId.get(id) as ReviewPrinciple).file)), 0)));
   const room = budget - largest;
   const route: ReviewRoute["route"] = plan.tokens.diff <= room ? "single" : "sets";
   const jobs: ReviewJob[] =
-    route === "single" ? groups.map((principles, index) => ({ id: groups.length === 1 ? "all" : `all-g${index + 1}`, parts: plan.parts.map((part) => part.file), principles, set: null })) : [];
+    route === "single" ? (groups.length === 0 && plan.reviewProtocol === 3 ? [[]] : groups).map((principles, index) => ({ id: groups.length <= 1 ? "all" : `all-g${index + 1}`, parts: plan.parts.map((part) => part.file), principles, set: null })) : [];
   const result: ReviewRoute = { route, budget, tokens: { diff: plan.tokens.diff, advice }, groups, setBytes: room * BYTES_PER_TOKEN, jobs };
   fs.writeFileSync(path.join(dir, "route.json"), `${JSON.stringify(result, null, 2)}\n`);
   if (route === "single") {
@@ -788,6 +789,7 @@ export function routeReview(dir: string, budget: number = DEFAULT_BUDGET): Revie
 }
 
 export function renderRoute(route: ReviewRoute): string {
+  if (route.scheduling === "queue") return `Route: ${route.route}. ${route.tokens.diff} estimated diff tokens; ${route.tokens.advice} total advice tokens loaded one claim at a time. ${route.jobs.length} queue workers currently prepared; ceil(principles/20) per set. Set diff limit ${route.setBytes} bytes.`;
   const lines = [`${route.tokens.advice} tokens of advice in ${count(route.groups.length, "group")}, ${route.tokens.diff} tokens of diff, a budget of ${route.budget} per reviewer.`];
   if (route.route === "single") {
     lines.push(`Route: single. ${count(route.jobs.length, "reviewer")} for the whole change, listed in jobs.json.`);
@@ -846,19 +848,118 @@ export function buildSets(dir: string): ReviewJob[] {
   chosen.sets.forEach((set, index) => {
     const id = `set-${String(index + 1).padStart(2, "0")}`;
     const parts = writeParts(dir, `sets/${id}`, packDiff(set.files.flatMap((file) => blocks.get(file) ?? [])));
+    if (plan.reviewProtocol === 4) {
+      const bytes = parts.reduce((sum, part) => sum + part.bytes, 0);
+      if (bytes > route.setBytes) throw new Error(`${set.name} exceeds the set diff budget (${bytes} > ${route.setBytes} bytes); split at a coherent boundary and name the cross-set contracts`);
+      jobs.push(...queueJobs(id, parts.map(part => part.file), plan.principles.length, id));
+      return;
+    }
     // Even without applicable principles, large changes need per-set discovery and testing.
     const groups = route.groups.length === 0 ? [[]] : route.groups;
     groups.forEach((principles, group) => {
       jobs.push({ id: groups.length === 1 ? id : `${id}-g${group + 1}`, parts: parts.map((part) => part.file), principles, set: id });
     });
   });
+  if (plan.reviewProtocol === 4) jobs.push({ id: "crossing", parts: [], principles: [], set: "crossing", queue: "crossing" });
   fs.writeFileSync(path.join(dir, "jobs.json"), `${JSON.stringify(jobs, null, 2)}\n`);
   return jobs;
+}
+
+function queueJobs(unit: string, parts: string[], principles: number, set: string | null): ReviewJob[] {
+  return Array.from({ length: Math.max(1, Math.ceil(principles / 20)) }, (_, index) => ({ id: `${unit}-worker-${index + 1}`, parts, principles: [], set, queue: unit }));
 }
 
 export function renderSets(jobs: ReviewJob[]): string {
   const sets = new Set(jobs.map((job) => job.set)).size;
   return `${count(sets, "change set")}, ${count(jobs.length, "reviewer")} listed in jobs.json.`;
+}
+
+/** Materialize each agent's complete instructions after relevance filtering and routing. */
+export function setupAgents(dir: string): string[] {
+  dir = path.resolve(dir);
+  const plan = readJson<ReviewPlan>(dir, "plan.json");
+  const jobs = readJson<ReviewJob[]>(dir, "jobs.json");
+  const route = readJson<ReviewRoute>(dir, "route.json");
+  const source = stepsSource();
+  if (source === null) throw new Error("Review instruction templates are unavailable.");
+  if (plan.reviewProtocol === 4) return setupQueueAgents(dir, plan, jobs, source);
+  const units = jobs.length ? [...new Set(jobs.map(job => job.set ?? "all"))] : ["all"];
+  if (route.route === "sets") units.push("crossing");
+  const assignments = jobs.map(job => ({ folder: `reviewer-${job.id}`, role: "reviewer", assignment: `Do reviewer job ${job.id}.`, parts: job.parts }));
+  if (route.route === "sets") assignments.push({ folder: "reviewer-crossing", role: "reviewer", assignment: "Do the crossing review pass.", parts: plan.parts.map(part => part.file) });
+  assignments.push({ folder: "verifier", role: "verifier", assignment: `Aggregate and verify every candidate from all reviewers and all units (${units.join(", ")}), only after every reviewer finishes. You are the only verifier.`, parts: plan.parts.map(part => part.file) });
+  return assignments.map(agent => {
+    const folder = path.join(dir, "agents", agent.folder);
+    fs.mkdirSync(folder, { recursive: true });
+    const dependencies = ["findings"];
+    const sections = [agent.role, ...dependencies].map((role, index) => {
+      let body = fs.readFileSync(path.join(source, `${role}.md`), "utf8").replaceAll("<dir>", dir);
+      for (const [name, number] of [["reviewer", 6], ["findings", 5]] as const) {
+        body = body.replaceAll(path.join(dir, "steps", `${number}_${name}.md`), `the ${name} section in this file`);
+        body = body.replaceAll(`steps/${number}_${name}.md`, `the ${name} section in this file`);
+      }
+      return `## ${index === 0 ? "Your role" : "Reference only: " + role}\n\n${body}`;
+    });
+    const inputs = ["task.md", ...(fs.existsSync(path.join(dir, "context.md")) ? ["context.md"] : []), "plan.json", "principles.md", "tracking.json", "jobs.json", ...agent.parts];
+    const header = [`# ${agent.folder}`, "", agent.assignment, `Review directory: ${dir}`, `Working source directory: ${plan.root}`, `Your scratch directory: ${folder}`, "", "Only the Your role section assigns work. Other sections supply writing, probe and MCP guidance; do not perform their separate roles.", "Shared inputs and required outputs remain relative to the review directory, not this agent folder. Do not copy shared source, diff, principle bodies or findings into this folder.", "", "## Shared inputs", "", ...inputs.map(file => `- [${file}](${path.join(dir, file)})`), ""];
+    const file = path.join(folder, "INSTRUCTIONS.md");
+    fs.writeFileSync(file, header.join("\n") + "\n" + sections.join("\n\n"));
+    return file;
+  });
+}
+
+function setupQueueAgents(dir: string, plan: ReviewPlan, jobs: ReviewJob[], source: string): string[] {
+  const tracking = readJson<{ target: string; run: string; session?: string }>(dir, "tracking.json");
+  const units = [...new Set(jobs.map(job => job.queue!))];
+  const scope = createHash("sha256").update(JSON.stringify(plan.target)).update(fs.readFileSync(path.join(dir, "diff.patch"))).digest("hex");
+  const session = claimReviewSession({ repo: plan.root, target: tracking.target, run: tracking.run, scope, sets: units.map(id => ({ id, principles: id === "crossing" ? [] : plan.principles.map(p => ({ id: p.id, version: p.version })) })) }, plan.root);
+  fs.writeFileSync(path.join(dir, "tracking.json"), JSON.stringify({ ...tracking, session: session.id }, null, 2) + "\n");
+  const assignments = [...jobs.map(job => ({ folder: `reviewer-${job.id}`, role: "queue-reviewer", job: job.id, queue: job.queue!, parts: job.parts })), { folder: "aggregator", role: "aggregator", job: "aggregator", queue: "", parts: [] }];
+  return assignments.map(agent => {
+    const folder = path.join(dir, "agents", agent.folder); fs.mkdirSync(folder, { recursive: true });
+    const inputs = ["task.md", ...(fs.existsSync(path.join(dir, "context.md")) ? ["context.md"] : []), "plan.json", "tracking.json", "jobs.json", ...(fs.existsSync(path.join(dir, "sets.json")) ? ["sets.json"] : []), ...agent.parts];
+    const header = [`# ${agent.folder}`, `Review directory: ${dir}`, `Source root: ${plan.root}`, `Worker: ${agent.job}`, `Queue: ${agent.queue}`, "", "## Inputs", ...inputs.map(file => `- [${file}](${path.join(dir, file)})`), ""];
+    const body = fs.readFileSync(path.join(source, `${agent.role}.md`), "utf8").replaceAll("<dir>", dir);
+    const file = path.join(folder, "INSTRUCTIONS.md"); fs.writeFileSync(file, header.join("\n") + "\n" + body); return file;
+  });
+}
+
+/** Called after the aggregation-only agent creates the verification queue. */
+export function setupVerificationAgents(dir: string): string[] {
+  dir = path.resolve(dir);
+  const plan = readJson<ReviewPlan>(dir, "plan.json"), tracking = readJson<{ target: string; session: string }>(dir, "tracking.json");
+  const session = getReviewSession({ repo: plan.root, target: tracking.target, session: tracking.session }, plan.root);
+  const queue = session.queues.find(q => q.phase === "verification");
+  if (!queue) throw new Error("Aggregator must call begin_verification first");
+  const source = stepsSource(); if (!source) throw new Error("Missing skill templates");
+  return Array.from({ length: queue.workers }, (_, index) => {
+    const id = `verification-worker-${index + 1}`, folder = path.join(dir, "agents", id); fs.mkdirSync(folder, { recursive: true });
+    const workingRoot = prepareProofWorktree(plan, folder);
+    const file = path.join(folder, "INSTRUCTIONS.md");
+    fs.writeFileSync(path.join(folder, "workspace.json"), JSON.stringify({ root: workingRoot, isolated: workingRoot !== plan.root }, null, 2) + "\n");
+    fs.writeFileSync(file, `# ${id}\nWorker: ${id}\nQueue: verification\nReview directory: ${dir}\nReviewed source root: ${plan.root}\nProof working root: ${workingRoot}\nExecute tests/probes from the proof working root. Do not mutate the reviewed source or another worker's checkout.\nRead ${dir}/tracking.json, ${dir}/task.md, ${dir}/plan.json and optional context.md.\n\n` + fs.readFileSync(path.join(source, "verification-worker.md"), "utf8").replaceAll("<dir>", dir));
+    return file;
+  });
+}
+
+function prepareProofWorktree(plan: ReviewPlan, folder: string): string {
+  const gitRoot = gitOrNull(plan.root, ["rev-parse", "--show-toplevel"]), head = gitOrNull(plan.root, ["rev-parse", "--verify", "HEAD"]);
+  if (!gitRoot || !head) return plan.root; // The MCP session allocates a single proof worker without Git.
+  const checkout = path.join(folder, "checkout");
+  if (!fs.existsSync(checkout)) execFileSync("git", ["worktree", "add", "--detach", checkout, head.trim()], { cwd: plan.root, stdio: ["ignore", "pipe", "pipe"] });
+  else if (gitOrNull(checkout, ["rev-parse", "HEAD"])?.trim() !== head.trim()) throw new Error("Existing proof worktree has a different HEAD; choose a fresh worker directory");
+  const actualRoot = fs.realpathSync(plan.root), actualGitRoot = fs.realpathSync(gitRoot.trim());
+  const relativeRoot = path.relative(actualGitRoot, actualRoot), workingRoot = path.join(fs.realpathSync(checkout), relativeRoot);
+  if (relativeRoot === ".." || relativeRoot.startsWith(".." + path.sep)) throw new Error("Reviewed root is outside its Git repository");
+  // A detached HEAD alone would silently discard local/patch/snapshot contents.
+  if (plan.target.kind !== "git" || plan.target.head === null) for (const file of plan.files) {
+    const from = path.resolve(actualRoot, file.path), to = path.resolve(workingRoot, file.path);
+    if (!from.startsWith(actualRoot + path.sep) || !to.startsWith(path.resolve(workingRoot) + path.sep)) throw new Error("Proof overlay escapes project root");
+    if (!fs.existsSync(from)) fs.rmSync(to, { force: true });
+    else { if (!fs.lstatSync(from).isFile() || !fs.realpathSync(from).startsWith(actualRoot + path.sep)) throw new Error(`Cannot isolate non-regular input ${file.path}`); fs.mkdirSync(path.dirname(to), { recursive: true }); if (!fs.realpathSync(path.dirname(to)).startsWith(fs.realpathSync(workingRoot)) || (fs.existsSync(to) && fs.lstatSync(to).isSymbolicLink())) throw new Error("Proof overlay follows a symlink outside its checkout"); fs.copyFileSync(from, to); }
+    if (file.from && file.from !== file.path && !fs.existsSync(path.join(actualRoot, file.from))) { const previous = path.resolve(workingRoot, file.from); if (!previous.startsWith(path.resolve(workingRoot) + path.sep)) throw new Error("Rename escapes proof root"); fs.rmSync(previous, { force: true }); }
+  }
+  return workingRoot;
 }
 
 /** A budget as the user writes it: 100000, 100k or 1m. */
@@ -871,7 +972,7 @@ export function parseBudget(text: string): number {
   return Math.round(Number(match[1]) * scale);
 }
 
-export type ReviewStage = "review" | "test" | "verify" | "report";
+export type ReviewStage = "review" | "test" | "verify";
 
 interface Investigation {
   status: "complete" | "limited" | "not_applicable";
@@ -888,10 +989,25 @@ interface VerdictFile {
 
 /** Checks completion from artifacts, rather than an agent's successful exit or reported count. */
 export function checkReview(dir: string, stage: string): { stage: ReviewStage; jobs: number; units: number; candidates: number } {
-  const stages: ReviewStage[] = ["review", "test", "verify", "report"];
+  const queuedPlan = fs.existsSync(path.join(dir, "plan.json")) ? readJson<ReviewPlan>(dir, "plan.json") : null;
+  if (queuedPlan?.reviewProtocol === 4) {
+    if (!["review", "verify"].includes(stage)) throw new Error("Queue reviews have review and verify stages only");
+    for (const obsolete of ["verdicts", "verified", "findings.json", "ratings.json"]) if (fs.existsSync(path.join(dir, obsolete))) throw new Error(`${obsolete} is obsolete in queue reviews; progress belongs in MCP`);
+    const tracking = readJson<{ target: string; session: string }>(dir, "tracking.json");
+    const session = getReviewSession({ repo: queuedPlan.root, target: tracking.target, session: tracking.session }, queuedPlan.root);
+    const queues = session.queues.filter(q => q.phase === "review" || stage === "verify");
+    const pending = queues.flatMap(q => q.items.filter(item => !item.completed).map(item => `${q.id}/${item.id}`));
+    if (stage === "verify" && session.phase !== "verification") pending.push("aggregation/verification queue not initialized");
+    const candidates = listCandidates({ repo: queuedPlan.root, target: tracking.target, run: session.run }, queuedPlan.root);
+    if (stage === "verify") for (const candidate of candidates) if (candidate.status === "pending") pending.push(`candidate ${candidate.id}`);
+    if (stage === "verify") pending.push(...verificationProblems(session, queuedPlan.root, tracking.target));
+    if (pending.length) throw new Error(`Review ${stage} is incomplete:\n- ${pending.join("\n- ")}`);
+    return { stage: stage as ReviewStage, jobs: queues.reduce((n, q) => n + q.workers, 0), units: queues.filter(q => q.phase === "review").length, candidates: candidates.length };
+  }
+  const stages: ReviewStage[] = ["review", "test", "verify"];
   const through = stages.indexOf(stage as ReviewStage);
   if (through < 0) {
-    throw new Error(`Unknown review stage "${stage}". Use review, test, verify or report.`);
+    throw new Error(`Unknown review stage "${stage}". Use review, test or verify.`);
   }
   const route = readJson<ReviewRoute>(dir, "route.json");
   const jobs = readJson<ReviewJob[]>(dir, "jobs.json");
@@ -900,13 +1016,10 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
     throw new Error("Review routing is incomplete: zero jobs require a single route with no principle groups.");
   }
   const planFile = fs.existsSync(path.join(dir, "plan.json")) ? readJson<ReviewPlan>(dir, "plan.json") : null;
-  const investigationRecords: unknown[] = [];
-  const auditRecords: unknown[] = [];
   const inquiries = new Map<string, { job: string; principle: string; limited: boolean }[]>();
   const nonempty = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
   const texts = (value: unknown): value is string[] => Array.isArray(value) && value.every(nonempty);
   const candidates = new Map<string, string[]>();
-  const verifiedCandidates = new Map<string, string>();
   const units = jobs.length === 0 ? ["all"] : [...new Set(jobs.map((job) => job.set ?? "all"))];
   if (route.route === "sets") {
     units.push("crossing");
@@ -939,9 +1052,9 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
       problems.push(`${file} is missing or unreadable`);
     }
   };
-  if (fs.existsSync(path.join(dir, "plan.json")) && fs.existsSync(path.join(dir, "scope.json"))) {
+  if (fs.existsSync(path.join(dir, "plan.json"))) {
     const plan = load<ReviewPlan>("plan.json");
-    const scope = load<Scope>("scope.json");
+    const scope = fs.existsSync(path.join(dir, "scope.json")) ? load<Scope>("scope.json") : { inScope: [], outOfScope: [] };
     if (plan !== null && scope !== null) {
       const excluded = new Set(scope.outOfScope.map((entry) => entry.id));
       for (const principle of plan.principles) {
@@ -956,21 +1069,6 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
       }
     }
   }
-  const findingScopes = ["introduced", "newly_exposed", "incomplete_fix", "pre_existing", "current"];
-  const checkScope = (finding: unknown, file: string): void => {
-    if (fs.existsSync(path.join(dir, "plan.json"))) {
-      const plan = load<ReviewPlan>("plan.json");
-      if (plan?.target.kind === "snapshot" && finding !== null && typeof finding === "object" && (finding as { scope?: string }).scope !== "current") {
-        problems.push(`${file}: snapshot findings must use scope current; no change baseline exists`);
-      }
-    }
-    if (finding !== null && typeof finding === "object" && (finding as { evidence?: string }).evidence === "proven" && !(finding as { provenTest?: unknown }).provenTest) {
-      problems.push(`${file} has a proven finding without provenTest reproduction evidence`);
-    }
-    if (finding === null || typeof finding !== "object" || !findingScopes.includes((finding as { scope: string }).scope)) {
-      problems.push(`${file} has a finding without a valid scope`);
-    }
-  };
   const verdicts = (stem: string, unit: string, expected: string[], job: string): void => {
     const file = `verdicts/${stem}.json`;
     const value = load<VerdictFile>(file);
@@ -994,9 +1092,8 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
       if (!["not_applicable", "followed", "findings"].includes(verdict.verdict)) {
         problems.push(`${file} has an invalid verdict for ${verdict.principle}`);
       }
-      if (planFile?.reviewProtocol === 2 || verdict.investigation !== undefined) {
+      if (planFile?.reviewProtocol === 2 || planFile?.reviewProtocol === 3 || verdict.investigation !== undefined) {
         const inquiry = verdict.investigation;
-        investigationRecords.push({ job, principle: verdict.principle, ...inquiry });
         const label = `${file} investigation for ${verdict.principle}`;
         if (!inquiry || !["complete", "limited", "not_applicable"].includes(inquiry.status) || !nonempty(inquiry.reason) || !Array.isArray(inquiry.questions) || !texts(inquiry.limits)) {
           problems.push(`${label} needs status, reason, questions and limits`);
@@ -1019,9 +1116,9 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
       if (verdict.findings !== undefined && !Array.isArray(verdict.findings)) {
         problems.push(`${file} findings for ${verdict.principle} must be an array`);
       } else {
-        verdict.findings?.forEach((finding, index) => {
-          checkScope(finding, file);
-          refs.push(`${stem}:${verdict.principle}:${index}`);
+        verdict.findings?.forEach((candidate) => {
+          if (!nonempty(candidate)) problems.push(`${file} findings for ${verdict.principle} must contain Findings MCP candidate ids`);
+          else refs.push(candidate);
         });
       }
     }
@@ -1030,9 +1127,9 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
         problems.push(`${file} is missing principle ${id}`);
       }
     }
-    value.outside.forEach((finding, index) => {
-      checkScope(finding, file);
-      refs.push(`${stem}:outside:${index}`);
+    value.outside.forEach((candidate) => {
+      if (!nonempty(candidate)) problems.push(`${file} outside must contain Findings MCP candidate ids`);
+      else refs.push(candidate);
     });
     candidates.set(unit, refs);
   };
@@ -1045,7 +1142,7 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
   if (route.route === "sets") {
     verdicts("crossing", "crossing", [], "crossing");
   }
-  if (through >= 1) {
+  if (through >= 1 && planFile?.reviewProtocol !== 3) {
     for (const unit of units) {
       const results = `probes/${unit}/results.md`;
       try {
@@ -1064,12 +1161,13 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
   if (fs.existsSync(verdictDir)) {
     for (const file of fs.readdirSync(verdictDir).filter((file) => file.endsWith(".json"))) {
       const stem = file.slice(0, -5);
-      if (!expectedFiles.has(stem) && (through >= 1 || !stem.startsWith("testing-"))) {
+      if (!expectedFiles.has(stem) && (through >= 1 || !stem.startsWith("testing-")) && !(planFile?.reviewProtocol === 3 && stem.startsWith("testing-"))) {
         problems.push(`Unexpected verdicts/${file}; it is not an assigned job or testing unit`);
       }
     }
   }
   if (through >= 2) {
+    if (planFile?.reviewProtocol === 3) requireText("probes/verification/results.md");
     for (const unit of units) {
       const expectedInquiries = inquiries.get(unit) ?? [];
       if (expectedInquiries.length) {
@@ -1078,7 +1176,6 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
         if (audit !== null) {
           if (!Array.isArray(audit)) problems.push(`${file} must be an array`);
           else {
-            auditRecords.push(...audit.map((entry) => ({ unit, ...entry })));
             const seen = new Set<string>();
             for (const entry of audit) {
               const key = `${entry?.job}:${entry?.principle}`;
@@ -1092,114 +1189,14 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
           }
         }
       }
-      const file = `verified/${unit}.json`;
-      const verified = load<{ candidate: string; status: string; promoted?: boolean; file?: string; line?: number; priority?: string; evidence?: string; problem?: string; fix?: string }[]>(file);
-      if (verified === null) {
-        continue;
-      }
-      if (!Array.isArray(verified)) {
-        problems.push(`${file} must be an array`);
-        continue;
-      }
       const expected = new Set(candidates.get(unit) ?? []);
       if (expected.size === 0) {
         requireText(`challenges/${unit}.md`);
       }
-      const seen = new Set<string>();
-      for (const [index, entry] of verified.entries()) {
-        if (!["confirmed", "plausible", "refuted"].includes(entry.status)) {
-          problems.push(`${file} has an invalid verification status`);
-        }
-        if (entry.promoted === true && !entry.candidate && entry.file && typeof entry.line === "number" && entry.priority && entry.evidence && entry.problem && entry.fix) {
-          checkScope(entry, file);
-          verifiedCandidates.set(`${file}:${index}`, entry.status);
-          continue;
-        }
-        if (!expected.has(entry.candidate)) {
-          problems.push(`${file} has unknown candidate ${String(entry.candidate)}`);
-        }
-        if (seen.has(entry.candidate)) {
-          problems.push(`${file} repeats candidate ${entry.candidate}`);
-        }
-        seen.add(entry.candidate);
-        verifiedCandidates.set(entry.candidate, entry.status);
-      }
-      for (const ref of expected) {
-        if (!seen.has(ref)) {
-          problems.push(`${file} is missing candidate ${ref}`);
-        }
-      }
     }
   }
   if (through >= 2 && fs.existsSync(path.join(dir, "verified"))) {
-    for (const file of fs.readdirSync(path.join(dir, "verified")).filter((file) => file.endsWith(".json"))) {
-      if (!units.includes(file.slice(0, -5))) {
-        problems.push(`Unexpected verified/${file}; it is not an assigned verification unit`);
-      }
-    }
-  }
-  if (through >= 3 && problems.length === 0) {
-    const report = load<{ complete: boolean; verdicts: { principle: string; verdict: string }[]; findings: { candidate?: string; candidates?: string[] }[]; outside: { candidate?: string; candidates?: string[] }[]; dismissed: unknown[]; outOfScope: unknown[] }>("findings.json");
-    if (report !== null) {
-      if (investigationRecords.length) {
-        const retained = report as unknown as { investigations?: unknown[]; investigationAudits?: unknown[] };
-        const ordered = (entries: unknown[]): string => JSON.stringify(entries.map((entry) => JSON.stringify(entry)).sort());
-        if (!Array.isArray(retained.investigations) || ordered(retained.investigations) !== ordered(investigationRecords)) problems.push("findings.json must retain every investigation answer and limit");
-        if (!Array.isArray(retained.investigationAudits) || ordered(retained.investigationAudits) !== ordered(auditRecords)) problems.push("findings.json must retain every investigation audit and limit");
-      }
-      if (report.complete !== true) {
-        problems.push("findings.json must declare complete: true after all steps pass");
-      }
-      for (const field of ["verdicts", "findings", "outside", "dismissed", "outOfScope"] as const) {
-        if (!Array.isArray(report[field])) {
-          problems.push(`findings.json needs a ${field} array`);
-        }
-      }
-      if (Array.isArray(report.verdicts)) {
-        const expected = new Set(jobs.flatMap((job) => job.principles));
-        const seen = new Set<string>();
-        for (const verdict of report.verdicts) {
-          if (!["not_applicable", "followed", "findings"].includes(verdict.verdict)) {
-            problems.push(`findings.json has an invalid verdict for ${verdict.principle}`);
-          }
-          if (seen.has(verdict.principle) || !expected.has(verdict.principle)) {
-            problems.push(`findings.json has duplicate or unassigned principle ${verdict.principle}`);
-          }
-          seen.add(verdict.principle);
-        }
-        for (const id of expected) {
-          if (!seen.has(id)) {
-            problems.push(`findings.json is missing principle ${id}`);
-          }
-        }
-      }
-      if (Array.isArray(report.findings) && Array.isArray(report.outside)) {
-        const retained = new Set<string>();
-        for (const finding of [...report.findings, ...report.outside]) {
-          checkScope(finding, "findings.json");
-          const refs = finding.candidates ?? (finding.candidate ? [finding.candidate] : []);
-          if (!Array.isArray(refs) || refs.length === 0) {
-            problems.push("findings.json has a finding without source candidates");
-            continue;
-          }
-          for (const ref of refs) {
-            const status = verifiedCandidates.get(ref);
-            if (status === undefined || status === "refuted") {
-              problems.push(`findings.json retains unknown or refuted candidate ${ref}`);
-            }
-            if (retained.has(ref)) {
-              problems.push(`findings.json repeats candidate ${ref}`);
-            }
-            retained.add(ref);
-          }
-        }
-        for (const [ref, status] of verifiedCandidates) {
-          if (status !== "refuted" && !retained.has(ref)) {
-            problems.push(`findings.json is missing surviving candidate ${ref}`);
-          }
-        }
-      }
-    }
+    problems.push("verified/ is obsolete; verification decisions belong in Findings MCP");
   }
   if (problems.length > 0) {
     throw new Error(`Review ${stage} is incomplete:\n- ${problems.join("\n- ")}`);

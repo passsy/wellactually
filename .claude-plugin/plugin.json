@@ -8,6 +8,7 @@
   "mcpServers": {
     "wellactually": {
       "command": "node",
+      "env": { "WELLACTUALLY_REVIEW_HOST": "claude" },
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs",
         "mcp"

@@ -1,13 +1,12 @@
 # Review a change against principles
 
 You review a change against a set of principles, each the advice of an expert, in the review directory you were given, `<dir>`.
-`<dir>/plan.json` names the project in `root`, the review mode in `target.kind` and the frozen selected contents in `source`.
-Read selected files from that snapshot (and removed/previous files in `plan.before` when supplied), including uncommitted work. Related callers and context may be read at the original root.
-For older Git-only plans without `source`, use `target.head` when non-null, or the actual local tracked/untracked contents otherwise.
+`<dir>/plan.json` names the reviewed directory in `root` and the review mode in `target.kind`.
+Read selected files and related callers directly from `root`, including uncommitted work when selected. For Git comparisons read previous/removed files with `git show <target.base>:<path>`. For supplied filesystem comparisons read previous files directly from `plan.before` when available. Do not create `source/` or `before/` copies.
 A `snapshot` reviews present contents without a baseline; `patch` reviews a supplied comparison; `git` uses recorded revisions. No Git commands are required for a snapshot or supplied patch.
 Keep the reviewed working tree unchanged.
-You may write probes and execute local checks as described in `<dir>/steps/testing.md`.
-Do not read other reviewers' or testers' verdicts. You run concurrently with an independent tester. Write only your own verdict file.
+Your review is read-only: inspect text and existing test assertions, but never execute project code, tests, builds, scripts, REPLs or probes. Read/search tools and read-only Git inspection are permitted. Only write your assigned verdict artifact and submit candidates through MCP. Do not edit product files.
+Do not read other reviewers' verdicts. Write only your own verdict file. There is no tester agent; one verifier aggregates every review after all reviewers finish and owns all execution and proof-building.
 Prioritize concrete consequential defects; do not manufacture advisory findings to fill a quota. Aim to finish in about 5 minutes for an ordinary change, but disclose unfinished checks rather than claiming completion.
 
 ## Your job
@@ -15,20 +14,20 @@ Prioritize concrete consequential defects; do not manufacture advisory findings 
 Find your job by its id in `<dir>/jobs.json`: its `parts` are the diff you read, its `principles` the ids you give a verdict.
 The crossing pass has no entry there: see the end of this file.
 
-1. Read `task.md` for original requirements when present, `plan.json`, `project.md` and every part of your job in full, in order. Establish the intended contract from the task and base source, then challenge whether the chosen implementation satisfies it. Trace state/resource ownership, notification, failure and retirement paths where relevant; no separate design document or inventory is required.
+1. Read `task.md` for original requirements when present, `plan.json` and every part of your job in full, in order. Establish the intended contract from the task and base source, then challenge whether the chosen implementation satisfies it. Trace state/resource ownership, notification, failure and retirement paths where relevant; no separate design document or inventory is required.
    Each part fits in one read.
-2. Then read the advice of each of your principles in full: `<dir>/principles/<id>.md`, with the `/` of the id written as `__`, such as `principles/ana__no-todo.md` for `ana/no-todo`.
+2. Load each assigned principle's full advice through Well Actually MCP get_principle, passing its id and version from plan.json. Read it in full. principles.md contains retained IDs only. Report missing advice or version mismatch as a limitation.
 3. Inspect surrounding code, callers, implementations, schemas and tests wherever needed to judge the consequences of the change, including unchanged files outside your assigned diff.
    Search first and read relevant sections; a job's parts assign review coverage, not a boundary on gathering evidence.
    Open a whole file when needed, and record an unresolved question if a context or tool limit prevents checking it.
 
 ## Investigate before judging
 
-For every assigned principle, derive concrete questions from its advice, trace the relevant paths, and answer with source locations, test assertions or retained probe output. Cover the relevant scope; one compliant example does not establish compliance across the change.
+For every assigned principle, derive concrete questions from its advice, trace the relevant paths, and answer with source locations and existing test assertions. Cover the relevant scope; one compliant example does not establish compliance across the change. Assess solution fit and meaningful coverage gaps under the relevant assigned principles.
 
 Read `context.md` when present. Record `investigation` with `status` (`complete`, `limited` or `not_applicable`), `reason`, `questions` and `limits`. Every verdict needs at least one question, answer and nonempty `evidence` array, including evidence explaining why advice does not apply.
 
-If a material question remains unresolved, use `limited` and name the missing evidence in `limits`. Missing context is a limit, not irrelevance. Source reasoning can settle a question unless its answer depends on unobserved execution. Record supported violations as findings and uncertainty as limits.
+If a material question remains unresolved, use `limited` and name the missing evidence in `limits`. Missing context is a limit, not irrelevance. You may raise a concrete suspected issue without executable proof: identify its trigger, source mechanism and what the verifier should establish. Use Reasoned for source-supported claims and Speculative for unverified assumptions. Do not omit a useful candidate merely because proving it requires execution.
 
 ## Verdicts
 
@@ -68,18 +67,16 @@ Keep rule quotes, priorities, verification narration and reproduction commands i
   A principle about formatting or layout is checked like any other when nothing in the project enforces it.
 - Give `file` as the path from the project root and `line` as the line in that file in the reviewed version, never a line of the patch.
 - Priority: p0 breaks production or data, p1 a real bug or a broken contract, p2 a problem a reviewer would block on, p3 worth fixing, p4 a nit.
-- Evidence: proven only with a reproducible failing input, test or observed execution; reasoned when it follows from the code; speculative when it depends on something you could not see.
-  For proven findings, include `provenTest` with the exact command, expected and actual result, and the path of the retained reproduction and output.
-  A verifier confirming your reasoning does not by itself make it proven.
+- Evidence: reviewers submit Reasoned or Speculative candidates. Never claim new Proven execution evidence. The verifier attempts reproduction and may upgrade evidence only after an actual focused failing probe.
 
-A real problem in your parts that none of your principles covers goes into `outside`, with the same fields and no `quote`.
+A real problem in your parts that none of your principles covers becomes an MCP candidate with no `rule` or `quote`, and its returned id goes into `outside`.
 A compile error or a broken build is such a problem.
 
-## Answer
+## Record and answer
 
-Every candidate has a stable reference `<verdict filename stem>:<principle id or outside>:<zero-based finding index>`.
-For example, `all:expert/rule:0` identifies the first finding of that principle in `all.json`.
-Use that reference in probe results and verification.
+Read `tracking.json`. Collect the possible findings you established and call Findings MCP `create_candidates` once, using a stable `source` such as `<job>:<principle id or outside>:<zero-based index>` and this job's unit. The MCP payload holds all finding prose and evidence. Correct indexed errors immediately.
+
+Write only the returned candidate ids into the verdict file. The local artifact records principle coverage and investigation evidence, not findings:
 
 Write `<dir>/verdicts/<job id>.json`:
 
@@ -91,14 +88,27 @@ Write `<dir>/verdicts/<job id>.json`:
       "principle": "id",
       "verdict": "not_applicable | followed | findings",
       "where": "file:line, for followed",
-      "investigation": { "status": "complete", "reason": "Why this answer settles the advice", "questions": [{ "question": "What does the advice require here?", "answer": "Concrete conclusion", "evidence": ["path:line or retained probe"] }], "limits": [] },
-      "findings": [{ "title": "Concrete action and behavior", "file": "path", "line": 12, "priority": "p2", "scope": "introduced", "evidence": "reasoned", "problem": "...", "fix": "...", "quote": "...", "fromDetector": false }],
+      "investigation": {
+        "status": "complete",
+        "reason": "Why this answer settles the advice",
+        "questions": [
+          {
+            "question": "What does the advice require here?",
+            "answer": "Concrete conclusion",
+            "evidence": ["path:line or retained probe"]
+          }
+        ],
+        "limits": []
+      },
+      "findings": ["C1"],
       "dismissed": [{ "file": "path", "line": 12, "reason": "..." }]
     }
   ],
-  "outside": [{ "title": "Concrete action and behavior", "file": "path", "line": 12, "priority": "p1", "scope": "introduced", "evidence": "proven", "problem": "...", "fix": "..." }]
+  "outside": ["C2"]
 }
 ```
+
+If `create_candidates` is unavailable or returns an uncorrected error, do not write finding content to disk. Report the blocker.
 
 Answer only with `done` and the number of verdicts you wrote.
 
@@ -106,5 +116,5 @@ Answer only with `done` and the number of verdicts you wrote.
 
 After a change was cut into change sets, one reviewer checks what crosses them.
 Read the `crossing` list in `<dir>/sets.json`, and check each item in the repository: do both sides agree, does the name match, does every caller handle the new case.
-Write `<dir>/verdicts/crossing.json` with `"job": "crossing"`, no `verdicts`, and what you found in `outside`, or with the id of the principle it breaks as `principle` on the finding.
+Create crossing candidates in MCP, then write `<dir>/verdicts/crossing.json` with `"job": "crossing"`, no `verdicts`, and returned candidate ids in `outside`.
 Answer only with `done` and the number of findings.
