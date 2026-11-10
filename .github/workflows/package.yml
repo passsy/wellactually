@@ -15,7 +15,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: '22.18.0'
+          node-version: 'lts/*'
+          check-latest: true
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
@@ -37,6 +38,24 @@ jobs:
         with:
           node-version: '20.0.0'
       - name: Test the installed product on its minimum Node version
+        run: npm run test:package
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          check-latest: true
+      - name: Test the installed product on Node 22
+        run: npm run test:package
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          check-latest: true
+      - name: Test the installed product on Node 24
+        run: npm run test:package
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 'node'
+          check-latest: true
+      - name: Test the installed product on the latest stable Node release
         run: npm run test:package
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

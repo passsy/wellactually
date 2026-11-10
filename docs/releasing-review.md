@@ -20,6 +20,9 @@ builds while the agent runs.
 ## Build and validate
 
 Development tooling needs Node >=22.18. Installed packages support Node >=20.
+Use the latest maintained LTS for development and installation. Node 20 is EOL;
+its compatibility floor remains unchanged for existing users. The host application
+may require a newer Node version than the plugin.
 
 ```sh
 npm ci --ignore-scripts
@@ -37,9 +40,15 @@ both host layouts with tiny launchers for a single compiled review helper.
 
 Packed-product tests install outside the checkout, offline with scripts disabled,
 and exercise four host entrypoints, MCP CRUD, card/inbox assets, version identity,
-PNG icons and compatibility adapter contracts. CI also tests the archive on Node
-20.0.0. These checks do not establish actual desktop rendering or a complete review
-in every host. Preserve those limits when describing a release.
+PNG icons and compatibility adapter contracts. CI builds and publishes on the
+latest LTS (`lts/*`), then tests the same archive on Node 20.0.0, the latest
+Node 22 and 24 releases, and the latest stable release (`node`). The exact minimum
+check deliberately stays on 20.0.0; replacing it with latest would stop validating
+the declared `engines.node` floor. Esbuild targets Node 20 syntax; runtime tests
+are still necessary because compilation cannot polyfill newer Node APIs.
+These checks cover selected releases, not every intermediate patch or future major.
+They do not establish actual desktop rendering or a complete review in every host.
+Preserve those limits when describing a release.
 
 ## Publish, then promote
 
