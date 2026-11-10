@@ -81,15 +81,16 @@ interface PatchSection {
  * mistaken for a header. Paths are read to the end of the line rather than to
  * the next space, because a fixture may contain a filename with a space in it.
  */
-function splitPatch(patch: string): PatchSection[] {
+export function splitPatch(patch: string): PatchSection[] {
   const sections: PatchSection[] = [];
 
   for (const line of patch.split('\n')) {
-    const header = /^diff .* workspace\/(.+)$/.exec(line);
+    // GNU diff shell-quotes spaced filenames; BSD diff leaves them literal.
+    const header = /^diff .* (["']?)workspace\/(.+)\1$/.exec(line);
     const only = /^Only in (?:pristine|workspace)(?:\/(.+?))?: (.+)$/.exec(line);
 
-    if (header?.[1]) {
-      sections.push({ path: header[1], text: `${line}\n` });
+    if (header?.[2]) {
+      sections.push({ path: header[2], text: `${line}\n` });
       continue;
     }
     if (only?.[2]) {
