@@ -288,6 +288,11 @@ export function parsePatch(patch: string): PatchedFile[] {
       current.removed.push({ line: oldLine, text: text.slice(1) });
       oldLine++;
     }
+    if (text.startsWith(" ")) {
+      // Supplied unified patches may include context, unlike the hook's -U0 patches.
+      oldLine++;
+      line++;
+    }
   }
   return files.filter((file) => file.path !== "" && file.path !== "/dev/null");
 }

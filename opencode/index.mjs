@@ -1,1 +1,1 @@
-export { default } from "./dist/opencode.mjs";
+export { default } from "wellactually-runtime";

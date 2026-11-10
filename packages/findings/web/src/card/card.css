@@ -1,0 +1,553 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+/*
+ * The review card, as a host draws it in a conversation.
+ *
+ * Its own stylesheet rather than utilities, for the reason the track has
+ * one: this is a small object with a lot of states, and written as classes
+ * the states can be read. The chips, the track, the code and the meter are
+ * the inbox's own components and bring their own styling with them.
+ */
+
+:root {
+  /* What the meter's rail and a level's mark are cut out of. */
+  --cut: color-mix(in srgb, var(--fg) 9%, var(--card));
+  --sink: none;
+}
+
+html,
+body {
+  /* The host's conversation shows through around the card. */
+  background: transparent;
+}
+
+body {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+/* The track is cut into the card here, not into the page. */
+.card .track {
+  --seat: var(--card);
+}
+
+.key {
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--muted);
+  font: 500 10.5px/1 var(--font-mono);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background: var(--cut);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: color-mix(in srgb, var(--fg) 14%, var(--card));
+}
+
+.btn.primary {
+  background: var(--fg);
+  color: var(--card);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+}
+
+.link {
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.link:hover {
+  background: var(--cut);
+  color: var(--fg);
+}
+
+/* -- the header: what is under review, and the run's own state ----------- */
+
+/* Not "head": that is the track's own name for its pin, and the two would
+   share the padding. */
+.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 8px;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.live::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--done);
+}
+
+/* A dot that breathes while the review is working, and only then. */
+.live.running::before {
+  background: var(--todo);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+.live.quiet::before {
+  background: var(--p1);
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--todo) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--todo) 0%, transparent);
+  }
+}
+
+/* -- the levels: one cell each ------------------------------------------- */
+
+.levels {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.lv {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 7px;
+  min-width: 0;
+  padding: 5px 6px;
+  border-radius: 8px;
+}
+
+.lv .name {
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.lv .sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-height: 16px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 16px;
+}
+
+.lv.pending .name,
+.lv.skipped .name {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.lv.running {
+  background: color-mix(in srgb, var(--todo) 11%, transparent);
+}
+
+.pip {
+  display: grid;
+  grid-row: 1 / 3;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px dashed color-mix(in srgb, var(--fg) 26%, transparent);
+  border-radius: 6px;
+  color: var(--muted);
+  font: 600 11px/1 var(--font-mono);
+}
+
+.pip.done {
+  border: 0;
+  background: var(--cut);
+  color: var(--fg);
+}
+
+.pip.running {
+  border: 1.5px solid var(--todo);
+  color: var(--todo);
+}
+
+.pip.skipped {
+  border: 0;
+  color: color-mix(in srgb, var(--muted) 60%, transparent);
+  text-decoration: line-through;
+}
+
+/* What a level found, one dot per finding, the two worst rungs in colour.
+
+   Wrapping, and allowed to shrink. A level that found fifteen things wants
+   150px of dots on a row that has six cells to fit, and a row of dots is the
+   one thing here with no natural end: held rigid it ran straight out of the
+   card, which clips, so the dots a reader most wanted counted were the ones
+   that were not drawn. Wrapped, the cell grows a line instead. */
+.found {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-width: 0;
+}
+
+.found i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 75%, transparent);
+}
+
+.found i.p0 {
+  background: var(--p0);
+}
+
+.found i.p1 {
+  background: var(--p1);
+}
+
+.now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px 10px;
+}
+
+.now .meter {
+  flex: none;
+  width: 120px;
+  height: 4px;
+}
+
+.aside {
+  margin: 0;
+  padding: 6px 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.aside a {
+  color: inherit;
+  word-break: break-all;
+  user-select: all;
+}
+
+.failed {
+  margin: 0;
+  padding: 6px 14px;
+  border-top: 1px solid var(--line);
+  color: var(--drop);
+}
+
+/* -- the queue ------------------------------------------------------------ */
+
+.queue {
+  /* What a row measures its own position against, to scroll itself into view. */
+  position: relative;
+  max-height: 344px;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 5px 14px 5px 10px;
+  cursor: pointer;
+}
+
+.row + .row {
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.row.at {
+  background: var(--at);
+}
+
+.queue-heading { margin: 0; padding: 8px 14px; color: var(--muted); font-size: 11.5px; font-weight: 500; background: color-mix(in srgb, var(--fg) 3%, var(--card)); }
+.queue-heading:not(:first-child) { border-top: 1px solid var(--line); }
+.incoming-mark { width: 19px; height: 19px; margin: 0 2px; flex: none; border: 1.5px dashed var(--muted); border-radius: 50%; opacity: .75; }
+.incoming-label { flex: none; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.incoming-row .says { color: var(--fg); }
+.incoming-location { overflow-wrap: anywhere; }
+
+/* The pointer does not take the keyboard's cursor: it only shows where a
+   press would land. */
+.row:hover:not(.at) {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+}
+
+.row .id {
+  flex: none;
+  width: 8ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.row .says {
+  min-width: 0;
+}
+
+.row.ended .says {
+  color: var(--muted);
+}
+
+.row .where {
+  flex: 0 1 auto;
+  max-width: 30%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.row.fresh {
+  animation: arrive 1.2s ease-out;
+}
+
+@keyframes arrive {
+  from {
+    background: color-mix(in srgb, var(--p1) 26%, transparent);
+  }
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.keys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+/* -- one finding, where the queue was -------------------------------------- */
+
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border-block: 1px solid var(--line);
+}
+
+.dots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 1px;
+}
+
+/* Wide enough that one disc's halo never touches its neighbour's. */
+.dots button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+}
+
+.dots button.at {
+  background: var(--at);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--todo) 60%, transparent);
+}
+
+/*
+ * The column is capped at the card, not sized by what is in it.
+ *
+ * A grid column left to `auto` is at least as wide as the widest thing it
+ * holds refuses to go — and one of them is a code block whose lines do not
+ * wrap, and a path with no spaces in it. So the column grew past the card,
+ * the card clipped it, and the block that was meant to scroll had nothing to
+ * scroll: its box was already as wide as its longest line. Capped, the block
+ * is the width of the card and its own overflow-x does the work.
+ */
+.one {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px;
+}
+
+.one .facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+/* Pushed to the far end of the facts line, flush with the card's edge rather
+   than inset by the board's own padding. On a card too narrow to hold both
+   it wraps under the facts and stays right. */
+.rate {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: -4px -0.3rem -4px auto;
+}
+
+.one h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.one .body {
+  max-width: 72ch;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.one .body > :first-child {
+  margin-top: 0;
+}
+
+.one .body > :last-child {
+  margin-bottom: 0;
+}
+
+/* The chunk brings a top margin for the report's flow; the grid has the gap. */
+.one > .mt-4 {
+  margin-top: 0;
+}
+
+.note {
+  display: grid;
+  gap: 4px;
+}
+
+.note label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note textarea {
+  display: block;
+  width: 100%;
+  min-height: 2.9lh;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  max-height: 45vh;
+  resize: vertical;
+  overflow: auto;
+}
+
+.note textarea:focus {
+  outline: 2px solid var(--todo);
+  outline-offset: -1px;
+}
+
+@media (max-width: 560px) {
+  .lv:not(.running) .name,
+  .lv:not(.running) .time,
+  /* The dots go where the name and the time go. A cell this narrow is one
+     pip wide, and dots that wrap inside it come out as a column running
+     down the card rather than a row running off it. */
+  .lv:not(.running) .found,
+  .lv .word,
+  .row .where,
+  .row .tag,
+  .keys {
+    display: none;
+  }
+
+  .lv:not(.running) {
+    flex: 0 0 auto;
+    grid-template-columns: 22px;
+    justify-items: center;
+  }
+
+  .lv:not(.running) .sub {
+    grid-column: 1;
+    justify-content: center;
+  }
+
+  .now .meter {
+    width: 64px;
+  }
+
+  /* With the key hints gone, a footer holding no button holds nothing. */
+  .foot:not(:has(.btn)) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.display-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.display-control [role="alert"] {
+  max-width: 240px;
+  color: var(--drop);
+  font-size: 12px;
+}
+html[data-display-mode="fullscreen"],
+html[data-display-mode="fullscreen"] body {
+  min-height: 100%;
+  background: var(--card);
+}
+html[data-display-mode="fullscreen"] .card {
+  min-height: 100dvh;
+  border: 0;
+  border-radius: 0;
+}
+html[data-display-mode="fullscreen"] .queue {
+  max-height: none;
+}

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs\" hook",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually-hook.mjs\"",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs\" hook",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually-hook.mjs\"",
             "timeout": 10
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs\" hook",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually-hook.mjs\"",
             "timeout": 10
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs\" hook",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually-hook.mjs\"",
             "timeout": 10
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs\" hook",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually-hook.mjs\"",
             "timeout": 10
           }
         ]
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs\" hook",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/wellactually-hook.mjs\"",
             "timeout": 10
           }
         ]

@@ -1,0 +1,346 @@
+/**
+ * The palette, as variables rather than as Tailwind colours.
+ *
+ * Every colour here has to survive being read on three backgrounds — the
+ * page, a card, and the blue of a selected row — and has to flip with the
+ * theme without anything re-rendering. So the values live in custom
+ * properties and `@theme inline` maps them to utilities, which means
+ * `bg-card` compiles to `var(--card)` rather than to a frozen hex.
+ *
+ * Dark is written once and reached two ways: the system asking for it unless
+ * this page has been told otherwise, or this page being told to. A second copy
+ * of the values would be a second thing to keep in step, so the selector list
+ * carries it rather than the block.
+ *
+ * Imported by both clients. The inbox and the report are different pages with
+ * different jobs, but a finding that is p0 has to be the same red in both.
+ */
+
+:root {
+  color-scheme: light dark;
+  --fg: #1a1a1a;
+  --bg: #fdfdfc;
+  --muted: #6b6b6b;
+  --line: #e0dedb;
+  --card: #fff;
+  --at: #eef3ff;
+  --hit: #fff4d6;
+  --hitline: #b8860b;
+
+  /*
+   * The band laid over the lines a finding is about. Blue rather than the
+   * accent yellow, because inside a code block yellow is what a diff means by
+   * "this line changed", and the band is saying something else: look here.
+   */
+  --band: #e7effa;
+  --todo: #1565c0;
+  --done: #2e7d32;
+  --drop: #c62828;
+
+  /*
+   * Told to the author, and out of your hands.
+   *
+   * Between the blue that means "yours to do" and the green that means
+   * "gone", because that is where a reported finding sits: further along than
+   * one you have merely accepted, and not finished. Its own hue rather than a
+   * shade of the blue — accepted and reported were the same colour, so the
+   * progress bar showed one blue block that was really two piles, and the
+   * only way to tell which was which was to read the glyph.
+   *
+   * Darker in the dark theme than the mint it started as, and not darker here.
+   * The two themes pull opposite ways: on the dark page the teal only has to
+   * clear the background and a deeper one separates better from the green
+   * beside it, while on the light page every colour is already dark, and
+   * taking this one further merges it into that same green — which is the
+   * distinction it exists to draw.
+   */
+  --sent: #0f766e;
+
+  /*
+   * Tolerated: the finding stands and is carried on purpose. A cold slate,
+   * because carrying is neither an error (--drop's red) nor work to do
+   * (--todo's blue) — greyer than either, and blue enough to stay apart from
+   * --muted, which colours text that merely does not matter.
+   */
+  --tolerated: #5b7089;
+
+  /*
+   * Needs a verdict: the state that asks the reader for something. It wore
+   * a violet for a while, but a hue is a claim — this finding is a kind of
+   * thing — and undecided is precisely the state where no claim has been
+   * made yet. So it wears the page's own ink, and the asking is said by
+   * shape instead: the queue draws it as a dashed ring wearing a halo,
+   * a hole that has not been filled in.
+   */
+  --open: var(--fg);
+
+  /*
+   * The outline of a chip, as a proportion of the text colour rather than a
+   * colour of its own. --line is a hairline picked to sit on one background;
+   * on the selected row's blue it is the same luminance and a chip loses its
+   * edge entirely. Stated this way it holds on all three.
+   */
+  --chip: color-mix(in srgb, var(--fg) 52%, transparent);
+
+  /* The two rungs that are read at a glance down a column. */
+  --p0: #c62828;
+  --p1: #ef6c00;
+
+  /*
+   * A pull request that has landed. The palette's own keyword purple, which
+   * is the one hue no finding state has claimed: green would read as "fixed",
+   * and a merged pull request says nothing about whether anything was fixed.
+   */
+  --merged: #8f3fa8;
+
+  /*
+   * What the rail is lying on: the page, a shade off. Enough that the column
+   * holding the reviews and the piles reads as chrome rather than as more of
+   * the queue, and no more — a real fill of its own would be a second surface
+   * competing with the card the panel is drawn on. Stated as a proportion of
+   * the foreground, so it darkens in dark rather than needing a second value.
+   */
+  --rail: color-mix(in srgb, var(--fg) 4%, var(--bg));
+
+  /*
+   * What code is coloured with, everywhere code appears. A restrained set:
+   * five hues that already belong to the page's family, distinct enough to
+   * carry structure and quiet enough that a code block does not out-shout
+   * the finding it illustrates.
+   */
+  --tok-keyword: #8f3fa8;
+  --tok-string: #2e7d32;
+  --tok-comment: #8a867f;
+  --tok-number: #b45309;
+  --tok-name: #1565c0;
+  --tok-quiet: #6b6b6b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --fg: #e8e6e3;
+    --bg: #1b1b1a;
+    --muted: #9a9691;
+    --line: #34322f;
+    --card: #232221;
+    --at: #2b3242;
+    --hit: #3a3120;
+    --hitline: #d6a53a;
+    --band: #263140;
+    --todo: #6aa9e8;
+    --done: #5cbf60;
+    --drop: #e8706a;
+    --sent: #35a08b;
+    --tolerated: #93a9c2;
+    --p0: #e8706a;
+    --p1: #f0a24a;
+    --merged: #c792ea;
+    --tok-keyword: #c792ea;
+    --tok-string: #8fce91;
+    --tok-comment: #807c76;
+    --tok-number: #f0a24a;
+    --tok-name: #6aa9e8;
+    --tok-quiet: #9a9691;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --fg: #e8e6e3;
+  --bg: #1b1b1a;
+  --muted: #9a9691;
+  --line: #34322f;
+  --card: #232221;
+  --at: #2b3242;
+  --hit: #3a3120;
+  --hitline: #d6a53a;
+  --band: #263140;
+  --todo: #6aa9e8;
+  --done: #5cbf60;
+  --drop: #e8706a;
+  --sent: #35a08b;
+  --tolerated: #93a9c2;
+  --p0: #e8706a;
+  --p1: #f0a24a;
+  --merged: #c792ea;
+  --tok-keyword: #c792ea;
+  --tok-string: #8fce91;
+  --tok-comment: #807c76;
+  --tok-number: #f0a24a;
+  --tok-name: #6aa9e8;
+  --tok-quiet: #9a9691;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-fg: var(--fg);
+  --color-bg: var(--bg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-card: var(--card);
+  --color-at: var(--at);
+  --color-hit: var(--hit);
+  --color-band: var(--band);
+  --color-hitline: var(--hitline);
+  --color-todo: var(--todo);
+  --color-done: var(--done);
+  --color-sent: var(--sent);
+  --color-drop: var(--drop);
+  --color-tolerated: var(--tolerated);
+  --color-open: var(--open);
+  --color-chip: var(--chip);
+  --color-p0: var(--p0);
+  --color-p1: var(--p1);
+  --color-merged: var(--merged);
+  --color-rail: var(--rail);
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /*
+   * The names shadcn components are written against, said in this page's own
+   * colours. One mapping instead of edits inside every generated file, so a
+   * component added tomorrow speaks the theme without being touched.
+   */
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-muted-foreground: var(--muted);
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--todo);
+  --color-primary: var(--fg);
+  --color-primary-foreground: var(--bg);
+  --color-secondary: var(--card);
+  --color-secondary-foreground: var(--fg);
+  --color-accent: var(--at);
+  --color-accent-foreground: var(--fg);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--fg);
+  --color-card-foreground: var(--fg);
+  --color-destructive: var(--drop);
+  --color-destructive-foreground: var(--bg);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+/**
+ * Dark as a variant, for the handful of rules where the two themes need
+ * different shapes rather than different values — the track's depth, mostly,
+ * where a black shadow inside an almost-black hole is nothing at all.
+ */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(
+      :root:not([data-theme="light"]),
+      :root:not([data-theme="light"]) *
+    ) {
+      @slot;
+    }
+  }
+
+  &:where(:root[data-theme="dark"], :root[data-theme="dark"] *) {
+    @slot;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  /* The insertion point wears the accent, not the browser's black-or-white:
+     the note box is the one place on the page where the reader writes, and
+     the caret is the smallest thing on the page that can say the page was
+     themed on purpose. */
+  caret-color: var(--todo);
+  /* Ids, counts and line numbers are read as columns, and columns need every
+     digit the same width. Prose does not care either way. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selected text is part of the palette too. The browser default is a blue
+   from no theme at all, and it sits on top of the code band, the selected
+   row, and both themes — a translucent wash of the accent works on all of
+   them without hiding the text it covers. */
+::selection {
+  background: color-mix(in srgb, var(--todo) 30%, transparent);
+}
+
+/* The scrollbars this page did not draw — a code block's overflow, the note
+   box — inherit a thumb from the palette rather than the platform grey.
+   Inherited from the root, so every native scroller in either theme gets it. */
+:root {
+  scrollbar-color: color-mix(in srgb, var(--fg) 30%, transparent) transparent;
+}
+
+/*
+ * The token classes the highlighter emits, folded onto the five hues. Many
+ * grammar names share a hue on purpose: a class name and a function name are
+ * both "a name someone chose", and giving every grammar species its own
+ * colour is how highlighting turns into confetti.
+ */
+.tok-keyword,
+.tok-boolean,
+.tok-important,
+.tok-atrule,
+.tok-rule {
+  color: var(--tok-keyword);
+}
+.tok-string,
+.tok-char,
+.tok-attr-value,
+.tok-regex,
+.tok-url,
+/* Python names its own two. A docstring is the first thing worth reading in
+   most files, and the grammar calls it a triple-quoted string rather than a
+   string, so it arrived in the plain code colour. */
+.tok-triple-quoted-string,
+.tok-string-interpolation {
+  color: var(--tok-string);
+}
+.tok-comment,
+.tok-prolog,
+.tok-doctype,
+.tok-cdata {
+  color: var(--tok-comment);
+}
+.tok-number,
+.tok-symbol,
+.tok-constant,
+.tok-inserted,
+.tok-deleted {
+  color: var(--tok-number);
+}
+.tok-function,
+.tok-class-name,
+.tok-decorator,
+.tok-builtin,
+.tok-tag,
+.tok-attr-name,
+.tok-selector,
+.tok-property,
+.tok-annotation,
+.tok-metadata {
+  color: var(--tok-name);
+}
+.tok-punctuation,
+.tok-operator {
+  color: var(--tok-quiet);
+}
+
+/* Keyboard focus wears the accent, on every control at once. Zero specificity
+   on purpose: anything that draws its own ring — the track's holes, the
+   library's buttons — wins without a fight, and this catches the plain
+   buttons that would otherwise show the browser's ring from no theme at all. */
+:where(:focus-visible) {
+  outline: 2px solid var(--todo);
+  outline-offset: 2px;
+}

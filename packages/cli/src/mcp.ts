@@ -3,8 +3,18 @@ import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { zodSchema } from "../../findings/zod-schema.mts";
+import { hasDetector } from "@wellactually/core/node";
+import { TOOLS as FINDINGS_TOOLS } from "../../findings/tools.mts";
+import { reportPendingReviewSuggestions, REVIEW_REPORT_MS } from "./registry/review-reports.ts";
+import { startInBackground } from "./hook/hook.ts";
+import { claimReport } from "./board/detections.ts";
+import { appToolMeta, drawsCards, registerReviewCard } from "../../findings/serve/app.mts";
+import { startUi } from "../../findings/serve/http.mts";
+import { currentWorkspace, type Workspace } from "../../findings/store/workspace.mts";
 import { scaffold } from "./board/files.ts";
-import { readConfig, writeConfig } from "./board/board.ts";
+import { readCached, readLockfile, readConfig, writeConfig } from "./board/board.ts";
+import { switchedOff } from "./board/switches.ts";
 import { switchPrinciple } from "./board/switches.ts";
 import { raterOf } from "./registry/rater.ts";
 import { ratePrinciple, RegistryError, type DraftResult } from "./registry/client.ts";
@@ -85,9 +95,77 @@ function text(value: string) {
   return { content: [{ type: "text" as const, text: value }] };
 }
 
+function registerFindingsTools(server: McpServer, workspace: Workspace): void {
+  registerReviewCard(server);
+  for (const tool of FINDINGS_TOOLS) {
+    server.registerTool(tool.name, {
+      description: tool.description,
+      inputSchema: zodSchema(tool.inputSchema),
+      ...(tool.annotations ? { annotations: tool.annotations } : {}),
+      ...(appToolMeta(tool) ? { _meta: appToolMeta(tool) } : {}),
+    }, async (args) => {
+      try {
+        if (tool.cardOnly && !drawsCards(server)) throw new Error("This tool is available only through the review card");
+        if (tool.name === "claim_review_session") {
+          (args as Record<string, unknown>).registry = readConfig().registry;
+          const a = args as { sets?: { principles?: { id: string; version: number; hash?: string }[] }[] };
+          for (const set of a.sets ?? []) for (const principle of set.principles ?? []) {
+            const pinned = readLockfile().entries.find(e => e.id === principle.id && e.version === principle.version);
+            if (pinned) principle.hash ??= pinned.hash;
+          }
+        }
+        const result = await tool.run(args, workspace.repo);
+        if (readConfig().stats && (tool.name === "begin_verification" || (tool.name === "get_review_session" && claimReport()))) {
+          startInBackground("report-detections");
+        }
+        const reply = text(tool.says ? tool.says(result) : JSON.stringify(result, null, 2));
+        return tool.card && drawsCards(server) ? { ...reply, structuredContent: (tool.forCard ? tool.forCard(args, workspace.repo) : result) as Record<string, unknown> } : reply;
+      } catch (error) {
+        return { isError: true, content: [{ type: "text" as const, text: error instanceof Error ? error.message : String(error) }] };
+      }
+    });
+  }
+}
+
 /** Serves the authoring verbs over stdio, so an agent can build and test a principle without a shell. */
 export async function serveMcp(): Promise<void> {
+  // A fix may land after the final aggregation upload. Keep checking without
+  // a network call in CRUD operations, and without keeping a closed MCP alive.
+  const reporting = setInterval(() => { if (readConfig().stats && claimReport()) startInBackground("report-detections"); }, REVIEW_REPORT_MS);
+  reporting.unref();
   const server = new McpServer({ name: "wellactually", version: "0.8.0" }, { instructions: AUTHORING_GUIDE });
+  const workspace = currentWorkspace();
+  registerFindingsTools(server, workspace);
+  server.registerTool("report_review_suggestions", {
+    description: "Upload pending review selections, aggregated suggestions and completed fixes. Upload cycles are at least five minutes apart; fixes also wait at least five minutes after resolution. Call once at review completion; a network failure leaves events pending without blocking the review. Respects stats off.",
+    inputSchema: {}, annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  }, async () => text(JSON.stringify({ reported: await reportPendingReviewSuggestions() })));
+  // Older review instructions may still call this name. Acknowledge without
+  // polluting injection assessments with review helpfulness votes.
+  server.registerTool("rate_review_principle", {
+    description: "Compatibility only: review ratings are retired. Aggregation reports suggestions automatically; this tool sends no rating.",
+    inputSchema: { repo: z.string(), target: z.string(), session: z.string(), id: z.string(), rating: z.enum(["up", "down", "not_applicable"]), reason: z.string() },
+  }, async () => text("Review ratings are retired. Aggregated suggestions are reported automatically; no injection assessment was sent."));
+  server.registerTool("list_principles", {
+    description: "Current advisory board metadata for review filtering: id, version, short description and tags only. No full advice bodies. Pass the reviewed repo to respect project switches.",
+    inputSchema: { repo: z.string() },
+  }, async ({ repo }) => {
+    const off = switchedOff(repo);
+    return text(JSON.stringify(readLockfile().entries.flatMap(entry => {
+      const cached = readCached(entry.hash);
+      if (!cached || off.has(entry.id) || (hasDetector(cached.manifest) && !entry.enabled)) return [];
+      return [{ id: entry.id, version: entry.version, description: cached.manifest.summary, tags: cached.manifest.tags ?? [] }];
+    }), null, 2));
+  });
+  server.registerTool("get_principle", {
+    description: "Load the full cached advisory-board principle by id for an assigned review. Returns its pinned cached version and advice; no registry fetch or board sync.",
+    inputSchema: { id: z.string(), version: z.number().int().optional() },
+  }, async ({ id, version }) => {
+    const entry = readLockfile().entries.find(entry => entry.id === id);
+    const cached = entry ? readCached(entry.hash) : null;
+    if (!entry || !cached || (version !== undefined && version !== entry.version)) return { isError: true, ...text("Principle or requested version is not cached on this board: " + id) };
+    return text(JSON.stringify({ id, version: entry.version, body: cached.advice }));
+  });
 
   server.registerTool(
     "scaffold",
@@ -267,7 +345,7 @@ export async function serveMcp(): Promise<void> {
     "rate_principle",
     {
       description:
-        "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle, the rating, and which agent and model you are, as your agent reports them. Nothing about the code or the conversation. It is sent to the registry the user signed in to, only while the user has reporting switched on (set_stats), and otherwise nothing leaves the machine.",
+        "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle revision, the rating and its injection context. Nothing about the code or the conversation. It is sent to the registry the user signed in to, only while the user has reporting switched on (set_stats), and otherwise nothing leaves the machine.",
       inputSchema: {
         id: z.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
         rating: z.enum(["up", "down", "not_applicable"]).describe("up, down or not_applicable"),
@@ -350,10 +428,13 @@ export async function serveMcp(): Promise<void> {
   );
 
   const transport = new StdioServerTransport();
-  await server.connect(transport);
-  // Stay up until the client goes away, then let the process end.
-  await new Promise<void>((resolve) => {
-    transport.onclose = () => resolve();
-    process.stdin.on("end", () => resolve());
+  const closed = new Promise<void>(resolve => {
+    server.server.onclose = () => resolve();
+    process.stdin.once("end", () => resolve());
   });
+  await server.connect(transport);
+  const ui = await startUi(workspace).catch(error => { process.stderr.write(`Findings UI unavailable: ${String(error)}\n`); return null; });
+  // Stay up until the client goes away, then let the process end.
+  await closed;
+  await ui?.close();
 }

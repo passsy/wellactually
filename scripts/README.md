@@ -1,9 +1,17 @@
-# scripts
+# Build and release scripts
 
-How [dist](../dist), [opencode](../opencode) and the `sdk` branch are made.
+- `build-runtime.mjs` builds the shared runtime layout for development and npm.
+- `build.mjs` writes ignored local runtime/skill-launcher outputs.
+- `package.mjs` builds a dependency-free npm archive under ignored `.artifacts/`.
+- `test-package.mjs` installs that archive outside the checkout with scripts
+  disabled and checks host entrypoints, MCP, UI assets and Git adapter contracts.
+- `sync-skills.mjs` generates the namespaced OpenCode/pi skills inside the archive.
+- `install-local.mjs` prepares a private local tarball/catalog; `--host` also installs it in a selected host.
+- `publish-package.mjs` publishes the tested archive from the explicit release job.
+- `version.mjs` promotes a published version in manifests and compatibility pins.
+  Refresh package-lock.json afterwards. Never point installers at an unpublished version.
+- `release-sdk.mjs` publishes the separate SDK Git branch.
+- `embed-sdk.mjs` embeds SDK source for detector builds; `freeze-api.mjs` freezes
+  detector API versions.
 
-- `build.mjs` bundles the command into `dist/wellactually.mjs` and copies it with the skills into `opencode`, run by `npm run build`.
-- `version.mjs` sets the version of a release in the command, every agent's manifest and the OpenCode package.
-- `release-sdk.mjs` writes the SDK built, with its `package.json` at the root, into a checkout of the `sdk` branch.
-- `embed-sdk.mjs` writes the SDK's source into the core as strings, because a detector is built where no filesystem holds the SDK.
-- `freeze-api.mjs` freezes a detector API version, so that later releases can prove they still run detectors written against it.
+Generated bundles and mirrored skills are never committed to Git.

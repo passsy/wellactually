@@ -36,9 +36,12 @@ import {
   testPrinciple,
   tryPrinciple,
 } from "./commands.ts";
-import { logHookFailure, runHook, startInBackground } from "./hook/hook.ts";
-import { type HookLogEntry, scheduleHookLog, writeHookLogFromStdin } from "./hook/hook-log.ts";
+import { startInBackground } from "./hook/hook.ts";
+import { handleHook } from "./hook/command.ts";
+import { writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
+import { serveDesktop } from "../../findings/serve/desktop.mts";
+import { main as findingsServer } from "../../findings/serve/server.mts";
 import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "./registry/client.ts";
 
@@ -80,6 +83,7 @@ Your advisory board
 
 Integration
   wellactually hook                     Handle one agent hook payload from stdin
+  wellactually desktop-mcp              Serve the read-only Desktop review connector
   wellactually mcp                      Serve the authoring commands as an MCP server
   wellactually update-notice --agent <opencode|opencode-1|pi> Print what to tell the user about a newer release
   wellactually check-update             Look up the newest release on GitHub
@@ -95,6 +99,7 @@ async function main(): Promise<number> {
     args: rest,
     allowPositionals: true,
     options: {
+      "review-host": { type: "string" },
       json: { type: "boolean", default: false },
       read: { type: "boolean", default: false },
       draft: { type: "boolean", default: false },
@@ -372,25 +377,7 @@ async function main(): Promise<number> {
       return 0;
     }
     case "hook": {
-      // A hook that crashes or hangs breaks the user's session, so it logs and exits clean instead.
-      const started = performance.now();
-      const log: HookLogEntry = { time: new Date().toISOString(), hook: "", events: [], shown: 0, ms: 0 };
-      try {
-        const out = await runHook(await readStdin(), log);
-        if (out) {
-          console.log(out);
-        }
-        log.shown = out.length;
-      } catch (error) {
-        logHookFailure(error);
-        log.note = `failed: ${(error as Error).message}`;
-        console.error(`wellactually hook failed, see ~/.wellactually/hook.log: ${(error as Error).message}`);
-      }
-      log.ms = Math.round(performance.now() - started);
-      // Written by another process once this one has answered, so the agent never waits for it.
-      if (process.env.WELLACTUALLY_HOOK_LOG !== "0") {
-        scheduleHookLog(path.join(boardHome(), "logs"), log);
-      }
+      await handleHook();
       return 0;
     }
     case "hook-log": {
@@ -398,8 +385,14 @@ async function main(): Promise<number> {
       await writeHookLogFromStdin(positionals[0] as string);
       return 0;
     }
+    case "desktop-mcp":
+      await serveDesktop();
+      return 0;
     case "mcp":
       await serveMcp();
+      return 0;
+    case "findings-ui":
+      await findingsServer(["--ui"]);
       return 0;
     case undefined:
     case "help":

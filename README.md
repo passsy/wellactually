@@ -57,7 +57,7 @@ Codex does not run a new plugin's hooks until you trust them, so no principle re
 OpenCode:
 
 ```bash
-opencode plugin add 'github:passsy/wellactually#path:opencode'
+opencode plugin add wellactually
 ```
 
 Then open OpenCode and type `@wellactually-login`.
@@ -67,7 +67,7 @@ OpenCode 1 from version 1.18.29 runs the plugin too, from a clone of this reposi
 pi:
 
 ```bash
-pi install git:github.com/passsy/wellactually
+pi install npm:wellactually
 ```
 
 Then open pi and type `/skill:wellactually-login`.
@@ -92,7 +92,7 @@ Set `WELLACTUALLY_UPDATE_CHECK=0` to turn that off.
   It reads the principles `sync` downloaded earlier.
 - `sync` runs when a session starts.
   It downloads what is new on your advisory board and reports counts, see "What leaves your machine".
-- Once a day, in the background, it reads the version of the newest release of the plugin from this repository on GitHub.
+- Once a day, in the background, it checks the published npm release for updates.
 
 ## Detectors are other people's code
 
@@ -118,10 +118,32 @@ The code that does this is public: [`packages/core/src/detector/sandbox.ts`](pac
 
 - How often each principle fired: a day, a hash and a count.
 - A rating, when your agent gives one: the principle's hash and `up`, `down` or `not_applicable`.
+- Review selections, suggestions and completed fixes: the principle and pinned
+  revision, event time, an opaque deduplication ID, and priority for suggestions
+  and fixes. Reviews do not send helpfulness ratings.
 
 No path, file content, prompt, command or finding is sent.
-The daily look for a newer release of the plugin is a plain download from GitHub and sends nothing.
-Ask your agent to switch reporting off, and it turns both off.
+The daily update check fetches public npm metadata without sending project data.
+Ask your agent to switch reporting off, and it turns these reports off.
+
+## Review a change
+
+The `review` skill checks changes, files, folders and projects against your advisory board, including principles without detectors. Git is optional.
+Read-only reviewers work through queues of applicable principles. An aggregator
+merges duplicate findings into one finding with multiple occurrences. Proof
+workers then investigate the findings in isolated worktrees. The report states
+coverage, executable proof and limitations; a finding need not have a test to
+be useful.
+
+Run `/wellactually:review` in Claude Code or `$wellactually:review` in Codex with a synced advisory board.
+Reviews use subagents where supported.
+The findings inbox keeps your accept, reject, note and fixed decisions locally.
+Posting accepted findings to the PR is a separate explicit action.
+
+All four hosts install the same prebuilt npm package. The marketplace pins a
+published version; installation does not build source or run lifecycle scripts.
+Existing OpenCode/pi Git install sources remain supported through small adapters
+that depend on that same npm package. [Release process](docs/releasing-review.md).
 
 ## Write a principle
 
@@ -159,8 +181,8 @@ A principle written against `v3` keeps running as it was.
 | Path              | What it is                                                                            |
 | ----------------- | ------------------------------------------------------------------------------------- |
 | `hooks`, `skills` | The plugin: when the hook runs, and the skills such as `login`, `sync` and `audit`.   |
-| `dist`            | The command as one file, built from `packages/cli`. The plugin runs it.               |
-| `opencode`        | The plugin for OpenCode, with its own copy of the command and the skills.             |
+| `dist`            | Ignored development build output; install payloads are published to npm.             |
+| `opencode`        | Compatibility adapters for existing Git installs, loading the npm runtime.           |
 | `packages/core`   | Builds, checks and runs principles: the isolate, the bundler and the tests.           |
 | `packages/sdk`    | The types and helpers a detector may import.                                          |
 | `packages/cli`    | The command the plugin runs: the hook, the advisory board and the MCP server.         |
@@ -171,34 +193,38 @@ The registry is not in this repository.
 
 ## Build it yourself
 
-```bash
-npm install
-```
+Development tooling needs Node >=22.18. The prebuilt product supports Node >=20.
 
 ```bash
-npm test
-```
-
-```bash
+npm ci --ignore-scripts
 npm run build
+npm test
+npm run package
+npm run test:package
 ```
 
-`npm run build` writes `dist/wellactually.mjs`, the file the plugin runs, and next to it `opencode.mjs` and `pi.mjs`, the plugins of OpenCode and pi.
-It also copies the command and the skills into `opencode`, which OpenCode installs on its own.
-Both folders are committed, because an agent installs a plugin from git without building it.
+The local runtime goes in ignored `dist/`. The installable package goes in
+ignored `.artifacts/`. Generated bundles and mirrored skills are not committed.
+CI builds and exercises the packed archive outside the checkout.
+
+## Test a local plugin build
+
+```bash
+npm run install:local -- --host codex
+# or --host claude / --host all
+```
+
+This builds a private local tarball and switches the selected host to it. Use
+`npm run package:local` to prepare it without changing host configuration.
+See [local testing and restoring npm installs](docs/releasing-review.md#local-testing-without-publishing).
 
 ## Release
 
-```bash
-node scripts/version.mjs 0.9.29
-```
-
-```bash
-npm run build
-```
-
-Commit the result as `Release 0.9.29` and push it.
-Agents update the plugin from `main`.
+Build and test a new exact version with `npm run package -- --version <version>`.
+The manual `publish.yaml` workflow can publish the tested tarball using npm trusted
+publishing. Verify registry availability and integrity before promoting installer
+pointers with `node scripts/version.mjs <published-version>`, refreshing the lockfile
+and committing the source changes. See [the release process](docs/releasing-review.md).
 
 The SDK is released to the `sdk` branch, from a checkout of it next to this one:
 

@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.5;
+  /* This is a desktop tool, and squeezing four columns into a phone-width
+     window helps nobody. Below this the page keeps its shape and the window
+     scrolls sideways over it.
+
+     What the three working columns need is the 700px — the floor is where a
+     queue row still reads as a title and a diff still shows a line, not where
+     either is comfortable, because a floor that is set at comfortable pans a
+     window that was merely tight. Half a 1440-wide screen is the case that
+     matters: it fits with the rail away. The rail is however wide it has been
+     dragged, so the floor is stated as the sum rather than as a number that
+     goes stale the first time somebody drags it. The page writes --rail. */
+  min-width: calc(700px + var(--rail, 291px));
+}
+
+/* Put away, the rail costs nothing — including the width the page insists on
+   having. Which is the point of putting it away on a narrow screen. */
+body.rail-closed {
+  min-width: 700px;
+}
+
+/* Held off in CSS while a grip is dragged, because the grip deliberately does
+   not preventDefault: that would suppress the double-click that resets it. */
+body.dragging {
+  user-select: none;
+  cursor: col-resize;
+}
+
+/*
+ * Nothing eases while a grip is held.
+ *
+ * The rail's width is eased so that folding it away is a movement rather than
+ * a jump — and that same easing, during a drag, is 200ms of the edge arriving
+ * where the cursor was rather than where it is. Dragging a thing is the one
+ * interaction where the thing has to be under the finger on the frame, not
+ * shortly afterwards: anything else reads as the column being towed on a
+ * length of string.
+ */
+body.dragging * {
+  transition-duration: 0s !important;
+}
+
+/*
+ * Nobody asked for motion to be off, so everything that changes state slides
+ * or fades to its next one. Anyone who did ask gets stillness, everywhere,
+ * including the library components' enter and exit animations.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

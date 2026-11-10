@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Review card, hosted for development</title>
+    <style>
+      :root {
+        --page: #faf9f5;
+        --ink: #1f1e1c;
+        --soft: #6f6c66;
+        --rule: #e4e1d9;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --page: #262624;
+        --ink: #ebe9e4;
+        --soft: #a19d96;
+        --rule: #3b3a37;
+      }
+      body {
+        margin: 0;
+        padding: 20px;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: var(--width, 720px);
+        margin: 0 auto;
+        display: grid;
+        gap: 14px;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        color: var(--soft);
+      }
+      nav button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 1px solid var(--rule);
+        border-radius: 7px;
+        padding: 2px 10px;
+        cursor: pointer;
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: 40px;
+        border: 0;
+        color-scheme: light;
+      }
+      :root[data-theme="dark"] iframe {
+        color-scheme: dark;
+      }
+      pre {
+        margin: 0;
+        padding: 8px 10px;
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        color: var(--soft);
+        font:
+          12px/1.5 ui-monospace,
+          Menlo,
+          monospace;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav>
+        <button id="theme" type="button">Theme</button>
+        <button id="width" type="button">Width</button>
+        <span id="what"></span>
+      </nav>
+      <iframe id="card" title="Review card"></iframe>
+      <pre id="log">What the card asks of its host shows up here.</pre>
+    </main>
+    <script type="module" src="/src/card/dev-host.ts"></script>
+  </body>
+</html>

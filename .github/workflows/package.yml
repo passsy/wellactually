@@ -1,0 +1,51 @@
+name: Packed plugin
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.18.0'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - run: npm run web:test --workspace @wellactually/findings
+      - run: npm run web:typecheck --workspace @wellactually/findings
+      - run: npm run package
+      - run: npm run test:package
+      - name: Prepare a private local install without publishing or changing host config
+        run: npm run package:local -- --destination "$RUNNER_TEMP/wellactually-local"
+      - name: Exercise the local tarball through the same packed-product checks
+        run: npm run test:package -- --artifacts .artifacts/local --local-marketplace "$RUNNER_TEMP/wellactually-local"
+      - name: Keep generated output out of Git
+        run: |
+          test -z "$(git ls-files -- dist opencode/dist opencode/skills 'skills/review/scripts/*.mjs')"
+          git diff --exit-code
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20.0.0'
+      - name: Test the installed product on its minimum Node version
+        run: npm run test:package
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wellactually-package
+          path: |
+            .artifacts/*.tgz
+            .artifacts/pack.json
+            .artifacts/marketplace.json
+            .artifacts/git-compat/
+          if-no-files-found: error
+          # Only the generated allowlist above is uploaded, not the whole dot-directory.
+          include-hidden-files: true

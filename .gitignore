@@ -2,3 +2,10 @@ node_modules
 *.tsbuildinfo
 .DS_Store
 evaluator/output
+packages/findings/web/dist
+.artifacts/
+# Prebuilt install payloads are published to npm, never committed to Git.
+/dist/
+/opencode/dist/
+/opencode/skills/
+/skills/review/scripts/*.mjs

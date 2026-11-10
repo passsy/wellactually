@@ -234,7 +234,8 @@ function followRepos(payload: HookPayload): TurnDiff | undefined {
  * started as a thread, only slower to load.
  */
 function workerFile(): string {
-  const main = process.argv[1] as string;
+  const entry = process.argv[1] as string;
+  const main = path.basename(entry) === "wellactually-hook.mjs" ? path.join(path.dirname(entry), "wellactually.mjs") : entry;
   const beside = [path.join(path.dirname(main), "wellactually-worker.mjs"), path.join(path.dirname(main), "worker.ts")];
   return beside.find((file) => fs.existsSync(file)) ?? main;
 }
@@ -275,7 +276,8 @@ export function startInBackground(command: "sync" | "report-detections" | "check
     return;
   }
   // The file this process was started from: main.ts in a checkout, the single bundled file in the plugin.
-  const main = process.argv[1] as string;
+  const entry = process.argv[1] as string;
+  const main = path.basename(entry) === "wellactually-hook.mjs" ? path.join(path.dirname(entry), "wellactually.mjs") : entry;
   const log = fs.openSync(path.join(ensureHome(), "sync.log"), "a");
   const child = spawn(process.execPath, [main, command], { detached: true, stdio: ["ignore", log, log] });
   child.unref();

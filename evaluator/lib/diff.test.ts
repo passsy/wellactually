@@ -16,7 +16,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'vitest';
 
-import { diffTree } from './diff.ts';
+import { diffTree, splitPatch } from './diff.ts';
+
+test('GNU quoted and BSD literal diff headers preserve spaced paths', () => {
+  for (const header of [
+    "diff -ruN 'pristine/my file.dart' 'workspace/my file.dart'",
+    'diff -ruN "pristine/my file.dart" "workspace/my file.dart"',
+    'diff -ruN pristine/my file.dart workspace/my file.dart',
+  ]) {
+    assert.equal(splitPatch(`${header}\n@@ -1 +1 @@\n-old\n+new\n`)[0]?.path, 'my file.dart');
+  }
+});
 
 /**
  * Builds a trial directory the way `run.ts` does — `pristine` is the tree as

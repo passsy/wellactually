@@ -1,6 +1,6 @@
 {
   "name": "wellactually-client",
-  "version": "0.8.0",
+  "version": "0.11.0-rc.1",
   "private": true,
   "type": "module",
   "description": "The Well Actually plugin, command and sandbox",
@@ -13,10 +13,10 @@
   },
   "pi": {
     "extensions": [
-      "./dist/pi.mjs"
+      "./compat/pi.mjs"
     ],
     "skills": [
-      "./opencode/skills"
+      "./node_modules/wellactually-runtime/opencode/skills"
     ]
   },
   "workspaces": [
@@ -24,6 +24,10 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
+    "package": "node scripts/package.mjs",
+    "test:package": "node scripts/test-package.mjs",
+    "package:local": "node scripts/install-local.mjs",
+    "install:local": "node scripts/install-local.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/tsconfig.json && tsc --noEmit -p evaluator/tsconfig.json && tsc --noEmit -p evaluator/principles/tsconfig.json",
     "eval": "node evaluator/run.ts"
@@ -32,5 +36,8 @@
     "@types/node": "^24.0.0",
     "typescript": "~5.9.0",
     "vitest": "^4.0.0"
+  },
+  "dependencies": {
+    "wellactually-runtime": "npm:wellactually@0.11.0-rc.1"
   }
 }
