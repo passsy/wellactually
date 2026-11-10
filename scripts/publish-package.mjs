@@ -1,7 +1,9 @@
-// Run only from the explicitly dispatched, npm-environment release job.
+// Run only from the explicitly dispatched main-branch publish job. Its OIDC
+// credentials are isolated from the build/tests, and it installs no dependencies.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { verifyPublishedPackage } from "./verify-package.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -10,5 +12,16 @@ if (process.env.GITHUB_ACTIONS !== "true" || process.env.GITHUB_REF !== "refs/he
 }
 const packed = JSON.parse(fs.readFileSync(path.join(root, ".artifacts/pack.json"), "utf8"));
 if (packed.name !== "wellactually" || path.basename(packed.filename) !== packed.filename) throw new Error("Unexpected packed artifact");
-execFileSync("npm", ["publish", path.join(root, ".artifacts", packed.filename), "--ignore-scripts", "--access", "public", "--provenance", "--tag", packed.version.includes("-") ? "next" : "latest"], { cwd: root, stdio: "inherit" });
+if (packed.version !== process.env.RELEASE_VERSION) throw new Error("Artifact version differs from the requested release");
+const tarball = path.join(root, ".artifacts", packed.filename);
+const integrity = `sha512-${createHash("sha512").update(fs.readFileSync(tarball)).digest("base64")}`;
+if (integrity !== packed.integrity) throw new Error("Downloaded build artifact differs from the tested archive");
+const existing = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packed.name)}/${encodeURIComponent(packed.version)}`, { signal: AbortSignal.timeout(15000) });
+if (existing.status === 404) {
+  execFileSync("npm", ["publish", tarball, "--ignore-scripts", "--access", "public", "--provenance", "--tag", packed.version.includes("-") ? "next" : "latest"], { cwd: root, stdio: "inherit" });
+} else if (!existing.ok) {
+  throw new Error(`Could not check whether this version is already public: ${existing.status}`);
+}
+// A rerun after npm's asynchronous processing can verify the same artifact
+// without attempting a second upload. Different bytes still fail verification.
 await verifyPublishedPackage(packed);

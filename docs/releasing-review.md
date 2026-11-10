@@ -97,3 +97,56 @@ the configured minimum release-age policy when the candidate was prepared.
 - [OpenCode plugins](https://docs.dev.opencode.ai/docs/plugins/)
 - [pi packages](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md)
 - [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
+
+## Local testing without publishing
+
+Build a private tarball and local marketplace without changing any host settings:
+
+```sh
+npm run package:local
+```
+
+Or build and install it in one host (use `--host all` for both):
+
+```sh
+npm run install:local -- --host codex
+npm run install:local -- --host claude
+```
+
+The command builds from the current working tree using the release packager,
+with a unique `*.local.<timestamp>` version and `private: true` so it cannot be
+published accidentally. It installs the tarball offline with lifecycle scripts
+disabled. Release outputs stay in `.artifacts/`; local outputs use
+`.artifacts/local/`, and immutable local package copies live beneath
+`~/.wellactually/local-marketplace/versions/`.
+
+`--destination <directory>` changes that local marketplace location. Preparing
+alone does not register or enable a plugin. Passing `--host` switches only that
+host's `wellactually@wellactually` catalog to the local package, preserving its
+identity and review stores. It does not edit the public catalog or hook trust.
+Restart the host/start a fresh session after installation; Codex may ask for one
+review of the changed hooks. Older local version directories are retained while
+existing host sessions may still use them.
+
+To return to the published npm catalog, register `passsy/wellactually` again and
+reinstall the plugin. For Codex, remove the local `wellactually` marketplace
+registration before adding the GitHub source. For Claude, `plugin marketplace
+add passsy/wellactually` replaces the local catalog; if a version downgrade is
+needed, uninstall/reinstall the user-scoped plugin. Review data is outside the
+plugin cache and is not removed by these commands.
+
+## GitHub Actions release controls
+
+Run **Release npm plugin** (`publish.yaml`) on `main`, entering a fresh exact
+version. Leave `publish` off for a build-only rehearsal; turn it on to publish.
+The read-only build job runs tests and produces the archive. A separate publisher
+job downloads that immutable artifact, checks its version/hash and publishes with
+OIDC/provenance without installing dependencies or executing the package. Only
+that job has `id-token: write`. Releases run serially.
+
+The npm connection must use `passsy/wellactually`, workflow `publish.yaml`, no
+environment restriction, and **Allow npm publish** enabled. No npm token secret
+is required. The publisher waits for public availability and verifies downloaded
+bytes; rerunning after an asynchronous upload verifies the same public artifact
+instead of uploading again. Installer pointers are promoted separately after
+registry verification, using the version helper described above.

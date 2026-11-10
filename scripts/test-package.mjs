@@ -7,11 +7,14 @@ import path from "node:path";
 import net from "node:net";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { parseArgs } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const packed = JSON.parse(fs.readFileSync(path.join(root, ".artifacts/pack.json"), "utf8"));
+const { values } = parseArgs({ options: { artifacts: { type: "string" }, "local-marketplace": { type: "string" } } });
+const artifacts = values.artifacts ? path.resolve(values.artifacts) : path.join(root, ".artifacts");
+const packed = JSON.parse(fs.readFileSync(path.join(artifacts, "pack.json"), "utf8"));
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-package-"));
 const repo = path.join(temp, "repo");
 fs.mkdirSync(repo);
@@ -28,15 +31,31 @@ const env = {
 };
 const run = (args, input) => execFileSync(process.execPath, args, { cwd: temp, env, encoding: "utf8", input, timeout: 30_000 });
 try {
-  execFileSync("npm", ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false", path.join(root, ".artifacts", packed.filename)], { cwd: temp, encoding: "utf8", timeout: 30_000 });
+  execFileSync("npm", ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false", path.join(artifacts, packed.filename)], { cwd: temp, encoding: "utf8", timeout: 30_000 });
   const installed = path.join(temp, "node_modules/wellactually");
   const manifest = read(path.join(installed, "package.json"));
   assert.equal(manifest.version, packed.version);
   assert.equal(manifest.scripts, undefined);
   assert.equal(manifest.dependencies, undefined);
   assert.equal(manifest.workspaces, undefined);
+  if (values["local-marketplace"]) {
+    const marketplace = path.resolve(values["local-marketplace"]);
+    const catalog = read(path.join(marketplace, ".claude-plugin/marketplace.json"));
+    const entry = catalog.plugins.find(plugin => plugin.name === "wellactually");
+    assert.equal(entry.version, manifest.version);
+    const local = path.resolve(marketplace, entry.source);
+    assert(local.startsWith(`${marketplace}${path.sep}`));
+    assert.equal(read(path.join(local, "package.json")).private, true);
+    assert.equal(manifest.private, true);
+    const { prepareLocalPackage } = await import("./install-local.mjs");
+    assert.throws(() => prepareLocalPackage({ destination: marketplace, version: manifest.version, build: false }), /already exists/);
+    assert.equal(read(path.join(local, "package.json")).version, manifest.version);
+    const publicPackage = read(path.join(root, ".artifacts/package/package.json"));
+    assert.notEqual(publicPackage.private, true, "Local preparation must not replace the release artifact");
+    console.log("Local marketplace: private package, immutable version and isolated release output passed");
+  }
   for (const host of ["root", "opencode"]) {
-    const source = path.join(root, ".artifacts/git-compat", host);
+    const source = path.join(artifacts, "git-compat", host);
     const bridge = path.join(temp, `git-${host}`);
     fs.cpSync(source, bridge, { recursive: true });
     const proposed = read(path.join(bridge, "package.json"));
@@ -44,7 +63,7 @@ try {
     // Test the exact wrappers against this tarball before it is published. The
     // fixture omits monorepo development workspaces and substitutes a local
     // archive for the registry alias; registry installation remains a gate.
-    fs.writeFileSync(path.join(bridge, "package.json"), JSON.stringify({ name: `wellactually-git-${host}-test`, private: true, type: "module", dependencies: { "wellactually-runtime": `file:${path.join(root, ".artifacts", packed.filename)}` } }));
+    fs.writeFileSync(path.join(bridge, "package.json"), JSON.stringify({ name: `wellactually-git-${host}-test`, private: true, type: "module", dependencies: { "wellactually-runtime": `file:${path.join(artifacts, packed.filename)}` } }));
     execFileSync("npm", ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"], { cwd: bridge, encoding: "utf8", timeout: 30_000 });
     if (host === "root") {
       assert.equal(typeof (await import(pathToFileURL(path.join(bridge, proposed.pi.extensions[0])))).default, "function");

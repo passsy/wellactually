@@ -8,11 +8,11 @@ import { buildRuntime } from "./build-runtime.mjs";
 import { syncSkills } from "./sync-skills.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-const { values } = parseArgs({ options: { version: { type: "string" } } });
+const { values } = parseArgs({ options: { version: { type: "string" }, local: { type: "boolean" }, out: { type: "string" } } });
 const readJson = (file) => JSON.parse(fs.readFileSync(path.join(root, file), "utf8"));
 const version = values.version ?? readJson("packages/cli/package.json").version;
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error("Expected an exact release or prerelease version");
-const artifacts = path.join(root, ".artifacts");
+const artifacts = values.out ? path.resolve(values.out) : path.join(root, ".artifacts");
 const stage = path.join(artifacts, "package");
 fs.rmSync(stage, { force: true, recursive: true });
 fs.mkdirSync(stage, { recursive: true });
@@ -52,6 +52,7 @@ for (const file of [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"]) 
 }
 const manifest = {
   name: "wellactually", version, type: "module", license: "Apache-2.0",
+  ...(values.local ? { private: true } : {}),
   description: "Your Well Actually advisory board, review skills and findings inbox for Claude Code, Codex, OpenCode and pi.",
   repository: { type: "git", url: "git+https://github.com/passsy/wellactually.git" },
   homepage: "https://wellactually.dev", engines: { node: ">=20" },

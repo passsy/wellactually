@@ -26,6 +26,8 @@
     "build": "node scripts/build.mjs",
     "package": "node scripts/package.mjs",
     "test:package": "node scripts/test-package.mjs",
+    "package:local": "node scripts/install-local.mjs",
+    "install:local": "node scripts/install-local.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/tsconfig.json && tsc --noEmit -p evaluator/tsconfig.json && tsc --noEmit -p evaluator/principles/tsconfig.json",
     "eval": "node evaluator/run.ts"

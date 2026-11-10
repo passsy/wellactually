@@ -6,6 +6,7 @@
 - `test-package.mjs` installs that archive outside the checkout with scripts
   disabled and checks host entrypoints, MCP, UI assets and Git adapter contracts.
 - `sync-skills.mjs` generates the namespaced OpenCode/pi skills inside the archive.
+- `install-local.mjs` prepares a private local tarball/catalog; `--host` also installs it in a selected host.
 - `publish-package.mjs` publishes the tested archive from the explicit release job.
 - `version.mjs` promotes a published version in manifests and compatibility pins.
   Refresh package-lock.json afterwards. Never point installers at an unpublished version.

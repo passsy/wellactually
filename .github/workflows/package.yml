@@ -25,6 +25,10 @@ jobs:
       - run: npm run web:typecheck --workspace @wellactually/findings
       - run: npm run package
       - run: npm run test:package
+      - name: Prepare a private local install without publishing or changing host config
+        run: npm run package:local -- --destination "$RUNNER_TEMP/wellactually-local"
+      - name: Exercise the local tarball through the same packed-product checks
+        run: npm run test:package -- --artifacts .artifacts/local --local-marketplace "$RUNNER_TEMP/wellactually-local"
       - name: Keep generated output out of Git
         run: |
           test -z "$(git ls-files -- dist opencode/dist opencode/skills 'skills/review/scripts/*.mjs')"

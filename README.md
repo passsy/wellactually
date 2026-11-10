@@ -207,6 +207,17 @@ The local runtime goes in ignored `dist/`. The installable package goes in
 ignored `.artifacts/`. Generated bundles and mirrored skills are not committed.
 CI builds and exercises the packed archive outside the checkout.
 
+## Test a local plugin build
+
+```bash
+npm run install:local -- --host codex
+# or --host claude / --host all
+```
+
+This builds a private local tarball and switches the selected host to it. Use
+`npm run package:local` to prepare it without changing host configuration.
+See [local testing and restoring npm installs](docs/releasing-review.md#local-testing-without-publishing).
+
 ## Release
 
 Build and test a new exact version with `npm run package -- --version <version>`.
