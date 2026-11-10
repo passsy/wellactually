@@ -1,6 +1,6 @@
 {
   "name": "wellactually",
-  "version": "0.10.3",
+  "version": "0.11.0-rc.1",
   "type": "module",
   "description": "The wellactually command and its MCP server",
   "bin": {

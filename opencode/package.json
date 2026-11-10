@@ -1,6 +1,6 @@
 {
   "name": "wellactually-opencode",
-  "version": "0.10.3",
+  "version": "0.11.0-rc.1",
   "description": "Runs the principles on your Well Actually advisory board while your agent works, and lets it author and rate them.",
   "type": "module",
   "license": "Apache-2.0",
@@ -8,5 +8,8 @@
     ".": "./index.mjs",
     "./server": "./index.mjs",
     "./tui": "./tui.mjs"
+  },
+  "dependencies": {
+    "wellactually-runtime": "npm:wellactually@0.11.0-rc.1"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "wellactually-client",
-  "version": "0.8.0",
+  "version": "0.11.0-rc.1",
   "private": true,
   "type": "module",
   "description": "The Well Actually plugin, command and sandbox",
@@ -13,10 +13,10 @@
   },
   "pi": {
     "extensions": [
-      "./dist/pi.mjs"
+      "./compat/pi.mjs"
     ],
     "skills": [
-      "./opencode/skills"
+      "./node_modules/wellactually-runtime/opencode/skills"
     ]
   },
   "workspaces": [
@@ -34,5 +34,8 @@
     "@types/node": "^24.0.0",
     "typescript": "~5.9.0",
     "vitest": "^4.0.0"
+  },
+  "dependencies": {
+    "wellactually-runtime": "npm:wellactually@0.11.0-rc.1"
   }
 }

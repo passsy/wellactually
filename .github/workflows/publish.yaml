@@ -19,7 +19,6 @@ jobs:
   release:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: npm
     permissions:
       contents: read
       id-token: write

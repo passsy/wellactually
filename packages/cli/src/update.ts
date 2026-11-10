@@ -6,8 +6,8 @@ import { boardHome } from "./board/board.ts";
 /** The release this plugin is, which scripts/version.mjs writes into the package. */
 export const CLIENT_VERSION: string = cli.version;
 
-/** Where a release says which version it is. Agents install the plugin from `main`, so its newest commit is the newest release. */
-export const LATEST_URL = "https://raw.githubusercontent.com/passsy/wellactually/main/packages/cli/package.json";
+/** Only published npm releases are offered as updates, never unpublished Git changes. */
+export const LATEST_URL = "https://registry.npmjs.org/wellactually/latest";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -39,13 +39,13 @@ export function howToUpdate(agent: Agent, folder = ""): string {
     return "run `codex plugin marketplace upgrade wellactually` and restart Codex";
   }
   if (agent === "opencode-1") {
-    return `run \`git pull\` in ${folder} and restart OpenCode`;
+    return `run \`git pull && npm install --ignore-scripts\` in ${folder} and restart OpenCode`;
   }
   if (agent === "opencode") {
     return "run `opencode plugin update` and restart OpenCode";
   }
   if (agent === "pi") {
-    return "run `pi update git:github.com/passsy/wellactually` and restart pi";
+    return "run `pi update` and restart pi";
   }
   // `claude plugin update` alone reads the marketplace as it was last fetched and finds nothing new.
   return "run `claude plugin marketplace update wellactually` and `claude plugin update wellactually@wellactually` and restart Claude Code, or turn on auto-update for the wellactually marketplace in /plugin";

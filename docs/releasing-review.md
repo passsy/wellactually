@@ -1,103 +1,99 @@
-# Shipping the review skill
+# npm distribution and releases
 
-Ship one prebuilt **`wellactually` npm package**. Claude Code and Codex retain the
-`wellactually@wellactually` marketplace identity. OpenCode loads the package's
-server/TUI exports; pi loads its declared extension and namespaced skills. Every
-host uses the same command, findings store, review helper and web assets.
+All four hosts install one prebuilt `wellactually` npm package. Git contains
+source, native manifests and small compatibility adapters; it contains no
+committed `dist/` trees or mirrored OpenCode/pi skills.
 
-This follows the release direction agreed in the review thread: source-only
-`main`, generated artifacts in npm, one version and native host adapters. There
-is no second hooks plugin, release branch or build during installation.
+## Install paths
 
-## What is ready
+Claude Code and Codex retain the `wellactually@wellactually` identity. Their
+shared `.claude-plugin/marketplace.json` entry names an exact published npm
+version. A host fetches ready-to-run files without lifecycle scripts.
 
-`npm run package -- --version 0.11.0-rc.1` builds `.artifacts/package/`, packs it,
-and writes `.artifacts/pack.json` plus an **inactive** candidate marketplace.
-`npm run test:package` installs that tarball offline with `--ignore-scripts` into
-a temporary directory outside this repository. It exercises the skill helper,
-all host entrypoints, MCP finding/occurrence creation, card and inbox assets,
-and the installed server version. No project credentials or real review stores
-are used. Normal backend/UI tests remain separate.
+New OpenCode installs use `opencode plugin add wellactually`; pi uses
+`pi install npm:wellactually`. Existing Git sources keep working: `opencode/`
+exports and `compat/pi.mjs` import the `wellactually-runtime` npm alias. The Git
+root pi manifest finds its namespaced skills in that dependency. Both aliases
+pin the same published version as the catalog. They perform no downloads or
+builds while the agent runs.
 
-Only authored skill Markdown, manifests, hooks and compiled runtime/assets enter
-the archive. There are no workspaces, runtime npm dependencies or lifecycle
-scripts. Both skill layouts have tiny launchers for one compiled review helper.
-The orchestration source stays under `skills/review/scripts/`.
+## Build and validate
 
-Build tooling uses Node >=22.18. The installed product retains the documented
-Node >=20 runtime floor. Test the packed product at that floor too: the new icon
-encoder previously imported `zlib.crc32`, which Node 20 lacks and which prevented
-the entire MCP process from starting. Its portable PNG checksum encoder now
-avoids that dependency.
+Development tooling needs Node >=22.18. Installed packages support Node >=20.
 
-The `Packed plugin` workflow builds and tests the tarball on pull requests. The
-manual `release.yml` workflow rebuilds/tests before publishing the exact tested
-tarball, with provenance, using npm trusted publishing. Publishing defaults off;
-prereleases use `next`, stable releases use `latest`.
+```sh
+npm ci --ignore-scripts
+npm run build
+npm test
+npm run web:test --workspace @wellactually/findings
+npm run web:typecheck --workspace @wellactually/findings
+npm run package -- --version <new-version>
+npm run test:package
+```
 
-## Release sequence
+Development runtime output goes to ignored `dist/`; the npm archive and candidate
+catalog go to ignored `.artifacts/`. Packaging reads authored skills and generates
+both host layouts with tiny launchers for a single compiled review helper.
 
-1. Finish the candidate on the review branch, retaining the current Git catalog
-   and generated Git-install payload until the registry package is available.
-   Do not make the current `source: "./"` catalog point at a source-only tree.
-2. Bootstrap ownership of the npm package. At the time of preparation, `npm view
-   wellactually` returned 404 and this machine was not logged in. Confirm the
-   final name/ownership, then an npm owner can publish the tested prerelease with
-   `npm publish .artifacts/wellactually-0.11.0-rc.1.tgz --ignore-scripts --access public --tag next`.
-   Credentials must stay in npm's login flow, not repository files or chat.
-3. In npm package settings, authorize GitHub **passsy/wellactually**, workflow
-   **release.yml**, environment **npm**, allowing direct publication. Configure
-   the GitHub environment's reviewers as desired. This removes the need for a
-   long-lived publish token. Use npm >=11.5.1 and Node >=22.14 for publishing.
-4. Download/install the **registry** prerelease, then perform a fresh review in
-   each supported harness. Test card startup/update, accept/fix persistence,
-   posting as a separate explicit user action, and natural fixed-event delivery
-   after grace/throttle. Adapter/manifest tests do not establish desktop UI
-   rendering. Do not fabricate code fixes or stats to pass this gate.
-5. Publish the final exact stable artifact. Verify it is fetchable, then commit
-   the generated npm `source` entry to `.claude-plugin/marketplace.json` (Codex
-   also accepts this catalog). Keep name, owner and existing plugin identity.
-   Advertise the **tested harness versions**, not an unverified minimum version.
-6. In the same catalog-switch change, remove tracked `dist/`, `opencode/dist/`,
-   `opencode/skills/` and generated `skills/review/scripts/*.mjs` from Git; ignore
-   them, retain their TypeScript sources, and replace the generated-file drift
-   check with the packed-artifact gate. Change OpenCode/pi install instructions
-   to the npm source. Apply `.artifacts/git-compat/` as well: the root pi manifest
-   loads a small `compat/pi.mjs`, and OpenCode's Git subpackage keeps its original
-   exports. Both depend on `wellactually-runtime: npm:wellactually@<exact-version>`
-   and load the same published artifact. Existing Git users can keep their source
-   and update normally; no runtime downloader or installer build is introduced.
-   Regenerate the lockfile for this dependency after publication. Test both old
-   Git install sources against the registry before removing the legacy payload.
-   Do not remove the legacy build path before this switch.
-7. Merge PR #8 with its title/body rewritten for the actual queue/CRUD workflow.
-   Existing installs keep their local review stores and credentials. Tell Codex
-   users to review the six hooks once: Codex fingerprints the whole plugin, so
-   a README-only update can still invalidate trust. No trust hashes are edited.
+Packed-product tests install outside the checkout, offline with scripts disabled,
+and exercise four host entrypoints, MCP CRUD, card/inbox assets, version identity,
+PNG icons and compatibility adapter contracts. CI also tests the archive on Node
+20.0.0. These checks do not establish actual desktop rendering or a complete review
+in every host. Preserve those limits when describing a release.
 
-For rollback, restore the previous Git catalog **and** its built payload together,
-or pin the catalog to a previously published good npm version. Never restore a
-Git source pointing at a tree whose bundles have been removed. Leave stored
+## Publish, then promote
+
+1. Build/test a new exact version. Never reuse a published version, and never
+   put an unpublished version in active installer pointers.
+2. Dispatch `publish.yaml` on `main`, supplying that version. Publishing defaults
+   off; enabling it publishes the exact tested tarball with provenance. Prereleases
+   use `next`; stable releases use `latest`.
+3. Configure npm trusted publishing once: package `wellactually`, repository
+   `passsy/wellactually`, workflow `publish.yaml`, no GitHub environment restriction, allowing
+   direct publication. This is external account configuration; committing the
+   workflow alone does not create that trust relationship. Alternatively an npm
+   owner can publish the tested tarball manually through npm's 2FA flow.
+4. Wait for registry availability and compare tarball integrity. npm can return
+   HTTP 202 and print success while its registry still exposes only a placeholder.
+   The release script verifies public metadata and downloaded archive bytes and
+   fails rather than reporting an invisible version as released. Do not blindly
+   republish when processing takes longer than the verification timeout.
+5. After registry verification, run `node scripts/version.mjs <published-version>`
+   and `npm install --package-lock-only --ignore-scripts`. Review the catalog,
+   source manifests, both Git adapters and lockfile pins, then commit and push.
+6. Test a fresh registry installation and a review in each advertised host,
+   including card updates, accept/fix persistence and separately requested posting.
+   Confirm natural fixed-event delivery after grace/throttle; never fabricate fixes.
+
+The initial migration pins the verified `0.11.0-rc.1` artifact. The README-only
+`rc.2` upload is not a reason to promote pointers until it is publicly available.
+Existing local review stores and credentials are independent of plugin caches.
+Codex may require one `/hooks` review after updates because it fingerprints the
+whole installed plugin. Do not write trust hashes programmatically.
+
+## Rollback
+
+Pin the catalog and both compatibility dependencies to a previously published
+npm version, refresh the lockfile and push. To restore a historical Git-based
+catalog, restore its built payload from the same historical revision too. Never
+point a Git installer at a source-only tree without its npm adapter. Leave stored
 findings and telemetry untouched.
 
-## Remaining gates
+## Known validation limits
 
-- Initial npm ownership/publication and trusted-publisher configuration are
-  external setup; a locally packed tarball is not a published release.
-- The npm artifact needs actual registry installation and a review in each
-  advertised desktop/terminal host. Local adapter smoke tests are narrower.
-- Compatible lockfile updates address the audit's high/moderate advisories. A
-  low-severity KaTeX advisory remains through Mermaid; npm's suggested major
-  upgrade was unavailable under the configured minimum release-age policy.
-  Reassess the eligible patched dependency before promoting the prerelease.
-- Source-only Git cleanup and active catalog changes intentionally follow the
-  registry gate. Until then the existing Git distribution stays intact.
+Native desktop UI rendering and a complete review in every host remain separate
+from packed-product tests. OpenCode 2.2.5's bundled installer rejected the fresh
+release under this machine's seven-day age policy despite npm's package-specific
+exclusion. Standard npm installation and the prebuilt adapters pass; do not treat
+that as a successful native OpenCode installation or disable the global age policy.
+The dependency audit currently reports a low-severity
+KaTeX advisory through Mermaid; its suggested major upgrade was unavailable under
+the configured minimum release-age policy when the candidate was prepared.
 
 ## References
 
-- [Codex npm plugin sources](https://developers.openai.com/plugins/build/plugins)
-- [Claude Code npm plugin sources](https://code.claude.com/docs/en/plugins/marketplace-reference#npm-plugin-source)
+- [Codex npm sources](https://developers.openai.com/plugins/build/plugins)
+- [Claude Code npm sources](https://code.claude.com/docs/en/plugins/marketplace-reference#npm-plugin-source)
 - [OpenCode plugins](https://docs.dev.opencode.ai/docs/plugins/)
 - [pi packages](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md)
-- [Ponytail's shared package manifest](https://github.com/DietrichGebert/ponytail/blob/main/package.json)
 - [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
