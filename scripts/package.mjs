@@ -57,7 +57,12 @@ write("skills/review/scripts/review.mjs", 'import "../../../dist/review.mjs";\n'
 syncSkills(stage);
 write("opencode/skills/wellactually-review/scripts/review.mjs", 'import "../../../../dist/review.mjs";\n');
 
-for (const file of ["LICENSE", "README.md", "docs/releasing-review.md", "hooks/hooks.json", ".codex-plugin/mcp.json"]) {
+// npm renders both GitHub theme variants. Keep GitHub's themed source README,
+// but publish one illustration without a GitHub-only visibility fragment.
+write("README.md", fs.readFileSync(path.join(root, "README.md"), "utf8")
+  .replace(/^.*<img[^\n]*#gh-dark-mode-only[^\n]*>\r?\n/gm, "")
+  .replaceAll("#gh-light-mode-only", ""));
+for (const file of ["LICENSE", "docs/releasing-review.md", "hooks/hooks.json", ".codex-plugin/mcp.json"]) {
   write(file, fs.readFileSync(path.join(root, file)));
 }
 for (const file of [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"]) {
