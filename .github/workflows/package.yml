@@ -47,3 +47,5 @@ jobs:
             .artifacts/marketplace.json
             .artifacts/git-compat/
           if-no-files-found: error
+          # Only the generated allowlist above is uploaded, not the whole dot-directory.
+          include-hidden-files: true
