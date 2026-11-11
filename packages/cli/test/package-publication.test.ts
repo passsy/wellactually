@@ -24,3 +24,20 @@ test("a different public tarball fails verification rather than counting as a re
 test("an accepted upload that stays invisible remains an incomplete release", async () => {
   await expect(verifyPublishedPackage(packed, { fetcher: async () => new Response("not ready", { status: 404 }), attempts: 1 })).rejects.toThrow("do not promote");
 });
+
+const { stagedReceipt } = await import(new URL("../../../scripts/stage-package.mjs", import.meta.url).href);
+const stage = { ...packed, stageId: "12345678-abcd-1234-abcd-123456789abc" };
+
+test("a staged upload requires 2FA approval and is not reported as published", () => {
+  expect(stagedReceipt(JSON.stringify({ wellactually: stage }), packed)).toEqual({ ...stage, state: "staged" });
+});
+
+test("a successful npm exit without a stage ID is not treated as a staged release", () => {
+  expect(() => stagedReceipt(JSON.stringify({ wellactually: packed }), packed)).toThrow("staged package ID");
+});
+
+test("a staged archive with different bytes or version is not approved as our tested package", () => {
+  for (const patch of [{ integrity: "different" }, { version: "99.0.0" }]) {
+    expect(() => stagedReceipt(JSON.stringify({ wellactually: { ...stage, ...patch } }), packed)).toThrow("differs");
+  }
+});
