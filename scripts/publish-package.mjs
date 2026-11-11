@@ -5,6 +5,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { verifyPublishedPackage } from "./verify-package.mjs";
+import { stagedReceipt } from "./stage-package.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 if (process.env.GITHUB_ACTIONS !== "true" || process.env.GITHUB_REF !== "refs/heads/main") {
@@ -18,10 +19,16 @@ const integrity = `sha512-${createHash("sha512").update(fs.readFileSync(tarball)
 if (integrity !== packed.integrity) throw new Error("Downloaded build artifact differs from the tested archive");
 const existing = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packed.name)}/${encodeURIComponent(packed.version)}`, { signal: AbortSignal.timeout(15000) });
 if (existing.status === 404) {
-  execFileSync("npm", ["publish", tarball, "--ignore-scripts", "--access", "public", "--provenance", "--tag", packed.version.includes("-") ? "next" : "latest"], { cwd: root, stdio: "inherit" });
+  const output = execFileSync("npm", ["stage", "publish", tarball, "--json", "--ignore-scripts", "--access", "public", "--provenance", "--tag", packed.version.includes("-") ? "next" : "latest"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+  const receipt = stagedReceipt(output, packed);
+  fs.writeFileSync(path.join(root, ".artifacts/stage.json"), JSON.stringify(receipt, null, 2) + "\n");
+  const summary = `Staged ${packed.name}@${packed.version}: ${receipt.stageId}. Not published. Review the staged archive and approve with npm stage approve ${receipt.stageId} using 2FA, then verify public registry integrity before promoting installer pointers.\n`;
+  console.log(summary);
+  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+  process.exit(0);
 } else if (!existing.ok) {
   throw new Error(`Could not check whether this version is already public: ${existing.status}`);
 }
-// A rerun after npm's asynchronous processing can verify the same artifact
-// without attempting a second upload. Different bytes still fail verification.
+// An already public version must match the tested archive. Stage approval is
+// separate; an unapproved stage never reaches this published-release verifier.
 await verifyPublishedPackage(packed);

@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       publish:
-        description: Publish this tested tarball using the npm trusted publisher
+        description: Stage this tested tarball for a maintainer to approve with npm 2FA
         default: false
         type: boolean
 
@@ -30,8 +30,8 @@ jobs:
           node-version: 'lts/*'
           check-latest: true
           registry-url: https://registry.npmjs.org
-      - name: Check npm supports trusted publishing
-        run: node -e 'const v=require("node:child_process").execFileSync("npm",["--version"],{encoding:"utf8"}).trim().split(".").map(Number);if(v[0]<11||(v[0]===11&&v[1]<5)||(v[0]===11&&v[1]===5&&v[2]<1))throw Error("npm 11.5.1 or newer required")'
+      - name: Check npm supports staged trusted publishing
+        run: node -e 'const v=require("node:child_process").execFileSync("npm",["--version"],{encoding:"utf8"}).trim().split(".").map(Number);if(v[0]<11||(v[0]===11&&v[1]<15))throw Error("npm 11.15.0 or newer required")'
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm run build
@@ -83,7 +83,7 @@ jobs:
           # Only the generated allowlist above is uploaded, not the whole dot-directory.
           include-hidden-files: true
 
-  publish:
+  stage:
     needs: build
     if: inputs.publish && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -101,7 +101,14 @@ jobs:
         with:
           name: wellactually-release
           path: .artifacts
-      - name: Publish and verify the exact tested tarball (no install scripts)
+      - name: Stage the exact tested tarball with provenance (no install scripts)
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: node scripts/publish-package.mjs
+      - name: Save the staged-package receipt when approval is pending
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wellactually-stage
+          path: .artifacts/stage.json
+          include-hidden-files: true
+          if-no-files-found: ignore

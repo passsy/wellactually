@@ -54,19 +54,27 @@ Preserve those limits when describing a release.
 
 1. Build/test a new exact version. Never reuse a published version, and never
    put an unpublished version in active installer pointers.
-2. Dispatch `publish.yaml` on `main`, supplying that version. Publishing defaults
-   off; enabling it publishes the exact tested tarball with provenance. Prereleases
-   use `next`; stable releases use `latest`.
-3. Configure npm trusted publishing once: package `wellactually`, repository
-   `passsy/wellactually`, workflow `publish.yaml`, no GitHub environment restriction, allowing
-   direct publication. This is external account configuration; committing the
-   workflow alone does not create that trust relationship. Alternatively an npm
-   owner can publish the tested tarball manually through npm's 2FA flow.
-4. Wait for registry availability and compare tarball integrity. npm can return
-   HTTP 202 and print success while its registry still exposes only a placeholder.
-   The release script verifies public metadata and downloaded archive bytes and
-   fails rather than reporting an invisible version as released. Do not blindly
-   republish when processing takes longer than the verification timeout.
+2. Configure npm trusted publishing once: package `wellactually`, repository
+   `passsy/wellactually`, workflow `publish.yaml`, no GitHub environment restriction.
+   Keep it stage-only: direct publication stays disabled. A maintainer approves
+   each staged release with 2FA. This account setting is external to the repository.
+3. Dispatch `publish.yaml` on `main`, supplying that version and `publish=true`.
+   The input defaults off; enabling it stages the exact tested tarball with
+   provenance. The workflow records the stage ID and expected integrity in its
+   summary and `wellactually-stage` artifact. A successful stage is not a release.
+   Prereleases are staged with `next`; stable releases with `latest`.
+4. Review the staged version on npmjs.com's Staged Packages tab, or run
+   `npm stage view <stage-id>` and `npm stage download <stage-id>`. Compare the
+   downloaded archive's SHA-512 with the tested Actions `pack.json` before approval.
+   Click Approve on npmjs.com or run `npm stage approve <stage-id>`; either route
+   requires maintainer 2FA. Do not assume npm sends an approval-request email.
+   Approval publishes the version and moves only the tag selected at staging;
+   moving another tag is a separate authenticated operation. Do not grant direct
+   publishing permission to avoid this approval. npm reserves staged versions:
+   inspect an existing pending stage instead of blindly rerunning a failed upload.
+   After approval, use `verifyPublishedPackage` from `scripts/verify-package.mjs`
+   against the Actions `pack.json` to verify public metadata and downloaded bytes.
+   A successful stage or approval command alone does not establish registry delivery.
 5. After registry verification, run `node scripts/version.mjs <published-version>`
    and `npm install --package-lock-only --ignore-scripts`. Review the catalog,
    source manifests, both Git adapters and lockfile pins, then commit and push.
