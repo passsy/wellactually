@@ -1,6 +1,6 @@
 {
   "name": "wellactually-client",
-  "version": "0.11.0-rc.1",
+  "version": "0.11.0-rc.2",
   "private": true,
   "type": "module",
   "description": "The Well Actually plugin, command and sandbox",
@@ -38,6 +38,6 @@
     "vitest": "^4.0.0"
   },
   "dependencies": {
-    "wellactually-runtime": "npm:wellactually@0.11.0-rc.1"
+    "wellactually-runtime": "npm:wellactually@0.11.0-rc.2"
   }
 }

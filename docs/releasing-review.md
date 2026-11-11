@@ -74,8 +74,8 @@ Preserve those limits when describing a release.
    including card updates, accept/fix persistence and separately requested posting.
    Confirm natural fixed-event delivery after grace/throttle; never fabricate fixes.
 
-The initial migration pins the verified `0.11.0-rc.1` artifact. The README-only
-`rc.2` upload is not a reason to promote pointers until it is publicly available.
+The marketplace and Git compatibility adapters pin the verified `0.11.0-rc.2`
+artifact. Future promotions must verify registry availability and integrity first.
 Existing local review stores and credentials are independent of plugin caches.
 Codex may require one `/hooks` review after updates because it fingerprints the
 whole installed plugin. Do not write trust hashes programmatically.
