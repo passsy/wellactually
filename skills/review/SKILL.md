@@ -18,7 +18,6 @@ Read [How a finding reads](finding-writing.md) before recording or revising find
 Check the assigned directory, host project inventory and known clone locations before cloning.
 Do not recursively search the home directory for a repository.
 If a clone is needed, create it in the durable assigned workspace.
-Start timing at the user request and retain stage and worker timestamps.
 Review selections are tracked automatically when the session is created, suggestions after aggregation, and completed fixes per resolved finding, independent of occurrence state or other findings.
 Suggestion and fix events carry priority; retries and duplicate occurrences do not add events.
 Upload cycles are at least five minutes apart, and completed fixes wait at least five minutes before upload.
@@ -138,7 +137,7 @@ Product files remain unchanged; use disposable probe copies where needed and sep
 Follow the host adapter for proof execution: Claude uses native Agent workers inheriting parent permissions; Codex passes its actual sandbox policy through the launcher. Reviewer permissions stay read-only.
 If infrastructure is corrected after an issue completed, the coordinator may call retry_verification with selected issue IDs and a reason.
 Prior attempts and finding IDs are retained, worker count is ceil(retried issues/10), and only those proofs rerun.
-Never restart the whole review or silently drop the original blocked phase from timing.
+Never restart the whole review or silently omit the original blocked work from the report.
 
 Use the host adapter's reviewer pool and its proof mechanism. CLI pools recover ordinary crashes with at most two fresh-context replacements per worker, preserving identity and durable claims. Claude proof workers use the native Agent tool instead of the CLI proof pool.
 Preserve attempt audits.
@@ -166,6 +165,7 @@ This reconciles previously saved findings with this run; it does not execute tes
 Do not reconstruct metadata findings as source-file anchors.
 Keep human verdicts undecided/unresolved.
 
-Present verdict, concrete findings, a concise solution assessment where relevant, measured timings and proof limits, with artifact/MCP links.
+Present verdict, concrete findings, a concise solution assessment where relevant and proof limits, with artifact/MCP links.
+Include elapsed time, stage durations or timing tables only when the user asks for them.
 Infrastructure failures are not product defects.
 Node 20+ is required.

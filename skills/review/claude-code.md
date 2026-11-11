@@ -42,6 +42,6 @@ Wait for native Agent results, then require --check <dir> --stage verify. A succ
 
 After investigation, use saved finding IDs for baseline reconciliation and the MCP session for suggestion delivery status.
 Read queue counts first. Inspect one queue and, when needed, one item with get_review_session(includeResults:true, queue, item); do not repeatedly request the full session when its output exceeds the host limit.
-Report proof limits, pending or blocked work, replacements and measured stage timings.
+Report proof limits, pending or blocked work and replacements.
 
 Proof artifact paths saved through the Well Actually MCP must be absolute for files outside the reviewed repository. The Codex proof gateway expands review-relative paths; direct MCP calls have no review-directory context and must use absolute paths. Keep source location paths relative to the reviewed repository.
