@@ -54,6 +54,7 @@ test("combined MCP serves the live app, occurrence CRUD and provider-specific UR
     const ports = await Promise.all([freePort(), freePort()]);
     expect(ports[0]).not.toBe(ports[1]);
     for (const [index, host] of ["claude", "codex"].entries()) {
+      const cards = host !== "claude";
       const client = new Client(
         { name: "findings-app-test", version: "1" },
         {
@@ -103,29 +104,39 @@ test("combined MCP serves the live app, occurrence CRUD and provider-specific UR
       expect(tools.tools.some((t) => t.name === "regenerate_views")).toBe(
         false,
       );
-      expect(
-        tools.tools.find((t) => t.name === "start_review")?._meta,
-      ).toMatchObject({ ui: { resourceUri: REVIEW_CARD } });
+      if (cards) expect(tools.tools.find(t => t.name === "start_review")?._meta).toMatchObject({ ui: { resourceUri: REVIEW_CARD } });
+      else {
+        expect(tools.tools.every(t => t._meta?.ui === undefined)).toBe(true);
+        expect(tools.tools.some(t => t.name === "set_stage")).toBe(false);
+        expect(tools.tools.some(t => t.name === "update_finding")).toBe(true);
+      }
       expect(
         tools.tools.find((t) => t.name === "review_status")?.annotations
           ?.readOnlyHint,
       ).toBe(true);
-      expect(
-        (await client.listResources()).resources.some(
-          (r) => r.uri === REVIEW_CARD,
-        ),
-      ).toBe(true);
-      const resource = await client.readResource({ uri: REVIEW_CARD });
-      expect(resource.contents[0]?.mimeType).toBe("text/html;profile=mcp-app");
-      expect(resource.contents[0]?._meta).toMatchObject({
-        "openai/widgetShowCodexWidgetInline": true,
-      });
+      if (cards) {
+        expect((await client.listResources()).resources.some(r => r.uri === REVIEW_CARD)).toBe(true);
+        const resource = await client.readResource({ uri: REVIEW_CARD });
+        expect(resource.contents[0]?.mimeType).toBe("text/html;profile=mcp-app");
+        expect(resource.contents[0]?._meta).toMatchObject({ "openai/widgetShowCodexWidgetInline": true });
+      } else {
+        await expect(client.readResource({ uri: REVIEW_CARD })).rejects.toThrow();
+      }
       const target = `app-${host}`;
+      const inspectStatus = async (reply: Record<string, unknown>) => {
+        if (cards) return reply.structuredContent;
+        expect(reply.structuredContent).toBeUndefined();
+        const response = await fetch(`http://127.0.0.1:${ports[index]}/api/tools/review_status`, {
+          method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ repo, target }),
+        });
+        expect(response.ok).toBe(true);
+        return response.json();
+      };
       const start = await client.callTool({
         name: "start_review",
         arguments: { repo, target },
       });
-      expect(start.structuredContent).toMatchObject({
+      expect(await inspectStatus(start)).toMatchObject({
         target,
         findings: [],
         levels: [],
@@ -136,10 +147,9 @@ test("combined MCP serves the live app, occurrence CRUD and provider-specific UR
       const startText = (start.content as {type:string;text?:string}[]).find(c => c.type === "text");
       expect(startText?.type).toBe("text");
       const started = JSON.parse(startText!.text!);
-      expect(started).toMatchObject({repo,target,reviewCard:{resourceUri:REVIEW_CARD}});
-      expect(started.reviewCard.resourceUri).toBe(
-        (tools.tools.find(t=>t.name==="start_review")?._meta?.ui as {resourceUri:string}).resourceUri,
-      );
+      expect(started).toMatchObject({ repo, target, url: expect.stringContaining(`:${ports[index]}/`) });
+      if (cards) expect(started.reviewCard).toMatchObject({ resourceUri: REVIEW_CARD, delivery: "unconfirmed" });
+      else expect(started.reviewCard).toMatchObject({ delivery: "disabled" });
       const created = await client.callTool({
         name: "create_finding",
         arguments: {
@@ -201,7 +211,7 @@ test("combined MCP serves the live app, occurrence CRUD and provider-specific UR
         name: "review_status",
         arguments: { repo, target },
       });
-      expect(immediate.structuredContent).toMatchObject({
+      expect(await inspectStatus(immediate)).toMatchObject({
         findings: [
           {
             id: record.id,
@@ -235,7 +245,7 @@ test("combined MCP serves the live app, occurrence CRUD and provider-specific UR
         name: "review_status",
         arguments: { repo, target },
       });
-      expect(status.structuredContent).toMatchObject({
+      expect(await inspectStatus(status)).toMatchObject({
         findings: [
           {
             id: record.id,
@@ -374,6 +384,13 @@ test("combined MCP serves the live app, occurrence CRUD and provider-specific UR
       ]);
       expect(fs.existsSync(path.join(reviewDir, "review.html"))).toBe(false);
       expect(fs.existsSync(path.join(reviewDir, "findings.sarif"))).toBe(false);
+      const voted = await fetch(`http://127.0.0.1:${ports[index]}/api/findings/${record.id}/stage`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ repo, target, to: "accepted" }),
+      });
+      expect(voted.ok).toBe(true);
+      const afterVote = await client.callTool({ name: "get_finding", arguments: { repo, target, id: record.id } });
+      expect(JSON.parse((afterVote.content as {text:string}[])[0]!.text)).toMatchObject({ verdict: "accepted" });
     }
   } finally {
     await Promise.all(clients.map((client) => client.close()));
@@ -395,7 +412,7 @@ test("a text-only MCP client receives usable inbox links without a claim of rend
     expect(started.isError).not.toBe(true);
     expect(started.structuredContent).toBeUndefined();
     const body=JSON.parse((started.content as {text:string}[])[0]!.text);
-    expect(body.reviewCard).toMatchObject({resourceUri:REVIEW_CARD,delivery:"unconfirmed"});
+    expect(body.reviewCard).toMatchObject({delivery:"disabled"});
     const inbox=new URL(body.url);
     expect(inbox.port).toBe(String(port));
     expect(inbox.searchParams.get("repo")).toBe(repo);

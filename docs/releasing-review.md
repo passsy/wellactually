@@ -71,7 +71,9 @@ Preserve those limits when describing a release.
    and `npm install --package-lock-only --ignore-scripts`. Review the catalog,
    source manifests, both Git adapters and lockfile pins, then commit and push.
 6. Test a fresh registry installation and a review in each advertised host,
-   including card updates, accept/fix persistence and separately requested posting.
+   including accept/fix persistence and separately requested posting. Claude cards
+   are temporarily disabled: verify no inline UI is advertised and browser inbox
+   decisions persist. Verify live card updates in supported hosts such as Codex.
    Confirm natural fixed-event delivery after grace/throttle; never fabricate fixes.
 
 The marketplace and Git compatibility adapters pin the verified `0.11.0-rc.2`

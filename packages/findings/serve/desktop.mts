@@ -8,6 +8,7 @@ import { readRegistry } from "../store/registry.mts";
 import { slugTarget, targetPaths } from "../store/paths.mts";
 import { occurrenceRecords } from "../store/records.mts";
 import { CARD_MIME, registerReviewCard } from "./app.mts";
+import { reviewCardsEnabled } from "./port.mts";
 import { REVIEW_CARD } from "../tools.mts";
 
 export function createDesktopServer(): McpServer {
@@ -29,11 +30,11 @@ export function createDesktopServer(): McpServer {
   server.registerTool("review_status", {
     description: "Show a live read-only Well Actually review card. Use repo and target from list_reviews. No findings, notes, decisions or code can be changed through this connector.",
     inputSchema: selection, annotations,
-    _meta: { ui: { resourceUri: REVIEW_CARD, visibility: ["model", "app"] } },
+    ...(reviewCardsEnabled() ? { _meta: { ui: { resourceUri: REVIEW_CARD, visibility: ["model", "app"] } } } : {}),
   }, async args => {
     const selected = registered(args);
     const status = { ...reviewStatus(selected, selected.repo), readOnly: true };
-    return { content: [{ type: "text", text: `${status.title ?? status.target}: ${status.findings.length} findings (${status.state}). Read-only live card.` }], structuredContent: status };
+    return { content: [{ type: "text", text: `${status.title ?? status.target}: ${status.findings.length} findings (${status.state}). ${reviewCardsEnabled() ? "Read-only live card." : `Inline cards disabled. Review inbox: ${status.url}`}` }], ...(reviewCardsEnabled() ? { structuredContent: status } : {}) };
   });
   server.registerTool("list_occurrences", {
     description: "Read saved occurrences and captured code for a finding in an existing review.",

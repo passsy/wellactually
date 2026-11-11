@@ -23,6 +23,7 @@ import {
 import { REVIEW_CARD, TOOLS, toolNamed } from "../tools.mts";
 import { adoptRoots, type Workspace } from "../store/workspace.mts";
 import { cardHtml } from "./web-assets.mts";
+import { reviewCardsEnabled } from "./port.mts";
 
 /** The MCP Apps extension, and the one kind of resource it defines. */
 const UI_EXTENSION = "io.modelcontextprotocol/ui";
@@ -56,6 +57,7 @@ export function createMcpServer(
    * full on every call, to draw nothing.
    */
   const drawsCards = (): boolean => {
+    if (!reviewCardsEnabled()) return false;
     const extension = server.getClientCapabilities()?.extensions?.[
       UI_EXTENSION
     ] as { mimeTypes?: unknown } | undefined;
@@ -94,11 +96,11 @@ export function createMcpServer(
         description: tool.description,
         inputSchema: tool.inputSchema,
         ...(tool.annotations ? { annotations: tool.annotations } : {}),
-        ...(tool.card || forCardAlone(tool)
+        ...((tool.card && reviewCardsEnabled()) || forCardAlone(tool)
           ? {
               _meta: {
                 ui: {
-                  ...(tool.card ? { resourceUri: tool.card } : {}),
+                  ...(tool.card && reviewCardsEnabled() ? { resourceUri: tool.card } : {}),
                   ...(forCardAlone(tool) ? { visibility: ["app"] } : {}),
                 },
               },
@@ -108,7 +110,7 @@ export function createMcpServer(
   }));
 
   server.setRequestHandler(ListResourcesRequestSchema, () => ({
-    resources: [
+    resources: reviewCardsEnabled() ? [
       {
         uri: REVIEW_CARD,
         name: "Review card",
@@ -116,11 +118,11 @@ export function createMcpServer(
           "A review's progress and its findings, drawn in the conversation.",
         mimeType: CARD_MIME,
       },
-    ],
+    ] : [],
   }));
 
   server.setRequestHandler(ReadResourceRequestSchema, (request) => {
-    if (request.params.uri !== REVIEW_CARD) {
+    if (!reviewCardsEnabled() || request.params.uri !== REVIEW_CARD) {
       throw new Error(`no resource "${request.params.uri}"`);
     }
     return {

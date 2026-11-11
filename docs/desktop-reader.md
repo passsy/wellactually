@@ -1,34 +1,14 @@
-# Read-only reviews in Claude Desktop
+# Claude findings delivery
 
-Claude Code can run a review while Claude Chat displays its live results. Some
-Claude Desktop versions omit the tool-call bridge for Code plugin cards; a later
-snapshot can show newer results, but delaying it does not restore live updates.
-The Desktop MCP connector uses the working Chat route.
+Inline findings cards are temporarily disabled in Claude because the Desktop Code
+tab cannot reliably forward their refresh and voting calls. This applies to
+startup, progress, final and replacement cards.
 
-Build and install locally:
+Use the browser inbox link returned by `start_review` for live findings, votes and
+notes. `review_status` remains available as a text summary. The normal plugin MCP
+server and inbox keep the coding session's lifecycle. Codex retains its interactive
+inline card.
 
-```sh
-npm run build
-node scripts/install-desktop-reader.mjs
-```
-
-Restart Claude Desktop. In **Claude Chat**, ask: “Use wellactually-reader to list
-my reviews, then show the live card for [project and PR].” Keep running the review
-in the coding session. Existing Code cards remain snapshots on affected hosts.
-
-The `desktop-mcp` command exposes only `list_reviews`, `review_status`, and
-`list_occurrences`. It reads registered reviews, saved occurrences and captured
-code. It does not start the browser inbox server, execute review workers, or
-expose authoring, voting, notes, posting, or arbitrary file-reading tools. Cards
-are marked read-only and omit mutation controls. This is an application-level
-read-only interface, not an OS filesystem sandbox.
-
-The installer preserves other Desktop settings and connectors, backs up the
-configuration, and copies built assets to `~/.well-actually/desktop-reader`, so
-the connector does not depend on an ephemeral plugin cache. Rerun it after UI
-updates. To uninstall, remove `wellactually-reader` from `mcpServers` in Claude's
-Desktop configuration, restart Claude, then remove that folder.
-
-For manual installation, configure a stdio MCP server whose command is the full
-path to Node and whose arguments are the full path to `dist/wellactually.mjs`
-and `desktop-mcp`. Set `WELLACTUALLY_REVIEW_HOST=claude` for Claude's inbox links.
+The experimental `desktop-mcp` reader and its installer remain in source for
+diagnostics. They are not part of the recommended installation, and reviews must
+not install a separate Desktop connector as a workaround.
