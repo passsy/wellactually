@@ -127,8 +127,18 @@ try {
       assert(startTool);
       const started = await client.callTool({ name: "start_review", arguments: { repo, target: `packed-${host}` } });
       assert(!started.isError, JSON.stringify(started.content));
-      const resource = await client.readResource({ uri: startTool._meta.ui.resourceUri });
-      assert(resource.contents[0].text.includes("<html"));
+      if (host === "claude") {
+        assert(tools.tools.every(tool => !tool._meta?.ui), "Claude must not advertise inline card tools");
+        assert.equal(started.structuredContent, undefined);
+        assert.equal(JSON.parse(started.content.find(item => item.type === "text").text).reviewCard.delivery, "disabled");
+        await assert.rejects(client.readResource({ uri: "ui://wellactually/review-card.html" }));
+        const status = await client.callTool({ name: "review_status", arguments: { repo, target: `packed-${host}` } });
+        assert(!status.isError);
+        assert.equal(status.structuredContent, undefined);
+      } else {
+        const resource = await client.readResource({ uri: startTool._meta.ui.resourceUri });
+        assert(resource.contents[0].text.includes("<html"));
+      }
       const created = await client.callTool({ name: "create_finding", arguments: { repo, target: `packed-${host}`, finding: { title: "Packed finding", description: "A packaging probe.", priority: "p3" } } });
       assert(!created.isError, JSON.stringify(created.content));
       const finding = JSON.parse(created.content.find(item => item.type === "text").text);
@@ -143,7 +153,7 @@ try {
       assert(Buffer.from(await icon.arrayBuffer()).subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])));
       const inbox = await (await fetch(`http://127.0.0.1:${port}/?repo=${encodeURIComponent(repo)}&target=packed-${host}`)).text();
       assert(inbox.includes("<html"));
-      console.log(`${host}: installed manifest/adapter, MCP, finding creation, card and inbox passed`);
+      console.log(`${host}: installed manifest/adapter, MCP, finding creation, ${host === "claude" ? "no inline card" : "card"} and inbox passed`);
     } finally { await client.close(); }
   }
 

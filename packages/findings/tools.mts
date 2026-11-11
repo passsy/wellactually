@@ -32,6 +32,7 @@ import {
 } from "./model/types.mts";
 import { CRUD_TOOLS } from "./crud-tools.mts";
 import { QUEUE_TOOLS } from "./queue-tools.mts";
+import { reviewCardsEnabled } from "./serve/port.mts";
 
 type Schema = Record<string, unknown>;
 
@@ -137,7 +138,7 @@ const REVIEW_TOOLS: Tool[] = [
     name: "start_review",
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     description:
-      'Local filesystem operation only: saves review metadata and registers the loopback inbox; does not upload repository or PR data, post to GitHub, or call an external service. Announce a review, before any finding exists, and record what the pull request is. Call it once as soon as the target is known: it puts the review in the Review Inbox, so a link posted at the start of a run opens something rather than nothing, and a run that finds no problem still shows that it happened. Pass the known pull request facts — number, title, author, when it was opened — because nothing later can recover them and "pr-356" on its own says nothing about what is being reviewed. This tool advertises a review-card resource, but only the host can confirm that it rendered. Do not claim it is open from tool success alone. Do not immediately call review_status to check rendering: a supporting host creates a second widget. A text result or Inbox link does not prove rendering success or failure. Safe to call again to update the state of the pull request; it never changes when the review started.',
+      'Local filesystem operation only: saves review metadata and registers the loopback inbox; does not upload repository or PR data, post to GitHub, or call an external service. Announce a review, before any finding exists, and record what the pull request is. Call it once as soon as the target is known: it puts the review in the Review Inbox, so a link posted at the start of a run opens something rather than nothing, and a run that finds no problem still shows that it happened. Pass the known pull request facts — number, title, author, when it was opened — because nothing later can recover them and "pr-356" on its own says nothing about what is being reviewed. On supporting hosts this tool advertises a review-card resource, but only the host can confirm that it rendered. Inline cards are disabled in Claude; use the inbox link there. Do not claim it is open from tool success alone. Do not immediately call review_status to check rendering: a supporting host creates a second widget. A text result or Inbox link does not prove rendering success or failure. Safe to call again to update the state of the pull request; it never changes when the review started.',
     inputSchema: {
       type: "object",
       properties: {
@@ -193,7 +194,10 @@ const REVIEW_TOOLS: Tool[] = [
         ...(result as object),
         url: status.url,
         link: status.link,
-        reviewCard: {
+        reviewCard: !reviewCardsEnabled() ? {
+          delivery: "disabled",
+          instructions: "Inline findings cards are disabled in Claude because refreshes and votes fail. Share the inbox link for viewing findings and saving decisions. Do not draw startup, progress, final or replacement cards.",
+        } : {
           resourceUri: REVIEW_CARD,
           delivery: "unconfirmed",
           instructions: "This tool advertises the review-card resource; rendering is controlled by the host and is not confirmed by this response. Do not say the card is open without host attachment or visual confirmation. Do not immediately call review_status to check rendering: supporting hosts create a second widget. Always include the inbox link; use get_review_session for progress checks.",
@@ -207,7 +211,7 @@ const REVIEW_TOOLS: Tool[] = [
     name: "review_status",
     annotations: { readOnlyHint: true },
     description:
-      "Where a review stands: the active queue phase, how many findings there are and how many still need a decision. In a host that draws cards this shows the live review card, with the findings and the track to rule on them, so call it when the user asks to see a review or how one is going. Do not call it to read findings: list_findings and get_finding are for that, and this answers with a summary.",
+      "Where a review stands: the active queue phase, how many findings there are and how many still need a decision. Inline cards are disabled in Claude; use the browser inbox to view findings and save decisions. In other hosts that draw cards this shows the live review card, with the findings and the track to rule on them, so call it when the user asks to see a review or how one is going. Do not call it to read findings: list_findings and get_finding are for that, and this answers with a summary.",
     inputSchema: {
       type: "object",
       properties: { target, repo },

@@ -5,12 +5,13 @@ Start one fresh aggregation-only agent with the session's model after the review
 Aggregated suggestions are reported automatically; do not rate principles during the review.
 Tell all child agents not to call either rating tool.
 
-## Review card updates
+## Findings delivery
 
-Claude Desktop can render an inline MCP App even when its card-to-server tool calls are unavailable. This does not establish support in another host's Claude provider. T3's Claude adapter currently records native MCP content without the Codex adapter's MCP App capture/bridge; in that path provide the inbox link rather than claiming an inline widget opened. Do not infer missing inline rendering from a failed card refresh or from missing capability advertisement alone.
-Use the initial start_review card if the host created one; do not immediately call review_status to check rendering. A text result or Inbox link does not mean the card was absent.
-If the host explicitly reports failed card-to-server calls, or a non-refreshing card has been visually confirmed, use review_status once at the review gate, after aggregation, and at the verification gate to show saved findings and the new phase. Otherwise keep the one live card. Also refresh it on the user's request.
-These phase-boundary snapshots override the generic preference to keep one live card when the host cannot refresh it. Do not poll review_status in a loop or claim the original snapshot will update live. Explain that the inline card is a snapshot in this host and the inbox provides the live view.
+Inline findings cards are temporarily disabled in Claude because their refresh and voting calls fail.
+Use start_review to register the review and share its browser inbox link at the start and in the final report.
+Use get_review_session for progress checks. review_status returns a text summary without a card.
+Do not draw startup, progress, final or replacement cards, or ask the user to retry a card.
+Viewing findings, voting and notes use the browser inbox. Keep the MCP server in the coding session's normal lifecycle; do not install a separate Desktop connector.
 
 ## Restricted review pool
 

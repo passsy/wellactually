@@ -19,4 +19,9 @@ export function reviewPort(env: NodeJS.ProcessEnv = process.env, argv: string[] 
   return port;
 }
 
+/** Claude's plugin-hosted cards cannot refresh or save votes. Use the inbox. */
+export function reviewCardsEnabled(): boolean {
+  return reviewHost() !== "claude";
+}
+
 export const UI_PORT = reviewPort();

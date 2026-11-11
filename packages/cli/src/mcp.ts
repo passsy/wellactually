@@ -11,6 +11,7 @@ import { startInBackground } from "./hook/hook.ts";
 import { claimReport } from "./board/detections.ts";
 import { appToolMeta, drawsCards, registerReviewCard } from "../../findings/serve/app.mts";
 import { startUi } from "../../findings/serve/http.mts";
+import { reviewCardsEnabled } from "../../findings/serve/port.mts";
 import { currentWorkspace, type Workspace } from "../../findings/store/workspace.mts";
 import { scaffold } from "./board/files.ts";
 import { readCached, readLockfile, readConfig, writeConfig } from "./board/board.ts";
@@ -98,6 +99,7 @@ function text(value: string) {
 function registerFindingsTools(server: McpServer, workspace: Workspace): void {
   registerReviewCard(server);
   for (const tool of FINDINGS_TOOLS) {
+    if (tool.cardOnly && !reviewCardsEnabled()) continue;
     server.registerTool(tool.name, {
       description: tool.description,
       inputSchema: zodSchema(tool.inputSchema),
