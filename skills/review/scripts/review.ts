@@ -351,8 +351,9 @@ export function packDiff(blocks: DiffBlock[], max: number = PART_BYTES): DiffBlo
     if (size(members) <= max) {
       return [members];
     }
-    if (members.length === 1) {
-      return splitAtHunks(members[0] as DiffBlock, max).map((piece) => [piece]);
+    // One file, possibly already cut into pieces by an earlier packing: it can only split at its hunks.
+    if (members.every((block) => block.file === (members[0] as DiffBlock).file)) {
+      return members.flatMap((block) => splitAtHunks(block, max).map((piece) => [piece]));
     }
     // The members of this folder by their next path segment, a file being its own segment.
     const children = new Map<string, DiffBlock[]>();
@@ -816,8 +817,12 @@ export function buildSets(dir: string): ReviewJob[] {
   const blocks = new Map<string, DiffBlock[]>();
   for (const part of plan.parts) {
     const text = fs.readFileSync(path.join(dir, part.file), "utf8");
-    for (const piece of text.split(/^(?=diff --git )/m)) {
-      const name = /^diff --git a\/.* b\/(.*)$/m.exec(piece)?.[1];
+    // Snapshot parts hold unprefixed source, so split them only at their own block headers.
+    const header = plan.target.kind === "snapshot"
+      ? /^# Snapshot: (.*) \(current contents; no comparison baseline\)$/m
+      : /^diff --git a\/.* b\/(.*)$/m;
+    for (const piece of text.split(new RegExp(`^(?=${header.source.slice(1)})`, "m"))) {
+      const name = header.exec(piece)?.[1];
       if (name !== undefined) {
         blocks.set(name, [...(blocks.get(name) ?? []), { file: name, text: piece }]);
       }
