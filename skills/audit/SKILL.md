@@ -114,7 +114,8 @@ pi keeps its sessions in `~/.pi`, and the hook log names a session's file under 
 - A detector failed: its `error` or `thrown` in the hook log, or a crash in `hook.log`.
 - The hook gave advice (`shown` above 0) that is not in the conversation: the agent did not pass it to the model.
 - A `note` starting with `left out` means advice was dropped to stay within what the agent shows in full.
-- Advice that was shown before in the same session is not shown again.
+- A principle that fires again in the same session shows its summary instead of its full advice, and asks for a rating again.
+  A session that repeats the same prompt, such as an hourly automation, therefore rates the same principle every time.
 - The hook log keeps one day, so an older session has only its conversation to go by.
 - No line in the hook log for a session whose conversation shows advice or hook runs: the log is off with `WELLACTUALLY_HOOK_LOG=0`, or the hooks wrote to another `WELLACTUALLY_HOME`.
 
