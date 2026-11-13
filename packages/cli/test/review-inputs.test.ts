@@ -7,6 +7,7 @@ import { buildBundle } from "@wellactually/core/node";
 import { API_VERSION } from "@wellactually/sdk";
 import { writeCached, type Lockfile } from "../src/board/board.ts";
 import {
+  buildSets,
   checkReview,
   loadPrinciples,
   planInputReview,
@@ -172,6 +173,37 @@ test("reviews only the assigned folder without Git and creates no source copies"
   expect(fs.existsSync(path.join(root, ".git"))).toBe(false);
   expect(fs.existsSync(path.join(out, "steps/6_queue-reviewer.md"))).toBe(true);
   expect(fs.existsSync(path.join(out, "project.md"))).toBe(false);
+});
+
+test("cuts a snapshot review into change sets", async () => {
+  const root = temp(),
+    out = temp(),
+    lock = await board();
+  write(root, "web/page.ts", "diff --git a/x b/x\n" + "// TODO page\n".repeat(150));
+  write(root, "media/worker.ts", "// TODO worker\n".repeat(150));
+  await planInputReview(root, { paths: ["."] }, out, lock);
+  await loadPrinciples(out, lock);
+  write(out, "principles.md", "local/no-todo\n");
+  expect(routeReview(out, 2_000).route).toBe("sets");
+  fs.writeFileSync(
+    path.join(out, "sets.json"),
+    JSON.stringify({
+      sets: [
+        { name: "web", files: ["web/page.ts"] },
+        { name: "media", files: ["media/worker.ts"] },
+      ],
+    }),
+  );
+  const jobs = buildSets(out);
+  expect(jobs.length).toBeGreaterThan(0);
+  const media = jobs
+    .filter((job) => job.set === "set-02")
+    .flatMap((job) => job.parts)
+    .map((part) => fs.readFileSync(path.join(out, part), "utf8"))
+    .join("");
+  expect(media).toContain("# Snapshot: media/worker.ts");
+  expect(media).not.toContain("web/page.ts");
+  expect(jobs.length).toBe(new Set(jobs.map((job) => job.id)).size);
 });
 
 test("accepts ordinary agent-supplied unified patches with additions and deletions, without Git", async () => {

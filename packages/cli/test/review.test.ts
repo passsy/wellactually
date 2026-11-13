@@ -283,6 +283,13 @@ describe("cutting the diff into parts", () => {
     ).toBe(6);
   });
 
+  test("a file already cut into pieces can be packed again, as a change set does", () => {
+    const big = block("lib/big.ts", 6);
+    const max = Math.ceil(Buffer.byteLength(big.text) / 2);
+    const pieces = packDiff([big], max).map(([piece]) => piece!);
+    expect(packDiff(pieces, max).flat()).toEqual(pieces);
+  });
+
   test("generated code is left out, boring code is not", async () => {
     await board();
     const dir = repo();
