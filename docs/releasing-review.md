@@ -62,20 +62,26 @@ Preserve those limits when describing a release.
    The input defaults off; enabling it stages the exact tested tarball with
    provenance. The workflow records the stage ID and expected integrity in its
    summary and `wellactually-stage` artifact. A successful stage is not a release.
-   Prereleases are staged with `next`; stable releases with `latest`.
+   All versions, including prereleases, are staged with `latest`. We maintain no
+   separate preview tag. Marketplace installs continue using their exact pins.
 4. Review the staged version on npmjs.com's Staged Packages tab, or run
    `npm stage view <stage-id>` and `npm stage download <stage-id>`. Compare the
    downloaded archive's SHA-512 with the tested Actions `pack.json` before approval.
    Click Approve on npmjs.com or run `npm stage approve <stage-id>`; either route
    requires maintainer 2FA. Do not assume npm sends an approval-request email.
-   Approval publishes the version and moves only the tag selected at staging;
-   moving another tag is a separate authenticated operation. Do not grant direct
-   publishing permission to avoid this approval. npm reserves staged versions:
-   inspect an existing pending stage instead of blindly rerunning a failed upload.
+   Approval publishes the version and moves `latest`, which selects the default
+   package page and README on npm. No subsequent tag promotion is needed. Direct
+   npm consumers also receive this version; marketplace installs remain pinned.
+   Do not grant direct publishing permission to avoid this approval. npm reserves
+   staged versions: inspect an existing pending stage instead of blindly rerunning
+   a failed upload.
    After approval, use `verifyPublishedPackage` from `scripts/verify-package.mjs`
    against the Actions `pack.json` to verify public metadata and downloaded bytes.
    A successful stage or approval command alone does not establish registry delivery.
-5. After registry verification, run `node scripts/version.mjs <published-version>`
+5. To test the published version before promoting it, point a local test
+   marketplace at that exact npm version. Keep the public catalog unchanged
+   until testing is complete. After registry verification, run
+   `node scripts/version.mjs <published-version>`
    and `npm install --package-lock-only --ignore-scripts`. Review the catalog,
    source manifests, both Git adapters and lockfile pins, then commit and push.
 6. Test a fresh registry installation and a review in each advertised host,
@@ -157,15 +163,15 @@ plugin cache and is not removed by these commands.
 ## GitHub Actions release controls
 
 Run **Release npm plugin** (`publish.yaml`) on `main`, entering a fresh exact
-version. Leave `publish` off for a build-only rehearsal; turn it on to publish.
+version. Leave `publish` off for a build-only rehearsal; turn it on to stage.
 The read-only build job runs tests and produces the archive. A separate publisher
-job downloads that immutable artifact, checks its version/hash and publishes with
+job downloads that immutable artifact, checks its version/hash and stages with
 OIDC/provenance without installing dependencies or executing the package. Only
 that job has `id-token: write`. Releases run serially.
 
 The npm connection must use `passsy/wellactually`, workflow `publish.yaml`, no
-environment restriction, and **Allow npm publish** enabled. No npm token secret
-is required. The publisher waits for public availability and verifies downloaded
-bytes; rerunning after an asynchronous upload verifies the same public artifact
-instead of uploading again. Installer pointers are promoted separately after
-registry verification, using the version helper described above.
+environment restriction, and staging permission only. Keep **Allow npm publish**
+disabled. No npm token secret is required. The workflow ends after staging; a
+maintainer approves it with npm 2FA. Approval moves `latest`. Rerunning for an
+already public version verifies the same artifact instead of uploading again.
+Installer pointers are promoted separately after registry verification, using the version helper described above.

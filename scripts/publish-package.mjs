@@ -19,10 +19,10 @@ const integrity = `sha512-${createHash("sha512").update(fs.readFileSync(tarball)
 if (integrity !== packed.integrity) throw new Error("Downloaded build artifact differs from the tested archive");
 const existing = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packed.name)}/${encodeURIComponent(packed.version)}`, { signal: AbortSignal.timeout(15000) });
 if (existing.status === 404) {
-  const output = execFileSync("npm", ["stage", "publish", tarball, "--json", "--ignore-scripts", "--access", "public", "--provenance", "--tag", packed.version.includes("-") ? "next" : "latest"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+  const output = execFileSync("npm", ["stage", "publish", tarball, "--json", "--ignore-scripts", "--access", "public", "--provenance", "--tag", "latest"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
   const receipt = stagedReceipt(output, packed);
   fs.writeFileSync(path.join(root, ".artifacts/stage.json"), JSON.stringify(receipt, null, 2) + "\n");
-  const summary = `Staged ${packed.name}@${packed.version}: ${receipt.stageId}. Not published. Review the staged archive and approve with npm stage approve ${receipt.stageId} using 2FA, then verify public registry integrity before promoting installer pointers.\n`;
+  const summary = `Staged ${packed.name}@${packed.version}: ${receipt.stageId}. Not published. Approval will move latest; marketplace pins stay unchanged until promotion. Review the staged archive and approve with npm stage approve ${receipt.stageId} using 2FA, then verify public registry integrity before promoting installer pointers.\n`;
   console.log(summary);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
   process.exit(0);
