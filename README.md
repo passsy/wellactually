@@ -220,14 +220,18 @@ npm run install:local -- --host codex
 This builds a private local tarball and switches the selected host to it. Use
 `npm run package:local` to prepare it without changing host configuration.
 See [local testing and restoring npm installs](docs/releasing-review.md#local-testing-without-publishing).
+To let users test an exact published npm version before the public marketplace
+pins change, follow [published-package testing](docs/releasing-review.md#test-a-published-npm-version-before-marketplace-promotion).
 
 ## Release
 
-Build and test a new exact version with `npm run package -- --version <version>`.
-The manual `publish.yaml` workflow can publish the tested tarball using npm trusted
-publishing. Verify registry availability and integrity before promoting installer
-pointers with `node scripts/version.mjs <published-version>`, refreshing the lockfile
-and committing the source changes. See [the release process](docs/releasing-review.md).
+Test local changes as plugins first. Run **Release npm plugin** on `main` with a
+new version and `publish` enabled to build, test and stage the archive. Approve
+it on npm with 2FA; all versions use `latest`. Optionally let users test that
+exact npm version through a local catalog while the public marketplace stays
+pinned to the previous release. After artifact verification and testing, promote
+the exact marketplace and compatibility pins in a separate PR. npm approval does
+not automatically promote them. See the [maintainer release process](docs/releasing-review.md#maintainer-release-process).
 
 The SDK is released to the `sdk` branch, from a checkout of it next to this one:
 

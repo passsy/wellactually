@@ -50,51 +50,267 @@ These checks cover selected releases, not every intermediate patch or future maj
 They do not establish actual desktop rendering or a complete review in every host.
 Preserve those limits when describing a release.
 
-## Publish, then promote
+## Local testing without publishing
 
-1. Build/test a new exact version. Never reuse a published version, and never
-   put an unpublished version in active installer pointers.
-2. Configure npm trusted publishing once: package `wellactually`, repository
-   `passsy/wellactually`, workflow `publish.yaml`, no GitHub environment restriction.
-   Keep it stage-only: direct publication stays disabled. A maintainer approves
-   each staged release with 2FA. This account setting is external to the repository.
-3. Dispatch `publish.yaml` on `main`, supplying that version and `publish=true`.
-   The input defaults off; enabling it stages the exact tested tarball with
-   provenance. The workflow records the stage ID and expected integrity in its
-   summary and `wellactually-stage` artifact. A successful stage is not a release.
-   All versions, including prereleases, are staged with `latest`. We maintain no
-   separate preview tag. Marketplace installs continue using their exact pins.
-4. Review the staged version on npmjs.com's Staged Packages tab, or run
-   `npm stage view <stage-id>` and `npm stage download <stage-id>`. Compare the
-   downloaded archive's SHA-512 with the tested Actions `pack.json` before approval.
-   Click Approve on npmjs.com or run `npm stage approve <stage-id>`; either route
-   requires maintainer 2FA. Do not assume npm sends an approval-request email.
-   Approval publishes the version and moves `latest`, which selects the default
-   package page and README on npm. No subsequent tag promotion is needed. Direct
-   npm consumers also receive this version; marketplace installs remain pinned.
-   Do not grant direct publishing permission to avoid this approval. npm reserves
-   staged versions: inspect an existing pending stage instead of blindly rerunning
-   a failed upload.
-   After approval, use `verifyPublishedPackage` from `scripts/verify-package.mjs`
-   against the Actions `pack.json` to verify public metadata and downloaded bytes.
-   A successful stage or approval command alone does not establish registry delivery.
-5. To test the published version before promoting it, point a local test
-   marketplace at that exact npm version. Keep the public catalog unchanged
-   until testing is complete. After registry verification, run
-   `node scripts/version.mjs <published-version>`
-   and `npm install --package-lock-only --ignore-scripts`. Review the catalog,
-   source manifests, both Git adapters and lockfile pins, then commit and push.
-6. Test a fresh registry installation and a review in each advertised host,
-   including accept/fix persistence and separately requested posting. Claude cards
-   are temporarily disabled: verify no inline UI is advertised and browser inbox
-   decisions persist. Verify live card updates in supported hosts such as Codex.
-   Confirm natural fixed-event delivery after grace/throttle; never fabricate fixes.
+For maintainers testing uncommitted or branch changes before any npm release,
+run these commands from the repository root after `npm ci --ignore-scripts`.
+The selected host CLI must be available on your PATH. No npm account or release
+approval is needed.
 
-The marketplace and Git compatibility adapters pin the verified `0.11.0-rc.3`
-artifact. Future promotions must verify registry availability and integrity first.
-Existing local review stores and credentials are independent of plugin caches.
-Codex may require one `/hooks` review after updates because it fingerprints the
-whole installed plugin. Do not write trust hashes programmatically.
+Build a private tarball and local marketplace without changing any host settings:
+
+```sh
+npm run package:local
+```
+
+Or build and install it in one host (use `--host all` for both):
+
+```sh
+npm run install:local -- --host codex
+# Or choose Claude or both hosts:
+# npm run install:local -- --host claude
+# npm run install:local -- --host all
+```
+
+The command builds from the current working tree using the release packager,
+with a unique `*.local.<timestamp>` version and `private: true` so it cannot be
+published accidentally. It installs the tarball offline with lifecycle scripts
+disabled. Release outputs stay in `.artifacts/`; local outputs use
+`.artifacts/local/`, and immutable local package copies live beneath
+`~/.wellactually/local-marketplace/versions/`.
+
+`--destination <directory>` changes that local marketplace location. Preparing
+alone does not register or enable a plugin. Passing `--host` switches only that
+host's `wellactually@wellactually` catalog to the local package, preserving its
+identity and review stores. It does not edit the public catalog or hook trust.
+Restart the host/start a fresh session after installation; Codex may ask for one
+review of the changed hooks. Older local version directories are retained while
+existing host sessions may still use them.
+
+Rerun the command after changing the source; each run builds a new immutable
+local version. Other maintainers run it in their own checkout. To leave local
+testing, follow [Return to the public marketplace](#return-to-the-public-marketplace).
+
+## Test a published npm version before marketplace promotion
+
+Use this when testers need the actual npm package without building the source.
+The maintainer first completes release steps 1–4 below, including npm 2FA approval
+and artifact verification, but does not promote the public marketplace pins.
+Share the exact published version and these instructions with testers.
+
+Here, “before release to plugin users” means before **marketplace promotion**.
+The npm version is already public and is `latest`; anyone installing directly
+from npm receives it. Normal Claude/Codex marketplace installations stay on the
+previous exact pin. A staged but unapproved package cannot be installed this way.
+We do not maintain a `next` tag.
+
+A tester needs Node/npm and the chosen host CLI, but no repository checkout or
+npm publishing credentials. Create a local marketplace with an exact npm source.
+Replace `0.11.0-rc.4` with the version the maintainer supplied; the number here is
+an example, not a promise that this version exists:
+
+```sh
+node --input-type=module - 0.11.0-rc.4 <<'JS'
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+const version = process.argv[2];
+const directory = path.join(os.homedir(), ".wellactually", "npm-test-marketplace", ".claude-plugin");
+const catalog = {
+  name: "wellactually",
+  owner: { name: "Pascal Welsch" },
+  metadata: { description: "Test one exact Well Actually npm version", version },
+  plugins: [{
+    name: "wellactually",
+    version,
+    source: { source: "npm", package: "wellactually", version },
+  }],
+};
+fs.mkdirSync(directory, { recursive: true });
+fs.writeFileSync(path.join(directory, "marketplace.json"), JSON.stringify(catalog, null, 2) + "\n");
+JS
+```
+
+This writes only a local catalog. It uses the existing `wellactually@wellactually`
+identity so the test package replaces the normal plugin instead of running two
+copies of its hooks. Both the entry and its npm source pin the requested version.
+It does not edit the public marketplace, publish anything, or build from source.
+
+For **Codex**, remove the existing marketplace registration if present, then
+register the test catalog and install it:
+
+```sh
+codex plugin marketplace list --json
+# If wellactually is already registered:
+codex plugin marketplace remove wellactually
+codex plugin marketplace add "$HOME/.wellactually/npm-test-marketplace"
+codex plugin add wellactually@wellactually --json
+```
+
+For **Claude**, register the test catalog and update an existing user-scoped
+installation:
+
+```sh
+claude plugin marketplace add "$HOME/.wellactually/npm-test-marketplace"
+claude plugin update wellactually@wellactually --scope user
+```
+
+If not installed yet, use `claude plugin install wellactually@wellactually --scope
+user` instead of `update`. These examples assume a user-scoped installation;
+check `claude plugin list --json` first if your installation uses another scope.
+
+Start a fresh session in the selected host. Review changed hooks if Codex asks.
+Check the installed plugin's `package.json` version against the requested version;
+Codex's install result gives `installedPath`, and `claude plugin list --json`
+gives `installPath`. If the host retained a cached version, uninstall/reinstall
+the plugin in the same scope and verify again before testing. Do not edit cache
+files or hook trust hashes. Exercise a real review and report results with the
+exact version and host. For another candidate, regenerate this local catalog
+with its new exact version and repeat the update/install.
+
+## Return to the public marketplace
+
+After either testing path, restore the GitHub marketplace. This returns to its
+current exact pin, which may be older than the candidate. Start a fresh host
+session afterward; already-running sessions can retain the previous plugin.
+
+For **Codex**:
+
+```sh
+codex plugin marketplace remove wellactually
+codex plugin marketplace add passsy/wellactually
+codex plugin add wellactually@wellactually --json
+```
+
+For **Claude**, replace the local catalog, then uninstall/reinstall the
+user-scoped plugin so a cached higher test version does not prevent a downgrade:
+
+```sh
+claude plugin marketplace add passsy/wellactually
+claude plugin uninstall wellactually@wellactually --scope user
+claude plugin install wellactually@wellactually --scope user
+```
+
+Use the original scope if it was not `user`. Check that the installed version
+matches the public catalog. Review stores and credentials live outside the
+plugin cache; leave them untouched. These steps do not delete the local test
+artifacts, which existing sessions may still use.
+
+## Maintainer release process
+
+Publication and marketplace promotion are separate decisions. A candidate can
+stay published on npm for testing without changing the public plugin pins.
+There is no recurring release checker and no automatic continuation when you
+approve on npm: the maintainer explicitly starts the promotion step.
+
+### 1. Prepare and test locally
+
+Use [Local testing without publishing](#local-testing-without-publishing) for
+maintainer testing. Run the build and validation checks above, then merge the
+intended changes into `main`. Choose a new exact version; never reuse a published
+version, and never point the public marketplace at an unpublished version.
+Local private `*.local.*` versions are for local tests, not npm publication.
+
+### 2. Build and stage in GitHub Actions
+
+Open [Actions → Release npm plugin](https://github.com/passsy/wellactually/actions/workflows/publish.yaml),
+choose **Run workflow**, select `main`, enter the new exact `version`, and enable
+`publish`. Despite its name, that input stages the package; it does not bypass
+npm approval. Leave it off for a build-only rehearsal.
+
+Actions builds/tests the package and exercises the same archive on the supported
+Node versions. The separate stage job downloads that artifact, verifies its hash
+and stages it with provenance using GitHub OIDC. It does not install dependencies
+or execute the package. Only that job has `id-token: write`. Releases run serially.
+
+A passing stage job means **awaiting approval**, not published. Its summary and
+`wellactually-stage` artifact contain the stage ID and expected integrity. All
+versions, including RCs, are staged under `latest`. No tag synchronization or
+second npm tag approval is needed.
+
+### 3. Review and approve on npm
+
+Open your npm account settings and choose **Staged Packages**.
+Do not rely on an approval-request email. Check the package, version, publisher,
+`latest` tag and archive against the successful Actions run. You can inspect and
+download it with `npm stage view <stage-id>` and `npm stage download <stage-id>`;
+compare SHA-512 with the Actions `pack.json` before approval.
+
+Click **Approve** on npm and complete 2FA, or run `npm stage approve <stage-id>`
+and complete its interactive authentication. Approval publishes the archive and
+moves `latest`, selecting the default npm package page/README. Direct npm
+consumers also receive it. The public marketplace pins remain unchanged.
+
+A rejected candidate must be corrected and staged under a new version. If an
+upload fails, inspect any existing pending stage instead of blindly uploading
+again: npm reserves staged versions. A successful approval command alone does
+not prove that the archive is publicly downloadable.
+
+### 4. Verify publication and optionally invite testers
+
+Download the `wellactually-release` artifact from that exact Actions run into a
+fresh directory. From the repository root, verify its `pack.json` against the
+public npm metadata and downloaded bytes:
+
+```sh
+WELLACTUALLY_RELEASE_RUN=123456789 # Replace with the successful Actions run ID.
+WELLACTUALLY_RELEASE_ARTIFACTS=$(mktemp -d)
+gh run download "$WELLACTUALLY_RELEASE_RUN" --repo passsy/wellactually \
+  --name wellactually-release --dir "$WELLACTUALLY_RELEASE_ARTIFACTS"
+node --input-type=module - "$WELLACTUALLY_RELEASE_ARTIFACTS/pack.json" <<'JS'
+import fs from "node:fs";
+import { verifyPublishedPackage } from "./scripts/verify-package.mjs";
+await verifyPublishedPackage(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
+JS
+```
+
+The verifier makes bounded retries for registry propagation; it is not a
+scheduled checker. Do not rebuild the archive to replace the expected integrity.
+Keep the Actions run/version/integrity together as release evidence.
+
+For outside feedback, send testers the exact version and
+[Test a published npm version](#test-a-published-npm-version-before-marketplace-promotion).
+Keep public catalog pins unchanged for as long as testing needs. A failed npm
+candidate stays immutable; fix the source and publish a new version rather than
+replacing its bytes. Existing plugin users stay on the previous pin.
+
+### 5. Promote the verified version to plugin users
+
+When satisfied with local and optional external testing, explicitly start
+promotion. On a fresh branch from current `main`, run:
+
+```sh
+node scripts/version.mjs <published-version>
+npm install --package-lock-only --ignore-scripts
+```
+
+Review the exact pins in the shared Claude/Codex catalog, host manifests,
+OpenCode and pi compatibility dependencies, and lockfile. Include any required
+release documentation updates. Open a promotion PR, let its checks pass, then
+merge it. Do not rebuild or republish the approved npm version. If other source
+changes have landed since packaging, they are not part of this npm release.
+
+Merging the pin promotion makes that version available through the public
+marketplace update mechanisms. It does not change already-running sessions or
+force every user to update immediately. Install/update from the public catalog
+and verify the selected version. Test a real review, inbox accept/fix persistence
+and, in hosts supporting it, live card updates. Claude inline cards remain
+disabled; use the browser inbox there. Posting findings to a PR is a separate
+explicit action. Verify natural fixed-event delivery after its grace/throttle
+rather than fabricating a fix.
+
+Codex may require a one-time `/hooks` review after an update because it fingerprints
+the installed plugin. Do not write trust hashes programmatically. Review stores
+and credentials remain outside plugin caches.
+
+### One-time npm setup
+
+Configure a trusted publisher for package `wellactually`, repository
+`passsy/wellactually`, workflow `publish.yaml`, with no GitHub environment
+restriction. Give it staging permission only; keep **Allow npm publish** disabled.
+No permanent npm publishing token is required. Every staged version still needs
+a maintainer's 2FA approval. This account setting lives on npm, outside the repo.
 
 ## Rollback
 
@@ -122,56 +338,4 @@ the configured minimum release-age policy when the candidate was prepared.
 - [OpenCode plugins](https://docs.dev.opencode.ai/docs/plugins/)
 - [pi packages](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md)
 - [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
-
-## Local testing without publishing
-
-Build a private tarball and local marketplace without changing any host settings:
-
-```sh
-npm run package:local
-```
-
-Or build and install it in one host (use `--host all` for both):
-
-```sh
-npm run install:local -- --host codex
-npm run install:local -- --host claude
-```
-
-The command builds from the current working tree using the release packager,
-with a unique `*.local.<timestamp>` version and `private: true` so it cannot be
-published accidentally. It installs the tarball offline with lifecycle scripts
-disabled. Release outputs stay in `.artifacts/`; local outputs use
-`.artifacts/local/`, and immutable local package copies live beneath
-`~/.wellactually/local-marketplace/versions/`.
-
-`--destination <directory>` changes that local marketplace location. Preparing
-alone does not register or enable a plugin. Passing `--host` switches only that
-host's `wellactually@wellactually` catalog to the local package, preserving its
-identity and review stores. It does not edit the public catalog or hook trust.
-Restart the host/start a fresh session after installation; Codex may ask for one
-review of the changed hooks. Older local version directories are retained while
-existing host sessions may still use them.
-
-To return to the published npm catalog, register `passsy/wellactually` again and
-reinstall the plugin. For Codex, remove the local `wellactually` marketplace
-registration before adding the GitHub source. For Claude, `plugin marketplace
-add passsy/wellactually` replaces the local catalog; if a version downgrade is
-needed, uninstall/reinstall the user-scoped plugin. Review data is outside the
-plugin cache and is not removed by these commands.
-
-## GitHub Actions release controls
-
-Run **Release npm plugin** (`publish.yaml`) on `main`, entering a fresh exact
-version. Leave `publish` off for a build-only rehearsal; turn it on to stage.
-The read-only build job runs tests and produces the archive. A separate publisher
-job downloads that immutable artifact, checks its version/hash and stages with
-OIDC/provenance without installing dependencies or executing the package. Only
-that job has `id-token: write`. Releases run serially.
-
-The npm connection must use `passsy/wellactually`, workflow `publish.yaml`, no
-environment restriction, and staging permission only. Keep **Allow npm publish**
-disabled. No npm token secret is required. The workflow ends after staging; a
-maintainer approves it with npm 2FA. Approval moves `latest`. Rerunning for an
-already public version verifies the same artifact instead of uploading again.
-Installer pointers are promoted separately after registry verification, using the version helper described above.
+- [npm staged publishing](https://docs.npmjs.com/staged-publishing/)
