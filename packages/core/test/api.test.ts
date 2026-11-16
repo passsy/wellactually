@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { API_VERSION, type Ctx, type Finding } from "@wellactually/sdk";
+import { API_VERSION, type Ctx, type Finding } from "@wellactually/detector-sdk";
 import {
   apiOf,
   applies,
@@ -192,10 +192,19 @@ describe("a build", () => {
   const advice = "# T\n\nOne sentence.\n\nA paragraph of advice that is long enough to count as advice for an agent to read.";
   const build = (detector: string, more: Record<string, string> = {}) => buildPrinciple({ "principle.md": advice, "detector.ts": detector, ...more });
   const quiet = "onWrite({ detect: () => [] });";
-  const from = (version: number | string) => `import { onWrite } from "@wellactually/sdk/v${version}";`;
+  const from = (version: number | string) => `import { onWrite } from "@wellactually/detector-sdk/v${version}";`;
 
   test("records the version the detector imports the SDK from", async () => {
     expect((await build(`${from(API_VERSION)} ${quiet}`)).manifest.api).toBe(API_VERSION);
+  });
+
+  test("keeps building existing detectors using the old SDK name", async () => {
+    for (const api of [3, 4]) {
+      const built = await build(`import { onWrite } from "@wellactually/sdk/v${api}"; ${quiet}`, {
+        "detector.test.ts": `import { detect, write } from "@wellactually/sdk/v${api}/test"; import { test, expect } from "vitest"; test("quiet", () => expect(detect(write("a.dart", "a"))).toEqual([]));`,
+      });
+      expect(built.manifest.api).toBe(api);
+    }
   });
 
   test("takes the tags from package.json, and none without them", async () => {
@@ -205,48 +214,48 @@ describe("a build", () => {
   });
 
   test("finds the import however it is written, and not in a comment or a string", async () => {
-    expect(sdkImports(`import {\n  type Finding,\n} from '@wellactually/sdk/v3'`)).toEqual(["@wellactually/sdk/v3"]);
-    expect(sdkImports(`export { findWord } from "@wellactually/sdk/v3"; import "@wellactually/sdk/v3/test";`)).toEqual(["@wellactually/sdk/v3", "@wellactually/sdk/v3/test"]);
-    expect(sdkImports(`// import { onWrite } from "@wellactually/sdk/v2";\n/* from "@wellactually/sdk/v2" */\nconst text = 'import x from "@wellactually/sdk/v2"';`)).toEqual([]);
+    expect(sdkImports(`import {\n  type Finding,\n} from '@wellactually/detector-sdk/v3'`)).toEqual(["@wellactually/detector-sdk/v3"]);
+    expect(sdkImports(`export { findWord } from "@wellactually/detector-sdk/v3"; import "@wellactually/detector-sdk/v3/test";`)).toEqual(["@wellactually/detector-sdk/v3", "@wellactually/detector-sdk/v3/test"]);
+    expect(sdkImports(`// import { onWrite } from "@wellactually/detector-sdk/v2";\n/* from "@wellactually/detector-sdk/v2" */\nconst text = 'import x from "@wellactually/detector-sdk/v2"';`)).toEqual([]);
     expect(sdkImports(`import fs from "node:fs"; import { a } from "./sdk.ts";`)).toEqual([]);
-    expect((await build(`// was: import type { Ctx } from "@wellactually/sdk/v2";\n${from(3)} ${quiet}`)).manifest.api).toBe(3);
+    expect((await build(`// was: import type { Ctx } from "@wellactually/detector-sdk/v2";\n${from(3)} ${quiet}`)).manifest.api).toBe(3);
   });
 
   test("a new principle starts on the newest version", async () => {
     const files = scaffoldFiles("my-principle");
-    expect(files["detector.ts"]).toContain(`from "@wellactually/sdk/v${API_VERSION}";`);
-    expect(files["detector.test.ts"]).toContain(`from "@wellactually/sdk/v${API_VERSION}/test";`);
+    expect(files["detector.ts"]).toContain(`from "@wellactually/detector-sdk/v${API_VERSION}";`);
+    expect(files["detector.test.ts"]).toContain(`from "@wellactually/detector-sdk/v${API_VERSION}/test";`);
     expect((await buildPrinciple(files)).manifest.api).toBe(API_VERSION);
   });
 
   test("refuses a principle that names no version", async () => {
     await expect(build("export const nothing = 1;")).rejects.toThrow(
-      `no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import { onWrite } from "@wellactually/sdk/v${API_VERSION}";`,
+      `no file says which detector API the principle is written against. Import from the version in detector.ts, for example: import { onWrite } from "@wellactually/detector-sdk/v${API_VERSION}";`,
     );
-    await expect(build(`import { onWrite } from "@wellactually/sdk"; ${quiet}`)).rejects.toThrow(/The detector API version is part of the path/);
-    await expect(build(`${from(API_VERSION)} ${quiet}`, { "detector.test.ts": `import { detect } from "@wellactually/sdk/test";` })).rejects.toThrow(
-      `detector.test.ts imports "@wellactually/sdk/test". The detector API version is part of the path: import from "@wellactually/sdk/v${API_VERSION}/test".`,
+    await expect(build(`import { onWrite } from "@wellactually/detector-sdk"; ${quiet}`)).rejects.toThrow(/The detector API version is part of the path/);
+    await expect(build(`${from(API_VERSION)} ${quiet}`, { "detector.test.ts": `import { detect } from "@wellactually/detector-sdk/test";` })).rejects.toThrow(
+      `detector.test.ts imports "@wellactually/detector-sdk/test". The detector API version is part of the path: import from "@wellactually/detector-sdk/v${API_VERSION}/test".`,
     );
   });
 
   test("refuses a version this host does not build for", async () => {
-    await expect(build(`import type { Finding } from "@wellactually/sdk/v${API_VERSION + 1}"; export const nothing = 1;`)).rejects.toThrow(
-      `detector.ts imports "@wellactually/sdk/v${API_VERSION + 1}". This version of Well Actually builds for the detector API versions ${MIN_API_VERSION} to ${API_VERSION}: import from "@wellactually/sdk/v${API_VERSION}".`,
+    await expect(build(`import type { Finding } from "@wellactually/detector-sdk/v${API_VERSION + 1}"; export const nothing = 1;`)).rejects.toThrow(
+      `detector.ts imports "@wellactually/detector-sdk/v${API_VERSION + 1}". This version of Well Actually builds for the detector API versions ${MIN_API_VERSION} to ${API_VERSION}: import from "@wellactually/detector-sdk/v${API_VERSION}".`,
     );
     // The versions before handlers are no longer built either.
-    await expect(build(`import type { Ctx } from "@wellactually/sdk/v2"; export function detect() { return []; }`)).rejects.toThrow(/builds for the detector API versions 3 to/);
-    await expect(build(`import type { Ctx } from "@wellactually/sdk/vnext"; export const nothing = 1;`)).rejects.toThrow(/The detector API version is part of the path/);
+    await expect(build(`import type { Ctx } from "@wellactually/detector-sdk/v2"; export function detect() { return []; }`)).rejects.toThrow(/builds for the detector API versions 3 to/);
+    await expect(build(`import type { Ctx } from "@wellactually/detector-sdk/vnext"; export const nothing = 1;`)).rejects.toThrow(/The detector API version is part of the path/);
   });
 
   test("refuses a principle whose files disagree about the version", async () => {
     // A project in fixtures/ is data for a test, whatever it imports.
-    expect((await build(`${from(API_VERSION)} ${quiet}`, { "fixtures/app/detector.ts": `import type { Ctx } from "@wellactually/sdk/v1";` })).manifest.api).toBe(API_VERSION);
+    expect((await build(`${from(API_VERSION)} ${quiet}`, { "fixtures/app/detector.ts": `import type { Ctx } from "@wellactually/detector-sdk/v1";` })).manifest.api).toBe(API_VERSION);
   });
 });
 
 describe("a detector's handlers", () => {
   const advice = "# T\n\nOne sentence.\n\nA paragraph of advice that is long enough to count as advice for an agent to read.";
-  const sdk = `import { onCommand, onOutput, onPrompt, onRead, onWrite } from "@wellactually/sdk/v3";`;
+  const sdk = `import { onCommand, onOutput, onPrompt, onRead, onWrite } from "@wellactually/detector-sdk/v3";`;
   const build = (detector: string) => buildPrinciple({ "principle.md": advice, "detector.ts": `${sdk}\n${detector}` });
 
   test("are what the build reads the manifest from", async () => {

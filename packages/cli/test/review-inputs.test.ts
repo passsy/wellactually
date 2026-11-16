@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { buildBundle } from "@wellactually/core/node";
-import { API_VERSION } from "@wellactually/sdk";
+import { API_VERSION } from "@wellactually/detector-sdk";
 import { writeCached, type Lockfile } from "../src/board/board.ts";
 import {
   buildSets,
@@ -70,7 +70,7 @@ test("revision reviews isolate HEAD in a worktree and reuse that worktree", asyn
 async function board(): Promise<Lockfile> {
   process.env.WELLACTUALLY_HOME = temp();
   const bundle = await buildBundle({
-    "detector.ts": `import { onWrite } from "@wellactually/sdk/v4";
+    "detector.ts": `import { onWrite } from "@wellactually/detector-sdk/v4";
 onWrite({ globs: ["**/*.ts"], *detect(event) { for (const line of event.written) if (line.text.includes("TODO")) yield { line: line.line }; } });`,
   });
   writeCached({

@@ -1,4 +1,4 @@
-import { onDelete, onWrite, type RemovedLine } from "@wellactually/sdk/v4";
+import { onDelete, onWrite, type RemovedLine } from "@wellactually/detector-sdk/v4";
 
 const TEST_FILES = ["**/*_test.dart", "**/*.test.ts", "**/test_*.py"];
 

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import type { Finding } from "@wellactually/sdk";
+import type { Finding } from "@wellactually/detector-sdk";
 import { fileCtx, type Manifest } from "@wellactually/core/node";
 import { runBoard, writeCached } from "../src/board/board.ts";
 import { DetectorPool } from "../src/board/pool.ts";

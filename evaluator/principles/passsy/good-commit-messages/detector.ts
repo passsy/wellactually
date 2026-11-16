@@ -1,4 +1,4 @@
-import { mentioned, onCommand, onPrompt } from "@wellactually/sdk/v3";
+import { mentioned, onCommand, onPrompt } from "@wellactually/detector-sdk/v3";
 
 // The rule arrives when the user asks for a commit, and in full right before
 // `git commit -m` runs, while the message can still change.

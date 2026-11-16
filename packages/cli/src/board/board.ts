@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { Ctx, Finding } from "@wellactually/sdk";
+import type { Ctx, Finding } from "@wellactually/detector-sdk";
 import { ADVICE_BUDGET, adviceBytes, apiOf, applies, DEFAULT_LIMITS, type DetectorRun, type Manifest, runDetector } from "@wellactually/core/node";
 import { describeFinding } from "../hook/finding.ts";
 import type { DetectorPool } from "./pool.ts";

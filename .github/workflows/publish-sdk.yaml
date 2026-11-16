@@ -1,0 +1,94 @@
+name: Release detector SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact SDK version, independent of the plugin (for example 0.1.0)
+        required: true
+        type: string
+      stage:
+        description: Stage the tested SDK archive for maintainer npm 2FA approval
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-detector-sdk-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 'lts/*'
+          check-latest: true
+          registry-url: https://registry.npmjs.org
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - name: Pack the requested SDK version without modifying source manifests
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+        run: npm run package:sdk -- --version "$SDK_VERSION"
+      - run: npm run test:package:sdk
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.18.0'
+      - name: Test the packed SDK on its minimum Node version
+        run: npm run test:package:sdk
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          check-latest: true
+      - run: npm run test:package:sdk
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 'node'
+          check-latest: true
+      - run: npm run test:package:sdk
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wellactually-detector-sdk-release
+          path: |
+            .artifacts/detector-sdk/*.tgz
+            .artifacts/detector-sdk/pack.json
+          include-hidden-files: true
+          if-no-files-found: error
+
+  stage:
+    needs: build
+    if: inputs.stage && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 'lts/*'
+          check-latest: true
+          registry-url: https://registry.npmjs.org
+      - name: Require npm staged publishing support
+        run: node -e 'const v=require("node:child_process").execFileSync("npm",["--version"],{encoding:"utf8"}).trim().split(".").map(Number);if(v[0]<11||(v[0]===11&&v[1]<15))throw Error("npm 11.15.0 or newer required")'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: wellactually-detector-sdk-release
+          path: .artifacts/detector-sdk
+      - name: Stage the tested SDK archive without installing or running it
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: node scripts/publish-package.mjs --sdk
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: wellactually-detector-sdk-stage
+          path: .artifacts/detector-sdk/stage.json
+          include-hidden-files: true
+          if-no-files-found: ignore

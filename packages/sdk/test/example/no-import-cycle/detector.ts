@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { onWrite } from "@wellactually/sdk/v3";
+import { onWrite } from "@wellactually/detector-sdk/v3";
 
 const IMPORT = /^import\s+['"]([^'"]+)['"]/;
 

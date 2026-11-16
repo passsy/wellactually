@@ -1,4 +1,4 @@
-import type { Ctx, Finding } from "@wellactually/sdk";
+import type { Ctx, Finding } from "@wellactually/detector-sdk";
 
 const MAX_QUOTED_LENGTH = 300;
 

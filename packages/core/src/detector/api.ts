@@ -1,4 +1,4 @@
-import { API_VERSION, blankCommentsAndStrings, type Ctx } from "@wellactually/sdk";
+import { API_VERSION, blankCommentsAndStrings, type Ctx } from "@wellactually/detector-sdk";
 import { fsHost, type ProjectFiles } from "./project.ts";
 
 /**
@@ -110,11 +110,11 @@ export function shapeOf(value: unknown): unknown {
   return value === null ? "null" : typeof value;
 }
 
-const SDK = "@wellactually/sdk";
+const SDK = "@wellactually/detector-sdk";
 const current = `"${SDK}/v${API_VERSION}"`;
 
 /**
- * What a source file imports from the SDK, as written: `@wellactually/sdk/v3`, `@wellactually/sdk/v3/test`.
+ * What a source file imports from the SDK, as written: `@wellactually/detector-sdk/v3`, `@wellactually/detector-sdk/v3/test`.
  *
  * It is read from the source, not from the build, because an import of types
  * only is gone by the time esbuild has compiled the file, and types are all
@@ -128,7 +128,7 @@ export function sdkImports(source: string): string[] {
     const open = match.index + match[0].length;
     const close = source.indexOf(match[1] ?? '"', open);
     const specifier = close === -1 ? "" : source.slice(open, close);
-    if (specifier === SDK || specifier.startsWith(`${SDK}/`)) {
+    if ([SDK, "@wellactually/sdk"].some((name) => specifier === name || specifier.startsWith(`${name}/`))) {
       found.add(specifier);
     }
   }
@@ -146,7 +146,7 @@ export function importedApi(sources: Record<string, string>): number {
   for (const name of Object.keys(sources).sort()) {
     for (const specifier of sdkImports(sources[name] ?? "")) {
       const where = `${name} imports "${specifier}"`;
-      const version = /^@wellactually\/sdk\/v(\d+)(?:\/test)?$/.exec(specifier)?.[1];
+      const version = /^@wellactually\/(?:detector-sdk|sdk)\/v(\d+)(?:\/test)?$/.exec(specifier)?.[1];
       if (version === undefined) {
         const wanted = specifier.endsWith("/test") ? `"${SDK}/v${API_VERSION}/test"` : current;
         throw new Error(`${where}. The detector API version is part of the path: import from ${wanted}.`);

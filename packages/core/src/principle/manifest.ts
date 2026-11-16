@@ -1,4 +1,4 @@
-import { EVENTS, FILE_EVENTS, type EventName } from "@wellactually/sdk";
+import { EVENTS, FILE_EVENTS, type EventName } from "@wellactually/detector-sdk";
 import type { PackageInfo } from "../build/packages.ts";
 
 /**

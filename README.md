@@ -166,12 +166,12 @@ The plugin gives it tools to create a principle, run its tests, try it on a file
 Building a principle needs esbuild, which the plugin does not carry, so install the SDK in the repository that holds your principles, which brings it:
 
 ```bash
-npm install --save-dev github:passsy/wellactually#sdk vitest
+npm install --save-dev @wellactually/detector-sdk vitest
 ```
 
 `npm test` then runs the principles' tests with vitest.
 
-A detector may import `@wellactually/sdk/v4`, which is in `packages/sdk`, its own files, and packages from npm that its `package.json` names.
+A detector may import `@wellactually/detector-sdk/v4`, which is in `packages/sdk`, its own files, and packages from npm that its `package.json` names.
 The `v4` is the detector API version it is written against.
 Version 4 added the lines a write removed, `event.removed`, and `onDelete` for a deleted file.
 A principle written against `v3` keeps running as it was.
@@ -187,7 +187,7 @@ A principle written against `v3` keeps running as it was.
 | `packages/sdk`    | The types and helpers a detector may import.                                          |
 | `packages/cli`    | The command the plugin runs: the hook, the advisory board and the MCP server.         |
 | `evaluator`       | Checks with real agents that the framing around advice moves them the right way.      |
-| `scripts`         | Builds `dist` and `opencode`, sets the version of a release, writes the `sdk` branch. |
+| `scripts`         | Builds `dist` and `opencode`, sets the version of a release, packs the detector SDK. |
 
 The registry is not in this repository.
 
@@ -233,17 +233,16 @@ pinned to the previous release. After artifact verification and testing, promote
 the exact marketplace and compatibility pins in a separate PR. npm approval does
 not automatically promote them. See the [maintainer release process](docs/releasing-review.md#maintainer-release-process).
 
-The SDK is released to the `sdk` branch, from a checkout of it next to this one:
+The detector authoring package, `@wellactually/detector-sdk`, has an independent
+release workflow and version. Build and test its npm archive with:
 
 ```bash
-git worktree add ../wellactually-sdk sdk
+npm run package:sdk -- --version 0.1.0
+npm run test:package:sdk
 ```
 
-```bash
-node scripts/release-sdk.mjs ../wellactually-sdk
-```
-
-Then commit it there as `Release 0.9.29` and push the `sdk` branch.
+Use **Release detector SDK** to stage it separately; publication still requires
+npm 2FA approval. See [SDK publishing and first-release setup](docs/releasing-detector-sdk.md).
 
 ## License
 

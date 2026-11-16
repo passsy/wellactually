@@ -1,4 +1,4 @@
-import { onWrite } from "@wellactually/sdk/v3";
+import { onWrite } from "@wellactually/detector-sdk/v3";
 
 // Anchored at the start of the line, so an enum in a comment or a string is not one.
 const ENUM = /^\s*(?:export\s+)?(?:declare\s+)?(?:const\s+)?enum\s+[A-Za-z_$]/;

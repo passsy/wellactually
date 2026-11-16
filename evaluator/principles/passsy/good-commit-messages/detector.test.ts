@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { command, detect, prompt } from "@wellactually/sdk/v3/test";
+import { command, detect, prompt } from "@wellactually/detector-sdk/v3/test";
 
 test("points at the principle when the user asks for a commit", () => {
   expect(detect(prompt("commit these changes"))).toEqual([{ match: "commit", depth: "pointer" }]);

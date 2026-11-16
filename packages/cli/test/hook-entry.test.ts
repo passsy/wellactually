@@ -4,7 +4,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { build } from "esbuild";
 import { buildBundle } from "@wellactually/core/node";
-import { API_VERSION } from "@wellactually/sdk";
+import { API_VERSION } from "@wellactually/detector-sdk";
 import { afterEach, expect, test, vi } from "vitest";
 import { writeCached, writeLockfile } from "../src/board/board.ts";
 const roots:string[]=[];
@@ -13,7 +13,7 @@ afterEach(()=>{ if(previous===undefined)delete process.env.WELLACTUALLY_HOME;els
 test("the independent hook bundle emits advice and logs without importing review or MCP code",async()=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),"wa-hook-entry-"));roots.push(root);
   process.env.WELLACTUALLY_HOME=path.join(root,"home");
-  const bundle=await buildBundle({"detector.ts":'import {onPrompt} from "@wellactually/sdk/v3";onPrompt({detect:()=>[{match:"enum"}]});'});
+  const bundle=await buildBundle({"detector.ts":'import {onPrompt} from "@wellactually/detector-sdk/v3";onPrompt({detect:()=>[{match:"enum"}]});'});
   const hash="b".repeat(64),manifest={title:"No enums",summary:"Avoid enums",tags:[],events:["prompt" as const],globs:[],handlers:[{event:"prompt" as const,globs:[]}],api:API_VERSION};
   writeCached({id:"local/no-enums",version:1,hash,manifest,advice:"Use a sealed class.",bundle});
   writeLockfile({syncedAt:null,entries:[{id:"local/no-enums",version:1,hash,enabled:true}]});

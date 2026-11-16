@@ -6,7 +6,7 @@
  * `detect`.
  *
  *     import { expect, test } from "vitest";
- *     import { detect, write } from "@wellactually/sdk/v3/test";
+ *     import { detect, write } from "@wellactually/detector-sdk/v3/test";
  *
  *     test("fires on a late field", () => {
  *       expect(detect(write("lib/user.dart", "late String name;"))).toEqual([{ line: 1 }]);

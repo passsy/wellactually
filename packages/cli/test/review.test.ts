@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { API_VERSION } from "@wellactually/sdk";
+import { API_VERSION } from "@wellactually/detector-sdk";
 import { buildBundle } from "@wellactually/core/node";
 import { writeCached } from "../src/board/board.ts";
 import {
@@ -42,7 +42,7 @@ async function board(): Promise<void> {
     path.join(os.tmpdir(), "wellactually-review-home-"),
   );
   const bundle = await buildBundle({
-    "detector.ts": `import { onWrite } from "@wellactually/sdk/v3";
+    "detector.ts": `import { onWrite } from "@wellactually/detector-sdk/v3";
 onWrite({
   globs: ["**/*.ts"],
   *detect(event) {

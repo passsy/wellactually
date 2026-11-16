@@ -100,7 +100,7 @@ describe("the licence of a package", () => {
 
 const principle = ["# Name the port", "", "A port has a name.", "", "A bare number tells a reader nothing about what listens there. Give the port a name and say what it is for."].join("\n");
 const detector = `
-  import { onWrite } from "@wellactually/sdk/v3";
+  import { onWrite } from "@wellactually/detector-sdk/v3";
   import { parse } from "tiny-yaml";
   import { strict } from "copyleft";
   onWrite({
@@ -113,7 +113,7 @@ const detector = `
   });`;
 const tests = `
   import { expect, test } from "vitest";
-  import { detect, write } from "@wellactually/sdk/v3/test";
+  import { detect, write } from "@wellactually/detector-sdk/v3/test";
   import { label } from "only-tests";
   test(label("fires on port 80"), () => {
     expect(detect(write("config.yaml", "port: 80"))).toEqual([{ line: 1 }]);
@@ -173,7 +173,7 @@ describe("a bundle with packages", () => {
   });
 
   test("has no notices when the detector uses no package", async () => {
-    const plain = await buildPrinciple({ "principle.md": principle, "detector.ts": `import { onWrite } from "@wellactually/sdk/v3"; onWrite({ detect: () => [] });` });
+    const plain = await buildPrinciple({ "principle.md": principle, "detector.ts": `import { onWrite } from "@wellactually/detector-sdk/v3"; onWrite({ detect: () => [] });` });
     expect(noticesOf(plain.bundle)).toBe("");
     expect(plain.bundle).not.toContain("Third-party notices");
   });

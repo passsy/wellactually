@@ -41,3 +41,13 @@ test("a staged archive with different bytes or version is not approved as our te
     expect(() => stagedReceipt(JSON.stringify({ wellactually: { ...stage, ...patch } }), packed)).toThrow("differs");
   }
 });
+
+test("SDK staging and verification retain the scoped package identity independently of the plugin", async () => {
+  const sdk = { ...packed, name: "@wellactually/detector-sdk", version: "0.1.0" };
+  const receipt = { ...sdk, stageId: stage.stageId };
+  expect(stagedReceipt(JSON.stringify({ [sdk.name]: receipt }), sdk)).toEqual({ ...receipt, state: "staged" });
+  const responses = [Response.json({ ...sdk, dist: { integrity: sdk.integrity, tarball: "https://registry.npmjs.org/@wellactually/detector-sdk/-/detector-sdk-0.1.0.tgz" } }), new Response(bytes)];
+  const requests: string[] = [];
+  await verifyPublishedPackage(sdk, { fetcher: async (url: string) => { requests.push(url); return responses.shift()!; }, attempts: 1 });
+  expect(requests[0]).toContain("/%40wellactually%2Fdetector-sdk/0.1.0");
+});

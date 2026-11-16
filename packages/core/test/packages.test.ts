@@ -6,7 +6,7 @@ import { buildPrinciple, checkPrinciple, fileCtx, keptPackages, parseGitHub, rea
 
 const principle = ["# Name the port", "", "A port has a name.", "", "A bare number tells a reader nothing about what listens there. Give the port a name and say what it is for."].join("\n");
 const detector = `
-  import { onWrite } from "@wellactually/sdk/v3";
+  import { onWrite } from "@wellactually/detector-sdk/v3";
   import { parse } from "tiny-yaml";
   onWrite({
     globs: ["**/*.yaml"],
@@ -80,7 +80,7 @@ describe("a package from npm", () => {
   });
 
   test("a principle without packages has none in its manifest", async () => {
-    const plain = await buildPrinciple({ "principle.md": principle, "detector.ts": `import { onWrite } from "@wellactually/sdk/v3"; onWrite({ detect: () => [] });` });
+    const plain = await buildPrinciple({ "principle.md": principle, "detector.ts": `import { onWrite } from "@wellactually/detector-sdk/v3"; onWrite({ detect: () => [] });` });
     expect(plain.manifest.packages).toBeUndefined();
   });
 
