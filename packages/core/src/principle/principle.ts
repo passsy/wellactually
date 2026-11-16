@@ -1,4 +1,4 @@
-import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/sdk";
+import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/detector-sdk";
 import { apiOf, BUILT_IN_SINCE, importedApi } from "../detector/api.ts";
 import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, withNotices, type PrincipleFiles } from "../build/bundle.ts";
 import { applies, fileCtx, textCtx } from "../detector/ctx.ts";
@@ -141,7 +141,7 @@ export async function buildPrinciple(files: PrincipleFiles, approved: string[] =
   for (const name of builtIns) {
     const since = BUILT_IN_SINCE[name] ?? 1;
     if (api < since) {
-      throw new ManifestError(`detector.ts imports ${name}, which exists from detector API ${since} on, and the principle is written against version ${api}. Import from "@wellactually/sdk/v${API_VERSION}" to use it.`);
+      throw new ManifestError(`detector.ts imports ${name}, which exists from detector API ${since} on, and the principle is written against version ${api}. Import from "@wellactually/detector-sdk/v${API_VERSION}" to use it.`);
     }
   }
   let registered: unknown;

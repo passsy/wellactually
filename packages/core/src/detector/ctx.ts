@@ -1,4 +1,4 @@
-import { fileCtx, textCtx, type Ctx } from "@wellactually/sdk";
+import { fileCtx, textCtx, type Ctx } from "@wellactually/detector-sdk";
 import { matchesGlobs } from "./glob.ts";
 import type { Manifest } from "../principle/manifest.ts";
 

@@ -1,5 +1,5 @@
 import type { BuildFailure, Message, Plugin } from "esbuild";
-import { API_VERSION } from "@wellactually/sdk";
+import { API_VERSION } from "@wellactually/detector-sdk";
 import { currentEngines } from "./engines.ts";
 import { LICENSE_FILE_NAMES } from "./licenses.ts";
 import { isPackageFile, packageOf, PACKAGE_DIR, PackageError, readPins, resolveInPackage, resolvePackage, TAKEN_FROM, type PackageSource } from "./packages.ts";
@@ -20,9 +20,9 @@ export const BUNDLE_GLOBAL = "__principle";
 const MAX_BUNDLE_BYTES = 1024 * 1024;
 /** Modules of Node that a package may ask for and the isolate does not have. */
 const NODE_MODULES = new Set(["assert", "buffer", "child_process", "crypto", "events", "http", "https", "module", "net", "os", "process", "stream", "string_decoder", "tty", "url", "util", "worker_threads", "zlib"]);
-const SDK = "@wellactually/sdk";
-/** What an author imports: `@wellactually/sdk/v3` in a detector, `@wellactually/sdk/v3/test` in a test. The version is part of the path. */
-const SDK_ENTRY = /^@wellactually\/sdk\/(v\d+)(\/test)?$/;
+const SDK = "@wellactually/detector-sdk";
+/** What an author imports: `@wellactually/detector-sdk/v3` in a detector, `@wellactually/detector-sdk/v3/test` in a test. The version is part of the path. */
+const SDK_ENTRY = /^@wellactually\/(?:detector-sdk|sdk)\/(v\d+)(\/test)?$/;
 const SDK_NOW = `${SDK}/v${API_VERSION}`;
 /** How the code this build adds reaches the test framework. Not something an author writes. */
 const TEST_RUNTIME = "wellactually:test-runtime";
@@ -247,7 +247,7 @@ async function build(files: PrincipleFiles, entry: string, globalName: string, i
           }
           return { path: "test.ts", namespace: "sdk" };
         }
-        if (args.path === SDK || args.path.startsWith(`${SDK}/`)) {
+        if ([SDK, "@wellactually/sdk"].some((name) => args.path === name || args.path.startsWith(`${name}/`))) {
           return { errors: [{ text: `"${args.path}" cannot be imported. The detector API version is part of the path: "${args.path.endsWith("/test") ? `${SDK_NOW}/test` : SDK_NOW}".` }] };
         }
         const builtIn = BUILT_INS[args.path];

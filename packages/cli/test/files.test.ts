@@ -12,7 +12,7 @@ import { diskFiles, projectRootOf } from "../src/board/files.ts";
 async function bundleOf(detector: string): Promise<string> {
   return buildBundle({
     "detector.ts": [
-      `import { onCommand, onOutput, onPrompt, onRead, onWrite } from "@wellactually/sdk/v3";`,
+      `import { onCommand, onOutput, onPrompt, onRead, onWrite } from "@wellactually/detector-sdk/v3";`,
       detector.replace(/export (function\*? detect)/, "$1"),
       "for (const on of [onWrite, onRead, onPrompt, onCommand, onOutput]) on({ detect });",
     ].join("\n"),

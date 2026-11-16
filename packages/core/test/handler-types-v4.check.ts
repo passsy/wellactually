@@ -2,7 +2,7 @@
  * What the types of the handlers of detector API 4 accept and refuse, beyond
  * what version 3 did. Nothing runs this file: `npm run typecheck` compiles it.
  */
-import { onDelete, onPrompt, onRead, onWrite, type FileEvent, type Finding } from "@wellactually/sdk/v4";
+import { onDelete, onPrompt, onRead, onWrite, type FileEvent, type Finding } from "@wellactually/detector-sdk/v4";
 onWrite({ detect: (event) => event.removed.filter((removed) => removed.text.includes("test(")) });
 onWrite({ *detect(event) { yield* event.written; yield* event.removed; yield { line: 2, endLine: 3, removed: true, match: "test(" }; } });
 onDelete({ globs: ["test/**"], *detect(event) { yield {}; yield { line: event.lines.length, removed: true }; yield* event.removed; } });

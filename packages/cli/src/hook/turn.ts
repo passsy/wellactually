@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { Written } from "@wellactually/sdk";
+import type { Written } from "@wellactually/detector-sdk";
 import { boardHome } from "../board/board.ts";
 import { toPosix } from "../board/files.ts";
 

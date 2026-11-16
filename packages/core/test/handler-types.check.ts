@@ -3,7 +3,7 @@
  * `npm run typecheck` compiles it, and a line marked as an expected error
  * that compiles is itself an error.
  */
-import { findUp, mentioned, onCommand, onOutput, onPrompt, onRead, onWrite, type Finding } from "@wellactually/sdk/v3";
+import { findUp, mentioned, onCommand, onOutput, onPrompt, onRead, onWrite, type Finding } from "@wellactually/detector-sdk/v3";
 onPrompt({ *detect(event) { yield { match: event.text }; yield {}; yield { depth: "pointer" }; } });
 onPrompt({ detect: (event) => mentioned(event, ["a"]) });
 onPrompt({ *detect(event) { yield* mentioned(event, ["a"]); if (event.text) { return; } yield { match: "a" }; } });

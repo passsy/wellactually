@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Ctx, Written } from "@wellactually/sdk";
+import type { Ctx, Written } from "@wellactually/detector-sdk";
 import { fileCtx, hasDetector } from "@wellactually/core/node";
 import { describeFinding } from "../../../packages/cli/src/hook/finding.ts";
 import { parsePatch } from "../../../packages/cli/src/hook/turn.ts";

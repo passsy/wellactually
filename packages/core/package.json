@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@jitl/quickjs-singlefile-mjs-release-sync": "^0.32.0",
-    "@wellactually/sdk": "0.1.0",
+    "@wellactually/detector-sdk": "0.1.0",
     "esbuild": "^0.28.0",
     "quickjs-emscripten-core": "^0.32.0"
   }

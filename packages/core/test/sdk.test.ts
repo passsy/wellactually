@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { mentioned } from "@wellactually/sdk";
+import { mentioned } from "@wellactually/detector-sdk";
 
 describe("mentioned", () => {
   const said = (text: string, names: string[]) => mentioned({ text }, names);

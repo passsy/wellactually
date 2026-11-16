@@ -2,13 +2,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { API_VERSION } from "@wellactually/sdk";
+import { API_VERSION } from "@wellactually/detector-sdk";
 import { ADVICE_BUDGET, ADVICE_MAX, adviceBytes, adviceLengthWarnings, buildBundle, fileCtx, textCtx } from "@wellactually/core/node";
 import { forgetShown, frame, frameEvents, readConfig, readShown, runBoard, SESSION_MAX_AGE_MS, sweepShown, writeCached, writeConfig, writeShown } from "../src/board/board.ts";
 import { describeFinding } from "../src/hook/finding.ts";
 import { DetectorPool } from "../src/board/pool.ts";
 
-const sdk = `import { onPrompt } from "@wellactually/sdk/v3";`;
+const sdk = `import { onPrompt } from "@wellactually/detector-sdk/v3";`;
 const handlers = [{ event: "prompt" as const, globs: [] }];
 
 describe("running the advisory board", () => {

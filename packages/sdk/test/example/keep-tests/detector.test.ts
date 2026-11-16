@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { deleted, detect, edit, source, write } from "@wellactually/sdk/v4/test";
+import { deleted, detect, edit, source, write } from "@wellactually/detector-sdk/v4/test";
 
 const before = source`
   void main() {

@@ -12,7 +12,7 @@ import { buildBundle, fileCtx, mapProject, runDetector, textCtx } from "../src/n
 async function bundleOf(detector: string): Promise<string> {
   return buildBundle({
     "detector.ts": [
-      `import { onCommand, onOutput, onPrompt, onRead, onWrite } from "@wellactually/sdk/v3";`,
+      `import { onCommand, onOutput, onPrompt, onRead, onWrite } from "@wellactually/detector-sdk/v3";`,
       detector.replace(/export (function\*? detect)/, "$1"),
       "for (const on of [onWrite, onRead, onPrompt, onCommand, onOutput]) on({ detect });",
     ].join("\n"),
@@ -201,7 +201,7 @@ describe("the bundler", () => {
   test("bundles the SDK and relative files", async () => {
     const bundle = await buildBundle({
       "detector.ts": `
-        import { findWord, onPrompt } from "@wellactually/sdk/v3";
+        import { findWord, onPrompt } from "@wellactually/detector-sdk/v3";
         import { WORD } from "./words.ts";
         onPrompt({ detect: (event) => (findWord(event.text, WORD) === -1 ? [] : [{ match: WORD }]) });
       `,

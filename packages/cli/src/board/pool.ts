@@ -1,6 +1,6 @@
 import os from "node:os";
 import { parentPort, Worker } from "node:worker_threads";
-import type { Ctx } from "@wellactually/sdk";
+import type { Ctx } from "@wellactually/detector-sdk";
 import { DEFAULT_LIMITS, type DetectorRun, detectorRunner } from "@wellactually/core/node";
 import { diskFiles } from "./files.ts";
 

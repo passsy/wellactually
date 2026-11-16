@@ -29,7 +29,7 @@
  *   with `removed: true` names a removed line.
  *
  * A detector says which one it was written against by where it imports from:
- * `@wellactually/sdk/v4`. Each version has its own file next to this one. A
+ * `@wellactually/detector-sdk/v4`. Each version has its own file next to this one. A
  * principle is then handed the event of that version for as long as it is
  * run, also when it is uploaded again after the API has moved on. This file
  * itself is what the host imports, not a detector.

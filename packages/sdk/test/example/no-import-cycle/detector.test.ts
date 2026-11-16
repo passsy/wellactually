@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { detect, edit, source, write } from "@wellactually/sdk/v3/test";
+import { detect, edit, source, write } from "@wellactually/detector-sdk/v3/test";
 
 // fixtures/app is a small Dart package: lib/cart/cart.dart imports the checkout, lib/shared/money.dart imports nothing.
 const app = { project: "fixtures/app" };

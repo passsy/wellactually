@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test, vi } from "vitest";
-import { API_VERSION } from "@wellactually/sdk";
+import { API_VERSION } from "@wellactually/detector-sdk";
 import { buildBundle } from "@wellactually/core/node";
 import { writeCached, writeLockfile } from "../src/board/board.ts";
 import { LOG_MAX_AGE_MS, LOG_MAX_FILE_BYTES, writeHookLog } from "../src/hook/hook-log.ts";
@@ -34,7 +34,7 @@ describe("the hook log", () => {
     const previous = process.env.WELLACTUALLY_HOME;
     process.env.WELLACTUALLY_HOME = home;
     try {
-      const bundle = await buildBundle({ "detector.ts": `import { onPrompt } from "@wellactually/sdk/v3"; onPrompt({ detect: () => [{ match: "enum" }] });` });
+      const bundle = await buildBundle({ "detector.ts": `import { onPrompt } from "@wellactually/detector-sdk/v3"; onPrompt({ detect: () => [{ match: "enum" }] });` });
       const manifest = { title: "No enums", summary: "Avoid enums.", tags: [], events: ["prompt" as const], globs: [], handlers: [{ event: "prompt" as const, globs: [] }], api: API_VERSION };
       writeCached({ id: "ana/no-enums", version: 4, hash: "a".repeat(64), manifest, advice: "Avoid enums.", bundle });
       writeLockfile({ syncedAt: null, entries: [{ id: "ana/no-enums", version: 4, hash: "a".repeat(64), enabled: true }] });

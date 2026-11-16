@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { apiOf, applies, approvalKey, buildPrinciple, BundleError, describeReview, checkPrinciple, isPrincipleId, PRINCIPLE_ID_RULE, fileCtx, forAuthor, isPackageFile, ManifestError, parseTags, needsApproval, readPrinciple, readPrincipleDir, runDetector, textCtx, type BuiltPrinciple, type CheckReport, type DetectorRun, type PrincipleFiles, type PackageInfo } from "@wellactually/core/node";
-import type { Ctx } from "@wellactually/sdk";
+import type { Ctx } from "@wellactually/detector-sdk";
 import { diskFiles, projectRootOf, toPosix, writePrincipleFiles } from "./board/files.ts";
 import { frame, DEFAULT_REGISTRY, readConfig, readLockfile, writeCached, writeLockfile } from "./board/board.ts";
 import { probeRepo, type ProbeReport } from "./probe.ts";

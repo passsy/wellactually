@@ -30,7 +30,9 @@
     "install:local": "node scripts/install-local.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/tsconfig.json && tsc --noEmit -p evaluator/tsconfig.json && tsc --noEmit -p evaluator/principles/tsconfig.json",
-    "eval": "node evaluator/run.ts"
+    "eval": "node evaluator/run.ts",
+    "package:sdk": "node scripts/release-sdk.mjs",
+    "test:package:sdk": "node scripts/test-sdk-package.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

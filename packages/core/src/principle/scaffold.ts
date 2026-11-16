@@ -1,4 +1,4 @@
-import { API_VERSION } from "@wellactually/sdk";
+import { API_VERSION } from "@wellactually/detector-sdk";
 import type { PrincipleFiles } from "../build/bundle.ts";
 import { isPrincipleId, PRINCIPLE_ID_RULE } from "./manifest.ts";
 
@@ -44,7 +44,7 @@ if (items.length === 0) {
 Name the cases where the principle does not apply.
 The detector should stay quiet on exactly those, and a test should prove it.
 `,
-    "detector.ts": `import { onWrite } from "@wellactually/sdk/v${API_VERSION}";
+    "detector.ts": `import { onWrite } from "@wellactually/detector-sdk/v${API_VERSION}";
 
 /**
  * A detector registers a handler per event it reacts to: onWrite, onRead,
@@ -71,7 +71,7 @@ onWrite({
 });
 `,
     "detector.test.ts": `import { expect, test } from "vitest";
-import { detect, edit, source, write } from "@wellactually/sdk/v${API_VERSION}/test";
+import { detect, edit, source, write } from "@wellactually/detector-sdk/v${API_VERSION}/test";
 
 // Run with vitest, for example through npm test. The registry runs the same file again.
 // A test builds the event a detector receives and checks what it reports.

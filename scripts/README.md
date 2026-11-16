@@ -7,10 +7,14 @@
   disabled and checks host entrypoints, MCP, UI assets and Git adapter contracts.
 - `sync-skills.mjs` generates the namespaced OpenCode/pi skills inside the archive.
 - `install-local.mjs` prepares a private local tarball/catalog; `--host` also installs it in a selected host.
-- `publish-package.mjs` publishes the tested archive from the explicit release job.
+- `publish-package.mjs` stages the tested archive from the explicit release job.
 - `version.mjs` promotes a published version in manifests and compatibility pins.
   Refresh package-lock.json afterwards. Never point installers at an unpublished version.
-- `release-sdk.mjs` publishes the separate SDK Git branch.
+- `release-sdk.mjs` builds and packs the independently versioned detector SDK.
+- `test-sdk-package.mjs` installs that archive in a clean author project, checks
+  its public declarations and runs v3/v4 detector tests.
+- `.github/workflows/publish-sdk.yaml` is the separate Actions release; `publish-package.mjs --sdk`
+  stages its tested artifact for maintainer approval.
 - `embed-sdk.mjs` embeds SDK source for detector builds; `freeze-api.mjs` freezes
   detector API versions.
 

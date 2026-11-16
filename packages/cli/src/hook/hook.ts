@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { Ctx } from "@wellactually/sdk";
+import type { Ctx } from "@wellactually/detector-sdk";
 import { ADVICE_BUDGET, adviceBytes } from "@wellactually/core/node";
 import { type EventFirings, type Lockfile, PARALLEL_FROM, boardHome, forgetShown, frameEvents, readConfig, readLockfile, readShown, runBoard, sweepShown, writeShown } from "../board/board.ts";
 import { claimReport, recordDetections } from "../board/detections.ts";

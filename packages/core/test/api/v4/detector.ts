@@ -8,7 +8,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { findUp, findWord, mentioned, onCommand, onDelete, onOutput, onPrompt, onRead, onWrite, type Finding } from "@wellactually/sdk/v4";
+import { findUp, findWord, mentioned, onCommand, onDelete, onOutput, onPrompt, onRead, onWrite, type Finding } from "@wellactually/detector-sdk/v4";
 
 const keysOf = (value: object): string => Object.keys(value).sort().join(",");
 

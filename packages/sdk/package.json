@@ -1,5 +1,5 @@
 {
-  "name": "@wellactually/sdk",
+  "name": "@wellactually/detector-sdk",
   "version": "0.1.0",
   "type": "module",
   "description": "Types and helpers a principle's detector may import, and what its tests import to run under vitest.",
@@ -12,5 +12,6 @@
   },
   "dependencies": {
     "@wellactually/core": "0.1.0"
-  }
+  },
+  "private": true
 }

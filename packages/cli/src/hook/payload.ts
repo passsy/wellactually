@@ -1,5 +1,5 @@
 import path from "node:path";
-import { fileCtx, locateWritten, textCtx, type Change, type Ctx, type Where, type Written } from "@wellactually/sdk";
+import { fileCtx, locateWritten, textCtx, type Change, type Ctx, type Where, type Written } from "@wellactually/detector-sdk";
 import { removedLines, type TurnDiff } from "./turn.ts";
 import { projectRootOf, toPosix } from "../board/files.ts";
 

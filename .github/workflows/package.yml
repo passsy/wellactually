@@ -24,6 +24,8 @@ jobs:
       - run: npm test
       - run: npm run web:test --workspace @wellactually/findings
       - run: npm run web:typecheck --workspace @wellactually/findings
+      - run: npm run package:sdk
+      - run: npm run test:package:sdk
       - run: npm run package
       - run: npm run test:package
       - name: Prepare a private local install without publishing or changing host config

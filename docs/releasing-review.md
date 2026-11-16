@@ -197,6 +197,10 @@ matches the public catalog. Review stores and credentials live outside the
 plugin cache; leave them untouched. These steps do not delete the local test
 artifacts, which existing sessions may still use.
 
+The detector SDK is a separate package with its own version and release. See
+[Detector SDK releases](releasing-detector-sdk.md); a plugin-only change does not
+require an SDK release.
+
 ## Maintainer release process
 
 Publication and marketplace promotion are separate decisions. A candidate can

@@ -34,7 +34,7 @@ async function loadEsbuild(): Promise<typeof import("esbuild")> {
       }
     }
     throw new Error(
-      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev github:passsy/wellactually#sdk vitest`.",
+      "Building a principle needs esbuild, which the installed plugin does not carry. Install the SDK in the principle's repository, which brings it: `npm install --save-dev @wellactually/detector-sdk vitest`.",
     );
   }
 }

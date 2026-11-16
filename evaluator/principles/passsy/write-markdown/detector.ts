@@ -1,4 +1,4 @@
-import { mentioned, onPrompt, onWrite } from "@wellactually/sdk/v3";
+import { mentioned, onPrompt, onWrite } from "@wellactually/detector-sdk/v3";
 
 onPrompt({
   *detect(event) {
