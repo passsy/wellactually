@@ -5,8 +5,8 @@ import { describe, expect, test, vi } from "vitest";
 
 process.env.WELLACTUALLY_FINDINGS_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wa-report-index-"));
 process.env.WELLACTUALLY_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wa-report-config-"));
-const { claimReviewSession, claimReviewWork, completeReviewWork, beginVerification, getReviewSession, noteSuggestionDelivery } = await import("../../findings/queues.mts");
-const { createFindingRecord, createOccurrence, updateFindingRecord, getFindingRecord, listOccurrences, updateOccurrence } = await import("../../findings/crud.mts");
+const { claimReviewSession, claimReviewWork, completeReviewWork, beginVerification, getReviewSession, noteSuggestionDelivery } = await import("../../review-inbox/queues.mts");
+const { createFindingRecord, createOccurrence, updateFindingRecord, getFindingRecord, listOccurrences, updateOccurrence } = await import("../../review-inbox/crud.mts");
 const { reportPendingReviewSuggestions, reviewActivityEvents, REVIEW_REPORT_MS } = await import("../../board/src/registry/review-reports.ts");
 const { writeConfig } = await import("../../board/src/board.ts");
 const registry = "https://example.invalid";
@@ -133,7 +133,7 @@ describe("reporting after aggregation", () => {
 });
 
 test("the UI Fixed action resolves its finding and occurrences and reports once per linked principle", async () => {
-  const { setStage } = await import('../../findings/api.mts');
+  const { setStage } = await import('../../review-inbox/api.mts');
   const s = setup(), session = beginVerification({...s.args,groups:s.groups},s.repo);
   setStage({repo:s.repo,target:'test',id:s.findings[0]!.id,to:'fixed',actor:'human'},s.repo);
   const occurrences = listOccurrences({repo:s.repo,target:'test',findingId:s.findings[0]!.id},s.repo);

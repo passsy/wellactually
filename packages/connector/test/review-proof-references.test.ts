@@ -3,8 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { reviewerAccess, proofReferences } from "../../../skills/review/scripts/reviewer-runtime.ts";
-import { createFindingRecord } from "../../findings/crud.mts";
-import { readSource } from "../../findings/api.mts";
+import { createFindingRecord } from "../../review-inbox/crud.mts";
+import { readSource } from "../../review-inbox/api.mts";
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root,{recursive:true,force:true})));
@@ -40,7 +40,7 @@ test("missing files and raw working dumps fail before recording test proof",()=>
 test("the proof-worker MCP persists readable references on records and completed queue results",async()=>{
   const {Client}=await import("@modelcontextprotocol/sdk/client/index.js");
   const {StdioClientTransport}=await import("@modelcontextprotocol/sdk/client/stdio.js");
-  const {claimReviewSession,claimReviewWork,completeReviewWork,beginVerification,getReviewSession}=await import("../../findings/queues.mts");
+  const {claimReviewSession,claimReviewWork,completeReviewWork,beginVerification,getReviewSession}=await import("../../review-inbox/queues.mts");
   const {fileURLToPath}=await import("node:url");
   const {source,dir}=fixture(),target="gateway",run="run";
   fs.writeFileSync(path.join(source,"code.ts"),"broken();\n");

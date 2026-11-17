@@ -4,10 +4,10 @@ import { execFileSync, spawn } from "node:child_process";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { zodSchema } from "../../../packages/findings/zod-schema.mts";
-import { toolNamed } from "../../../packages/findings/tools.mts";
+import { zodSchema } from "../../../packages/review-inbox/zod-schema.mts";
+import { toolNamed } from "../../../packages/review-inbox/tools.mts";
 import { readCached, readLockfile } from "../../../packages/board/src/board.ts";
-import { createFindingRecord, getFindingRecord, updateFindingRecord, listFindingRecords, createOccurrence, getOccurrence, listOccurrences, updateOccurrence, claimReviewWork, completeReviewWork, getReviewSession, blockReviewWork } from "../../../packages/findings/index.mts";
+import { createFindingRecord, getFindingRecord, updateFindingRecord, listFindingRecords, createOccurrence, getOccurrence, listOccurrences, updateOccurrence, claimReviewWork, completeReviewWork, getReviewSession, blockReviewWork } from "../../../packages/review-inbox/index.mts";
 
 const json = (file: string): any => JSON.parse(fs.readFileSync(file, "utf8"));
 const contained = (root: string, file: string): boolean => file === root || file.startsWith(root + path.sep);

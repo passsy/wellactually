@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import * as findings from "../../findings/index.mts";
-import { TOOLS, toolNamed } from "../../findings/tools.mts";
+import * as findings from "../../review-inbox/index.mts";
+import { TOOLS, toolNamed } from "../../review-inbox/tools.mts";
 
 test("the public server and module expose CRUD and queue completion without obsolete workflow operations", () => {
   for (const name of [

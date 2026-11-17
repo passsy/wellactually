@@ -23,5 +23,5 @@ export async function buildRuntime(root, destination, version) {
     await build({ ...options, entryPoints: [path.join(root, source)], outfile: path.join(destination, "dist", `${name}.mjs`) });
   }
   fs.rmSync(path.join(destination, "dist/web"), { recursive: true, force: true });
-  fs.cpSync(path.join(root, "packages/findings/web/dist"), path.join(destination, "dist/web"), { recursive: true });
+  fs.cpSync(path.join(root, "packages/review-inbox/web/dist"), path.join(destination, "dist/web"), { recursive: true });
 }

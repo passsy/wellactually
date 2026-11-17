@@ -188,6 +188,7 @@ A principle written against `v3` keeps running as it was.
 | `packages/detector-sdk`    | The types and helpers a detector may import.                                          |
 | `packages/connector` | Connects agent hosts: the hooks, the host adapters, the MCP server and the `wellactually` command. |
 | `packages/board`  | The advisory board on this machine: which principles run, their detectors and the registry sync. |
+| `packages/review-inbox` | Review sessions, findings and verdicts, and the Review Inbox and review card that show them. |
 | `evaluator`       | Checks with real agents that the framing around advice moves them the right way.      |
 | `scripts`         | Builds `dist` and `opencode`, sets the version of a release, packs the detector SDK. |
 
