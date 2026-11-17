@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { build } from "esbuild";
+import { bundleNotices } from "./bundle-notices.mjs";
 import { parseArgs } from "node:util";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -32,15 +33,22 @@ const shared = {
   target: "node22",
   external: ["esbuild"],
   banner: { js: 'import { createRequire as __createRequire } from "node:module";\nconst require = __createRequire(import.meta.url);' },
-  legalComments: "none",
+  legalComments: "eof",
+  metafile: true,
+  absWorkingDir: root,
   logLevel: "warning",
 };
-for (const version of versions) {
-  await build({ ...shared, entryPoints: [path.join(root, `packages/sdk/src/${version}.ts`)], outfile: path.join(target, `${version}.mjs`), banner: {} });
+const metafiles = [];
+async function bundle(options) {
+  const result = await build(options);
+  metafiles.push(result.metafile);
 }
-await build({ ...shared, entryPoints: [path.join(root, "packages/sdk/src/test.node.ts")], outfile: path.join(target, "test.mjs") });
+for (const version of versions) {
+  await bundle({ ...shared, entryPoints: [path.join(root, `packages/sdk/src/${version}.ts`)], outfile: path.join(target, `${version}.mjs`), banner: {} });
+}
+await bundle({ ...shared, entryPoints: [path.join(root, "packages/sdk/src/test.node.ts")], outfile: path.join(target, "test.mjs") });
 // `detect()` runs this as a child process to build the principle under test.
-await build({ ...shared, entryPoints: [path.join(root, "packages/core/src/build-principle.ts")], outfile: path.join(target, "build-principle.mjs") });
+await bundle({ ...shared, entryPoints: [path.join(root, "packages/core/src/build-principle.ts")], outfile: path.join(target, "build-principle.mjs") });
 
 // The types, for editors and for tsc. Declarations of the public files, with imports pointed at each other.
 const types = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-sdk-types-"));
@@ -79,7 +87,7 @@ write(
           [`./${version}/test`, { types: "./test.d.ts", default: "./test.mjs" }],
         ]),
       ),
-      files: ["*.mjs", "*.d.ts", "README.md", "LICENSE"],
+      files: ["*.mjs", "*.d.ts", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.txt"],
       dependencies: { esbuild: esbuildRange },
     },
     null,
@@ -149,10 +157,13 @@ The lockfile of your repository pins the npm package version it installed.
 The API is still changing.
 That is why the version is part of the import path: \`@wellactually/detector-sdk/${newest}\` and \`@wellactually/detector-sdk/${newest}/test\`.
 A principle that imports ${newest} keeps getting the event of ${newest}, also after newer versions exist, and the types under that path stay the types of ${newest}.
+Bundled dependency licenses and upstream notices are included in \`THIRD_PARTY_NOTICES.txt\`.
+
 This package has ${versions.map((version) => `\`${version}\``).join(" and ")}.
 `,
 );
 
+write("THIRD_PARTY_NOTICES.txt", bundleNotices(metafiles, root));
 write("LICENSE", fs.readFileSync(path.join(root, "LICENSE"), "utf8"));
 
 const packed = JSON.parse(execFileSync("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", artifacts], { cwd: target, encoding: "utf8" }))[0];
