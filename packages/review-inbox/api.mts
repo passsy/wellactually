@@ -1621,13 +1621,13 @@ export function startReview(raw: unknown, repo: string): ReviewSummary {
   const paths = pathsOf(args, repo);
   // The global home holds the machine-wide registry the inbox lists reviews
   // from. Pointed inside the repository under review — which has happened,
-  // by an agent reading `WELLACTUALLY_FINDINGS_HOME ?? homedir()` and guessing the
+  // by an agent reading `WELLACTUALLY_REVIEW_INBOX_HOME ?? homedir()` and guessing the
   // variable meant the repo's own review directory — every finding is
   // written and none of them ever appear anywhere. Refusing loudly here
   // turns a silently invisible review into an error with the fix in it.
   if (GLOBAL_ROOT === paths.repo || GLOBAL_ROOT.startsWith(paths.repo + sep)) {
     throw new InputError(
-      `WELLACTUALLY_FINDINGS_HOME points inside the repository under review (${GLOBAL_ROOT}). ` +
+      `WELLACTUALLY_REVIEW_INBOX_HOME points inside the repository under review (${GLOBAL_ROOT}). ` +
         `It is the machine-wide home the Review Inbox lists every repository from, ` +
         `not this repository's review directory — findings registered there are ` +
         `invisible to the inbox. Unset it and let it default to ~/.well-actually.`,

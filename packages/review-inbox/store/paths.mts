@@ -15,7 +15,7 @@ import { isAbsolute, join, resolve, sep } from "node:path";
 export const REVIEW_DIR = ".well-actually";
 
 export const GLOBAL_ROOT =
-  process.env.WELLACTUALLY_FINDINGS_HOME ?? join(homedir(), REVIEW_DIR);
+  process.env.WELLACTUALLY_REVIEW_INBOX_HOME ?? join(homedir(), REVIEW_DIR);
 
 export const REGISTRY_FILE = join(GLOBAL_ROOT, "registry.json");
 /**

@@ -27,7 +27,7 @@ const freePort = () => new Promise((resolve, reject) => {
 const env = {
   PATH: process.env.PATH, CI: "1", WELLACTUALLY_UPDATE_CHECK: "0",
   WELLACTUALLY_HOOK_LOG: "0", WELLACTUALLY_GIT: "0",
-  WELLACTUALLY_HOME: path.join(temp, "advice"), WELLACTUALLY_FINDINGS_HOME: path.join(temp, "findings"),
+  WELLACTUALLY_HOME: path.join(temp, "advice"), WELLACTUALLY_REVIEW_INBOX_HOME: path.join(temp, "findings"),
 };
 const run = (args, input) => execFileSync(process.execPath, args, { cwd: temp, env, encoding: "utf8", input, timeout: 30_000 });
 try {

@@ -60,7 +60,7 @@ test("the proof-worker MCP persists readable references on records and completed
     return JSON.parse((result.content as {text:string}[])[0]!.text);
   };
   try{
-    await client.connect(new StdioClientTransport({command:process.execPath,args:[fileURLToPath(new URL("../../../skills/review/scripts/main.ts",import.meta.url)),"--verification-server",dir,"--job","proof"],env:{PATH:process.env.PATH!,WELLACTUALLY_FINDINGS_HOME:process.env.WELLACTUALLY_FINDINGS_HOME!}}));
+    await client.connect(new StdioClientTransport({command:process.execPath,args:[fileURLToPath(new URL("../../../skills/review/scripts/main.ts",import.meta.url)),"--verification-server",dir,"--job","proof"],env:{PATH:process.env.PATH!,WELLACTUALLY_REVIEW_INBOX_HOME:process.env.WELLACTUALLY_REVIEW_INBOX_HOME!}}));
     const tools=await client.listTools();
     const schema=tools.tools.find(t=>t.name==="update_finding")!.inputSchema as any;
     expect(schema.properties.patch.properties.assessments.items.required).toEqual(expect.arrayContaining(["author","authorType","conclusion","reason"]));

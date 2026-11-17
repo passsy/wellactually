@@ -40,7 +40,7 @@ test("packaged MCP aggregation delivers the pinned issue once and exposes acknow
   };
   try {
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL("../../../dist/wellactually.mjs", import.meta.url)), "mcp"], env: {
-      PATH: process.env.PATH!, WELLACTUALLY_HOME: home, WELLACTUALLY_FINDINGS_HOME: path.join(root, "index"), WELLACTUALLY_TOKEN: "", WELLACTUALLY_REVIEW_PORT: String(uiPort),
+      PATH: process.env.PATH!, WELLACTUALLY_HOME: home, WELLACTUALLY_REVIEW_INBOX_HOME: path.join(root, "index"), WELLACTUALLY_TOKEN: "", WELLACTUALLY_REVIEW_PORT: String(uiPort),
     } }));
     const session = await call("claim_review_session", { run: "transport", sets: [{ id: "all", principles: [{ id: "expert/docs", version: 2 }] }] });
     const finding = await call("create_finding", { finding: { title: "Documentation absent", rules: [{ id: "expert/docs" }], origins: [{ run: "transport", source: "review", unit: "all" }] } });

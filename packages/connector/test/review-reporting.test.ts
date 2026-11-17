@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, test, vi } from "vitest";
 
-process.env.WELLACTUALLY_FINDINGS_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wa-report-index-"));
+process.env.WELLACTUALLY_REVIEW_INBOX_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wa-report-index-"));
 process.env.WELLACTUALLY_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "wa-report-config-"));
 const { claimReviewSession, claimReviewWork, completeReviewWork, beginVerification, getReviewSession, noteSuggestionDelivery } = await import("../../review-inbox/queues.mts");
 const { createFindingRecord, createOccurrence, updateFindingRecord, getFindingRecord, listOccurrences, updateOccurrence } = await import("../../review-inbox/crud.mts");

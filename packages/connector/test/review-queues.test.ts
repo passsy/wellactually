@@ -303,7 +303,7 @@ describe("MCP-owned dynamic review and proof queues", () => {
           "mcp",
         ],
         cwd:repo,
-        env:{PATH:process.env.PATH!,WELLACTUALLY_FINDINGS_HOME:process.env.WELLACTUALLY_FINDINGS_HOME!,WELLACTUALLY_HOME:path.join(repo,"advice-home"),WELLACTUALLY_REVIEW_PORT:String(port)},
+        env:{PATH:process.env.PATH!,WELLACTUALLY_REVIEW_INBOX_HOME:process.env.WELLACTUALLY_REVIEW_INBOX_HOME!,WELLACTUALLY_HOME:path.join(repo,"advice-home"),WELLACTUALLY_REVIEW_PORT:String(port)},
       }),
     );
     const call = async (name: string, args: Record<string, unknown>) => {
