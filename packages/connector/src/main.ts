@@ -392,7 +392,7 @@ async function main(): Promise<number> {
       await serveMcp();
       return 0;
     case "findings-ui":
-      await findingsServer(["--ui"]);
+      await findingsServer();
       return 0;
     case undefined:
     case "help":

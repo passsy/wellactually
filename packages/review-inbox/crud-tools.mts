@@ -137,11 +137,6 @@ function tool(
       openWorldHint: false,
     },
     run,
-    inCardServer: ["get_finding", "list_findings", "update_finding"].includes(
-      name,
-    )
-      ? "model"
-      : undefined,
   };
 }
 export const CRUD_TOOLS: Tool[] = [
@@ -197,7 +192,6 @@ export const CRUD_TOOLS: Tool[] = [
       ["occurrence"],
       createOccurrence,
     ),
-    inCardServer: "model",
   },
   {
     ...tool(
@@ -208,7 +202,6 @@ export const CRUD_TOOLS: Tool[] = [
       getOccurrence,
       true,
     ),
-    inCardServer: "model",
   },
   {
     ...tool(
@@ -219,7 +212,6 @@ export const CRUD_TOOLS: Tool[] = [
       listOccurrences,
       true,
     ),
-    inCardServer: "model",
   },
   {
     ...tool(
@@ -229,7 +221,6 @@ export const CRUD_TOOLS: Tool[] = [
       ["id", "expectedRevision", "patch"],
       updateOccurrence,
     ),
-    inCardServer: "model",
   },
   tool(
     "delete_occurrence",

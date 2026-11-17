@@ -86,13 +86,6 @@ export interface Tool {
    * host that draws no cards, because such a host would hand it to the model.
    */
   cardOnly?: boolean;
-  /**
-   * Who is offered this tool by a server started with `--card`, which is the
-   * server a chat is given: it shows reviews and runs none, so it offers the
-   * four tools the card needs and none of the twenty that write a review.
-   * Absent means that server does not offer it at all.
-   */
-  inCardServer?: "model" | "card";
 }
 
 /** The reviews on this machine, newest first, as little as names them. */
@@ -220,7 +213,6 @@ const REVIEW_TOOLS: Tool[] = [
     run: reviewStatus,
     card: REVIEW_CARD,
     says: statusSays,
-    inCardServer: "model",
   },
   {
     name: "list_reviews",
@@ -228,7 +220,6 @@ const REVIEW_TOOLS: Tool[] = [
       "The reviews on this machine, newest first: the repository and target that name each one, what it is about, and how many findings still need a verdict. Call it to find the review the user means before review_status, which needs both names.",
     inputSchema: { type: "object", properties: {} },
     run: reviewsSay,
-    inCardServer: "model",
   },
   {
     name: "set_stage",
@@ -257,7 +248,6 @@ const REVIEW_TOOLS: Tool[] = [
     },
     run: setStage,
     cardOnly: true,
-    inCardServer: "card",
   },
   {
     name: "open_inbox",
@@ -282,7 +272,6 @@ const REVIEW_TOOLS: Tool[] = [
     },
     run: openInbox,
     cardOnly: true,
-    inCardServer: "card",
   },
   {
     name: "list_rules",
@@ -370,7 +359,6 @@ const REVIEW_TOOLS: Tool[] = [
       required: ["target", "id", "note"],
     },
     run: setNote,
-    inCardServer: "card",
   },
   {
     name: "set_reported",

@@ -1,12 +1,9 @@
 /**
  * The dev server for the triage page.
  *
- * Only the inbox runs here. The report is a build artifact rather than a page
- * anybody browses to, so it has no dev mode of its own: see build.mjs.
- *
  * Everything the page asks for that is not a page comes from the findings
  * server, which is a different process on a fixed port. So the API, the
- * generated report, the icons and the service worker are proxied rather than
+ * rule pages, the icons and the service worker are proxied rather than
  * faked, and the dev page talks to the same routes the built one does.
  */
 
