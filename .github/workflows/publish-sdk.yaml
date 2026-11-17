@@ -32,6 +32,7 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
+      - run: npm run build
       - run: npm test
       - name: Pack the requested SDK version without modifying source manifests
         env:
