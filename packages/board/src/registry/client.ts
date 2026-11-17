@@ -390,7 +390,8 @@ export async function fetchHistory(id: string): Promise<History> {
   return (await response.json()) as History;
 }
 
-export type Rating = "up" | "down" | "not_applicable";
+/** What an agent reports after a principle's advice: not relevant, or what the advice did to its work. */
+export type Outcome = "not_relevant" | "adjust" | "keep" | "noted" | "unclear" | "wrong";
 
 export async function sendReviewSuggestions(suggestions: { id: string; hash: string; principle: string; day: string }[]): Promise<void> {
   const response = await call("/api/review-suggestions", { method: "POST", body: { suggestions }, timeoutMs: 10000 });
@@ -415,10 +416,12 @@ export async function sendReviewEvents(events: ReviewEvent[]): Promise<{ rejecte
  *
  * The verdict is about the revision the agent was shown, so the id is resolved
  * through the local advisory board, not through the registry's newest release.
+ * With `replaces`, a rating id from an earlier call, the registry changes that
+ * rating instead of adding one, for 24 hours.
  * The rater says which agent and model gave it, as the agent reported them.
- * Returns what to tell the agent.
+ * Returns what to tell the agent, with the new rating's id.
  */
-export async function ratePrinciple(id: string, rating: Rating, rater: Rater = { agent: null, model: null }): Promise<string> {
+export async function ratePrinciple(id: string, outcome: Outcome, replaces?: string, rater: Rater = { agent: null, model: null }): Promise<string> {
   if (id.startsWith("local/")) {
     return `${id} is a local principle. It belongs to no registry, so there is nobody to send a rating to.`;
   }
@@ -430,9 +433,14 @@ export async function ratePrinciple(id: string, rating: Rating, rater: Rater = {
     return `${id} is not on this advisory board. Use the id from the <principle id="..."> tag you were shown.`;
   }
   requireToken();
-  const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, rating, context: "injection" } });
+  const response = await call("/api/ratings", { method: "POST", body: { hash: entry.hash, outcome, ...(replaces ? { replaces } : {}), context: "injection" } });
   if (!response.ok) {
     throw await failure(response);
   }
-  return `Recorded ${rating} for ${id}@${entry.version}. Thank you.`;
+  const { ratingId } = (await response.json().catch(() => ({}))) as { ratingId?: unknown };
+  const said = outcome === "not_relevant" ? "not relevant" : outcome;
+  if (typeof ratingId !== "string") {
+    return `Recorded ${said} for ${id}@${entry.version}. Thank you.`;
+  }
+  return `Recorded ${said} for ${id}@${entry.version}, rating id ${ratingId}. To change it within 24 hours, rate again with replaces: "${ratingId}".`;
 }

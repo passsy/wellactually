@@ -255,22 +255,23 @@ const PREAMBLE =
 // Each host prefixes the tool with the plugin or the server. Claude Code and
 // Codex load MCP tools on demand, and Codex and OpenCode call them from a script
 // in code mode, so the exact call saves the agent a search it tends to skip.
-const RATE_TOOL: Record<Agent, string> = {
-  "claude-code": 'mcp__plugin_wellactually_wellactually__rate_principle (not loaded? ToolSearch "select:" and that name)',
-  codex: "mcp__wellactually__rate_principle (from a script: tools.mcp__wellactually__rate_principle)",
-  opencode: "wellactually_rate_principle (from a script: tools.wellactually.rate_principle)",
-  "opencode-1": "wellactually_rate_principle",
-  pi: "wellactually_rate_principle",
+const RATE_TOOL: Record<Agent, { prefix: string; load: string }> = {
+  "claude-code": { prefix: "mcp__plugin_wellactually_wellactually__", load: 'ToolSearch "select:" + name to load' },
+  codex: { prefix: "mcp__wellactually__", load: "from a script: tools.mcp__wellactually__<name>" },
+  opencode: { prefix: "wellactually_", load: "from a script: tools.wellactually.<name>" },
+  "opencode-1": { prefix: "wellactually_", load: "" },
+  pi: { prefix: "wellactually_", load: "" },
 };
-const ANY_RATE_TOOL = 'the MCP tool whose name ends in "rate_principle" (not loaded? search your tools for that word)';
 
-/** The request to rate, naming the tool as `agent` calls it, with the call for `id` as the example. */
+/** The request to rate, naming the tools as `agent` calls them, with the calls for `id` as the example. */
 function rating(agent: Agent | undefined, id: string): string {
-  const tool = agent ? RATE_TOOL[agent] : ANY_RATE_TOOL;
+  const tool = agent ? RATE_TOOL[agent] : undefined;
+  const name = (suffix: string) => (tool ? `${tool.prefix}${suffix}` : `the MCP tool ending in "${suffix}"`);
+  const load = tool ? (tool.load ? ` (${tool.load})` : "") : " (not loaded? search your tools)";
   return [
-    "Rate each principle above once you know how its advice went: up if it helped, down if it was wrong or unclear, not_applicable if it fired on something it is not about.",
-    `Call ${tool} with { "id": "${id}", "rating": "up" }, not a shell command.`,
-    "Leave the rating out of your answer, and out of your report when you are a subagent.",
+    `Rate each principle above, not by shell. About your work, even if it complies: ${name("rate_principle_relevant")}${load} with { "id": "${id}", "effect": "keep" },`,
+    `effect adjust, keep, noted (work to come), unclear or wrong. If not: ${name("rate_principle_not_relevant")}, same id.`,
+    "Keep the rating out of your answer and report.",
   ].join(" ");
 }
 
