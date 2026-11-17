@@ -79,7 +79,10 @@ using the actual tarball and normal npm dependencies. It checks v3/v4 imports,
 public declarations, and runs the example detector tests through the packaged
 builder and isolate. Dependency downloads may be needed. This does not install
 or update Claude/Codex plugins or require an npm publishing credential.
-PR CI also builds and tests this SDK archive.
+PR CI also builds and tests this SDK archive. The minimum-runtime release check
+uses npm 11.20.0 for installation: the npm 10 client bundled with Node 22.18
+crashes in peer dependency resolution in CI. This is test-install tooling; the
+SDK runtime minimum remains Node 22.18.0.
 
 The archive includes `THIRD_PARTY_NOTICES.txt` alongside the SDK's own Apache
 `LICENSE`. Packaging uses esbuild's output metadata to collect the full installed
