@@ -9,7 +9,7 @@ import { parseArgs } from "node:util";
 
 const root = path.resolve(import.meta.dirname, "..");
 const { values } = parseArgs({ options: { version: { type: "string" } } });
-const version = values.version ?? JSON.parse(fs.readFileSync(path.join(root, "packages/sdk/package.json"), "utf8")).version;
+const version = values.version ?? JSON.parse(fs.readFileSync(path.join(root, "packages/detector-sdk/package.json"), "utf8")).version;
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error("An exact SDK version is required");
 const artifacts = path.join(root, ".artifacts/detector-sdk");
 const target = path.join(artifacts, "package");
@@ -18,7 +18,7 @@ fs.rmSync(target, { recursive: true, force: true });
 fs.mkdirSync(target, { recursive: true });
 // One entry per detector API version: `v3.ts`. A principle imports the version it is written against.
 const versions = fs
-  .readdirSync(path.join(root, "packages/sdk/src"))
+  .readdirSync(path.join(root, "packages/detector-sdk/src"))
   .filter((name) => /^v\d+\.ts$/.test(name))
   .map((name) => name.slice(0, -3))
   .sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
@@ -44,15 +44,15 @@ async function bundle(options) {
   metafiles.push(result.metafile);
 }
 for (const version of versions) {
-  await bundle({ ...shared, entryPoints: [path.join(root, `packages/sdk/src/${version}.ts`)], outfile: path.join(target, `${version}.mjs`), banner: {} });
+  await bundle({ ...shared, entryPoints: [path.join(root, `packages/detector-sdk/src/${version}.ts`)], outfile: path.join(target, `${version}.mjs`), banner: {} });
 }
-await bundle({ ...shared, entryPoints: [path.join(root, "packages/sdk/src/test.node.ts")], outfile: path.join(target, "test.mjs") });
+await bundle({ ...shared, entryPoints: [path.join(root, "packages/detector-sdk/src/test.node.ts")], outfile: path.join(target, "test.mjs") });
 // `detect()` runs this as a child process to build the principle under test.
 await bundle({ ...shared, entryPoints: [path.join(root, "packages/core/src/build-principle.ts")], outfile: path.join(target, "build-principle.mjs") });
 
 // The types, for editors and for tsc. Declarations of the public files, with imports pointed at each other.
 const types = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-sdk-types-"));
-const sources = [...versions.map((version) => `${version}.ts`), "index.ts", "handlers.ts", "glob.ts", "events.ts", "test.node.ts"].map((name) => path.join(root, "packages/sdk/src", name));
+const sources = [...versions.map((version) => `${version}.ts`), "index.ts", "handlers.ts", "glob.ts", "events.ts", "test.node.ts"].map((name) => path.join(root, "packages/detector-sdk/src", name));
 try {
   execFileSync(
     path.join(root, "node_modules/.bin/tsc"),
@@ -101,7 +101,7 @@ write(
 
 What a [Well Actually](https://github.com/passsy/wellactually) principle's detector imports, and what its tests import to run under vitest.
 
-The source is in \`packages/sdk\` on the \`main\` branch. This package contains compiled JavaScript and TypeScript declarations. Node >=22.18 is required.
+The source is in \`packages/detector-sdk\` on the \`main\` branch. This package contains compiled JavaScript and TypeScript declarations. Node >=22.18 is required.
 
 ## Use it in a repository of principles
 

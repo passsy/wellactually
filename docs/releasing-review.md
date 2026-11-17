@@ -40,7 +40,7 @@ both host layouts with tiny launchers for a single compiled review helper.
 
 Packed-product tests install outside the checkout, offline with scripts disabled,
 and exercise four host entrypoints, MCP CRUD, card/inbox assets, version identity,
-PNG icons and compatibility adapter contracts. CI builds and publishes on the
+PNG icons and compatibility adapter contracts. CI builds and stages on the
 latest LTS (`lts/*`), then tests the same archive on Node 20.0.0, the latest
 Node 22 and 24 releases, and the latest stable release (`node`). The exact minimum
 check deliberately stays on 20.0.0; replacing it with latest would stop validating
@@ -300,7 +300,7 @@ marketplace update mechanisms. It does not change already-running sessions or
 force every user to update immediately. Install/update from the public catalog
 and verify the selected version. Test a real review, inbox accept/fix persistence
 and, in hosts supporting it, live card updates. Claude inline cards remain
-disabled; use the browser inbox there. Posting findings to a PR is a separate
+disabled; use the browser inbox there. See [Claude findings delivery](claude-findings.md). Posting findings to a PR is a separate
 explicit action. Verify natural fixed-event delivery after its grace/throttle
 rather than fabricating a fix.
 
@@ -323,17 +323,6 @@ npm version, refresh the lockfile and push. To restore a historical Git-based
 catalog, restore its built payload from the same historical revision too. Never
 point a Git installer at a source-only tree without its npm adapter. Leave stored
 findings and telemetry untouched.
-
-## Known validation limits
-
-Native desktop UI rendering and a complete review in every host remain separate
-from packed-product tests. OpenCode 2.2.5's bundled installer rejected the fresh
-release under this machine's seven-day age policy despite npm's package-specific
-exclusion. Standard npm installation and the prebuilt adapters pass; do not treat
-that as a successful native OpenCode installation or disable the global age policy.
-The dependency audit currently reports a low-severity
-KaTeX advisory through Mermaid; its suggested major upgrade was unavailable under
-the configured minimum release-age policy when the candidate was prepared.
 
 ## References
 

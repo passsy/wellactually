@@ -216,7 +216,7 @@ describe("the tests of a principle", () => {
   });
 
   test("the example that reads the project passes in the isolate like it does under vitest", async () => {
-    const { report } = await checkPrinciple(readPrincipleDir(path.resolve(import.meta.dirname, "../../sdk/test/example/no-import-cycle")));
+    const { report } = await checkPrinciple(readPrincipleDir(path.resolve(import.meta.dirname, "../../detector-sdk/test/example/no-import-cycle")));
     expect(report.tests.filter((result) => !result.passed)).toEqual([]);
     expect(report.problems).toEqual([]);
     expect(report.tests).toHaveLength(6);

@@ -32,7 +32,7 @@ try {
 
   assert.equal(installed.private, undefined);
   assert.deepEqual(Object.keys(installed.dependencies), ["esbuild"]);
-  fs.cpSync(path.join(root, "packages/sdk/test/example"), path.join(project, "rules"), { recursive: true });
+  fs.cpSync(path.join(root, "packages/detector-sdk/test/example"), path.join(project, "rules"), { recursive: true });
   fs.writeFileSync(path.join(project, "vitest.config.mjs"), 'export default { test: { maxWorkers: 1 } };\n');
   fs.writeFileSync(path.join(project, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true, module: "NodeNext", moduleResolution: "NodeNext", target: "ES2023", noEmit: true, skipLibCheck: false, types: ["node"] }, include: ["rules/**/*.ts", "imports.ts"] }));
   fs.writeFileSync(path.join(project, "imports.ts"), 'import { findUp } from "@wellactually/detector-sdk/v4";\nimport { onWrite } from "@wellactually/detector-sdk/v3";\nimport { detect } from "@wellactually/detector-sdk/v3/test";\nimport { deleted } from "@wellactually/detector-sdk/v4/test";\nvoid [findUp, onWrite, detect, deleted];\n');

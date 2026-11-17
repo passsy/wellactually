@@ -171,7 +171,7 @@ npm install --save-dev @wellactually/detector-sdk vitest
 
 `npm test` then runs the principles' tests with vitest.
 
-A detector may import `@wellactually/detector-sdk/v4`, which is in `packages/sdk`, its own files, and packages from npm that its `package.json` names.
+A detector may import `@wellactually/detector-sdk/v4`, which is in `packages/detector-sdk`, its own files, and packages from npm that its `package.json` names.
 The `v4` is the detector API version it is written against.
 Version 4 added the lines a write removed, `event.removed`, and `onDelete` for a deleted file.
 A principle written against `v3` keeps running as it was.
@@ -184,7 +184,7 @@ A principle written against `v3` keeps running as it was.
 | `dist`            | Ignored development build output; install payloads are published to npm.             |
 | `opencode`        | Compatibility adapters for existing Git installs, loading the npm runtime.           |
 | `packages/core`   | Builds, checks and runs principles: the isolate, the bundler and the tests.           |
-| `packages/sdk`    | The types and helpers a detector may import.                                          |
+| `packages/detector-sdk`    | The types and helpers a detector may import.                                          |
 | `packages/cli`    | The command the plugin runs: the hook, the advisory board and the MCP server.         |
 | `evaluator`       | Checks with real agents that the framing around advice moves them the right way.      |
 | `scripts`         | Builds `dist` and `opencode`, sets the version of a release, packs the detector SDK. |
@@ -192,6 +192,8 @@ A principle written against `v3` keeps running as it was.
 The registry is not in this repository.
 
 ## Build it yourself
+
+See the [maintainer documentation](docs/README.md) for testing, releases and host behavior.
 
 Development tooling needs Node >=22.18. The prebuilt product supports Node >=20.
 CI builds on the latest LTS and checks the package on Node 20.0.0, the latest
