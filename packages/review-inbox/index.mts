@@ -11,8 +11,8 @@
  *            Pure, and the part the browser imports as it stands.
  *   store/   where it lives — separate finding and occurrence files, and the
  *            registry and the read receipts around them.
- *   serve/   the doors, and what they hand out: MCP, HTTP, the port they
- *            argue over, and the built page.
+ *   serve/   the doors, and what they hand out: MCP tool definitions, HTTP,
+ *            the port they argue over, and the built page.
  *   web/     the pages themselves, which are compiled rather than written.
  *
  *   api.mts  the one core. Both doors call this and add no rules of their
@@ -80,7 +80,6 @@ export { currentWorkspace, isPluginInstall } from "./store/workspace.mts";
 export type { Workspace } from "./store/workspace.mts";
 export { TOOLS, TOOL_NAMES, toolNamed } from "./tools.mts";
 export type { Tool } from "./tools.mts";
-export { createMcpServer, serveStdio } from "./serve/mcp.mts";
 export { startUi } from "./serve/http.mts";
 export type { Ui } from "./serve/http.mts";
 export { main } from "./serve/server.mts";
