@@ -42,6 +42,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22.18.0'
+      - name: Use the tested npm client for the minimum-runtime consumer install
+        run: npm install --global npm@11.20.0 --ignore-scripts
       - name: Test the packed SDK on its minimum Node version
         run: npm run test:package:sdk
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
