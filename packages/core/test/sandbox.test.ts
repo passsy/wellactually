@@ -166,7 +166,7 @@ describe("the isolate", () => {
 
 describe("the bundler", () => {
   test("the SDK source compiled into the core matches the SDK", () => {
-    const dir = path.resolve(import.meta.dirname, "../../sdk/src");
+    const dir = path.resolve(import.meta.dirname, "../../detector-sdk/src");
     const sdk = Object.fromEntries(
       fs
         .readdirSync(dir)

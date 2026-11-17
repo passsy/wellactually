@@ -22,7 +22,7 @@ import { detect, write } from "@wellactually/detector-sdk/v4/test";
 
 The SDK requires Node >=22.18.0. It contains compiled JavaScript, public type
 declarations and the real detector builder/test runtime. esbuild is its only
-runtime npm dependency. The raw `packages/sdk` workspace is private and imports
+runtime npm dependency. The raw `packages/detector-sdk` workspace is private and imports
 internal workspaces; never publish it directly.
 
 To migrate an existing author project, install the new package, change imports
@@ -33,7 +33,7 @@ both names, including mixed names using the same API version. It still rejects
 mixed API versions. Existing frozen detector bundles are unchanged. The historical
 Git `sdk` branch remains available for old installs; no new release is written there.
 
-## Before the first public SDK release
+## One-time npm setup
 
 1. Ensure the npm account/organization controls the `@wellactually` scope and
    the `@wellactually/detector-sdk` package name. The existing unscoped
@@ -47,7 +47,6 @@ Git `sdk` branch remains available for old installs; no new release is written t
    first staged upload creating a placeholder package; a maintainer can stage the
    tested tarball interactively with `npm stage publish <tarball> --access public
    --tag latest --ignore-scripts`, inspect it, then configure the package settings.
-   No SDK upload or npm account setup is performed merely by merging this change.
 4. Configure its **own** trusted publisher: GitHub Actions, repository
    `passsy/wellactually`, workflow filename `publish-sdk.yaml`, no environment
    restriction. Enable staging only; leave direct publishing disabled. The
@@ -69,7 +68,7 @@ npm run test:package:sdk
 ```
 
 The version is an example; choose a new exact version for a release. If omitted,
-local packaging uses `packages/sdk/package.json`, not the plugin version.
+local packaging uses `packages/detector-sdk/package.json`, not the plugin version.
 Output is ignored `.artifacts/detector-sdk/`: compiled `package/`, npm tarball,
 and npm's `pack.json` with its SHA-512 integrity. No Git branch or manifest is
 rewritten. Declaration generation must succeed; missing transitive public types

@@ -6,7 +6,7 @@
 // bundle that is built again proves nothing about the hosts that come later.
 import fs from "node:fs";
 import path from "node:path";
-import { API_VERSION, fileCtx, textCtx } from "../packages/sdk/src/index.ts";
+import { API_VERSION, fileCtx, textCtx } from "../packages/detector-sdk/src/index.ts";
 import { buildPrinciple, environmentFor, shapeOf } from "../packages/core/src/node.ts";
 
 const dir = path.resolve(import.meta.dirname, `../packages/core/test/api/v${API_VERSION}`);
@@ -17,7 +17,7 @@ if (!fs.existsSync(source)) {
   throw new Error(`write ${source} first: a detector that reports a finding for everything API ${API_VERSION} promises`);
 }
 if (fs.existsSync(frozen) || fs.existsSync(shape)) {
-  throw new Error(`API ${API_VERSION} is frozen already. A change to the API is a new version: raise API_VERSION in packages/sdk/src/index.ts.`);
+  throw new Error(`API ${API_VERSION} is frozen already. A change to the API is a new version: raise API_VERSION in packages/detector-sdk/src/index.ts.`);
 }
 
 const built = await buildPrinciple({

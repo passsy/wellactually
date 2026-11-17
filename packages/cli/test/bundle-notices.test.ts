@@ -25,7 +25,7 @@ test("includes full installed licenses and NOTICE once per bundled package, incl
   const first = add("@example/wasm", { LICENSE: "Copyright upstream engine\nFull permission text\n", NOTICE: "Embedded upstream component notice\n" });
   const second = add("new-dependency", { "LICENSE-MIT": "Copyright another author\nAnother complete license\n" });
   const unused = add("unused", {});
-  const text = bundleNotices([bundled({ [second]: 10, [first]: 20, [unused]: 0 }), bundled({ [first]: 5, "packages/sdk/src/v4.ts": 20 })], root);
+  const text = bundleNotices([bundled({ [second]: 10, [first]: 20, [unused]: 0 }), bundled({ [first]: 5, "packages/detector-sdk/src/v4.ts": 20 })], root);
   expect(text).toContain("Copyright upstream engine\nFull permission text");
   expect(text).toContain("Embedded upstream component notice");
   expect(text).toContain("Copyright another author\nAnother complete license");

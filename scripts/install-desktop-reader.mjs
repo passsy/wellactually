@@ -10,7 +10,7 @@ const config = process.platform === 'darwin'
   : process.platform === 'win32' && process.env.APPDATA
     ? path.join(process.env.APPDATA, 'Claude/claude_desktop_config.json')
     : null;
-if (!config) throw new Error('Configure desktop-mcp manually on this platform; see docs/desktop-reader.md.');
+if (!config) throw new Error('Configure desktop-mcp manually on this platform; see docs/claude-findings.md.');
 const original = fs.existsSync(config) ? fs.readFileSync(config, 'utf8') : '{}';
 const settings = JSON.parse(original);
 fs.mkdirSync(destination, {recursive:true});
