@@ -143,7 +143,7 @@ Posting accepted findings to the PR is a separate explicit action.
 All four hosts install the same prebuilt npm package. The marketplace pins a
 published version; installation does not build source or run lifecycle scripts.
 Existing OpenCode/pi Git install sources remain supported through small adapters
-that depend on that same npm package. [Release process](docs/releasing-review.md).
+that depend on that same npm package. [Release process](packages/cli/PUBLISHING.md).
 
 ## Write a principle
 
@@ -182,6 +182,7 @@ A principle written against `v3` keeps running as it was.
 | ----------------- | ------------------------------------------------------------------------------------- |
 | `hooks`, `skills` | The plugin: when the hook runs, and the skills such as `login`, `sync` and `audit`.   |
 | `dist`            | Ignored development build output; install payloads are published to npm.             |
+| [`compat`](compat/README.md) | pi adapter for existing Git installs, loading the pinned npm runtime. |
 | `opencode`        | Compatibility adapters for existing Git installs, loading the npm runtime.           |
 | `packages/core`   | Builds, checks and runs principles: the isolate, the bundler and the tests.           |
 | `packages/detector-sdk`    | The types and helpers a detector may import.                                          |
@@ -193,7 +194,9 @@ The registry is not in this repository.
 
 ## Build it yourself
 
-See the [maintainer documentation](docs/README.md) for testing, releases and host behavior.
+Testing and release procedures live with each package: [plugin](packages/cli/PUBLISHING.md)
+and [detector SDK](packages/detector-sdk/PUBLISHING.md). Keep documentation current;
+plans, proposals and historical reports belong in issues and pull requests.
 
 Development tooling needs Node >=22.18. The prebuilt product supports Node >=20.
 CI builds on the latest LTS and checks the package on Node 20.0.0, the latest
@@ -221,9 +224,9 @@ npm run install:local -- --host codex
 
 This builds a private local tarball and switches the selected host to it. Use
 `npm run package:local` to prepare it without changing host configuration.
-See [local testing and restoring npm installs](docs/releasing-review.md#local-testing-without-publishing).
+See [local testing and restoring npm installs](packages/cli/PUBLISHING.md#local-testing-without-publishing).
 To let users test an exact published npm version before the public marketplace
-pins change, follow [published-package testing](docs/releasing-review.md#test-a-published-npm-version-before-marketplace-promotion).
+pins change, follow [published-package testing](packages/cli/PUBLISHING.md#test-a-published-npm-version-before-marketplace-promotion).
 
 ## Release
 
@@ -233,7 +236,7 @@ it on npm with 2FA; all versions use `latest`. Optionally let users test that
 exact npm version through a local catalog while the public marketplace stays
 pinned to the previous release. After artifact verification and testing, promote
 the exact marketplace and compatibility pins in a separate PR. npm approval does
-not automatically promote them. See the [maintainer release process](docs/releasing-review.md#maintainer-release-process).
+not automatically promote them. See the [maintainer release process](packages/cli/PUBLISHING.md#maintainer-release-process).
 
 The detector authoring package, `@wellactually/detector-sdk`, has an independent
 release workflow and version. Build and test its npm archive with:
@@ -244,7 +247,7 @@ npm run test:package:sdk
 ```
 
 Use **Release detector SDK** to stage it separately; publication still requires
-npm 2FA approval. See [SDK publishing and first-release setup](docs/releasing-detector-sdk.md).
+npm 2FA approval. See [SDK publishing and first-release setup](packages/detector-sdk/PUBLISHING.md).
 
 ## License
 

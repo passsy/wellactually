@@ -198,7 +198,7 @@ plugin cache; leave them untouched. These steps do not delete the local test
 artifacts, which existing sessions may still use.
 
 The detector SDK is a separate package with its own version and release. See
-[Detector SDK releases](releasing-detector-sdk.md); a plugin-only change does not
+[Detector SDK releases](../detector-sdk/PUBLISHING.md); a plugin-only change does not
 require an SDK release.
 
 ## Maintainer release process
@@ -300,7 +300,7 @@ marketplace update mechanisms. It does not change already-running sessions or
 force every user to update immediately. Install/update from the public catalog
 and verify the selected version. Test a real review, inbox accept/fix persistence
 and, in hosts supporting it, live card updates. Claude inline cards remain
-disabled; use the browser inbox there. See [Claude findings delivery](claude-findings.md). Posting findings to a PR is a separate
+disabled; use the browser inbox there. Posting findings to a PR is a separate
 explicit action. Verify natural fixed-event delivery after its grace/throttle
 rather than fabricating a fix.
 

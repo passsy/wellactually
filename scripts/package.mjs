@@ -43,8 +43,13 @@ write("opencode/skills/wellactually-review/scripts/review.mjs", 'import "../../.
 // but publish one illustration without a GitHub-only visibility fragment.
 write("README.md", fs.readFileSync(path.join(root, "README.md"), "utf8")
   .replace(/^.*<img[^\n]*#gh-dark-mode-only[^\n]*>\r?\n/gm, "")
-  .replaceAll("#gh-light-mode-only", ""));
-for (const file of ["LICENSE", "docs/releasing-review.md", "hooks/hooks.json", ".codex-plugin/mcp.json"]) {
+  .replaceAll("#gh-light-mode-only", "")
+  .replaceAll("compat/README.md", "https://github.com/passsy/wellactually/blob/main/compat/README.md")
+  .replaceAll("packages/cli/PUBLISHING.md", "PUBLISHING.md")
+  .replaceAll("packages/detector-sdk/PUBLISHING.md", "https://github.com/passsy/wellactually/blob/main/packages/detector-sdk/PUBLISHING.md"));
+write("PUBLISHING.md", fs.readFileSync(path.join(root, "packages/cli/PUBLISHING.md"), "utf8")
+  .replaceAll("../detector-sdk/PUBLISHING.md", "https://github.com/passsy/wellactually/blob/main/packages/detector-sdk/PUBLISHING.md"));
+for (const file of ["LICENSE", "hooks/hooks.json", ".codex-plugin/mcp.json"]) {
   write(file, fs.readFileSync(path.join(root, file)));
 }
 for (const file of [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"]) {
@@ -61,7 +66,7 @@ const manifest = {
   main: "./dist/opencode.mjs",
   exports: { ".": "./dist/opencode.mjs", "./server": "./dist/opencode.mjs", "./tui": "./dist/tui.mjs", "./pi": "./dist/pi.mjs" },
   pi: { extensions: ["./dist/pi.mjs"], skills: ["./opencode/skills"] },
-  files: ["dist/", "skills/", "opencode/skills/", "hooks/", ".claude-plugin/", ".codex-plugin/", "assets/", "docs/releasing-review.md", "LICENSE", "README.md"],
+  files: ["dist/", "skills/", "opencode/skills/", "hooks/", ".claude-plugin/", ".codex-plugin/", "assets/", "PUBLISHING.md", "LICENSE", "README.md"],
   publishConfig: { access: "public" },
 };
 json("package.json", manifest);

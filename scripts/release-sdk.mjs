@@ -87,7 +87,7 @@ write(
           [`./${version}/test`, { types: "./test.d.ts", default: "./test.mjs" }],
         ]),
       ),
-      files: ["*.mjs", "*.d.ts", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.txt"],
+      files: ["*.mjs", "*.d.ts", "README.md", "PUBLISHING.md", "LICENSE", "THIRD_PARTY_NOTICES.txt"],
       dependencies: { esbuild: esbuildRange },
     },
     null,
@@ -163,6 +163,8 @@ This package has ${versions.map((version) => `\`${version}\``).join(" and ")}.
 `,
 );
 
+write("PUBLISHING.md", fs.readFileSync(path.join(root, "packages/detector-sdk/PUBLISHING.md"), "utf8")
+  .replaceAll("../cli/PUBLISHING.md", "https://github.com/passsy/wellactually/blob/main/packages/cli/PUBLISHING.md"));
 write("THIRD_PARTY_NOTICES.txt", bundleNotices(metafiles, root));
 write("LICENSE", fs.readFileSync(path.join(root, "LICENSE"), "utf8"));
 
