@@ -19,6 +19,17 @@ try {
   execFileSync("npm", ["install", "--prefer-offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false", path.join(artifacts, packed.filename), dev("typescript"), dev("@types/node"), dev("vitest")], { cwd: project, stdio: "inherit" });
   const installed = JSON.parse(fs.readFileSync(path.join(project, "node_modules/@wellactually/detector-sdk/package.json"), "utf8"));
   assert.equal(installed.version, packed.version);
+  const installedRoot = path.join(project, "node_modules/@wellactually/detector-sdk");
+  const notices = fs.readFileSync(path.join(installedRoot, "THIRD_PARTY_NOTICES.txt"), "utf8");
+  // Check the installed archive, not just the build directory. The embedded WASM
+  // package's license includes QuickJS's own Bellard/Gordon notices as well.
+  for (const name of ["quickjs-emscripten-core", "@jitl/quickjs-ffi-types", "@jitl/quickjs-singlefile-mjs-release-sync"]) {
+    const dependency = path.join(root, "node_modules", name);
+    const pkg = JSON.parse(fs.readFileSync(path.join(dependency, "package.json"), "utf8"));
+    assert.ok(notices.includes(`${name}@${pkg.version}`), `Missing bundled package notice for ${name}`);
+    assert.ok(notices.includes(fs.readFileSync(path.join(dependency, "LICENSE"), "utf8").trimEnd()), `Missing complete upstream license for ${name}`);
+  }
+
   assert.equal(installed.private, undefined);
   assert.deepEqual(Object.keys(installed.dependencies), ["esbuild"]);
   fs.cpSync(path.join(root, "packages/sdk/test/example"), path.join(project, "rules"), { recursive: true });

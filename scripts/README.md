@@ -11,6 +11,7 @@
 - `version.mjs` promotes a published version in manifests and compatibility pins.
   Refresh package-lock.json afterwards. Never point installers at an unpublished version.
 - `release-sdk.mjs` builds and packs the independently versioned detector SDK.
+- `bundle-notices.mjs` collects complete licenses/NOTICEs of bundled SDK dependencies.
 - `test-sdk-package.mjs` installs that archive in a clean author project, checks
   its public declarations and runs v3/v4 detector tests.
 - `.github/workflows/publish-sdk.yaml` is the separate Actions release; `publish-package.mjs --sdk`

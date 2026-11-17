@@ -82,6 +82,17 @@ builder and isolate. Dependency downloads may be needed. This does not install
 or update Claude/Codex plugins or require an npm publishing credential.
 PR CI also builds and tests this SDK archive.
 
+The archive includes `THIRD_PARTY_NOTICES.txt` alongside the SDK's own Apache
+`LICENSE`. Packaging uses esbuild's output metadata to collect the full installed
+license/copyright files and any top-level NOTICE from each npm dependency that
+contributes bundled code. This includes the embedded QuickJS engine's upstream
+notices. Dependencies installed separately, such as esbuild, retain their notices
+in their own packages. Legal comments in bundled source are also preserved.
+A bundled package without a nonempty license file stops packaging for review.
+The packed-consumer check verifies complete QuickJS licenses in the installed
+archive, so a file omitted from npm's allowlist fails CI. Recheck any newly bundled
+dependency for additional obligations; collecting notices is not a license audit.
+
 ## Stage and approve a release
 
 1. Merge the intended SDK changes to `main`, and choose a new SDK version.
