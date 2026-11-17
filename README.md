@@ -112,7 +112,7 @@ So they are contained.
   What an expert on your advisory board releases runs from your next sync, so follow the experts you trust.
   You can switch off any single principle, or unfollow the expert.
 
-The code that does this is public: [`packages/core/src/detector/sandbox.ts`](packages/core/src/detector/sandbox.ts) is the isolate, and [`packages/cli/src/board/board.ts`](packages/cli/src/board/board.ts) runs an advisory board.
+The code that does this is public: [`packages/core/src/detector/sandbox.ts`](packages/core/src/detector/sandbox.ts) is the isolate, and [`packages/board/src/board.ts`](packages/board/src/board.ts) runs an advisory board.
 
 ## What leaves your machine
 
@@ -143,7 +143,7 @@ Posting accepted findings to the PR is a separate explicit action.
 All four hosts install the same prebuilt npm package. The marketplace pins a
 published version; installation does not build source or run lifecycle scripts.
 Existing OpenCode/pi Git install sources remain supported through small adapters
-that depend on that same npm package. [Release process](packages/cli/PUBLISHING.md).
+that depend on that same npm package. [Release process](packages/connector/PUBLISHING.md).
 
 ## Write a principle
 
@@ -186,7 +186,8 @@ A principle written against `v3` keeps running as it was.
 | `opencode`        | Compatibility adapters for existing Git installs, loading the npm runtime.           |
 | `packages/core`   | Builds, checks and runs principles: the isolate, the bundler and the tests.           |
 | `packages/detector-sdk`    | The types and helpers a detector may import.                                          |
-| `packages/cli`    | The command the plugin runs: the hook, the advisory board and the MCP server.         |
+| `packages/connector` | Connects agent hosts: the hooks, the host adapters, the MCP server and the `wellactually` command. |
+| `packages/board`  | The advisory board on this machine: which principles run, their detectors and the registry sync. |
 | `evaluator`       | Checks with real agents that the framing around advice moves them the right way.      |
 | `scripts`         | Builds `dist` and `opencode`, sets the version of a release, packs the detector SDK. |
 
@@ -194,7 +195,7 @@ The registry is not in this repository.
 
 ## Build it yourself
 
-Testing and release procedures live with each package: [plugin](packages/cli/PUBLISHING.md)
+Testing and release procedures live with each package: [plugin](packages/connector/PUBLISHING.md)
 and [detector SDK](packages/detector-sdk/PUBLISHING.md). Keep documentation current;
 plans, proposals and historical reports belong in issues and pull requests.
 
@@ -224,9 +225,9 @@ npm run install:local -- --host codex
 
 This builds a private local tarball and switches the selected host to it. Use
 `npm run package:local` to prepare it without changing host configuration.
-See [local testing and restoring npm installs](packages/cli/PUBLISHING.md#local-testing-without-publishing).
+See [local testing and restoring npm installs](packages/connector/PUBLISHING.md#local-testing-without-publishing).
 To let users test an exact published npm version before the public marketplace
-pins change, follow [published-package testing](packages/cli/PUBLISHING.md#test-a-published-npm-version-before-marketplace-promotion).
+pins change, follow [published-package testing](packages/connector/PUBLISHING.md#test-a-published-npm-version-before-marketplace-promotion).
 
 ## Release
 
@@ -236,7 +237,7 @@ it on npm with 2FA; all versions use `latest`. Optionally let users test that
 exact npm version through a local catalog while the public marketplace stays
 pinned to the previous release. After artifact verification and testing, promote
 the exact marketplace and compatibility pins in a separate PR. npm approval does
-not automatically promote them. See the [maintainer release process](packages/cli/PUBLISHING.md#maintainer-release-process).
+not automatically promote them. See the [maintainer release process](packages/connector/PUBLISHING.md#maintainer-release-process).
 
 The detector authoring package, `@wellactually/detector-sdk`, has an independent
 release workflow and version. Build and test its npm archive with:

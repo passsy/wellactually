@@ -6,12 +6,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Ctx, Written } from "@wellactually/detector-sdk";
 import { fileCtx, hasDetector } from "@wellactually/core/node";
-import { describeFinding } from "../../../packages/cli/src/hook/finding.ts";
-import { parsePatch } from "../../../packages/cli/src/hook/turn.ts";
-import { type Lockfile, readCached, readConfig, readLockfile, runBoard } from "../../../packages/cli/src/board/board.ts";
-import { findProjectRoot, toPosix } from "../../../packages/cli/src/board/files.ts";
+import { describeFinding } from "../../../packages/board/src/finding.ts";
+import { parsePatch } from "../../../packages/connector/src/hook/turn.ts";
+import { type Lockfile, readCached, readConfig, readLockfile, runBoard } from "../../../packages/board/src/board.ts";
+import { findProjectRoot, toPosix } from "../../../packages/board/src/files.ts";
 import { collectInput, type CollectedInput, type InputOptions } from "./inputs.ts";
-import { switchedOff } from "../../../packages/cli/src/board/switches.ts";
+import { switchedOff } from "../../../packages/board/src/switches.ts";
 import { claimReviewSession, getReviewSession, verificationProblems } from "../../../packages/findings/queues.mts";
 import { listFindingRecords } from "../../../packages/findings/crud.mts";
 

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { ChangedFile, ReviewTarget } from "./review.ts";
-import { parsePatch } from "../../../packages/cli/src/hook/turn.ts";
+import { parsePatch } from "../../../packages/connector/src/hook/turn.ts";
 
 export interface InputOptions {
   paths?: string[];

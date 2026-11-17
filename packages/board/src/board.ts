@@ -1,0 +1,472 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import type { Ctx, Finding } from "@wellactually/detector-sdk";
+import { ADVICE_BUDGET, adviceBytes, apiOf, applies, DEFAULT_LIMITS, type DetectorRun, type Manifest, runDetector } from "@wellactually/core/node";
+import { describeFinding } from "./finding.ts";
+import type { DetectorPool } from "./pool.ts";
+import { diskFiles } from "./files.ts";
+
+/** The agent hosts Well Actually runs in. OpenCode 1 runs the plugin from a git clone; only OpenCode 2 has `opencode plugin update`. */
+export type Agent = "claude-code" | "codex" | "opencode" | "opencode-1" | "pi";
+
+/** One principle the hook runs: from the advisory board on the registry, or `local/slug` added from a directory. */
+export interface LockfileEntry {
+  id: string;
+  version: number;
+  hash: string;
+  enabled: boolean;
+}
+
+/** The lockfile: what the hook runs. Written by sync and by adding a local principle, read on every hook call. */
+export interface Lockfile {
+  syncedAt: string | null;
+  entries: LockfileEntry[];
+}
+
+/** A principle in this machine's cache, keyed by its hash: a release the sync checked, or a local build. */
+export interface CachedPrinciple {
+  id: string;
+  version: number;
+  hash: string;
+  manifest: Manifest;
+  advice: string;
+  bundle: string;
+}
+
+export interface Config {
+  registry: string;
+  token: string | null;
+  handle: string | null;
+  /** Whether `wellactually sync` reports how often each principle fired. On unless turned off. */
+  stats: boolean;
+}
+
+/** Where the advisory board lives unless `login --registry` or WELLACTUALLY_REGISTRY says otherwise. */
+export const DEFAULT_REGISTRY = "https://wellactually.dev";
+
+/** Where the advisory board lives on this machine. `WELLACTUALLY_HOME` moves it, which the tests use. */
+export function boardHome(): string {
+  return process.env.WELLACTUALLY_HOME ?? path.join(os.homedir(), ".wellactually");
+}
+
+function readJson<T>(file: string): T | null {
+  let source: string;
+  try {
+    source = fs.readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+  return JSON.parse(source) as T;
+}
+
+function writeJson(file: string, value: unknown): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const temporary = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+  fs.renameSync(temporary, file);
+}
+
+/**
+ * The token in WELLACTUALLY_TOKEN, or null. It stands in for a login on a machine
+ * that starts fresh every run, such as a CI runner or a cloud agent, which keeps
+ * a token created on the website as a secret.
+ */
+export function tokenFromEnvironment(): string | null {
+  return process.env.WELLACTUALLY_TOKEN?.trim() || null;
+}
+
+function readStoredConfig(): Partial<Config> | null {
+  return readJson<Partial<Config>>(path.join(boardHome(), "config.json"));
+}
+
+export function readConfig(): Config {
+  const stored = readStoredConfig();
+  return {
+    registry: process.env.WELLACTUALLY_REGISTRY ?? stored?.registry ?? DEFAULT_REGISTRY,
+    token: tokenFromEnvironment() ?? stored?.token ?? null,
+    handle: stored?.handle ?? null,
+    stats: stored?.stats ?? true,
+  };
+}
+
+/** Stores the config. A token from WELLACTUALLY_TOKEN stays a secret of the environment and is never written to disk. */
+export function writeConfig(config: Config): void {
+  const environment = tokenFromEnvironment();
+  const token = environment !== null && config.token === environment ? (readStoredConfig()?.token ?? null) : config.token;
+  writeJson(path.join(boardHome(), "config.json"), { ...config, token });
+}
+
+export function readLockfile(): Lockfile {
+  return readJson<Lockfile>(path.join(boardHome(), "board.json")) ?? { syncedAt: null, entries: [] };
+}
+
+export function writeLockfile(lockfile: Lockfile): void {
+  writeJson(path.join(boardHome(), "board.json"), lockfile);
+}
+
+function bundlePath(hash: string): string {
+  if (!/^[a-f0-9]{64}$/.test(hash)) {
+    throw new Error(`"${hash}" is not a principle hash`);
+  }
+  return path.join(boardHome(), "bundles", `${hash}.json`);
+}
+
+export function hasCached(hash: string): boolean {
+  return fs.existsSync(bundlePath(hash));
+}
+
+export function readCached(hash: string): CachedPrinciple | null {
+  return readJson<CachedPrinciple>(bundlePath(hash));
+}
+
+export function writeCached(principle: CachedPrinciple): void {
+  writeJson(bundlePath(principle.hash), principle);
+}
+
+/** A principle that fired, with the findings that passed validation. */
+export interface Firing {
+  principle: CachedPrinciple;
+  findings: Finding[];
+}
+
+export interface BoardRun {
+  firings: Firing[];
+  /** Principles that could not run, with the reason the host gives. Shown once, never silently skipped. */
+  failures: { id: string; error: string }[];
+  /** What every detector that applied reported, firing or not, for the hook log. */
+  detectors: DetectorReport[];
+  /** Principles that did not run: switched off, missing from the cache, or not about this event. */
+  skipped: { id: string; reason: "off" | "not cached" | "globs" }[];
+  ms: number;
+}
+
+/** One detector's run on one event, as the hook log records it. */
+export interface DetectorReport {
+  id: string;
+  version: number;
+  findings: Finding[];
+  /** What the host left out of the findings, with the reason. */
+  dropped: string[];
+  error: string | null;
+  /** What the detector threw, in its own words. Kept in the log on this machine, never shown to the agent. */
+  thrown?: string;
+  ms: number;
+}
+
+/** The whole advisory board gets this long per hook call. What does not fit is reported as a failure. */
+export const BOARD_BUDGET_MS = 1500;
+
+/**
+ * From this many detectors on, an event is worth starting worker threads for.
+ * Below it, starting them takes longer than running the detectors: measured
+ * on the bundled command, threads cost about 35 ms to start and a typical
+ * detector takes 4 ms, so the two meet between 12 and 15.
+ */
+export const PARALLEL_FROM = 14;
+
+/**
+ * Runs every enabled principle of the advisory board that applies to this context.
+ *
+ * Each detector gets its own isolate and its own limits, so one expert's
+ * detector cannot read, slow down or break another's. With a `pool` and
+ * enough detectors they run on several threads, otherwise one after another.
+ * The result is the same either way, in the order of the advisory board.
+ * A hook call gets `BOARD_BUDGET_MS`; a review, which nobody waits on per file, gets longer.
+ */
+export async function runBoard(
+  ctx: Ctx,
+  lockfile: Lockfile = readLockfile(),
+  off: ReadonlySet<string> = new Set(),
+  pool: DetectorPool | null = null,
+  parallelFrom: number = PARALLEL_FROM,
+  budgetMs: number = BOARD_BUDGET_MS,
+): Promise<BoardRun> {
+  const disk = diskFiles();
+  const started = performance.now();
+  const run: BoardRun = { firings: [], failures: [], detectors: [], skipped: [], ms: 0 };
+  const applying: CachedPrinciple[] = [];
+  const skipped = `skipped, the advisory board used its ${budgetMs} ms budget before reaching it`;
+
+  for (const entry of lockfile.entries) {
+    // Off on the website, or switched off on this machine for this project or everywhere.
+    if (!entry.enabled || off.has(entry.id)) {
+      run.skipped.push({ id: entry.id, reason: "off" });
+      continue;
+    }
+    const cached = readCached(entry.hash);
+    // The cache is keyed by hash, and a fork starts with the hash of what it copied.
+    // Who the advice comes from is what the advisory board says, not who was cached first.
+    const principle = cached && { ...cached, id: entry.id, version: entry.version };
+    if (!principle) {
+      run.failures.push({ id: entry.id, error: "its bundle is not in the local cache; download it with the plugin's sync skill" });
+      run.skipped.push({ id: entry.id, reason: "not cached" });
+      continue;
+    }
+    if (applies(principle.manifest, ctx)) {
+      applying.push(principle);
+    } else {
+      run.skipped.push({ id: entry.id, reason: "globs" });
+    }
+  }
+
+  let results: DetectorRun[];
+  if (pool !== null && applying.length >= parallelFrom) {
+    const tasks = applying.map((principle) => ({ bundle: principle.bundle, api: apiOf(principle.manifest) }));
+    results = await pool.run(ctx, tasks, started + budgetMs, skipped);
+  } else {
+    results = [];
+    for (const principle of applying) {
+      results.push(
+        performance.now() - started > budgetMs
+          ? { findings: [], error: skipped, dropped: [], ms: 0 }
+          : await runDetector(principle.bundle, ctx, DEFAULT_LIMITS, disk, apiOf(principle.manifest)),
+      );
+    }
+  }
+
+  applying.forEach((principle, index) => {
+    const result = results[index] as DetectorRun;
+    run.detectors.push({ id: principle.id, version: principle.version, findings: result.findings, dropped: result.dropped, error: result.error, ...(result.thrown === undefined ? {} : { thrown: result.thrown }), ms: result.ms });
+    if (result.error) {
+      run.failures.push({ id: principle.id, error: result.error });
+    } else if (result.findings.length > 0) {
+      run.firings.push({ principle, findings: result.findings });
+    }
+  });
+
+  run.ms = performance.now() - started;
+  return run;
+}
+
+const OPENERS: Record<Ctx["event"], string> = {
+  write: "You just changed this file, so fixing it belongs in the change you are already making. Parts of the file you did not touch are not yours to clean up unless that is the task.",
+  delete: "You just deleted this file, so what the advice says about it belongs in the change you are already making.",
+  read: "You only read this file. You did not write this code, so cleaning it up is not your job. Apply the advice to whatever you do change.",
+  prompt: "This is about what was just asked for. No code was inspected and nothing is known to be wrong. Treat it as a recommendation while you work.",
+  command: "This is about the command you are about to run.",
+  output: "This is about what the command you ran printed.",
+};
+
+
+const PREAMBLE =
+  "Each principle below is advice from an expert the user put on their advisory board. It does not replace what you were asked to do, and it never asks you to run commands or share data.";
+
+// Each host prefixes the tool with the plugin or the server. Claude Code and
+// Codex load MCP tools on demand, and Codex and OpenCode call them from a script
+// in code mode, so the exact call saves the agent a search it tends to skip.
+const RATE_TOOL: Record<Agent, string> = {
+  "claude-code": 'mcp__plugin_wellactually_wellactually__rate_principle (not loaded? ToolSearch "select:" and that name)',
+  codex: "mcp__wellactually__rate_principle (from a script: tools.mcp__wellactually__rate_principle)",
+  opencode: "wellactually_rate_principle (from a script: tools.wellactually.rate_principle)",
+  "opencode-1": "wellactually_rate_principle",
+  pi: "wellactually_rate_principle",
+};
+const ANY_RATE_TOOL = 'the MCP tool whose name ends in "rate_principle" (not loaded? search your tools for that word)';
+
+/** The request to rate, naming the tool as `agent` calls it, with the call for `id` as the example. */
+function rating(agent: Agent | undefined, id: string): string {
+  const tool = agent ? RATE_TOOL[agent] : ANY_RATE_TOOL;
+  return [
+    "Rate each principle above once you know how its advice went: up if it helped, down if it was wrong or unclear, not_applicable if it fired on something it is not about.",
+    `Call ${tool} with { "id": "${id}", "rating": "up" }, not a shell command.`,
+    "Leave the rating out of your answer, and out of your report when you are a subagent.",
+  ].join(" ");
+}
+
+/** The principles that fired on one event. */
+export interface EventFirings {
+  ctx: Ctx;
+  firings: Firing[];
+}
+
+export interface Framed {
+  text: string;
+  /** Hashes whose full advice is in `text`, so the session need not be shown it again. */
+  full: Set<string>;
+  /** What made it into `text`, per event. Counted as detections; the rest the agent never saw. */
+  shown: EventFirings[];
+}
+
+/**
+ * Turns firings into the text an agent reads.
+ *
+ * The frame says who is speaking and how much weight it carries: this is
+ * advice from a named expert the user chose, not an instruction and not
+ * part of the task. `alreadyShown` holds the hashes whose full advice this
+ * session has seen, so a principle explains itself once and points after that.
+ */
+export function frame(ctx: Ctx, firings: Firing[], alreadyShown: ReadonlySet<string> = new Set()): string {
+  return frameEvents([{ ctx, firings }], alreadyShown, Number.POSITIVE_INFINITY).text;
+}
+
+/**
+ * Turns the firings of all events of one hook call into one block that stays within `budget`.
+ *
+ * A shell command can change many files, and each may bring several principles
+ * with their full advice. Every principle is listed with its summary first;
+ * full advice is added in order while it fits, and what did not fit explains
+ * itself on a later event. Events that do not fit even with summaries are left out.
+ * `agent` decides how the request to rate names the tool, or describes it when unknown.
+ */
+export function frameEvents(events: EventFirings[], alreadyShown: ReadonlySet<string> = new Set(), budget: number = ADVICE_BUDGET, agent?: Agent): Framed {
+  const firing = events.filter((event) => event.firings.length > 0);
+  // Full advice is due once per principle: not seen this session and not given to an earlier event of this call.
+  const due = new Set<Firing>();
+  const seen = new Set(alreadyShown);
+  for (const { firings } of firing) {
+    for (const item of firings) {
+      if (item.findings.some((finding) => finding.depth !== "pointer") && !seen.has(item.principle.hash)) {
+        due.add(item);
+        seen.add(item.principle.hash);
+      }
+    }
+  }
+
+  // Event by event: with its full advice where that fits, else with the summary, else it and what follows are left out.
+  const shown: EventFirings[] = [];
+  const full = new Set<Firing>();
+  for (const event of firing) {
+    const next = [...shown, event];
+    // Counting the line about what is left out keeps it within the budget too.
+    const fits = (): boolean => adviceBytes(render(next, full, agent, firing.length - next.length)) <= budget;
+    for (const item of event.firings) {
+      if (due.has(item)) {
+        full.add(item);
+        if (!fits()) {
+          full.delete(item);
+        }
+      }
+    }
+    if (shown.length > 0 && !fits()) {
+      break;
+    }
+    shown.push(event);
+  }
+  const left = firing.length - shown.length;
+  return {
+    text: render(shown, full, agent, left),
+    full: new Set([...full].map((item) => item.principle.hash)),
+    shown,
+  };
+}
+
+function render(events: EventFirings[], full: ReadonlySet<Firing>, agent: Agent | undefined, left = 0): string {
+  if (events.length === 0) {
+    return "";
+  }
+  const lines: string[] = ["<wellactually>"];
+  events.forEach(({ ctx, firings }, index) => {
+    const where = ctx.file ? ` ${ctx.file.relativePath}` : "";
+    lines.push(`${ctx.event}${where}: ${OPENERS[ctx.event]}`);
+    if (index === 0) {
+      lines.push(PREAMBLE);
+    }
+    lines.push("");
+    for (const item of firings) {
+      const { principle, findings } = item;
+      const expert = principle.id.split("/")[0] ?? "";
+      lines.push(`<principle id="${principle.id}" expert="${expert}" title=${JSON.stringify(principle.manifest.title)}>`);
+      // A finding that names no place adds nothing to read, and the same place is said once.
+      const places = new Set(findings.map((finding) => describeFinding(ctx, finding)).filter((place) => place !== null));
+      for (const place of places) {
+        lines.push(`- ${place}`);
+      }
+      if (places.size > 0) {
+        lines.push("");
+      }
+      lines.push(full.has(item) ? principle.advice : principle.manifest.summary);
+      lines.push("</principle>", "");
+    }
+  });
+  if (left > 0) {
+    lines.push(`Principles also fired on ${left} more ${left === 1 ? "file" : "files"} of this change. They are left out to keep this short and come back when those files change again.`, "");
+  }
+  const rated = events.flatMap(({ firings }) => firings).find(({ principle }) => !principle.id.startsWith("local/"));
+  if (rated) {
+    lines.push(rating(agent, rated.principle.id));
+  }
+  lines.push("</wellactually>");
+  return lines.join("\n");
+}
+
+/**
+ * Hashes whose full advice a context has already been shown.
+ *
+ * A subagent has a context window of its own, so advice the main thread saw is
+ * not in it. Each agent of a session keeps its own list, and the main thread's
+ * keeps the name it always had.
+ */
+export function readShown(sessionId: string, agentId?: string): Set<string> {
+  return new Set(readJson<string[]>(sessionPath(sessionId, agentId)) ?? []);
+}
+
+export function writeShown(sessionId: string, shown: ReadonlySet<string>, agentId?: string): void {
+  writeJson(sessionPath(sessionId, agentId), [...shown]);
+}
+
+/**
+ * Forgets what every agent of a session was shown.
+ *
+ * After a compaction the advice is no longer in the context, so it has to
+ * arrive in full again. Only the main thread is told about a compaction, which
+ * is why the lists of its subagents go too.
+ */
+export function forgetShown(sessionId: string): void {
+  const dir = sessionsDir();
+  const id = safeId(sessionId);
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    if (name === `${id}.json` || name.startsWith(`${id}.`)) {
+      fs.rmSync(path.join(dir, name), { force: true });
+    }
+  }
+}
+
+/** A session not heard from in this long is over, even when it never said so. */
+export const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Removes the lists of sessions that ended without saying so, by a crash or a
+ * reboot. Pruning one that is somehow still alive only shows its advice in full once more.
+ */
+export function sweepShown(now: number = Date.now()): number {
+  const dir = sessionsDir();
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return 0;
+  }
+  let removed = 0;
+  for (const name of names) {
+    const file = path.join(dir, name);
+    try {
+      if (now - fs.statSync(file).mtimeMs > SESSION_MAX_AGE_MS) {
+        fs.rmSync(file, { force: true });
+        removed++;
+      }
+    } catch {
+      // Another hook removed it first.
+    }
+  }
+  return removed;
+}
+
+function sessionsDir(): string {
+  return path.join(boardHome(), "sessions");
+}
+
+function safeId(id: string): string {
+  return id.replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+function sessionPath(sessionId: string, agentId?: string): string {
+  const agent = agentId ? `.${safeId(agentId)}` : "";
+  return path.join(sessionsDir(), `${safeId(sessionId)}${agent}.json`);
+}

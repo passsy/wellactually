@@ -2,7 +2,7 @@
  * What gets injected into a trial, named for where the framing came from.
  *
  * `plugin` runs the hook from this working tree, so editing the framing in
- * packages/cli/src/board/board.ts moves the numbers on the next run. `baseline`
+ * packages/board/src/board.ts moves the numbers on the next run. `baseline`
  * injects nothing and is the floor: without it there is no way to tell advice
  * that changed behaviour from a model that was going to do that anyway.
  *

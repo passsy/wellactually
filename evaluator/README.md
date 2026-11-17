@@ -7,7 +7,7 @@ The words wrapped around that finding are not.
 They only exist to move a language model, so the only honest way to check them is to move one and look.
 
 This is not a test per principle.
-It is a handful of handcrafted cases, each with a real principle, that ask whether the framing in `packages/cli/src/board/board.ts` makes advice land when it should and stay out of the way when it should not.
+It is a handful of handcrafted cases, each with a real principle, that ask whether the framing in `packages/board/src/board.ts` makes advice land when it should and stay out of the way when it should not.
 
 ## Running it
 

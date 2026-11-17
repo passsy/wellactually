@@ -164,7 +164,7 @@ This package has ${versions.map((version) => `\`${version}\``).join(" and ")}.
 );
 
 write("PUBLISHING.md", fs.readFileSync(path.join(root, "packages/detector-sdk/PUBLISHING.md"), "utf8")
-  .replaceAll("../cli/PUBLISHING.md", "https://github.com/passsy/wellactually/blob/main/packages/cli/PUBLISHING.md"));
+  .replaceAll("../connector/PUBLISHING.md", "https://github.com/passsy/wellactually/blob/main/packages/connector/PUBLISHING.md"));
 write("THIRD_PARTY_NOTICES.txt", bundleNotices(metafiles, root));
 write("LICENSE", fs.readFileSync(path.join(root, "LICENSE"), "utf8"));
 

@@ -114,7 +114,7 @@ dependency for additional obligations; collecting notices is not a license audit
 5. Download the original release artifact into a fresh directory and verify
    public metadata and tarball bytes against its `pack.json`, using
    `verifyPublishedPackage` from `scripts/verify-package.mjs` as in the
-   [plugin release guide](../cli/PUBLISHING.md#4-verify-publication-and-optionally-invite-testers).
+   [plugin release guide](../connector/PUBLISHING.md#4-verify-publication-and-optionally-invite-testers).
    Substitute artifact name `wellactually-detector-sdk-release`. Do not rebuild
    to manufacture a new expected integrity. Only announce after this succeeds.
 6. Users install an exact candidate with

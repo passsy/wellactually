@@ -12,8 +12,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { boardHome, frameEvents, readShown, writeShown } from '../../packages/cli/src/board/board.ts';
-import { runHook } from '../../packages/cli/src/hook/hook.ts';
+import { boardHome, frameEvents, readShown, writeShown } from '../../packages/board/src/board.ts';
+import { runHook } from '../../packages/connector/src/hook/hook.ts';
 
 // The hook starts `<this file> sync` at session start when the board has a token. There is nothing to sync in a trial.
 if (process.argv[2] === 'sync') {

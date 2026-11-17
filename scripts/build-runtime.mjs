@@ -10,15 +10,15 @@ export async function buildRuntime(root, destination, version) {
     legalComments: "none", logLevel: "warning",
     plugins: [{ name: "release-version", setup(build) {
       build.onLoad({ filter: /packages\/cli\/package\.json$/ }, () => ({
-        contents: JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(root, "packages/cli/package.json"), "utf8")), version }), loader: "json",
+        contents: JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(root, "packages/connector/package.json"), "utf8")), version }), loader: "json",
       }));
     } }],
   };
   for (const [name, source] of Object.entries({
-    wellactually: "packages/cli/src/main.ts", "wellactually-hook": "packages/cli/src/hook-entry.ts",
-    "wellactually-worker": "packages/cli/src/worker.ts", "wellactually-log": "packages/cli/src/log-writer.ts",
-    opencode: "packages/cli/src/agents/opencode.ts", tui: "packages/cli/src/agents/opencode-tui.ts",
-    pi: "packages/cli/src/agents/pi.ts", review: "skills/review/scripts/main.ts",
+    wellactually: "packages/connector/src/main.ts", "wellactually-hook": "packages/connector/src/hook-entry.ts",
+    "wellactually-worker": "packages/connector/src/worker.ts", "wellactually-log": "packages/connector/src/log-writer.ts",
+    opencode: "packages/connector/src/agents/opencode.ts", tui: "packages/connector/src/agents/opencode-tui.ts",
+    pi: "packages/connector/src/agents/pi.ts", review: "skills/review/scripts/main.ts",
   })) {
     await build({ ...options, entryPoints: [path.join(root, source)], outfile: path.join(destination, "dist", `${name}.mjs`) });
   }
