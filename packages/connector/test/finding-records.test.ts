@@ -10,7 +10,7 @@ import {
   beginVerification,
   verificationProblems,
   getReviewSession,
-} from "../../findings/queues.mts";
+} from "../../review-inbox/queues.mts";
 import { afterEach, expect, test, vi } from "vitest";
 import {
   createFindingRecord,
@@ -24,15 +24,15 @@ import {
   listOccurrences,
   updateOccurrence,
   deleteOccurrence,
-} from "../../findings/crud.mts";
-import { TOOLS } from "../../findings/tools.mts";
+} from "../../review-inbox/crud.mts";
+import { TOOLS } from "../../review-inbox/tools.mts";
 import {
   listFindings,
   readSource,
   setStage,
   setReported,
   listReviews,
-} from "../../findings/api.mts";
+} from "../../review-inbox/api.mts";
 const roots: string[] = [];
 function setup() {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), "wa-records-"));
@@ -723,7 +723,7 @@ test("model tool surface exposes CRUD instead of promotion or side-effect shortc
 test("concurrent MCP processes reject a stale patch instead of losing an edit", async () => {
   const at = setup(),
     f = finding(at);
-  const code = `import {updateFindingRecord} from ${JSON.stringify(new URL("../../findings/crud.mts", import.meta.url).href)}; const at=JSON.parse(process.argv[1]); try { updateFindingRecord({...at,id:process.argv[2],expectedRevision:1,patch:{title:process.argv[3]}},at.repo); console.log("saved"); } catch(e) { console.log(e.message); }`;
+  const code = `import {updateFindingRecord} from ${JSON.stringify(new URL("../../review-inbox/crud.mts", import.meta.url).href)}; const at=JSON.parse(process.argv[1]); try { updateFindingRecord({...at,id:process.argv[2],expectedRevision:1,patch:{title:process.argv[3]}},at.repo); console.log("saved"); } catch(e) { console.log(e.message); }`;
   const results = await Promise.all(
     ["First", "Second"].map((title) =>
       promisify(execFile)(process.execPath, [
@@ -969,7 +969,7 @@ test("caller-selected letters allocate canonical ascending IDs and do not reuse 
 
 test("concurrent creators allocate unique ascending IDs per letter", async () => {
   const at = setup();
-  const code = `import {createFindingRecord} from ${JSON.stringify(new URL("../../findings/crud.mts", import.meta.url).href)}; const at=JSON.parse(process.argv[1]); console.log(createFindingRecord({...at,prefix:'R',finding:{title:'Concurrent claim'}},at.repo).id);`;
+  const code = `import {createFindingRecord} from ${JSON.stringify(new URL("../../review-inbox/crud.mts", import.meta.url).href)}; const at=JSON.parse(process.argv[1]); console.log(createFindingRecord({...at,prefix:'R',finding:{title:'Concurrent claim'}},at.repo).id);`;
   const results = await Promise.all(Array.from({length:6},()=>promisify(execFile)(process.execPath,['--input-type=module','-e',code,JSON.stringify(at)])));
   expect(results.map(r=>r.stdout.trim()).sort()).toEqual(['R1','R2','R3','R4','R5','R6']);
 });

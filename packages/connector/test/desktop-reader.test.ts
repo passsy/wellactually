@@ -4,10 +4,10 @@ import path from 'node:path';
 import { expect, test, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { createDesktopServer } from '../../findings/serve/desktop.mts';
-import { startReview } from '../../findings/api.mts';
-import { createFindingRecord, createOccurrence } from '../../findings/crud.mts';
-import * as registry from '../../findings/store/registry.mts';
+import { createDesktopServer } from '../../review-inbox/serve/desktop.mts';
+import { startReview } from '../../review-inbox/api.mts';
+import { createFindingRecord, createOccurrence } from '../../review-inbox/crud.mts';
+import * as registry from '../../review-inbox/store/registry.mts';
 
 test('Desktop reader streams new saved results and rejects writes and unregistered paths', async () => {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-reader-'));

@@ -40,8 +40,8 @@ import { startInBackground } from "./hook/hook.ts";
 import { handleHook } from "./hook/command.ts";
 import { writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
-import { serveDesktop } from "../../findings/serve/desktop.mts";
-import { main as findingsServer } from "../../findings/serve/server.mts";
+import { serveDesktop } from "../../review-inbox/serve/desktop.mts";
+import { main as findingsServer } from "../../review-inbox/serve/server.mts";
 import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "../../board/src/registry/client.ts";
 

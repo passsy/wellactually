@@ -15,19 +15,19 @@ import {
   retryVerification,
   blockReviewWork,
   rateReviewPrinciple,
-} from "../../findings/queues.mts";
+} from "../../review-inbox/queues.mts";
 import {
   listFindings,
   updateFinding,
   createFinding,
   baselineCheck,
-} from "../../findings/api.mts";
+} from "../../review-inbox/api.mts";
 import {
   createFindingRecord,
   updateFindingRecord,
   getFindingRecord,
-} from "../../findings/crud.mts";
-import { toolNamed } from "../../findings/tools.mts";
+} from "../../review-inbox/crud.mts";
+import { toolNamed } from "../../review-inbox/tools.mts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import {
@@ -303,7 +303,7 @@ describe("MCP-owned dynamic review and proof queues", () => {
           "mcp",
         ],
         cwd:repo,
-        env:{PATH:process.env.PATH!,WELLACTUALLY_FINDINGS_HOME:process.env.WELLACTUALLY_FINDINGS_HOME!,WELLACTUALLY_HOME:path.join(repo,"advice-home"),WELLACTUALLY_REVIEW_PORT:String(port)},
+        env:{PATH:process.env.PATH!,WELLACTUALLY_REVIEW_INBOX_HOME:process.env.WELLACTUALLY_REVIEW_INBOX_HOME!,WELLACTUALLY_HOME:path.join(repo,"advice-home"),WELLACTUALLY_REVIEW_PORT:String(port)},
       }),
     );
     const call = async (name: string, args: Record<string, unknown>) => {
@@ -594,7 +594,7 @@ describe("MCP-owned dynamic review and proof queues", () => {
   test("independent MCP processes cannot claim the same work", async () => {
     const { repo, args } = setup(40);
     const module = fileURLToPath(
-      new URL("../../findings/queues.mts", import.meta.url),
+      new URL("../../review-inbox/queues.mts", import.meta.url),
     );
     const code = `import {claimReviewWork,completeReviewWork} from ${JSON.stringify(module)};const args=JSON.parse(process.argv[1]);const worker=process.argv[2];let ids=[];while(true){const next=claimReviewWork({...args,queue:'a',worker},args.repo);if(next.state!=='claimed')break;ids.push(next.work.id);completeReviewWork({...args,queue:'a',worker,item:next.work.id,claim:next.work.claim.token,result:{...(next.work.kind==='principle'?{verdict:'followed',where:'state.ts:1'}:{}),findings:[],investigation:${JSON.stringify(inquiry)}}},args.repo);}console.log(JSON.stringify(ids));`;
     const batches = await Promise.all(

@@ -28,8 +28,8 @@ may require a newer Node version than the plugin.
 npm ci --ignore-scripts
 npm run build
 npm test
-npm run web:test --workspace @wellactually/findings
-npm run web:typecheck --workspace @wellactually/findings
+npm run web:test --workspace @wellactually/review-inbox
+npm run web:typecheck --workspace @wellactually/review-inbox
 npm run package -- --version <new-version>
 npm run test:package
 ```

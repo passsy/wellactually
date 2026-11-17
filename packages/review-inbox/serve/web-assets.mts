@@ -24,8 +24,8 @@ import { existsSync } from "node:fs";
 
 /** Where the web build's output could be, nearest first. */
 const ROOTS = [
-  // The source tree: this file sits in runtime/findings/serve, the build
-  // output beside it in runtime/findings/web/dist.
+  // The source tree: this file sits in packages/review-inbox/serve, the build
+  // output beside it in packages/review-inbox/web/dist.
   new URL("../web/dist/", import.meta.url),
   // A release: the whole server is one bundled dist/findings-server.mjs with
   // dist/web copied in beside it, so the assets sit next to the bundle

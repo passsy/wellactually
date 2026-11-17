@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { fileURLToPath } from "node:url";
 import { reviewerAccess, runWorkerPool, claudeWorkerArgs } from "../../../skills/review/scripts/reviewer-runtime.ts";
-import { claimReviewSession, getReviewSession } from "../../findings/queues.mts";
+import { claimReviewSession, getReviewSession } from "../../review-inbox/queues.mts";
 
 describe("reviewer capability boundary", () => {
   test.each(["codex", "claude"] as const)("%s pool recovers crashes and never replays safeguard blocks", async (provider) => {
@@ -18,7 +18,7 @@ describe("reviewer capability boundary", () => {
     fs.writeFileSync(path.join(dir, "jobs.json"), JSON.stringify([{ id: "one", queue: "all", set: null, parts: [], principles: [] }]));
     fs.mkdirSync(path.join(dir, "agents/reviewer-one"), { recursive: true });
     fs.writeFileSync(path.join(dir, "agents/reviewer-one/INSTRUCTIONS.md"), "Test worker");
-    const module = fileURLToPath(new URL("../../findings/queues.mts", import.meta.url));
+    const module = fileURLToPath(new URL("../../review-inbox/queues.mts", import.meta.url));
     const stub = `#!${process.execPath}\nimport fs from 'node:fs';import {claimReviewWork,completeReviewWork} from ${JSON.stringify(module)};let args=JSON.parse(fs.readFileSync('tracking.json'));args={...args,queue:'all',worker:'one'};const attempt=fs.existsSync('attempt')?Number(fs.readFileSync('attempt','utf8'))+1:1;fs.writeFileSync('attempt',String(attempt));let next=claimReviewWork(args,args.repo);if(attempt===1){console.log(JSON.stringify({type:'error',message:${JSON.stringify(rejection ?? "Temporary provider connection lost")}}));process.exit(1);}while(next.state==='claimed'){completeReviewWork({...args,item:next.work.id,claim:next.work.claim.token,result:{findings:[],investigation:{status:'complete',reason:'Source traced',questions:[{question:'Contract?',answer:'Satisfied',evidence:['file:1']}],limits:[]}}},args.repo);next=claimReviewWork(args,args.repo);}console.log(JSON.stringify({type:'item.completed',item:{type:'mcp_tool_call',tool:'claim_review_work',status:'completed',result:{content:[{type:'text',text:JSON.stringify(next)}]}}}));\n`;
     const claudeTail = `console.log(JSON.stringify({type:'assistant',message:{content:[{type:'tool_use',id:'claim',name:'mcp__review__claim_review_work',input:{}}]}}));console.log(JSON.stringify({type:'user',message:{content:[{type:'tool_result',tool_use_id:'claim',content:JSON.stringify(next)}]}}));console.log(JSON.stringify({type:'result',is_error:false,usage:{output_tokens:10}}));`;
     const executable = provider === "claude" ? stub.slice(0, stub.indexOf("console.log(JSON.stringify({type:'item.completed'")) + claudeTail : stub;

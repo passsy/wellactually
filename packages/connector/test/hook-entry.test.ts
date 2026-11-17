@@ -19,7 +19,7 @@ test("the independent hook bundle emits advice and logs without importing review
   writeLockfile({syncedAt:null,entries:[{id:"local/no-enums",version:1,hash,enabled:true}]});
   const outfile=path.join(root,"wellactually-hook.mjs");
   const built=await build({entryPoints:[path.resolve(import.meta.dirname,"../src/hook-entry.ts")],outfile,bundle:true,platform:"node",format:"esm",external:["esbuild"],metafile:true,banner:{js:'import {createRequire as __createRequire} from "node:module";const require=__createRequire(import.meta.url);'}});
-  expect(Object.keys(built.metafile!.inputs).some(p=>p.includes("/findings/")||p.endsWith("/mcp.ts"))).toBe(false);
+  expect(Object.keys(built.metafile!.inputs).some(p=>p.includes("/review-inbox/")||p.endsWith("/mcp.ts"))).toBe(false);
   const payload=JSON.stringify({hook_event_name:"UserPromptSubmit",session_id:"hook-smoke",cwd:root,prompt:"add enum",agent:"codex"});
   const result=await new Promise<{stdout:string;stderr:string}>((resolve,reject)=>{
     const child=execFile(process.execPath,[outfile],{env:{...process.env,WELLACTUALLY_WORKERS:"0",WELLACTUALLY_GIT:"0"}},(error,stdout,stderr)=>error?reject(error):resolve({stdout,stderr}));child.stdin!.end(payload);

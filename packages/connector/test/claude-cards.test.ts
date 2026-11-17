@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { createMcpServer } from "../../findings/serve/mcp.mts";
-import { REVIEW_CARD } from "../../findings/tools.mts";
+import { createMcpServer } from "../../review-inbox/serve/mcp.mts";
+import { REVIEW_CARD } from "../../review-inbox/tools.mts";
 
 afterEach(() => vi.unstubAllEnvs());
 

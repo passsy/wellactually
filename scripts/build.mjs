@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { buildRuntime } from "./build-runtime.mjs";
 
-await import("../packages/findings/web/build.mjs");
+await import("../packages/review-inbox/web/build.mjs");
 const root = path.resolve(import.meta.dirname, "..");
 const { version } = JSON.parse(fs.readFileSync(path.join(root, "packages/connector/package.json"), "utf8"));
 await buildRuntime(root, root, version);

@@ -23,7 +23,7 @@ const write = (file, content) => {
 };
 const json = (file, value) => write(file, `${JSON.stringify(value, null, 2)}\n`);
 
-await import("../packages/findings/web/build.mjs");
+await import("../packages/review-inbox/web/build.mjs");
 await buildRuntime(root, stage, version);
 
 for (const name of fs.readdirSync(path.join(root, "skills"))) {

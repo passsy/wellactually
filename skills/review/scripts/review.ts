@@ -12,8 +12,8 @@ import { type Lockfile, readCached, readConfig, readLockfile, runBoard } from ".
 import { findProjectRoot, toPosix } from "../../../packages/board/src/files.ts";
 import { collectInput, type CollectedInput, type InputOptions } from "./inputs.ts";
 import { switchedOff } from "../../../packages/board/src/switches.ts";
-import { claimReviewSession, getReviewSession, verificationProblems } from "../../../packages/findings/queues.mts";
-import { listFindingRecords } from "../../../packages/findings/crud.mts";
+import { claimReviewSession, getReviewSession, verificationProblems } from "../../../packages/review-inbox/queues.mts";
+import { listFindingRecords } from "../../../packages/review-inbox/crud.mts";
 
 /**
  * What a review compares: `base` against `head`, or against the working tree

@@ -3,8 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { reviewerAccess, proofReferences } from "../../../skills/review/scripts/reviewer-runtime.ts";
-import { createFindingRecord } from "../../findings/crud.mts";
-import { readSource } from "../../findings/api.mts";
+import { createFindingRecord } from "../../review-inbox/crud.mts";
+import { readSource } from "../../review-inbox/api.mts";
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root,{recursive:true,force:true})));
@@ -40,7 +40,7 @@ test("missing files and raw working dumps fail before recording test proof",()=>
 test("the proof-worker MCP persists readable references on records and completed queue results",async()=>{
   const {Client}=await import("@modelcontextprotocol/sdk/client/index.js");
   const {StdioClientTransport}=await import("@modelcontextprotocol/sdk/client/stdio.js");
-  const {claimReviewSession,claimReviewWork,completeReviewWork,beginVerification,getReviewSession}=await import("../../findings/queues.mts");
+  const {claimReviewSession,claimReviewWork,completeReviewWork,beginVerification,getReviewSession}=await import("../../review-inbox/queues.mts");
   const {fileURLToPath}=await import("node:url");
   const {source,dir}=fixture(),target="gateway",run="run";
   fs.writeFileSync(path.join(source,"code.ts"),"broken();\n");
@@ -60,7 +60,7 @@ test("the proof-worker MCP persists readable references on records and completed
     return JSON.parse((result.content as {text:string}[])[0]!.text);
   };
   try{
-    await client.connect(new StdioClientTransport({command:process.execPath,args:[fileURLToPath(new URL("../../../skills/review/scripts/main.ts",import.meta.url)),"--verification-server",dir,"--job","proof"],env:{PATH:process.env.PATH!,WELLACTUALLY_FINDINGS_HOME:process.env.WELLACTUALLY_FINDINGS_HOME!}}));
+    await client.connect(new StdioClientTransport({command:process.execPath,args:[fileURLToPath(new URL("../../../skills/review/scripts/main.ts",import.meta.url)),"--verification-server",dir,"--job","proof"],env:{PATH:process.env.PATH!,WELLACTUALLY_REVIEW_INBOX_HOME:process.env.WELLACTUALLY_REVIEW_INBOX_HOME!}}));
     const tools=await client.listTools();
     const schema=tools.tools.find(t=>t.name==="update_finding")!.inputSchema as any;
     expect(schema.properties.patch.properties.assessments.items.required).toEqual(expect.arrayContaining(["author","authorType","conclusion","reason"]));

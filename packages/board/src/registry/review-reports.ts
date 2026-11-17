@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { boardHome, readConfig } from "../board.ts";
-import { readRegistry } from "../../../findings/store/registry.mts";
-import { targetPaths } from "../../../findings/store/paths.mts";
-import { locked } from "../../../findings/store/lock.mts";
-import { getReviewSession, noteSuggestionDelivery, type ReviewSession } from "../../../findings/queues.mts";
-import { listFindingRecords } from "../../../findings/crud.mts";
-import type { RecordBase } from "../../../findings/model/records.mts";
+import { readRegistry } from "../../../review-inbox/store/registry.mts";
+import { targetPaths } from "../../../review-inbox/store/paths.mts";
+import { locked } from "../../../review-inbox/store/lock.mts";
+import { getReviewSession, noteSuggestionDelivery, type ReviewSession } from "../../../review-inbox/queues.mts";
+import { listFindingRecords } from "../../../review-inbox/crud.mts";
+import type { RecordBase } from "../../../review-inbox/model/records.mts";
 import { sendReviewEvents } from "./client.ts";
 import type { ReviewEvent, ReviewPriority, RejectedReviewEvent } from "./review-events.ts";
 

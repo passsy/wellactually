@@ -36,8 +36,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
-      - run: npm run web:test --workspace @wellactually/findings
-      - run: npm run web:typecheck --workspace @wellactually/findings
+      - run: npm run web:test --workspace @wellactually/review-inbox
+      - run: npm run web:typecheck --workspace @wellactually/review-inbox
       - name: Build the requested version without changing source manifests
         env:
           RELEASE_VERSION: ${{ inputs.version }}

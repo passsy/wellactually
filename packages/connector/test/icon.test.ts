@@ -1,6 +1,6 @@
 import { crc32, inflateSync } from "node:zlib";
 import { expect, test } from "vitest";
-import { appIcon } from "../../findings/serve/icon.mts";
+import { appIcon } from "../../review-inbox/serve/icon.mts";
 
 test("Node 20-compatible icon encoder produces standard PNG checksums and complete RGBA data", () => {
   const image = appIcon(32);

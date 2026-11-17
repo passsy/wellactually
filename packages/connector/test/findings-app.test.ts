@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { expect, test } from "vitest";
-import { reviewPort, REVIEW_PORTS } from "../../findings/serve/port.mts";
-import { REVIEW_CARD } from "../../findings/tools.mts";
+import { reviewPort, REVIEW_PORTS } from "../../review-inbox/serve/port.mts";
+import { REVIEW_CARD } from "../../review-inbox/tools.mts";
 
 async function freePort(): Promise<number> {
   const server = createServer();
