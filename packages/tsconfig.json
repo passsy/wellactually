@@ -15,5 +15,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["detector-sdk/src", "core/src", "core/test", "cli/src", "cli/test", "findings/**/*.mts", "../skills/review/scripts"]
+  "include": ["detector-sdk/src", "core/src", "core/test", "board/src", "board/test", "connector/src", "connector/test", "findings/**/*.mts", "../skills/review/scripts"]
 }

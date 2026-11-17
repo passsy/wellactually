@@ -1,0 +1,10 @@
+{
+  "name": "@wellactually/board",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The advisory board on this machine: which principles run, their detectors on worker threads, and syncing with the registry",
+  "dependencies": {
+    "@wellactually/core": "0.1.0"
+  }
+}

@@ -26,8 +26,8 @@ update("package.json", (pkg) => {
   pkg.version = version;
   pkg.dependencies["wellactually-runtime"] = `npm:wellactually@${version}`;
 });
-update("packages/cli/package.json", (cli) => (cli.version = version));
-update("package-lock.json", (lock) => (lock.packages["packages/cli"].version = version));
+update("packages/connector/package.json", (cli) => (cli.version = version));
+update("package-lock.json", (lock) => (lock.packages["packages/connector"].version = version));
 update(".claude-plugin/plugin.json", (plugin) => (plugin.version = version));
 update(".claude-plugin/marketplace.json", (marketplace) => {
   marketplace.metadata.version = version;

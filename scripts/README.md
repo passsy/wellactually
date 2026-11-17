@@ -2,7 +2,7 @@
 
 These scripts build, test and stage the current packages. Run npm commands from
 the repository root. Publishing procedures live in
-[the plugin package](../packages/cli/PUBLISHING.md) and
+[the plugin package](../packages/connector/PUBLISHING.md) and
 [the detector SDK package](../packages/detector-sdk/PUBLISHING.md).
 
 | Script | Caller or maintainer use | Purpose |

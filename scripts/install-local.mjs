@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Prepare an immutable local copy of exactly the package a registry release uses. */
 export function prepareLocalPackage({ destination, version, build = true } = {}) {
-  const base = JSON.parse(fs.readFileSync(path.join(root, "packages/cli/package.json"), "utf8")).version;
+  const base = JSON.parse(fs.readFileSync(path.join(root, "packages/connector/package.json"), "utf8")).version;
   version ??= `${base}${base.includes("-") ? "." : "-"}local.${Date.now()}`;
   destination ??= path.join(os.homedir(), ".wellactually", "local-marketplace");
   if (!/^\d+\.\d+\.\d+-[0-9A-Za-z.-]+$/.test(version) || !/(?:[.-])local(?:[.-]|$)/.test(version)) throw new Error("Local installs require a unique local prerelease version");

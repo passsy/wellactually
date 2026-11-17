@@ -6,7 +6,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { zodSchema } from "../../../packages/findings/zod-schema.mts";
 import { toolNamed } from "../../../packages/findings/tools.mts";
-import { readCached, readLockfile } from "../../../packages/cli/src/board/board.ts";
+import { readCached, readLockfile } from "../../../packages/board/src/board.ts";
 import { createFindingRecord, getFindingRecord, updateFindingRecord, listFindingRecords, createOccurrence, getOccurrence, listOccurrences, updateOccurrence, claimReviewWork, completeReviewWork, getReviewSession, blockReviewWork } from "../../../packages/findings/index.mts";
 
 const json = (file: string): any => JSON.parse(fs.readFileSync(file, "utf8"));

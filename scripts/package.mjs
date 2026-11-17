@@ -10,7 +10,7 @@ import { syncSkills } from "./sync-skills.mjs";
 const root = path.resolve(import.meta.dirname, "..");
 const { values } = parseArgs({ options: { version: { type: "string" }, local: { type: "boolean" }, out: { type: "string" } } });
 const readJson = (file) => JSON.parse(fs.readFileSync(path.join(root, file), "utf8"));
-const version = values.version ?? readJson("packages/cli/package.json").version;
+const version = values.version ?? readJson("packages/connector/package.json").version;
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error("Expected an exact release or prerelease version");
 const artifacts = values.out ? path.resolve(values.out) : path.join(root, ".artifacts");
 const stage = path.join(artifacts, "package");
@@ -45,9 +45,9 @@ write("README.md", fs.readFileSync(path.join(root, "README.md"), "utf8")
   .replace(/^.*<img[^\n]*#gh-dark-mode-only[^\n]*>\r?\n/gm, "")
   .replaceAll("#gh-light-mode-only", "")
   .replaceAll("compat/README.md", "https://github.com/passsy/wellactually/blob/main/compat/README.md")
-  .replaceAll("packages/cli/PUBLISHING.md", "PUBLISHING.md")
+  .replaceAll("packages/connector/PUBLISHING.md", "PUBLISHING.md")
   .replaceAll("packages/detector-sdk/PUBLISHING.md", "https://github.com/passsy/wellactually/blob/main/packages/detector-sdk/PUBLISHING.md"));
-write("PUBLISHING.md", fs.readFileSync(path.join(root, "packages/cli/PUBLISHING.md"), "utf8")
+write("PUBLISHING.md", fs.readFileSync(path.join(root, "packages/connector/PUBLISHING.md"), "utf8")
   .replaceAll("../detector-sdk/PUBLISHING.md", "https://github.com/passsy/wellactually/blob/main/packages/detector-sdk/PUBLISHING.md"));
 for (const file of ["LICENSE", "hooks/hooks.json", ".codex-plugin/mcp.json"]) {
   write(file, fs.readFileSync(path.join(root, file)));

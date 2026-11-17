@@ -13,6 +13,6 @@ New pi installations use `pi install npm:wellactually` and load the npm package'
 own extension entry point. They do not use this folder.
 
 During a plugin promotion, `scripts/version.mjs` updates the dependency pin.
-The [plugin publishing guide](../packages/cli/PUBLISHING.md) describes that flow.
+The [plugin publishing guide](../packages/connector/PUBLISHING.md) describes that flow.
 `scripts/test-package.mjs` checks this adapter's contract along with the
 OpenCode Git adapters in `opencode/`.

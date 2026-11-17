@@ -1,7 +1,7 @@
 /** The Well Actually advisory board as the Findings UI/tool surface reads it. */
 
-import { readCached, readLockfile } from "../cli/src/board/board.ts";
-import { switchedOff } from "../cli/src/board/switches.ts";
+import { readCached, readLockfile } from "../board/src/board.ts";
+import { switchedOff } from "../board/src/switches.ts";
 
 export interface RuleView {
   id: string;

@@ -2,8 +2,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runReviewer, runWorkerPool, serveReviewer, serveVerification } from "./reviewer-runtime.ts";
 import { parseArgs } from "node:util";
-import { readLockfile, readConfig } from "../../../packages/cli/src/board/board.ts";
-import { sync } from "../../../packages/cli/src/registry/client.ts";
+import { readLockfile, readConfig } from "../../../packages/board/src/board.ts";
+import { sync } from "../../../packages/board/src/registry/client.ts";
 import { setupVerificationAgents, buildSets, checkReview, loadPrinciples, parseBudget, planReview, planInputReview, renderPlan, renderRoute, renderSets, routeReview, setupAgents } from "./review.ts";
 
 async function main(): Promise<number> {
