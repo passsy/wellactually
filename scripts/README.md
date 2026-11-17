@@ -1,22 +1,28 @@
 # Build and release scripts
 
-- `build-runtime.mjs` builds the shared runtime layout for development and npm.
-- `build.mjs` writes ignored local runtime/skill-launcher outputs.
-- `package.mjs` builds a dependency-free npm archive under ignored `.artifacts/`.
-- `test-package.mjs` installs that archive outside the checkout with scripts
-  disabled and checks host entrypoints, MCP, UI assets and Git adapter contracts.
-- `sync-skills.mjs` generates the namespaced OpenCode/pi skills inside the archive.
-- `install-local.mjs` prepares a private local tarball/catalog; `--host` also installs it in a selected host.
-- `publish-package.mjs` stages the tested archive from the explicit release job.
-- `version.mjs` promotes a published version in manifests and compatibility pins.
-  Refresh package-lock.json afterwards. Never point installers at an unpublished version.
-- `release-sdk.mjs` builds and packs the independently versioned detector SDK.
-- `bundle-notices.mjs` collects complete licenses/NOTICEs of bundled SDK dependencies.
-- `test-sdk-package.mjs` installs that archive in a clean author project, checks
-  its public declarations and runs v3/v4 detector tests.
-- `.github/workflows/publish-sdk.yaml` is the separate Actions release; `publish-package.mjs --sdk`
-  stages its tested artifact for maintainer approval.
-- `embed-sdk.mjs` embeds SDK source for detector builds; `freeze-api.mjs` freezes
-  detector API versions.
+These scripts build, test and stage the current packages. Run npm commands from
+the repository root. Publishing procedures live in
+[the plugin package](../packages/cli/PUBLISHING.md) and
+[the detector SDK package](../packages/detector-sdk/PUBLISHING.md).
 
-Generated bundles and mirrored skills are never committed to Git.
+| Script | Caller or maintainer use | Purpose |
+| --- | --- | --- |
+| `build.mjs` | `npm run build`; CI | Builds development runtime and review-skill launchers. |
+| `build-runtime.mjs` | `build.mjs`, `package.mjs` | Shared runtime build for development and npm archives. |
+| `package.mjs` | `npm run package`; CI; local installer | Builds the prebuilt plugin archive and candidate catalogs. |
+| `test-package.mjs` | `npm run test:package`; CI | Installs and checks packed host entry points, MCP, UI assets and Git adapters. |
+| `install-local.mjs` | `npm run package:local`, `npm run install:local`; CI | Builds a private local plugin package; `--host` also installs it. |
+| `sync-skills.mjs` | `package.mjs`; generation tests | Creates the OpenCode/pi skill layout in the archive. |
+| `release-sdk.mjs` | `npm run package:sdk`; CI | Builds and packs the detector SDK; it does not publish it. |
+| `test-sdk-package.mjs` | `npm run test:package:sdk`; CI | Checks installed SDK declarations, bundled notices and v3/v4 detector tests. |
+| `bundle-notices.mjs` | `release-sdk.mjs`; notice tests | Collects licenses and NOTICE files of bundled dependencies. |
+| `publish-package.mjs` | `publish.yaml`, `publish-sdk.yaml` | Stages the tested plugin or SDK archive for human npm approval. |
+| `stage-package.mjs` | `publish-package.mjs`; publication tests | Validates npm's staged-package receipt and expected artifact identity. |
+| `verify-package.mjs` | `publish-package.mjs`; post-approval maintainer verification; tests | Verifies public npm metadata and tarball integrity. |
+| `version.mjs` | Maintainer plugin promotion | Updates exact plugin versions and npm dependency pins after verification. |
+| `embed-sdk.mjs` | Maintainer after detector SDK source changes | Refreshes embedded SDK source; a test detects stale output. |
+| `freeze-api.mjs` | Maintainer introducing a new detector API version | Records immutable API fixtures; refuses to overwrite an existing version. |
+
+Build output and generated skill layouts are ignored. The embedded SDK source
+and frozen detector API compatibility fixtures are tracked and checked by tests.
+Do not regenerate frozen fixtures to make an incompatible API change pass.
