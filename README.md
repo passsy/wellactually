@@ -117,7 +117,7 @@ The code that does this is public: [`packages/core/src/detector/sandbox.ts`](pac
 ## What leaves your machine
 
 - How often each principle fired: a day, a hash and a count.
-- A rating, when your agent gives one: the principle's hash and `up`, `down` or `not_applicable`.
+- A rating, when your agent gives one: the principle's hash, the outcome (`not_relevant`, `adjust`, `keep`, `noted`, `unclear` or `wrong`), and the random id of a rating it replaces.
 - Review selections, suggestions and completed fixes: the principle and pinned
   revision, event time, an opaque deduplication ID, and priority for suggestions
   and fixes. Reviews do not send helpfulness ratings.

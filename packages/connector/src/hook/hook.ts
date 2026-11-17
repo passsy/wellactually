@@ -64,7 +64,7 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
     }
     return note("forgot what this session was shown");
   }
-  if (event === "PreToolUse" && payload.tool_name?.endsWith("rate_principle")) {
+  if (event === "PreToolUse" && /rate_principle(?:_relevant|_not_relevant)?$/.test(payload.tool_name ?? "")) {
     if (payload.tool_use_id && payload.transcript_path) {
       await noteToolUse(payload.tool_use_id, payload.transcript_path);
     }

@@ -51,5 +51,5 @@ If context grows too large, finish your current item and report that a replaceme
 Keep all finding descriptions and coverage in MCP.
 Reply with done and the number of completed items.
 
-Do not call rate_principle or rate_review_principle.
+Do not call rate_principle_relevant, rate_principle_not_relevant or rate_review_principle.
 Aggregation owns suggestion accounting; do not send separate review ratings.

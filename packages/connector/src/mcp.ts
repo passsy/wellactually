@@ -18,7 +18,7 @@ import { readCached, readLockfile, readConfig, writeConfig } from "../../board/s
 import { switchedOff } from "../../board/src/switches.ts";
 import { switchPrinciple } from "../../board/src/switches.ts";
 import { raterOf } from "../../board/src/registry/rater.ts";
-import { ratePrinciple, RegistryError, type DraftResult } from "../../board/src/registry/client.ts";
+import { ratePrinciple, RegistryError, type DraftResult, type Outcome } from "../../board/src/registry/client.ts";
 import {
   ApprovalError,
   changeVisibility,
@@ -86,7 +86,7 @@ A principle is private until it is made public: publish_draft takes visibility p
 
 Reading: show reads a principle by id, bare name or link. Use it to follow a link from one principle's advice to another.
 
-Rating: when advice in an <wellactually> block was shown to you, tell its expert how it went with rate_principle, once per principle and task.
+Rating: when advice in an <wellactually> block was shown to you, tell its expert what it did with rate_principle_relevant, or with rate_principle_not_relevant when it fired on something it is not about, once per principle and task.
 It is feedback to the author, not part of your task: leave it out of your answer, and out of your report when you are a subagent.`;
 
 /** For tools that only look something up in the registry, which Codex then calls without asking its reviewer. */
@@ -343,31 +343,57 @@ export async function serveMcp(): Promise<void> {
     async ({ id }) => text(renderHistory(await principleHistory(id))),
   );
 
+  // Which tool the agent picks says whether the advice was about its work, so neither has a field that depends on another.
+  const rateInput = {
+    id: z.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
+    replaces: z
+      .string()
+      .optional()
+      .describe("The rating id an earlier rating of this principle returned, to change that rating instead of adding one. Works for 24 hours."),
+  };
+  const privacy =
+    "Sends only the principle revision and the outcome, nothing about the code or the conversation, to the registry the user signed in to, and only while the user has reporting switched on (set_stats). Returns a rating id: pass it as replaces to change this rating within 24 hours, for example from noted to adjust once the work exists.";
+  // Without annotations Codex treats a tool as destructive and open world and asks
+  // its reviewer, which sees no request from the user and turns the rating down.
+  // A rating reaches only the registry this plugin belongs to and changes nothing on the machine.
+  const rateAnnotations = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
+  const rate = async (id: string, outcome: Outcome, replaces: string | undefined, meta: Parameters<typeof raterOf>[1]) => {
+    try {
+      return text(await ratePrinciple(id, outcome, replaces, await raterOf(server.server.getClientVersion()?.name, meta)));
+    } catch (error) {
+      if (error instanceof RegistryError) {
+        // A rating is a courtesy. Failing to send one must not derail the agent's task.
+        return text(`The rating was not recorded: ${error.message} Carry on with your task.`);
+      }
+      throw error;
+    }
+  };
+
   server.registerTool(
-    "rate_principle",
+    "rate_principle_relevant",
     {
       description:
-        "Tell the author of a principle how its advice went, after it was shown to you in an <wellactually> block. Rate once per principle and task, when you know: after you applied the advice, or decided not to. up: the advice was right here and changed what you did for the better. down: the detector matched the right thing, but the advice was wrong, unclear or made the result worse. not_applicable: the detector fired on something the advice is not about, a false positive. Sends only the principle revision, the rating and its injection context. Nothing about the code or the conversation. It is sent to the registry the user signed in to, only while the user has reporting switched on (set_stats), and otherwise nothing leaves the machine.",
+        "Tell the author of a principle what its advice did, after it was shown to you in an <wellactually> block. Use it when the advice is about your work: it would matter if your work were worse, even when your work already complies. Rate once per principle and task. adjust: because of the advice you change, or will change, what you do. keep: your work is fine as it is, it already complies or you leave it on purpose. noted: the work the advice is about has not happened yet, such as commit advice before the commit; rate again with replaces once it exists. unclear: you cannot tell what the advice wants. wrong: following the advice would make the result worse. " +
+        privacy,
       inputSchema: {
-        id: z.string().describe('The id from the <principle id="..."> tag, e.g. passsy/avoid-late'),
-        rating: z.enum(["up", "down", "not_applicable"]).describe("up, down or not_applicable"),
+        ...rateInput,
+        effect: z.enum(["adjust", "keep", "noted", "unclear", "wrong"]).describe("adjust, keep, noted, unclear or wrong"),
       },
-      // Without annotations Codex treats a tool as destructive and open world and asks
-      // its reviewer, which sees no request from the user and turns the rating down.
-      // A rating reaches only the registry this plugin belongs to and changes nothing on the machine.
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: rateAnnotations,
     },
-    async ({ id, rating }, extra) => {
-      try {
-        return text(await ratePrinciple(id, rating, await raterOf(server.server.getClientVersion()?.name, extra._meta)));
-      } catch (error) {
-        if (error instanceof RegistryError) {
-          // A rating is a courtesy. Failing to send one must not derail the agent's task.
-          return text(`The rating was not recorded: ${error.message} Carry on with your task.`);
-        }
-        throw error;
-      }
+    async ({ id, effect, replaces }, extra) => rate(id, effect, replaces, extra._meta),
+  );
+
+  server.registerTool(
+    "rate_principle_not_relevant",
+    {
+      description:
+        "Tell the author of a principle that its detector fired on something its advice is not about, after it was shown to you in an <wellactually> block: a word that means something else here, a topic mentioned in passing, text you are not writing. Not for advice that applies to your work when your work already complies: that is rate_principle_relevant with keep. Where a file lives does not matter; only a scope the advice itself names does. Rate once per principle and task. " +
+        privacy,
+      inputSchema: rateInput,
+      annotations: rateAnnotations,
     },
+    async ({ id, replaces }, extra) => rate(id, "not_relevant", replaces, extra._meta),
   );
 
   const switchInput = {
@@ -393,7 +419,7 @@ export async function serveMcp(): Promise<void> {
     "disable_principle",
     {
       description:
-        "Switch a principle off, for this project or everywhere on this machine. Use it when the user asks for it, for instance because a principle does not fit a codebase. Do not use it on your own to get rid of advice you were just shown: say that the advice does not fit, rate it not_applicable, and let the user decide. Takes effect with the next edit.",
+        "Switch a principle off, for this project or everywhere on this machine. Use it when the user asks for it, for instance because a principle does not fit a codebase. Do not use it on your own to get rid of advice you were just shown: say that the advice does not fit, rate it, and let the user decide. Takes effect with the next edit.",
       inputSchema: switchInput,
     },
     switchTool(false),

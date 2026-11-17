@@ -9,7 +9,7 @@ For a session, answer four questions in this order, since each one needs the one
 1. Is the plugin installed and on in the agent the session ran in?
 2. Did its hooks run in that session?
 3. Did a detector fire, and did its advice reach the agent?
-4. Did the agent rate that advice with `rate_principle`?
+4. Did the agent rate that advice with `rate_principle_relevant` or `rate_principle_not_relevant`?
 
 Where one of them did not happen, say why, with the line of the file that shows it.
 When the user asks why the agent does not rate, and advice did reach it, setup is not the cause: go to the fourth question.
@@ -44,12 +44,14 @@ They are in `~/.wellactually`, or in `$WELLACTUALLY_HOME` when that is set.
 
 Advice starts with `<wellactually>` on a line of its own and ends with `</wellactually>`.
 In a JSON line the newline is escaped, so search for `<wellactually>\n` there.
-Each principle in it is `<principle id="owner/name" ...>`, and every complete block ends by asking the agent to rate with `rate_principle`.
+Each principle in it is `<principle id="owner/name" ...>`, and every complete block ends by asking the agent to rate it.
 A block without its closing tag was cut short by the agent, and the model did not read the rest.
 
-A rating is a call of the MCP tool whose name ends in `rate_principle`, with an `id` and a `rating` of `up`, `down` or `not_applicable`.
-The server answers `Recorded <rating> for <id>@<version>` when it took the rating, and says why when it did not.
-The word `rate_principle` is in every block of advice and in the agent's list of tools, so a file that contains it has not necessarily rated: search for the call markers below, or for the server's `Recorded` answer.
+A rating is a call of an MCP tool whose name ends in `rate_principle_relevant`, with an `id` and an `effect` of `adjust`, `keep`, `noted`, `unclear` or `wrong`, or in `rate_principle_not_relevant`, with an `id`.
+Either may carry `replaces`, the rating id of an earlier rating it changes.
+Sessions from plugins before 0.11 call `rate_principle`, with a `rating` of `up`, `down` or `not_applicable`.
+The server answers `Recorded <outcome> for <id>@<version>` when it took the rating, with a rating id, and says why when it did not.
+The tool names are in every block of advice and in the agent's list of tools, so a file that contains them has not necessarily rated: search for the call markers below, or for the server's `Recorded` answer.
 
 ## Claude Code
 
@@ -61,7 +63,7 @@ The word `rate_principle` is in every block of advice and in the agent's list of
 - Hook runs: attachments of `"type":"hook_success"` with a `command` that names `wellactually`.
   Other `hook_` types, or a non-zero `exitCode`, are failed runs, with the error in `stderr`.
 - Advice: attachments of `"type":"hook_additional_context"`, with the text in `attachment.content`.
-- Ratings: `tool_use` parts with `"name":"mcp__plugin_wellactually_wellactually__rate_principle"`, answered by the `tool_result` with the same `tool_use_id`.
+- Ratings: `tool_use` parts whose `name` starts with `mcp__plugin_wellactually_wellactually__rate_principle`, answered by the `tool_result` with the same `tool_use_id`.
 
 ## Codex
 
@@ -78,7 +80,7 @@ The word `rate_principle` is in every block of advice and in the agent's list of
   The plugin was loaded when the skills Codex lists name a folder `.../wellactually/<version>/skills`.
 - Hook runs: Codex does not record them, so the hook log is the only evidence.
 - Advice: `response_item` lines with `"role":"developer"` whose text starts with `<wellactually>`.
-- Ratings: `event_msg` lines with an `McpToolCall` item with `"tool":"rate_principle"`, with its `arguments` and the server's `result`.
+- Ratings: `event_msg` lines with an `McpToolCall` item whose `tool` starts with `rate_principle`, with its `arguments` and the server's `result`.
   Codex records that item also when the agent called the tool from a script.
   Older versions record only a `function_call` named after the tool, answered by the `function_call_output` with the same `call_id`.
 
@@ -95,8 +97,8 @@ The word `rate_principle` is in every block of advice and in the agent's list of
   Session ids start with `ses_`.
 - Hook runs: OpenCode does not record them, so the hook log is the only evidence.
 - Advice: in `synthetic` and `system` messages, and in what a tool answered, which is in an `assistant` message's `content` parts, so search `data` for `<wellactually>`.
-- Ratings: a tool part named `rate_principle`, with its `input` and the answer in its `state`.
-  In code mode the agent calls it from a script, as `tools.wellactually.rate_principle({ id: "...", rating: "up" })` in `state.input.code`, and the server's answer `Recorded ...` is in the script's result.
+- Ratings: a tool part whose name starts with `rate_principle`, with its `input` and the answer in its `state`.
+  In code mode the agent calls it from a script, as `tools.wellactually.rate_principle_relevant({ id: "...", effect: "keep" })` in `state.input.code`, and the server's answer `Recorded ...` is in the script's result.
   A script that only searches the tools for it is no rating.
 
 ## pi
@@ -120,12 +122,12 @@ pi keeps its sessions in `~/.pi`, and the hook log names a session's file under 
 - No line in the hook log for a session whose conversation shows advice or hook runs: the log is off with `WELLACTUALLY_HOOK_LOG=0`, or the hooks wrote to another `WELLACTUALLY_HOME`.
 
 Ratings are up to the agent.
-It is asked to rate once it knows how the advice went, and agents often leave it out even when the advice helped.
+It is asked to rate once per principle and task, and agents often leave it out even when the advice helped.
 Advice without a rating is normal, unless one of these explains it:
 
 - All of it came from principles whose id starts with `local/`, which ask for no rating.
 - The advice was cut short before it asked to rate.
-- `rate_principle` was not among the agent's tools, because the plugin's MCP server did not start.
+- The rating tools were not among the agent's tools, because the plugin's MCP server did not start.
   Where the agent loads tools on demand, as Codex does, it had to search for the tool first, and the advice tells it so.
 - The server did not record the rating, and its answer says why.
 - `stats` is `false` in `config.json`, so the rating was not sent.

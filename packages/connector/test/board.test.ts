@@ -140,12 +140,14 @@ describe("what the agent is shown", () => {
 
   test("names the rating tool as the agent calls it, with the call for a principle that fired", () => {
     const firings = [{ ctx: file, firings: [{ principle, findings: [{ line: 2 }] }] }];
-    const call = `{ "id": "${principle.id}", "rating": "up" }`;
-    expect(frameEvents(firings, new Set(), 9000, "claude-code").text).toContain('ToolSearch "select:" and that name');
-    expect(frameEvents(firings, new Set(), 9000, "codex").text).toContain("tools.mcp__wellactually__rate_principle");
-    expect(frameEvents(firings, new Set(), 9000, "opencode").text).toContain("tools.wellactually.rate_principle");
-    expect(frameEvents(firings, new Set(), 9000, "pi").text).toContain("Call wellactually_rate_principle with");
-    expect(frameEvents(firings, new Set(), 9000).text).toContain('whose name ends in "rate_principle"');
+    const call = `{ "id": "${principle.id}", "effect": "keep" }`;
+    const claude = frameEvents(firings, new Set(), 9000, "claude-code").text;
+    expect(claude).toContain('mcp__plugin_wellactually_wellactually__rate_principle_relevant (ToolSearch "select:" + name to load)');
+    expect(claude).toContain("mcp__plugin_wellactually_wellactually__rate_principle_not_relevant, same id");
+    expect(frameEvents(firings, new Set(), 9000, "codex").text).toContain("tools.mcp__wellactually__<name>");
+    expect(frameEvents(firings, new Set(), 9000, "opencode").text).toContain("tools.wellactually.<name>");
+    expect(frameEvents(firings, new Set(), 9000, "pi").text).toContain("wellactually_rate_principle_relevant with");
+    expect(frameEvents(firings, new Set(), 9000).text).toContain('the MCP tool ending in "rate_principle_not_relevant"');
     expect(frameEvents(firings, new Set(), 9000).text).toContain(call);
   });
 
@@ -157,7 +159,7 @@ describe("what the agent is shown", () => {
       { ctx: other, firings: [{ principle, findings: [{ line: 2 }] }] },
     ]);
     expect(text.match(/<wellactually>/g)).toHaveLength(1);
-    expect(text.match(/rate_principle/g)).toHaveLength(1);
+    expect(text.match(/rate_principle_relevant/g)).toHaveLength(1);
     expect(text).toContain("write lib/session.dart: ");
     expect(text).toContain("write lib/user.dart: ");
     // The full advice once, the summary after that.
@@ -170,9 +172,11 @@ describe("what the agent is shown", () => {
   test("the longest advice agents are shown in full does fit in full on its own", () => {
     const ctx = fileCtx("write", `packages/${"deeply/nested/".repeat(6)}feature_screen_controller.dart`, `${"x".repeat(200)}\n`);
     const longest = { ...principle, id: "someone-long/a-principle-with-a-long-name", manifest: { ...principle.manifest, title: "T".repeat(120), summary: "S".repeat(200) }, advice: "a".repeat(ADVICE_MAX) };
-    const { full, text } = frameEvents([{ ctx, firings: [{ principle: longest, findings: [{ line: 1, match: "x".repeat(80) }] }] }]);
-    expect(full).toEqual(new Set([longest.hash]));
-    expect(adviceBytes(text)).toBeLessThanOrEqual(ADVICE_BUDGET);
+    for (const agent of [undefined, "claude-code", "codex", "opencode", "opencode-1", "pi"] as const) {
+      const { full, text } = frameEvents([{ ctx, firings: [{ principle: longest, findings: [{ line: 1, match: "x".repeat(80) }] }] }], new Set(), ADVICE_BUDGET, agent);
+      expect(full, agent).toEqual(new Set([longest.hash]));
+      expect(adviceBytes(text)).toBeLessThanOrEqual(ADVICE_BUDGET);
+    }
     expect(adviceLengthWarnings(longest.advice).join()).not.toMatch(/only shown its summary/);
   });
 
