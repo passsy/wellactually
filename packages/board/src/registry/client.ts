@@ -393,15 +393,6 @@ export async function fetchHistory(id: string): Promise<History> {
 /** What an agent reports after a principle's advice: not relevant, or what the advice did to its work. */
 export type Outcome = "not_relevant" | "adjust" | "keep" | "noted" | "unclear" | "wrong";
 
-export async function sendReviewSuggestions(suggestions: { id: string; hash: string; principle: string; day: string }[]): Promise<void> {
-  const response = await call("/api/review-suggestions", { method: "POST", body: { suggestions }, timeoutMs: 10000 });
-  if (!response.ok) throw await failure(response);
-  const result = await response.json() as { stored?: number; duplicates?: number; rejected?: unknown[] };
-  if (result.rejected?.length || typeof result.stored !== "number" || typeof result.duplicates !== "number" || result.stored + result.duplicates !== suggestions.length) {
-    throw new RegistryError("Registry did not acknowledge every aggregated suggestion; report remains pending.");
-  }
-}
-
 export async function sendReviewEvents(events: ReviewEvent[]): Promise<{ rejected: RejectedReviewEvent[] }> {
   const response = await call("/api/review-events", { method: "POST", body: { events }, timeoutMs: 10000 });
   if (!response.ok) throw await failure(response);

@@ -18,7 +18,7 @@ Do not write a local grouping/findings file.
 Return the queue's worker count so the coordinator can run --setup-verifiers and dispatch exactly that many proof workers.
 With zero issues, no proof workers are needed.
 
-Do not call rate_principle_relevant, rate_principle_not_relevant or rate_review_principle.
+Do not call rate_principle_relevant or rate_principle_not_relevant.
 Aggregation owns suggestion accounting; do not send separate review ratings.
 
 Never keep duplicate findings open as a group. Never label a duplicate disproven. The server refuses a merge that would overwrite conflicting human notes or dispositions; keep those findings separate unless their human decisions have explicitly been reconciled.

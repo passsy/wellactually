@@ -111,6 +111,16 @@ describe("reporting after aggregation", () => {
     expect(reviewActivityEvents(session,s.repo,"test",Date.parse(reclosed.updatedAt)+REVIEW_REPORT_MS-1).filter(e=>e.type==="finding_fixed")).toHaveLength(0);
     expect(reviewActivityEvents(session,s.repo,"test",Date.parse(reclosed.updatedAt)+REVIEW_REPORT_MS).filter(e=>e.type==="finding_fixed")).toEqual(fixes);
   });
+  test("reports rejected findings like fixes and never disproven ones", () => {
+    const s = setup(), session = beginVerification({ ...s.args, groups: s.groups }, s.repo);
+    const close = (id: string, reason: "rejected" | "disproven") => { const f = getFindingRecord({repo:s.repo,target:"test",id},s.repo); return updateFindingRecord({repo:s.repo,target:"test",id,expectedRevision:f.revision,patch:{state:"closed",closure:{reason,explanation:reason}}},s.repo); };
+    const rejected = close(s.findings[2]!.id, "rejected");
+    close(s.findings[0]!.id, "disproven");
+    const at = Date.parse(rejected.updatedAt);
+    expect(reviewActivityEvents(session,s.repo,"test",at+REVIEW_REPORT_MS-1).filter(e=>e.type==="finding_rejected")).toHaveLength(0);
+    const events = reviewActivityEvents(session,s.repo,"test",at+REVIEW_REPORT_MS).filter(e=>e.type.startsWith("finding_"));
+    expect(events.map(e=>[e.type,e.principle])).toEqual([["finding_rejected","expert/a"]]);
+  });
   test("legacy proof groups do not link finding resolutions or require aggregation to report fixes", () => {
     const s=setup(), session=getReviewSession(s.args,s.repo);
     // Old proof groups can contain several independently visible findings.

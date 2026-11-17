@@ -23,14 +23,14 @@ function writeLedger(file: string, ledger: Ledger) {
   fs.writeFileSync(temp, JSON.stringify(ledger, null, 2) + "\n", { mode: 0o600 }); fs.renameSync(temp, file);
 }
 
-/** First historical resolution identifies the event; the current episode controls the five-minute delay. */
-function resolutionTimes(f: Pick<RecordBase, "state" | "closure" | "history" | "updatedAt">): { first: string; current: string } | null {
-  if (f.state !== "closed" || f.closure?.reason !== "resolved") return null;
+/** First historical closure with this reason identifies the event; the current episode controls the five-minute delay. */
+function closureTimes(f: Pick<RecordBase, "state" | "closure" | "history" | "updatedAt">, wanted: "resolved" | "rejected"): { first: string; current: string } | null {
+  if (f.state !== "closed" || f.closure?.reason !== wanted) return null;
   let state = "open", reason: unknown, first: string | undefined, current: string | undefined, resolved = false;
   for (const change of f.history) {
     if (change.patch.state !== undefined) state = String(change.patch.state);
     if (change.patch.closure !== undefined) reason = (change.patch.closure as { reason?: string } | null)?.reason;
-    const next = state === "closed" && reason === "resolved";
+    const next = state === "closed" && reason === wanted;
     if (next && !resolved) { first ??= change.at; current = change.at; }
     if (!next) current = undefined;
     resolved = next;
@@ -51,17 +51,20 @@ export function reviewActivityEvents(session: ReviewSession, repo: string, targe
     const priority: ReviewPriority = suggestion.priority ?? (["p0", "p1", "p2", "p3", "p4"] as const).find(level => members.some(f => f.priority === level)) ?? "p3";
     events.push({ id: suggestion.id, type: "review_suggestion", principle: p.id, revision: p.version, occurred_at: session.suggestions!.aggregatedAt, priority });
   }
-  // A human resolves a finding, not a proof-queue group or its occurrence inventory.
+  // A human resolves or rejects a finding, not a proof-queue group or its occurrence inventory.
   // Keep identity stable across reopening, retries, occurrence edits and old grouped sessions.
+  // Disproven and superseded closures are review mechanics, not a verdict on the principle.
   for (const finding of findings.values()) {
-    const times = resolutionTimes(finding);
-    if (!times || at - Date.parse(times.current) < REVIEW_REPORT_MS) continue;
-    const id = hash(`${reviewId}:${finding.id}`);
-    const rules = new Set([...finding.rules.map(r => r.id), ...finding.origins.flatMap(o => o.rule ? [o.rule] : [])].map(r => r.replace(/@\d+$/, "")));
-    for (const rule of rules) {
-      const p = pinned.get(rule);
-      if (!p || p.id.startsWith("local/")) continue;
-      events.push({id,type:"finding_fixed",principle:p.id,revision:p.version,occurred_at:times.first,priority:finding.priority});
+    for (const [reason, type] of [["resolved", "finding_fixed"], ["rejected", "finding_rejected"]] as const) {
+      const times = closureTimes(finding, reason);
+      if (!times || at - Date.parse(times.current) < REVIEW_REPORT_MS) continue;
+      const id = hash(`${reviewId}:${finding.id}`);
+      const rules = new Set([...finding.rules.map(r => r.id), ...finding.origins.flatMap(o => o.rule ? [o.rule] : [])].map(r => r.replace(/@\d+$/, "")));
+      for (const rule of rules) {
+        const p = pinned.get(rule);
+        if (!p || p.id.startsWith("local/")) continue;
+        events.push({id,type,principle:p.id,revision:p.version,occurred_at:times.first,priority:finding.priority});
+      }
     }
   }
   return events;

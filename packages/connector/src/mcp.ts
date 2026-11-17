@@ -139,15 +139,9 @@ export async function serveMcp(): Promise<void> {
   const workspace = currentWorkspace();
   registerFindingsTools(server, workspace);
   server.registerTool("report_review_suggestions", {
-    description: "Upload pending review selections, aggregated suggestions and completed fixes. Upload cycles are at least five minutes apart; fixes also wait at least five minutes after resolution. Call once at review completion; a network failure leaves events pending without blocking the review. Respects stats off.",
+    description: "Upload pending review selections, aggregated suggestions, and fixed or rejected findings. Upload cycles are at least five minutes apart; fixed and rejected findings also wait at least five minutes after closing. Call once at review completion; a network failure leaves events pending without blocking the review. Respects stats off.",
     inputSchema: {}, annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   }, async () => text(JSON.stringify({ reported: await reportPendingReviewSuggestions() })));
-  // Older review instructions may still call this name. Acknowledge without
-  // polluting injection assessments with review helpfulness votes.
-  server.registerTool("rate_review_principle", {
-    description: "Compatibility only: review ratings are retired. Aggregation reports suggestions automatically; this tool sends no rating.",
-    inputSchema: { repo: z.string(), target: z.string(), session: z.string(), id: z.string(), rating: z.enum(["up", "down", "not_applicable"]), reason: z.string() },
-  }, async () => text("Review ratings are retired. Aggregated suggestions are reported automatically; no injection assessment was sent."));
   server.registerTool("list_principles", {
     description: "Current advisory board metadata for review filtering: id, version, short description and tags only. No full advice bodies. Pass the reviewed repo to respect project switches.",
     inputSchema: { repo: z.string() },
