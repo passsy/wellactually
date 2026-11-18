@@ -43,7 +43,7 @@ test("Codex is told apart from Claude Code by the plugin root it sets", () => {
 test("a newer release is announced with the agent's update command, then not again that day", () => {
   found("0.9.30");
   const first = updateNotice("codex", NOW, "0.9.28");
-  expect(first.text).toBe("Well Actually 0.9.30 is available, you have 0.9.28. To update, run `codex plugin marketplace upgrade wellactually` and restart Codex.");
+  expect(first.text).toBe("Well Actually 0.9.30 is available, you have 0.9.28. To update, run `codex plugin marketplace upgrade wellactually`, restart Codex and trust its hooks again in /hooks.");
   expect(updateNotice("codex", NOW + HOUR, "0.9.28").text).toBe("");
   expect(updateNotice("codex", NOW + 25 * HOUR, "0.9.28").text).toContain("0.9.30 is available");
 });
