@@ -35,7 +35,8 @@ export function agentOf(env: NodeJS.ProcessEnv): Agent {
 /** How a user of each agent gets the new release. `folder` is where the plugin is, which OpenCode 1 users pull in. */
 export function howToUpdate(agent: Agent, folder = ""): string {
   if (agent === "codex") {
-    return "run `codex plugin marketplace upgrade wellactually` and restart Codex";
+    // Codex skips an updated plugin's hooks until they are trusted again.
+    return "run `codex plugin marketplace upgrade wellactually`, restart Codex and trust its hooks again in /hooks";
   }
   if (agent === "opencode-1") {
     return `run \`git pull && npm install --ignore-scripts\` in ${folder} and restart OpenCode`;
