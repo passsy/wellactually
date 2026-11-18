@@ -1,7 +1,17 @@
 ---
 name: review
-description: Review changes, files, folders or projects against your Well Actually advisory board, with or without Git
+description: Review changes, files, folders or projects against your Well Actually advisory board, with or without Git. Also use when asked to fix or post existing Well Actually review findings.
 ---
+
+## Choose the workflow
+
+- To fix existing findings, read [Apply review fixes](apply-review-fixes.md) and follow that workflow.
+- To post existing findings to a PR, read [Post findings](post-findings.md) and follow that workflow.
+- To review a new scope, follow the review procedure below.
+
+Fixing or posting existing findings does not start a new review. Preserve the selected review's repository, target and finding IDs.
+
+## Review a scope
 
 Review the named scope against the user's advisory board and independently seek behavioral defects.
 Read the host adapter beside this file (codex.md, claude-code.md, opencode.md or pi.md).

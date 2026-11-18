@@ -6,9 +6,13 @@ committed `dist/` trees or mirrored OpenCode/pi skills.
 
 ## Install paths
 
-Claude Code and Codex retain the `wellactually@wellactually` identity. Their
-shared `.claude-plugin/marketplace.json` entry names an exact published npm
-version. A host fetches ready-to-run files without lifecycle scripts.
+Claude Code and Codex retain the `wellactually@wellactually` identity. Both
+use `.claude-plugin/marketplace.json`, which pins an exact published npm
+version. Keep this as the only marketplace catalog: an
+`.agents/plugins/marketplace.json` would take precedence in Codex and could
+bypass the published package. `scripts/version.mjs` updates the shared catalog
+during promotion. Hosts fetch ready-to-run files without lifecycle scripts;
+the Git source tree has no runnable bundles.
 
 New OpenCode installs use `opencode plugin add wellactually`; pi uses
 `pi install npm:wellactually`. Existing Git sources keep working: `opencode/`

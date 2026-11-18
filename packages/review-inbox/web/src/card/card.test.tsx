@@ -309,7 +309,7 @@ describe("ruling on a finding", () => {
     ]);
   });
 
-  it("hands the accepted findings to the agent in the user's words", async () => {
+  it("hands the accepted findings to the review fix workflow with their store address", async () => {
     const user = userEvent.setup();
     const { host, said } = hostWith(
       status({ findings: [finding({ verdict: "accepted" })] }),
@@ -318,7 +318,10 @@ describe("ruling on a finding", () => {
 
     await user.click(screen.getByRole("button", { name: "Fix 1 accepted" }));
 
-    expect(said).toEqual(["Fix the accepted findings of pr-412: T1"]);
+    expect(said).toHaveLength(1);
+    expect(said[0]).toContain("wellactually:review");
+    expect(said[0]).toContain("apply-review-fixes.md");
+    expect(said[0]).toContain('"repo":"/tmp/inbox_app","target":"pr-412","ids":["T1"]');
     expect(
       screen.getByRole("button", { name: "Asked Claude to fix them" }),
     ).toBeDisabled();
@@ -468,7 +471,8 @@ describe("posting one finding to the PR", () => {
       await screen.findByRole("button", { name: "Asked agent to post" }),
     ).toBeDisabled();
     expect(said).toHaveLength(1);
-    expect(said[0]).toContain("wellactually:post-findings");
+    expect(said[0]).toContain("wellactually:review");
+    expect(said[0]).toContain("post-findings.md");
     expect(said[0]).toContain("trusted conversation instructions");
     expect(said[0]).toContain("ask once for confirmation");
     expect(said[0]).not.toContain("I authorize");
@@ -793,7 +797,8 @@ describe("posting the accepted queue", () => {
     await user.click(screen.getByRole("button",{name:"Post 2 accepted"}));
     expect(await screen.findByRole("button",{name:"Asked agent to post"})).toBeDisabled();
     expect(said).toHaveLength(1);
-    expect(said[0]).toContain("wellactually:post-findings");
+    expect(said[0]).toContain("wellactually:review");
+    expect(said[0]).toContain("post-findings.md");
     expect(said[0]).toContain("trusted conversation instructions");
     expect(said[0]).toContain("ask once for confirmation");
     expect(said[0]).not.toContain("I authorize");

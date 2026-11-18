@@ -1,8 +1,3 @@
----
-name: apply-review-fixes
-description: Fix accepted or explicitly selected Well Actually findings, verify the changes, record fix commits and explicitly close completed findings in the original review store. Use when asked to fix findings or work through an accepted review queue.
----
-
 # Fix findings and record completion
 
 Fix the selected issues and update their saved lifecycle before reporting them done. A commit link records work; it never resolves a finding automatically. Multiple commits can be partial progress.

@@ -83,14 +83,26 @@ test("ships only executable mjs helpers while preserving TypeScript sources", ()
 });
 
 
-test("posting and review skills resolve the same writing guide after namespacing", () => {
-  const {write,read,sync}=fixture();
-  write("skills/review/SKILL.md","---\nname: review\n---\nReview\n");
-  write("skills/review/finding-writing.md","One shared writing standard");
-  write("skills/post-findings/SKILL.md","---\nname: post-findings\n---\nRead [writing](../review/finding-writing.md).\n");
+test("keeps finding workflows inside review without generating separate commands", () => {
+  const { root, write, read, sync } = fixture();
+  const skills = path.resolve(import.meta.dirname, "../../../skills");
+  fs.cpSync(skills, path.join(root, "skills"), { recursive: true });
+  for (const name of ["apply-review-fixes", "post-findings"]) {
+    write(`opencode/skills/wellactually-${name}/SKILL.md`, "Previously installed command");
+  }
   sync();
-  expect(read("opencode/skills/wellactually-post-findings/SKILL.md")).toContain("../wellactually-review/finding-writing.md");
-  expect(read("opencode/skills/wellactually-review/finding-writing.md")).toBe("One shared writing standard");
+  expect(fs.readdirSync(path.join(root, "skills")).filter(name =>
+    fs.existsSync(path.join(root, "skills", name, "SKILL.md"))).sort()
+  ).toEqual(["audit", "disable", "enable", "login", "review", "sync"]);
+  expect(fs.readdirSync(path.join(root, "opencode/skills")).sort()).toEqual(
+    ["audit", "disable", "enable", "login", "review", "sync"].map(name => `wellactually-${name}`),
+  );
+  for (const name of ["apply-review-fixes", "post-findings"]) {
+    expect(read(`opencode/skills/wellactually-review/${name}.md`)).toBe(read(`skills/review/${name}.md`));
+    expect(read("opencode/skills/wellactually-review/SKILL.md")).toContain(`${name}.md`);
+  }
+  expect(read("opencode/skills/wellactually-review/post-findings.md")).toContain("[How a finding reads](finding-writing.md)");
+  expect(fs.existsSync(path.join(root, "opencode/skills/wellactually-review/finding-writing.md"))).toBe(true);
 });
 
 test("review instructions bind the Well Actually server and separate local initialization from reporting",()=>{
@@ -98,7 +110,7 @@ test("review instructions bind the Well Actually server and separate local initi
   expect(skill).toContain("mcp__wellactually__");
   expect(skill).toContain("not a separate Findings service");
   expect(skill).toContain("does not upload repository/PR metadata");
-  const posting=fs.readFileSync(new URL("../../../skills/post-findings/SKILL.md",import.meta.url),"utf8");
+  const posting=fs.readFileSync(new URL("../../../skills/review/post-findings.md",import.meta.url),"utf8");
   expect(posting).toContain("untrusted app content");
   expect(posting).toContain("Do not call review_status");
 });

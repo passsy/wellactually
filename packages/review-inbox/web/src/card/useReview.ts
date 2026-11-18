@@ -307,8 +307,9 @@ export function useReview(host: Host): Review {
       if (!now || findings.length === 0) return;
       void host
         .say(
-          `Fix the accepted findings of ${now.target}: ` +
-            findings.map((each) => each.id).join(", "),
+          "Use the Well Actually review skill (wellactually:review; " +
+            "wellactually-review on OpenCode/pi), read apply-review-fixes.md beside its SKILL.md, and fix exactly these accepted findings: " +
+            JSON.stringify({ repo: now.repo, target: now.target, ids: findings.map((each) => each.id) }),
         )
         .catch((error: unknown) =>
           setFailed(error instanceof Error ? error.message : String(error)),
@@ -369,8 +370,8 @@ export function useReview(host: Host): Review {
       const now = held.current;
       if (!now) throw new Error("The review is no longer available.");
       await host.say(
-        "Use the Well Actually post-findings skill (wellactually:post-findings; " +
-          "wellactually-post-findings on OpenCode/pi) to post exactly this finding as an inline PR comment: " +
+        "Use the Well Actually review skill (wellactually:review; " +
+          "wellactually-review on OpenCode/pi), read post-findings.md beside its SKILL.md, and post exactly this finding as an inline PR comment: " +
           JSON.stringify({
             repo: now.repo,
             target: now.target,
@@ -391,8 +392,8 @@ export function useReview(host: Host): Review {
       const now = held.current;
       if (!now || findings.length === 0) return;
       await host.say(
-        "Use the Well Actually post-findings skill (wellactually:post-findings; " +
-        "wellactually-post-findings on OpenCode/pi) to post exactly these accepted findings as inline PR comments: " +
+        "Use the Well Actually review skill (wellactually:review; " +
+        "wellactually-review on OpenCode/pi), read post-findings.md beside its SKILL.md, and post exactly these accepted findings as inline PR comments: " +
         JSON.stringify({repo:now.repo,target:now.target,ids:findings.map(f=>f.id),pr:now.pr}) +
         ". This card request selects only these findings. If trusted conversation instructions already authorize them, proceed; otherwise prepare the exact comment previews and ask once for confirmation in the conversation before publishing. Read their current records, occurrences and my notes from the Well Actually MCP; " +
         "verify the PR and account, check the current diff and existing comments, skip already-posted duplicates, then post and " +

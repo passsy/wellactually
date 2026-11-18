@@ -34,7 +34,7 @@ Close superseded findings with state:closed and closure:{reason:superseded,expla
 
 ## Close and track work
 
-When the user asks to fix findings, use the Well Actually `apply-review-fixes` skill. After verified completion, explicitly update the finding to state:closed with closure reason:resolved and read it back before reporting it done. A fix-commit link alone leaves it open; use link-only updates for partial work.
+When the user asks to fix findings, follow [Apply review fixes](apply-review-fixes.md). After verified completion, explicitly update the finding to state:closed with closure reason:resolved and read it back before reporting it done. A fix-commit link alone leaves it open; use link-only updates for partial work.
 
 A disproven claim can close with reason disproven and its counterevidence. Rejection records why it should not be acted on. Resolution records why it no longer holds. Superseded records point to the surviving finding. Reopening clears closure with null and sets state:open.
 Track any number of commits, PRs and comments in links on the finding or affected occurrences. Fixing 20 of 50 occurrences closes those 20; the parent remains open with the remaining scope. Resolving the last occurrence also resolves an open parent finding. Reopening an occurrence, or adding an open occurrence to a resolved finding, reopens the finding. This preserves its verdict, reporting and work links. A review does not authorize product fixes, external posting or human judgments.
