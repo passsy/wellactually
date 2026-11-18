@@ -12,6 +12,7 @@ import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots
 import { excerpt, type HookLogEntry, someFindings } from "./hook-log.ts";
 import { noteToolUse } from "../../../board/src/registry/rater.ts";
 import { agentOf, updateNotice } from "../update.ts";
+import { noteCodexHook } from "../../../board/src/codex-hooks.ts";
 
 const MAX_FILE_BYTES = 512 * 1024;
 
@@ -29,6 +30,10 @@ const MAX_FILE_BYTES = 512 * 1024;
 export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof frameEvents = frameEvents): Promise<string> {
   const payload = JSON.parse(stdin) as HookPayload;
   const event = payload.hook_event_name ?? "";
+  // Codex sets PLUGIN_ROOT. That a hook ran from this install is what tells the MCP server its hooks are trusted.
+  if (process.env.PLUGIN_ROOT) {
+    noteCodexHook(process.env.PLUGIN_ROOT);
+  }
   if (log) {
     Object.assign(log, { hook: event, tool: payload.tool_name, session: payload.session_id, transcript: payload.transcript_path, cwd: payload.cwd });
   }
