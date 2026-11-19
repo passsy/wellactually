@@ -151,6 +151,12 @@ describe("what the agent is shown", () => {
     expect(frameEvents(firings, new Set(), 9000).text).toContain(call);
   });
 
+  test("says how to change a rating only in the first block of a session", () => {
+    const firings = [{ ctx: file, firings: [{ principle, findings: [{ line: 2 }] }] }];
+    expect(frameEvents(firings, new Set(), 9000).text).toContain("within 24 hours, rate again with replaces");
+    expect(frameEvents(firings, new Set(["other"]), 9000).text).not.toContain("replaces");
+  });
+
   test("puts the files of one change in one block, with the preamble and the rating said once", () => {
     const other = fileCtx("write", "lib/user.dart", "class User {\n  late String name;\n}");
     const { text, full, shown } = frameEvents([

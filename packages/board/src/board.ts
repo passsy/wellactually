@@ -263,14 +263,15 @@ const RATE_TOOL: Record<Agent, { prefix: string; load: string }> = {
   pi: { prefix: "wellactually_", load: "" },
 };
 
-/** The request to rate, naming the tools as `agent` calls them, with the calls for `id` as the example. */
-function rating(agent: Agent | undefined, id: string): string {
+/** The request to rate, naming the tools as `agent` calls them, with the calls for `id` as the example. `first` adds how to change a rating, said once per session. */
+function rating(agent: Agent | undefined, id: string, first: boolean): string {
   const tool = agent ? RATE_TOOL[agent] : undefined;
   const name = (suffix: string) => (tool ? `${tool.prefix}${suffix}` : `the MCP tool ending in "${suffix}"`);
   const load = tool ? (tool.load ? ` (${tool.load})` : "") : " (not loaded? search your tools)";
   return [
     `Rate each principle above, not by shell. About your work, even if it complies: ${name("rate_principle_relevant")}${load} with { "id": "${id}", "effect": "keep" },`,
     `effect adjust, keep, noted (work to come), unclear or wrong. If not: ${name("rate_principle_not_relevant")}, same id.`,
+    ...(first ? ["Each rating returns a rating id: to change that rating within 24 hours, rate again with replaces set to it, for example from noted to adjust once the work exists."] : []),
     "Keep the rating out of your answer and report.",
   ].join(" ");
 }
@@ -330,7 +331,7 @@ export function frameEvents(events: EventFirings[], alreadyShown: ReadonlySet<st
   for (const event of firing) {
     const next = [...shown, event];
     // Counting the line about what is left out keeps it within the budget too.
-    const fits = (): boolean => adviceBytes(render(next, full, agent, firing.length - next.length)) <= budget;
+    const fits = (): boolean => adviceBytes(render(next, full, agent, false, firing.length - next.length)) <= budget;
     for (const item of event.firings) {
       if (due.has(item)) {
         full.add(item);
@@ -345,14 +346,16 @@ export function frameEvents(events: EventFirings[], alreadyShown: ReadonlySet<st
     shown.push(event);
   }
   const left = firing.length - shown.length;
+  // Nothing shown yet means a new session, subagent or compacted context: say how to change a rating, if it still fits beside the advice.
+  const withNote = render(shown, full, agent, alreadyShown.size === 0, left);
   return {
-    text: render(shown, full, agent, left),
+    text: adviceBytes(withNote) <= budget ? withNote : render(shown, full, agent, false, left),
     full: new Set([...full].map((item) => item.principle.hash)),
     shown,
   };
 }
 
-function render(events: EventFirings[], full: ReadonlySet<Firing>, agent: Agent | undefined, left = 0): string {
+function render(events: EventFirings[], full: ReadonlySet<Firing>, agent: Agent | undefined, first: boolean, left = 0): string {
   if (events.length === 0) {
     return "";
   }
@@ -385,7 +388,7 @@ function render(events: EventFirings[], full: ReadonlySet<Firing>, agent: Agent 
   }
   const rated = events.flatMap(({ firings }) => firings).find(({ principle }) => !principle.id.startsWith("local/"));
   if (rated) {
-    lines.push(rating(agent, rated.principle.id));
+    lines.push(rating(agent, rated.principle.id, first));
   }
   lines.push("</wellactually>");
   return lines.join("\n");
