@@ -433,5 +433,5 @@ export async function ratePrinciple(id: string, outcome: Outcome, replaces?: str
   if (typeof ratingId !== "string") {
     return `Recorded ${said} for ${id}@${entry.version}. Thank you.`;
   }
-  return `Recorded ${said} for ${id}@${entry.version}, rating id ${ratingId}. To change it within 24 hours, rate again with replaces: "${ratingId}".`;
+  return `Recorded ${said} for ${id}@${entry.version}, rating id ${ratingId}.`;
 }
