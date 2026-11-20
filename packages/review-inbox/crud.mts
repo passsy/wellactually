@@ -74,6 +74,25 @@ function optionalText(args: Json, key: string): string | undefined {
     throw new InputError(`${key} must be a string`);
   return args[key] as string;
 }
+/**
+ * Reject a finding description written as one block, so the agent restructures it while it still has the context.
+ * shortcut: counts sentences by punctuation outside code; tune the limits if real findings trip it wrongly.
+ */
+export function checkFindingShape(description: string): void {
+  const prose = description
+    .replace(/```[\s\S]*?```/g, "")
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter((block) => block !== "" && !/^([-*+]|\d+\.)\s/.test(block));
+  const sentences = (block: string) =>
+    (block.replace(/`[^`]*`/g, "code").match(/[.!?](?=\s|$)/g) ?? []).length;
+  const longest = Math.max(0, ...prose.map(sentences));
+  const total = prose.reduce((sum, block) => sum + sentences(block), 0);
+  if (longest > 3 || (prose.length === 1 && total > 2))
+    throw new InputError(
+      "Rewrite the description as a news story (How a finding reads): first sentence says what breaks, at most two short sentences of mechanism, then the fix in its own paragraph after a blank line (\\n\\n). Break parallel cases into a list. Keep the investigation in evidence. One-line findings stay one line.",
+    );
+}
 function identified(args: Json, prefix: string): string {
   return args.id === undefined ? recordId(prefix) : validId(str(args, "id"));
 }
@@ -318,7 +337,11 @@ function apply<T extends FindingRecord | OccurrenceRecord>(
       case "description": {
         if (value === null && !isFinding)
           delete (result as OccurrenceRecord).description;
-        else (result as FindingRecord).description = optionalText(patch, key)!;
+        else {
+          const description = optionalText(patch, key)!;
+          if (isFinding) checkFindingShape(description);
+          (result as FindingRecord).description = description;
+        }
         break;
       }
       case "rules":

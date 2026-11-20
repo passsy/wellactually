@@ -4,6 +4,33 @@ A finding is read once, by someone deciding whether to change their code.
 Everything in its title and description has to help with that decision.
 This standard applies when creating a finding, verifying it, and posting it.
 
+## The shape
+
+Unless the finding fits in one line, its description has this shape:
+
+1. One sentence that says what breaks, for whom, and when.
+2. At most two short sentences on why, naming the code that causes it.
+3. A blank line, then the fix as its own paragraph.
+
+Parallel cases become a list.
+The store rejects a description with more than two sentences in a single paragraph, or any paragraph over three sentences, so the agent rewrites it then and there.
+
+Before, as a reviewer wrote it:
+
+```text
+Deleting a fixture through a connected proxy can remove it from the project while leaving it in mesh storage. If the exclusion write fails, `MeshStorage.removeDevice` throws before deleting the node and Device Key. `BleManager.unprovisionDevice` swallows that failure, so `ProjectManager.removeNodes` deletes the project entry. Let local storage failures reach the caller. `InternalDeviceManager.unprovisionNode` already handles reset delivery failures separately.
+```
+
+After:
+
+```markdown
+Deleting a fixture through a connected proxy can remove it from the project while its node stays in mesh storage.
+
+When the exclusion write fails, `MeshStorage.removeDevice` throws before deleting the node, and `BleManager.unprovisionDevice` swallows the error, so `ProjectManager.removeNodes` deletes the project entry anyway.
+
+Let local storage failures reach the caller so the project keeps the fixture for retry.
+```
+
 ## Length follows the argument
 
 Length follows the argument, not a limit.
