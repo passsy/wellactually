@@ -8,6 +8,7 @@ import { hasDetector } from "@wellactually/core/node";
 import { TOOLS as FINDINGS_TOOLS } from "../../review-inbox/tools.mts";
 import { reportPendingReviewSuggestions, REVIEW_REPORT_MS } from "../../board/src/registry/review-reports.ts";
 import { startInBackground } from "./hook/hook.ts";
+import { codexHooksSilent, HOOKS_NEED_REVIEW, noteCodexServer } from "../../board/src/codex-hooks.ts";
 import { claimReport } from "../../board/src/detections.ts";
 import { appToolMeta, drawsCards, registerReviewCard } from "../../review-inbox/serve/app.mts";
 import { startUi } from "../../review-inbox/serve/http.mts";
@@ -135,7 +136,28 @@ export async function serveMcp(): Promise<void> {
   // a network call in CRUD operations, and without keeping a closed MCP alive.
   const reporting = setInterval(() => { if (readConfig().stats && claimReport()) startInBackground("report-detections"); }, REVIEW_REPORT_MS);
   reporting.unref();
-  const server = new McpServer({ name: "wellactually", version: "0.8.0" }, { instructions: AUTHORING_GUIDE });
+  // The plugin's folder, above dist/ where this server runs. Codex is named by the plugin's own .codex-plugin/mcp.json.
+  const pluginRoot = path.resolve(path.dirname(process.argv[1] ?? ""), "..");
+  const codex = process.env.WELLACTUALLY_REVIEW_HOST === "codex";
+  if (codex) {
+    noteCodexServer(pluginRoot);
+  }
+  const hooksNeedReview = () => codex && codexHooksSilent(pluginRoot);
+  // Codex shows the model only the first line of a server's instructions.
+  const instructions = hooksNeedReview() ? `${HOOKS_NEED_REVIEW}\n\n${AUTHORING_GUIDE}` : AUTHORING_GUIDE;
+  const server = new McpServer({ name: "wellactually", version: "0.8.0" }, { instructions });
+  // Instructions are easy to miss, so the first tool result says it once more while it still holds.
+  let toldHooks = false;
+  const register = server.registerTool.bind(server) as (...args: unknown[]) => unknown;
+  (server as { registerTool: unknown }).registerTool = (name: string, config: unknown, callback: (...args: unknown[]) => Promise<{ content?: unknown[] }>) =>
+    register(name, config, async (...args: unknown[]) => {
+      const result = await callback(...args);
+      if (toldHooks || !hooksNeedReview()) {
+        return result;
+      }
+      toldHooks = true;
+      return { ...result, content: [...(result.content ?? []), { type: "text", text: HOOKS_NEED_REVIEW }] };
+    });
   const workspace = currentWorkspace();
   registerFindingsTools(server, workspace);
   server.registerTool("report_review_suggestions", {

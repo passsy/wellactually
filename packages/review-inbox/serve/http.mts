@@ -18,6 +18,7 @@ import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { GLOBAL_ROOT, REVIEW_DIR, targetPaths } from "../store/paths.mts";
 import { UI_PORT } from "./port.mts";
+import { codexHooksSilent } from "../../board/src/codex-hooks.ts";
 import {
   documentPath,
   inboxUrlForLink,
@@ -576,10 +577,12 @@ async function handle(
         version: installedVersion(),
         platform: platform(),
         // What a page that is not holding an event stream open asks about.
-        // Cheap on purpose: this route reads nothing and is the one a hidden
-        // tab calls on a timer.
+        // Cheap on purpose: this route reads next to nothing and is the one a
+        // hidden tab calls on a timer.
         changedAt: clients.changedAt,
         tools: TOOL_NAMES,
+        // Whether Codex skips the hooks of its newest install, read from one small file.
+        codexHooksSilent: codexHooksSilent(),
       }),
     );
     return;
