@@ -12,8 +12,9 @@ import { ruleUrl } from "../shared/rule-url.ts";
  * whether the one on screen is really the problem.
  */
 
-import { useEffect, useRef, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { WrapText, X } from "lucide-react";
+import { remember, remembered } from "./remembered.ts";
 import { useQuery } from "@tanstack/react-query";
 import {
   docUrl,
@@ -135,12 +136,14 @@ function Source({
   view,
   findings,
   current,
+  wrap,
 }: {
   where: Where;
   at: PanelAt;
   view: SourceView;
   findings: Finding[];
   current: Finding | undefined;
+  wrap: boolean;
 }) {
   const file = useQuery({
     queryKey: keys.file(where, at.file, view),
@@ -195,7 +198,14 @@ function Source({
       key={view}
       className="code animate-in fade-in overflow-auto p-0 text-xs leading-relaxed duration-150"
     >
-      <code className="block w-max min-w-full">
+      <code
+        className={cn(
+          "block",
+          wrap
+            ? "whitespace-pre-wrap [overflow-wrap:anywhere]"
+            : "w-max min-w-full",
+        )}
+      >
         {rows.map((row, index) => {
           const number = row.number;
           const band =
@@ -211,17 +221,21 @@ function Source({
               ref={index === anchorAt ? anchor : undefined}
               {...(number !== null ? { "data-n": number } : {})}
               className={cn(
-                "line block px-2",
+                "line px-2",
+                // Flex when wrapping, so a wrapped line continues beside its number, not under it.
+                wrap ? "flex" : "block",
                 row.kind && INK[row.kind],
                 band && (band.mine ? "at bg-band" : "bg-band/40"),
                 band && first && "first rounded-t",
                 band && number === band.to && "last rounded-b",
               )}
             >
-              <span className="n mr-3 inline-block w-10 text-right text-muted select-none">
+              <span className="n mr-3 inline-block w-10 flex-none text-right text-muted select-none">
                 {row.number}
               </span>
-              {code ? <Line toks={code[index] ?? []} /> : row.text || " "}
+              <span className="min-w-0">
+                {code ? <Line toks={code[index] ?? []} /> : row.text || " "}
+              </span>
             </span>
           );
         })}
@@ -472,6 +486,8 @@ export function FilePanel({
   /** Closing is the page's to do: the panel is inside a sheet it does not own. */
   onClose: () => void;
 }) {
+  // On unless the reader turned it off: a proof or a long line is unreadable cut off at the edge.
+  const [wrap, setWrap] = useState(() => remembered().wrap ?? true);
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex flex-none items-center gap-3 border-b border-line px-3 py-1.5 text-xs">
@@ -483,27 +499,32 @@ export function FilePanel({
         >
           {nameOf(showing)}
         </span>
-        {showing.kind === "file" && !(where && showing.at.file.startsWith("/") && !showing.at.file.startsWith(where.repo + "/")) && (
-          <Tabs
-            value={view}
-            onValueChange={(next) => {
-              onView(next as SourceView);
-            }}
-          >
-            <TabsList className="h-6 rounded-md p-0.5">
-              {VIEWS.map((one) => (
-                <TabsTrigger
-                  key={one.value}
-                  value={one.value}
-                  title={one.title}
-                  className="h-5 rounded px-1.5 text-xs"
-                >
-                  {one.says}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        )}
+        {showing.kind === "file" &&
+          !(
+            where &&
+            showing.at.file.startsWith("/") &&
+            !showing.at.file.startsWith(where.repo + "/")
+          ) && (
+            <Tabs
+              value={view}
+              onValueChange={(next) => {
+                onView(next as SourceView);
+              }}
+            >
+              <TabsList className="h-6 rounded-md p-0.5">
+                {VIEWS.map((one) => (
+                  <TabsTrigger
+                    key={one.value}
+                    value={one.value}
+                    title={one.title}
+                    className="h-5 rounded px-1.5 text-xs"
+                  >
+                    {one.says}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          )}
         {/*
           The way out, and the key that is the same way out. Every other
           surface on this page closes with Esc, so the panel says so where
@@ -519,6 +540,24 @@ export function FilePanel({
           at every height it takes.
         */}
         <span className="ml-auto flex flex-none items-center gap-2 text-muted">
+          {showing.kind === "file" && (
+            <button
+              type="button"
+              aria-pressed={wrap}
+              title={wrap ? "Stop wrapping long lines" : "Wrap long lines"}
+              onClick={() => {
+                setWrap(!wrap);
+                remember({ wrap: !wrap });
+              }}
+              className={cn(
+                "cursor-pointer rounded-sm transition-opacity hover:opacity-100",
+                wrap ? "text-todo opacity-100" : "opacity-70",
+              )}
+            >
+              <WrapText className="size-4" />
+              <span className="sr-only">Soft wrap</span>
+            </button>
+          )}
           <Key>Esc</Key>
           <button
             type="button"
@@ -540,6 +579,7 @@ export function FilePanel({
             view={view}
             findings={findings}
             current={current}
+            wrap={wrap}
           />
         ) : showing.kind === "rule" ? (
           <Rule id={showing.id} onRule={onRule} />

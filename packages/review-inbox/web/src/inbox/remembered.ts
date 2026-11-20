@@ -16,6 +16,8 @@ export interface Remembered {
   notify?: boolean;
   /** Which version of a file the panel shows: diff, old or new. */
   view?: "diff" | "old" | "new";
+  /** Whether the file panel soft-wraps long lines. Absent means it does. */
+  wrap?: boolean;
   widths?: Record<string, number>;
   /** How wide the file panel is, in pixels. */
   panel?: number;
