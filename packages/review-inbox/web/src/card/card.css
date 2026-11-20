@@ -364,31 +364,81 @@ body {
 
 .strip {
   display: flex;
+  /* The buttons drop to a second line on a phone rather than off the card. */
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 7px 14px;
   border-block: 1px solid var(--line);
 }
 
-.dots {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 1px;
-}
-
-/* Wide enough that one disc's halo never touches its neighbour's. */
-.dots button {
+/* The prose and the map beside it; the code under them spans the card. */
+.lede {
   display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 12px;
 }
 
-.dots button.at {
-  background: var(--at);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--todo) 60%, transparent);
+.lede .text {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 10px;
 }
+
+/* As tall as the prose and never taller: `contain: size` keeps a long run of
+   findings from stretching a short finding, and the map scrolls instead. */
+.map {
+  position: relative;
+  contain: size;
+  min-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  padding-right: 6px;
+}
+
+.map button {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 9px;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+
+.map button.at {
+  height: 16px;
+  margin-block: 2px;
+  background: var(--at);
+  box-shadow: inset 0 0 0 1px var(--todo);
+}
+
+/* Length says priority, colour says stage. Colour cannot say both: in the dark
+   theme p0 and invalid are the same red, and came-back is p1's orange. */
+.map i {
+  height: 6px;
+  border-radius: 2px;
+  background: var(--stage);
+}
+
+.map i.p0 { width: 100%; }
+.map i.p1 { width: 80%; }
+.map i.p2 { width: 60%; }
+.map i.p3 { width: 42%; }
+.map i.p4 { width: 26%; }
+
+/* The same split as the stage discs: work still owed is drawn at full
+   strength, undecided as an outline waiting to be filled, endings washed. */
+.map i.verdict { --stage: var(--open); background: none; box-shadow: inset 0 0 0 1.5px var(--stage); }
+.map i.fix { --stage: var(--todo); }
+.map i.posted { --stage: var(--sent); }
+.map i.back { --stage: var(--p1); }
+.map i.invalid { --stage: var(--drop); opacity: 0.4; }
+.map i.tolerated { --stage: var(--tolerated); opacity: 0.4; }
+.map i.resolved { --stage: var(--done); opacity: 0.4; }
 
 /*
  * The column is capped at the card, not sized by what is in it.

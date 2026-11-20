@@ -24,6 +24,7 @@ import {
 } from "react";
 import {
   countsOf,
+  groupOf,
   levelOfFinding,
   type Finding,
   type LevelStatus,
@@ -43,6 +44,7 @@ import {
   BLANK_AFTER,
   STOPS,
   flagFor,
+  STAGE_SAYS,
   stopOf,
   stopsFor,
 } from "../shared/stage.tsx";
@@ -397,25 +399,10 @@ function One({
         >
           ← Findings <Key>Esc</Key>
         </button>
-        <span className="dots">
-          {status.findings.map((each) => (
-            <button
-              key={each.id}
-              type="button"
-              className={cn(each.id === finding.id && "at")}
-              title={`${each.id} · ${each.title}`}
-              onClick={() => {
-                onShow(each.id);
-              }}
-            >
-              <Stage finding={each} />
-            </button>
-          ))}
-        </span>
-        <span className="grow text-muted">
+        <span className="grow text-muted whitespace-nowrap">
           {position} of {status.findings.length}
         </span>
-        <span className="text-muted">
+        <span className="keys text-muted">
           <Key>↑</Key> <Key>↓</Key>
         </span>
         {!status.readOnly && <PostButton
@@ -430,6 +417,40 @@ function One({
         </>}
       </div>
       <div className="one">
+        <div className="lede">
+        {/*
+          The findings as a minimap down the side of the prose: one row each,
+          as long as its priority and coloured by its stage. A row of discs
+          across the top wrapped into five lines on a phone; a column beside
+          the text costs width the prose can spare, and it runs the same way
+          as ↑ and ↓. The code below keeps the card's full width.
+        */}
+        <nav className="map" aria-label="Findings">
+          {status.findings.map((each) => (
+            <button
+              key={each.id}
+              type="button"
+              className={cn(each.id === finding.id && "at")}
+              title={`${each.id} · ${each.priority} · ${STAGE_SAYS[groupOf(each)]} · ${each.title}`}
+              aria-current={each.id === finding.id || undefined}
+              ref={(button) => {
+                // Scrolls the map only: scrollIntoView would also scroll the host page.
+                const map = button?.parentElement;
+                if (!button || !map || each.id !== finding.id) return;
+                const top = button.offsetTop;
+                if (top < map.scrollTop || top + button.offsetHeight > map.scrollTop + map.clientHeight) {
+                  map.scrollTop = top - map.clientHeight / 2;
+                }
+              }}
+              onClick={() => {
+                onShow(each.id);
+              }}
+            >
+              <i className={cn(each.priority, groupOf(each))} />
+            </button>
+          ))}
+        </nav>
+        <div className="text">
         <div className="facts">
           <Priority of={finding.priority} />
           <span className="font-mono font-semibold">{finding.id}</span>
@@ -479,9 +500,18 @@ function One({
         <div className="body">
           <Markdown body={finding.body} />
         </div>
+        {finding.record && <FindingInformation record={finding.record} />}
+        {/* Keyed by the finding, so a draft never follows the reader to the next one. */}
+        {!status.readOnly && <NoteBox
+          key={finding.id}
+          finding={finding}
+          review={review}
+          boxRef={boxRef}
+        />}
+        </div>
+        </div>
         {finding.record ? (
           <>
-            <FindingInformation record={finding.record} />
             <Occurrences
               key={finding.id}
               findingId={finding.id}
@@ -502,13 +532,6 @@ function One({
             withDiff={false}
           />
         )}
-        {/* Keyed by the finding, so a draft never follows the reader to the next one. */}
-        {!status.readOnly && <NoteBox
-          key={finding.id}
-          finding={finding}
-          review={review}
-          boxRef={boxRef}
-        />}
       </div>
     </>
   );

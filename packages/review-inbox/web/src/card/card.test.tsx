@@ -480,7 +480,9 @@ describe("posting one finding to the PR", () => {
     );
     expect(said[0]).not.toContain("T2");
     expect(writes()).toEqual([]);
-    expect(screen.getByLabelText("Needs a verdict")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^T1 · .* · Needs a verdict · / }),
+    ).toBeInTheDocument();
   });
 
   it("allows retry when the host rejects the request", async () => {
