@@ -419,7 +419,7 @@ function One({
       <div className="one">
         <div className="lede">
         {/*
-          The findings as a minimap down the side of the prose: one row each,
+          The findings as a minimap down the right of the prose: one row each,
           as long as its priority and coloured by its stage. A row of discs
           across the top wrapped into five lines on a phone; a column beside
           the text costs width the prose can spare, and it runs the same way

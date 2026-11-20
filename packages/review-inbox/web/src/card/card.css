@@ -375,7 +375,7 @@ body {
 /* The prose and the map beside it; the code under them spans the card. */
 .lede {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 30px;
   gap: 12px;
 }
 
@@ -393,11 +393,12 @@ body {
   position: relative;
   contain: size;
   overflow-y: auto;
+  order: 1;
   scrollbar-width: none;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--line);
-  padding-right: 6px;
+  border-left: 1px solid var(--line);
+  padding-left: 6px;
 }
 
 .map button {
