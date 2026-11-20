@@ -1,61 +1,117 @@
 # How a finding reads
 
-Write for someone deciding whether to change their code. This standard applies when creating a finding, investigating it, and posting it. The title and description explain the defect; evidence and assessments preserve the investigation.
-
-## Headline first
-
-Use a short title naming the defect or the change needed: `Restore Retry after a deferred download fails`, not a sentence narrating the entire scenario. Leave IDs, priority, rule names and proof labels to their fields.
-
-Open the description with what breaks, including the condition needed to make that statement true. A reader who stops after the first sentence should understand the problem. Then give only the mechanism needed to assess it and the smallest useful remedy. Use exact code names where they clarify the cause; do not walk through every helper and state transition.
-
-Keep the explanation to what the author needs to judge the claim: usually one or two sentences of mechanism after the consequence. Name things the way the product does (the fixture, the project, pairing) and add a code name only where it locates the cause.
-
-One finding makes one claim. A second consequence ("This change also lets…") is its own finding or stays out.
-
-Put the remedy in its own paragraph, as an instruction: `Propagate local removal failures to the project caller so the fixture stays available for retry.` Do not soften it with "Please" or "Consider".
-
-Write as a news story, not a lab notebook: consequence first, supporting detail in descending importance. Avoid opening with scope labels such as “Change finding”, “pre-existing defect”, “Proven”, or an account of what you inspected. If an existing defect is newly reachable, explain that relationship briefly where it changes the author's decision.
+A finding is read once, by someone deciding whether to change their code.
+Everything in its title and description has to help with that decision.
+This standard applies when creating a finding, verifying it, and posting it.
 
 ## Length follows the argument
 
-A typo or an obvious local correction can be one line: `pubish()` → `publish()`. Do not add a paragraph defending an uncontested correction.
+Length follows the argument, not a limit.
 
-An ordinary behavioral finding usually needs a short explanation and a separate remedy paragraph. Do not force headings, a checklist or a minimum length onto it. An architectural disagreement may need more: explain the commitment, concrete maintenance cost, alternative, and what would change your judgment. Include that detail when the author needs it to act or disagree.
+A typo, a missing `await`, a commented-out block: one line.
+Name it, name the fix, stop.
+Nothing else is owed: not a fenced block when the fix fits in the sentence, not a second sentence arguing for a fix nobody will argue with.
 
-Use paragraph breaks, bullets for genuinely parallel cases, and small code examples when they are clearer than prose. Show only the lines that need to change. A dense paragraph listing a call chain, states, test coverage, a proof and a proposed implementation is several arguments competing for attention.
+Two entire findings, for scale:
 
-State a defect directly; express a preference as a preference. Ask a question only when an answer could change the conclusion. Missing test coverage establishes a coverage gap, not an observed production failure. An observation can still be useful when the remedy is unknown.
+- `pubish()` → `publish()`
+- The `StreamSubscription` from `listen()` is never cancelled, so it outlives the widget.
+
+An architecture finding is the opposite case.
+It is the kind of disagreement that would otherwise be settled in a call, and there is no call, so the whole case has to survive as text.
+Write what the current approach commits the project to, what it costs when the next feature lands, what the alternative is, and what would talk you out of it.
+Long enough that the author can act or disagree without booking a call.
+
+## How it is written
+
+- **The title is the headline.**
+  A short name for the defect or the change needed: `Restore Retry after a deferred download fails`.
+  Not the whole scenario in one sentence, and no IDs, priorities or rule names.
+- **Open with what is broken.**
+  Not the mechanism, not the type signature, not the rule it violates.
+  The author decides whether to keep reading from the first sentence.
+- **Name things exactly.**
+  `didUpdateWidget`, `dragUntilVisible`, `enterPin(List<int> pin)`, not "the lifecycle method".
+- **Argue from what breaks later.**
+  What stops being noticed, what has to be maintained twice, what fails when the screen grows.
+  Not what is untidy.
+- **Show the code you would rather see.**
+  Three lines of the assertion you want beat a paragraph describing it.
+  Only the lines that change.
+  A block that repeats five unchanged lines to show where one keyword goes is not showing anything.
+- **Ask when you are actually asking.**
+  A question invites an answer, and the author may know something you do not.
+  Do not dress a decision up as one.
+- **Do not hedge a defect.**
+  Preferences get "I'd" and "IMHO"; a bug gets a flat sentence.
+  Missing test coverage is a coverage gap, not an observed production failure.
+- **An observation without a fix is still a finding.**
+  "This test runs for 1:50min" is worth writing without knowing why.
+- **Leave the bookkeeping out of the prose.**
+  Impact, evidence and why no test was written are fields on the finding, not sentences in it.
+  So is the location: the finding already points at the line, so the description does not open by quoting the code back at its author.
+
+Inline `code`, bullets and short fenced blocks are welcome.
+A long finding needs them most: they are what keeps a written-out argument readable.
+
+## Write it as a news story, not as a lab notebook
+
+This is the single thing that decides whether a finding gets read.
+
+A lab notebook records an investigation in the order it happened: here is what I looked at, here is what the code does, therefore here is the problem, so do this.
+That is the order you found it in, and it is the wrong way round for everyone else.
+It is also what a finding turns into by default, because writing it up straight after the digging feels like continuing the same sentence.
+
+A news story is an **inverted pyramid**.
+The headline is the news.
+The first sentence is the whole story for a reader who stops there.
+Everything after it descends in importance, so the reader stops when they have enough and nothing they needed was below the cut.
+Enumerations get broken out, because a paragraph is a bad place to hide a list.
+
+Same finding, both ways:
+
+```markdown
+Lab notebook:
+The only SyncManager queue tests count timestamps for initial fixture
+synchronization and a mid-drain addition. They never assert queued command
+identity, make subscribe/unsubscribe calls observable, inject a dispatch
+error, replace the connection, call either flush branch, or dispose during a
+delay. The new queue's supersession matrix, null-connection behavior, error
+continuation, flush semantics, and cancellation can therefore change without
+those tests noticing. Add direct MeshCommandQueue tests.
+
+News story:
+`MeshCommandQueue` can change behaviour without a single test failing.
+
+The only queue tests count timestamps. Nothing asserts:
+
+- queued command identity
+- a dispatch error mid-drain
+- the connection being replaced
+- either `flush` branch
+
+Add direct `MeshCommandQueue` tests asserting the ordered items and the
+lifecycle result per branch.
+```
+
+Same words, a quarter of the reading effort.
+Nothing here is a length limit: a one-line finding is already an inverted pyramid, and an architecture argument that runs a page is one too.
+
+When a failing test proves the finding, say in one sentence what it shows.
+It is the strongest thing in the review, and a description that never mentions it throws that away.
+
+The tone to aim for is plain, not sharp.
+A reviewer who knows the author can be blunt and be read as direct; a review that arrives as text has none of that credit and reads harsher than it was meant.
 
 ## Keep the investigation in its fields
 
-Keep commands, local proof paths, runtime versions, full output, detailed expected/actual results, rule quotes and investigation limits in evidence or assessments. Locations belong on occurrences. Describe a failing test's decisive observation in one sentence when that helps the reader judge the defect; do not paste the proof report into the description.
+Commands, local proof paths, runtime versions, full output, detailed expected/actual results, rule quotes and investigation limits belong in evidence or assessments.
+Locations belong on occurrences.
 
-During verification, preserve an already clear description unless the checked evidence changes it. Correct the title and claim in place, then reread them as an author would. Adding evidence must not turn the description into an investigation transcript. Preserve user notes, disposition, other evidence and assessments.
+During verification, keep a description that already reads well unless the checked evidence changes it.
+Correct the title and claim in place, then reread them as the author would.
+Adding evidence must not turn the description into an investigation transcript.
+Preserve user notes, disposition, other evidence and assessments.
 
-An occurrence description explains only what is different about that instance. Omit it when its source location and the shared finding already explain it; do not repeat the full defect above every code block.
-
-## Example
-
-Title: **Restore Retry after a deferred download fails**
-
-If the file is initially unavailable and its later download fails, the row keeps spinning instead of offering Retry again. The timer path leaves the failed document in `_requestedDocuments`; only the immediate download path restores its error state. The failure probe reproduces repeated download attempts without returning to Retry.
-
-Handle timer-driven download failures the same way as immediate failures, then test the unavailable → available → failed path.
-
-The command, captured output, complete call chain and runtime limitations remain attached as evidence.
-
-A description that falls short of this standard, before and after:
-
-> A fixture can join the mesh and appear in local mesh storage after the app has reported that pairing timed out. The existing 10-second timeout ends the app's wait while the provisioning flow keeps running. If cleanup checks storage before the node is saved, it misses the node and the pairing controller releases its lock without creating a project fixture. This change also lets the timed-out flow reserve its address range after cleanup.
->
-> Cancel the provisioning flow at the transport and wait for it to stop before cleaning up the node and releasing the lock.
-
-> A fixture can join the mesh after the app reports that pairing timed out. The timeout ends the app's wait while provisioning continues. If cleanup checks mesh storage before the node is saved, the node can be left in the mesh without a fixture in the project.
->
-> Cancel provisioning at the transport and wait for it to stop before checking for a node to clean up and releasing the pairing lock.
-
-The second drops the incidental timeout value and the unrelated second claim, and ends the problem on what the user is left with.
-
-## The finding is the PR comment
-
-Write the title and description as they will appear on the pull request, because posting copies them word for word. The reader there has the pull request and nothing else, so leave out finding IDs, rule IDs, proofs that exist only on this machine, and a restatement of the anchored line.
+An occurrence description says only what is different about that instance.
+Omit it when its location and the shared finding already explain it; do not repeat the defect above every code block.

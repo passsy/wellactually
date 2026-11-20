@@ -46,13 +46,9 @@ A detector hit is an indication: inspect the source before recording a finding, 
 
 ## Writing findings
 
-Write for the author deciding what to change. Give each finding a short, action-oriented `title` naming the behavior or boundary to protect.
-
-In the finding description, lead with the concrete consequence, then explain the trigger and mechanism using exact code names. For missing coverage, say what regression could pass unnoticed and why the existing assertions would miss it. Prefer concrete outcomes to abstract labels.
-
-In the remedy paragraph, describe the smallest useful change and the observable result it must protect. For a test, name its setup, production entry point, action and expected outcome; include related boundary cases when they matter. Prefer connected sentences and separate problem and remedy paragraphs. Scale length to the argument; do not force a template onto a one-line issue.
-
-Keep rule quotes, priorities, verification narration and reproduction commands in their evidence fields, outside the finding prose. Include an observed result in the explanation when it strengthens the case. Do not claim current behavior is broken when the evidence only demonstrates a missing regression test.
+Write every title and description to **How a finding reads**: headline first, the first sentence says what breaks, detail in descending importance, the remedy last.
+For missing coverage, say what regression could pass unnoticed, and show the assertion you want.
+Keep rule quotes, priorities, verification narration and reproduction commands in their evidence fields.
 
 ## Findings
 
