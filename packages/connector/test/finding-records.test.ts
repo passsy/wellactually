@@ -1044,3 +1044,36 @@ test("one unreadable target remains visible and cannot take the inbox or MCP ser
   expect(reviews.find(r=>r.repo===good.repo)?.error).toBeUndefined();
   expect(()=>getFindingRecord({...bad,id:broken.id},bad.repo)).toThrow("Unsupported finding format");
 });
+
+test("an occurrence keeps a title of its own, which can be changed and cleared", () => {
+  const at = setup();
+  const f = finding(at);
+  const created = createOccurrence(
+    {
+      ...at,
+      occurrence: {
+        findingId: f.id,
+        title: "In the pairing flow",
+        locations: [{ file: "classes.ts", line: 3 }],
+      },
+    },
+    at.repo,
+  );
+  expect(getOccurrence({ ...at, id: created.id }, at.repo).title).toBe(
+    "In the pairing flow",
+  );
+  const renamed = updateOccurrence(
+    { ...at, id: created.id, expectedRevision: created.revision, patch: { title: "Module A" } },
+    at.repo,
+  );
+  expect(renamed.title).toBe("Module A");
+  const cleared = updateOccurrence(
+    { ...at, id: created.id, expectedRevision: renamed.revision, patch: { title: null } },
+    at.repo,
+  );
+  expect(cleared.title).toBeUndefined();
+  // The finding's own title is untouched and still required.
+  expect(getFindingRecord({ ...at, id: f.id }, at.repo).title).toBe(
+    "Classes lack documentation",
+  );
+});

@@ -143,5 +143,7 @@ Correct the title and claim in place, then reread them as the author would.
 Adding evidence must not turn the description into an investigation transcript.
 Preserve user notes, disposition, other evidence and assessments.
 
-An occurrence description says only what is different about that instance.
-Omit it when its location and the shared finding already explain it; do not repeat the defect above every code block.
+Every occurrence gets a title: a short headline that tells it apart from its siblings by where it is or which case it covers, such as "In the pairing flow", "Module A: `NodeReset`" or "Android only".
+The reader sees it above the code while paging through occurrences, so it names the place or the case, never the defect again.
+An occurrence description says only what else is different about that instance.
+Omit the description when the title, the location and the shared finding already explain it; do not repeat the defect above every code block.

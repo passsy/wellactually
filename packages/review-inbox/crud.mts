@@ -267,13 +267,14 @@ const findingFields = [
   "origins",
   "metadata",
 ];
-const occurrenceFields = [...shared, "findingId", "description", "locations"];
+const occurrenceFields = [...shared, "findingId", "title", "description", "locations"];
 function apply<T extends FindingRecord | OccurrenceRecord>(
   record: T,
   patch: Json,
   p: TargetPaths,
 ): T {
-  const isFinding = "title" in record;
+  // Occurrences have a title too now; only they belong to a finding.
+  const isFinding = !("findingId" in record);
   for (const key of Object.keys(patch))
     if (!(isFinding ? findingFields : occurrenceFields).includes(key))
       throw new InputError(`Field ${key} is not editable`);
@@ -313,7 +314,8 @@ function apply<T extends FindingRecord | OccurrenceRecord>(
         }
         break;
       case "title":
-        (result as FindingRecord).title = str(patch, key);
+        if (value === null && !isFinding) delete (result as OccurrenceRecord).title;
+        else (result as FindingRecord).title = str(patch, key);
         break;
       case "description": {
         if (value === null && !isFinding)

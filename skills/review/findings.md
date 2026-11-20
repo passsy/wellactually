@@ -18,7 +18,7 @@ IDs use a caller-selected `prefix` letter and an ascending number per letter wit
 
 Call create_finding with finding:{title,description,rules:[{id}],priority,tags,origins:[{run,source,unit}],evidence:[]} and a stable idempotencyKey derived from run and worker source. The restricted reviewer gateway supplies origins and scope; pass its required idempotencyKey but no repo/target/run/unit.
 The description explains the shared defect and remedy. Multiple linked rules can support the claim. Evidence entries have kind source/reasoning/test, polarity supports/contradicts, a description and artifact references. Each entry receives a stable ID. A source-observable rule violation is a finding without needing a test.
-Then use create_occurrence with an idempotencyKey scoped to the finding and instance, and occurrence:{findingId,description?,locations:[{file,line,endLine?,note?}]}. One occurrence is an independently addressable instance of the defect; several locations can jointly describe it. Recovered workers reuse the same idempotencyKey or query list_occurrences before adding an occurrence again. Never infer 50 defects merely because one claim has 50 supporting locations.
+Then use create_occurrence with an idempotencyKey scoped to the finding and instance, and occurrence:{findingId,title,description?,locations:[{file,line,endLine?,note?}]}. One occurrence is an independently addressable instance of the defect; several locations can jointly describe it. Recovered workers reuse the same idempotencyKey or query list_occurrences before adding an occurrence again. Never infer 50 defects merely because one claim has 50 supporting locations.
 Use finding IDs in coverage results. Findings are immediately visible in the inbox/card.
 
 ## Investigate and edit

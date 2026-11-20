@@ -87,6 +87,8 @@ export interface OccurrenceLocation extends Anchor {
 }
 export interface OccurrenceRecord extends RecordBase {
   findingId: string;
+  /** A short headline telling this instance from its siblings: where it is or which case it covers. */
+  title?: string;
   description?: string;
   locations: OccurrenceLocation[];
 }

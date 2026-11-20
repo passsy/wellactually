@@ -157,6 +157,18 @@ function Occurrence({
     </div>
   );
 }
+/**
+ * What tells this occurrence from its siblings. Without a title from the
+ * review, the place it is: the file and line, or which metadata it quotes.
+ */
+function headlineOf(occurrence: OccurrenceRecord): string {
+  if (occurrence.title) return occurrence.title;
+  const first = occurrence.locations[0];
+  if (!first) return occurrence.id;
+  if (first.kind === "metadata") return first.subject ?? occurrence.id;
+  return `${first.file.split("/").pop() ?? first.file}:${String(first.line)}`;
+}
+
 export function Occurrences({
   findingId,
   summary,
@@ -244,6 +256,9 @@ export function Occurrences({
             </Button>
           </div>
         </div>
+      )}
+      {current && (current.title || total > 1) && (
+        <h3 className="mt-2 text-sm font-semibold">{headlineOf(current)}</h3>
       )}
       {error ? (
         <p role="alert">

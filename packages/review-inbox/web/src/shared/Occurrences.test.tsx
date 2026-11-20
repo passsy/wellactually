@@ -278,3 +278,36 @@ test("one occurrence shows its code without a duplicate resolution button", asyn
   expect(screen.queryByRole("button", {name:"Reopen occurrence"})).not.toBeInTheDocument();
   expect(save).not.toHaveBeenCalled();
 });
+
+test("heads each occurrence with its title, or with where it is when the review gave none", async () => {
+  const user = userEvent.setup();
+  render(
+    <Occurrences
+      findingId="F1"
+      refreshKey="1"
+      load={async () => [
+        { ...occurrence(0), title: "In the pairing flow" },
+        occurrence(1),
+      ]}
+    />,
+  );
+  expect(
+    await screen.findByRole("heading", { name: "In the pairing flow" }),
+  ).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Next occurrence" }));
+  expect(
+    screen.getByRole("heading", { name: "classes.ts:2" }),
+  ).toBeInTheDocument();
+});
+
+test("a single occurrence without a title gets no headline", async () => {
+  render(
+    <Occurrences
+      findingId="F1"
+      refreshKey="1"
+      load={async () => [occurrence(0)]}
+    />,
+  );
+  await waitFor(() => expect(code()).toContain("class C0 {}"));
+  expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+});

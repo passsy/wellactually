@@ -111,6 +111,11 @@ const location = {
 const occurrence = {
   ...common,
   findingId: string,
+  title: {
+    type: ["string", "null"],
+    description:
+      "Short headline that tells this occurrence apart from the finding's other occurrences: where it is or which case it covers, such as \"In the pairing flow\" or \"iOS: BleMeshClient.reset\". Not the defect again. Null clears it.",
+  },
   description: { type: ["string", "null"] },
   locations: entries(location, ["file", "line"]),
 };
@@ -187,7 +192,7 @@ export const CRUD_TOOLS: Tool[] = [
   {
     ...tool(
       "create_occurrence",
-      "Create one independently trackable instance of a finding. Several locations can jointly describe this one defect. Captures source context when available. Its evidence, links and lifecycle are independent of the parent. Optional idempotencyKey makes retries return the existing occurrence.",
+      "Create one independently trackable instance of a finding. Give it a title that says where it is or which case it covers, so a reader can tell it from its siblings. Several locations can jointly describe this one defect. Captures source context when available. Its evidence, links and lifecycle are independent of the parent. Optional idempotencyKey makes retries return the existing occurrence.",
       { occurrence: entry(occurrence, ["findingId"]), prefix, idempotencyKey: string },
       ["occurrence"],
       createOccurrence,
