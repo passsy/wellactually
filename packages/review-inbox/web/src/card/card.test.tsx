@@ -328,6 +328,47 @@ describe("ruling on a finding", () => {
   });
 });
 
+describe("a note sent to the agent", () => {
+  it("saves the note, then asks the agent to rework only this finding", async () => {
+    const user = userEvent.setup();
+    const { host, writes, said } = hostWith(
+      status({ findings: [finding(), finding({ id: "T2" })] }),
+    );
+    render(<Card host={host} />);
+    await user.keyboard("n");
+    const send = await screen.findByRole("button", { name: "Send to agent" });
+    expect(send).toBeDisabled();
+
+    await user.keyboard("split this per platform");
+    await user.click(send);
+
+    expect(
+      await screen.findByRole("button", { name: "Sent to agent" }),
+    ).toBeDisabled();
+    expect(writes()).toEqual([
+      {
+        name: "set_note",
+        args: {
+          repo: "/tmp/inbox_app",
+          target: "pr-412",
+          id: "T1",
+          note: "split this per platform",
+        },
+      },
+    ]);
+    expect(said).toHaveLength(1);
+    expect(said[0]).toContain("findings.md");
+    expect(said[0]).toContain(
+      '"id":"T1","note":"split this per platform"',
+    );
+    expect(said[0]).not.toContain("T2");
+
+    // Editing the note makes it a new request.
+    await user.type(screen.getByRole("textbox"), " and close the iOS one");
+    expect(screen.getByRole("button", { name: "Send to agent" })).toBeEnabled();
+  });
+});
+
 describe("a note", () => {
   it("opens the finding, takes the keyboard, and is saved on the way out", async () => {
     const user = userEvent.setup();

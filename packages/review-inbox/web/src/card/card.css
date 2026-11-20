@@ -530,6 +530,14 @@ body {
   overflow: auto;
 }
 
+.note .send {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 12px;
+}
+
 .note textarea:focus {
   outline: 2px solid var(--todo);
   outline-offset: -1px;

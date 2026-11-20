@@ -325,6 +325,9 @@ function NoteBox({
   const [draft, setDraft] = useState<string | null>(null);
   const sent = useRef(stored);
   const timer = useRef<number | undefined>(undefined);
+  const text = (draft ?? stored).trim();
+  const [asking, setAsking] = useState<"ready" | "sending" | "sent">("ready");
+  const [error, setError] = useState<string | null>(null);
 
   const save = (text: string) => {
     window.clearTimeout(timer.current);
@@ -355,11 +358,13 @@ function NoteBox({
         placeholder="How you want it fixed, or why it stands."
         value={draft ?? stored}
         onChange={(event) => {
-          const text = event.target.value;
-          setDraft(text);
+          const typed = event.target.value;
+          setDraft(typed);
+          // A changed note is a new request; the last one was about the old text.
+          setAsking("ready");
           window.clearTimeout(timer.current);
           timer.current = window.setTimeout(() => {
-            save(text);
+            save(typed);
           }, SAVE_AFTER_MS);
         }}
         onBlur={() => {
@@ -368,6 +373,40 @@ function NoteBox({
           setDraft(null);
         }}
       />
+      <div className="send">
+        {error && <span role="alert">Could not reach the agent: {error}</span>}
+        <button
+          type="button"
+          className="btn"
+          disabled={text === "" || asking !== "ready"}
+          title="Save the note and ask the agent to rework this finding with it: add context, rewrite, split, merge or close it"
+          // Keeps the box focused, so its blur does not swap the draft for the stored note mid-click.
+          onMouseDown={(event) => {
+            event.preventDefault();
+          }}
+          onClick={() => {
+            window.clearTimeout(timer.current);
+            sent.current = text;
+            setAsking("sending");
+            setError(null);
+            void review.rethink(finding, text).then(
+              () => {
+                setAsking("sent");
+              },
+              (why: unknown) => {
+                setAsking("ready");
+                setError(why instanceof Error ? why.message : String(why));
+              },
+            );
+          }}
+        >
+          {asking === "sent"
+            ? "Sent to agent"
+            : asking === "sending"
+              ? "Sending…"
+              : "Send to agent"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -81,6 +81,8 @@ export interface Review {
   note: (finding: Finding, text: string) => void;
   fix: (findings: Finding[]) => void;
   post: (finding: Finding) => Promise<void>;
+  /** Saves the note, then hands the finding and the note to the agent to rework. */
+  rethink: (finding: Finding, note: string) => Promise<void>;
   postAccepted: (findings: Finding[]) => Promise<void>;
   occurrences: (findingId: string) => Promise<OccurrenceRecord[]>;
   saveOccurrence: (occurrence: OccurrenceRecord) => Promise<void>;
@@ -387,6 +389,33 @@ export function useReview(host: Host): Review {
     [host],
   );
 
+  const rethink = useCallback(
+    async (finding: Finding, note: string): Promise<void> => {
+      const now = held.current;
+      if (!now || now.readOnly) throw new Error("The review is no longer available.");
+      // Saved first and for certain: the agent is told to read the note back,
+      // and a note still waiting on its debounce would not be there yet.
+      const saved = await call("set_note", {
+        repo: now.repo,
+        target: now.target,
+        id: finding.id,
+        note,
+      });
+      if (saved.isError) throw new Error(errorIn(saved));
+      await host.say(
+        "Use the Well Actually review skill (wellactually:review; " +
+          "wellactually-review on OpenCode/pi), read findings.md and finding-writing.md beside its SKILL.md, and rework this finding in light of my note: " +
+          JSON.stringify({ repo: now.repo, target: now.target, id: finding.id, note }) +
+          ". Read the current finding, its occurrences and evidence from the Well Actually MCP and the code it points at, then do what the note calls for. " +
+          "That can be anything: add context, correct or rewrite the title and body, change the priority, split it into separate findings and move the occurrences, " +
+          "merge it into another finding by closing it as superseded, or close it with the fitting reason. Use expectedRevision on every update. " +
+          "Do not fix code or post to the PR. If the note is unclear, ask me before changing anything. " +
+          "When done, tell me in a few sentences what you changed and why, then call review_status to show the card again.",
+      );
+    },
+    [call, host],
+  );
+
   const postAccepted = useCallback(
     async (findings: Finding[]): Promise<void> => {
       const now = held.current;
@@ -480,6 +509,7 @@ export function useReview(host: Host): Review {
     note,
     fix,
     post,
+    rethink,
     postAccepted,
     occurrences,
     saveOccurrence,
