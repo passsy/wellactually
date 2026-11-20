@@ -387,11 +387,11 @@ body {
 }
 
 /* As tall as the prose and never taller: `contain: size` keeps a long run of
-   findings from stretching a short finding, and the map scrolls instead. */
+   findings from stretching a short finding, and the map scrolls instead. No
+   min-height either, or a one-line read-only finding grows to fit the map. */
 .map {
   position: relative;
   contain: size;
-  min-height: 120px;
   overflow-y: auto;
   scrollbar-width: none;
   display: flex;

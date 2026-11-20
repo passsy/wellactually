@@ -481,7 +481,7 @@ function One({
             first thing in view, and no line of its own to pay for.
           */}
           {!status.readOnly && <span className="rate">
-            <span className="text-muted">
+            <span className="keys text-muted">
               <Key>←</Key> <Key>→</Key>
             </span>
             <Track
