@@ -117,7 +117,7 @@ MCP must be available.
 ## 5. Aggregate similar issues
 
 After review completion, start one fresh agent with agents/aggregator/INSTRUCTIONS.md.
-It only groups findings describing the same concrete issue.
+It groups findings describing the same concrete issue, then rewrites each surviving finding's title and description for the author.
 It does not test, prove, dismiss or change lifecycle state.
 It partitions every finding exactly once via begin_verification; uncertain groups remain singleton.
 Grouping stays in MCP.

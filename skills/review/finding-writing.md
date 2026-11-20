@@ -13,9 +13,8 @@ Unless the finding fits in one line, its description has this shape:
 3. A blank line, then the fix as its own paragraph.
 
 Parallel cases become a list.
-The store rejects a description with more than two sentences in a single paragraph, or any paragraph over three sentences, so the agent rewrites it then and there.
 
-Before, as a reviewer wrote it:
+Before, as a reviewer deep in the code wrote it:
 
 ```text
 Deleting a fixture through a connected proxy can remove it from the project while leaving it in mesh storage. If the exclusion write fails, `MeshStorage.removeDevice` throws before deleting the node and Device Key. `BleManager.unprovisionDevice` swallows that failure, so `ProjectManager.removeNodes` deletes the project entry. Let local storage failures reach the caller. `InternalDeviceManager.unprovisionNode` already handles reset delivery failures separately.

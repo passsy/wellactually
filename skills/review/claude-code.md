@@ -1,7 +1,7 @@
 # Running the review in Claude Code
 
 Start fresh information-gathering and optional splitter agents with the Agent tool, `subagent_type: general-purpose`, and `model: haiku`.
-Start one fresh aggregation-only agent with the session's model after the review gate passes.
+Start one fresh aggregation agent, which also rewrites the findings for the author, with the session's model after the review gate passes.
 Aggregated suggestions are reported automatically; do not rate principles during the review.
 Tell all child agents not to call either rating tool.
 

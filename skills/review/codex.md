@@ -2,7 +2,7 @@
 
 When your tools include one that starts a subagent, such as `spawn_agent`, start each step with it and the prompt the step gives. Use a cheap available model for information gathering and optional splitting; use your own model for reviewers and the verifier. Select the host's configured cheap model or discover an available low-cost model; do not silently run cheap steps on the review model. If no cheap model is available, report that limitation.
 Start each with an empty conversation rather than inheriting the user's review session; when `spawn_agent` exposes `fork_turns`, use `"none"`.
-Start review queue workers concurrently, then one aggregation-only agent, then ceil(issue groups/10) verification queue workers. No tester agents or static principle groups.
+Start review queue workers concurrently, then one aggregation agent that also rewrites the findings for the author, then ceil(issue groups/10) verification queue workers. No tester agents or static principle groups.
 For reviewers, use the restricted Codex runtime below rather than an unrestricted native subagent. Information gathering and aggregation use the host's agent tools. Queue proof workers can use the verification launcher so their concurrency is not limited by the coordinator's native agent slots.
 
 ```bash
