@@ -50,6 +50,12 @@ Keep its checked claim, and rewrite the wording for the author.
 Read [How a finding reads](finding-writing.md) in full before drafting.
 The comment follows it: a bold headline, the first sentence saying what breaks, detail in descending importance, and the remedy last.
 
+The user's `note` on the finding, and any human assessment, is what they want the author to hear.
+Work it into the comment: a hint for the fix, extra context, a narrower or wider scope, a question for the author, a change of tone.
+Where the note disagrees with the finding, the note wins, because the user read the finding before writing it.
+Rewrite it like the rest of the body: a note written for whoever fixes it can still name local IDs or proofs, and those stay out.
+When a note is unclear or asks for something you cannot tell how to say, ask the user before posting.
+
 ```markdown
 **<headline>**
 
