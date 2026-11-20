@@ -43,28 +43,26 @@ If the POST times out or its outcome is uncertain, re-read comments and reconcil
 
 ## How the comment reads
 
-A comment is a finding, and the review already wrote it as one.
-Post that.
-What follows is the standard it was written to, so a body that falls short gets rewritten here rather than posted as it stands.
+The comment body is the finding, word for word:
 
-Read [How a finding reads](finding-writing.md), the same writing standard used at creation and verification. Preserve the checked claim; rewrite only when needed for clarity or the external reader.
+```markdown
+**<title>**
 
-### What comes out for the pull request
+<description>
 
-What changes is the reader.
-The author has the pull request and nothing else, so everything they cannot open comes out:
+<!-- wellactually-review:<fingerprint> -->
+```
 
-- **The finding's id.**
-  `G1` numbers a queue that exists on one machine.
-- **A proof that lives locally.**
-  A failing test in a scratch file, an unpushed commit, a level document.
-  Describe the failure so they can reproduce it; do not point at something only you can open.
-- **A rule id.**
-  `PW-D005` names a handbook the author has never read.
-  Make the argument the rule makes.
-- **The code quoted back.**
-  A body that opens by restating the anchor line is quoting the author to themselves; the comment already sits on that line.
+Build it from the current get_finding result, never from memory, a summary or a draft of your own. The finding in the review and the comment on the pull request read the same, now and after every revision.
 
-Whatever does not survive that stays on the finding, which was written for a reader who has the whole review.
+Before posting, read the title and description against [How a finding reads](finding-writing.md). The author has the pull request and nothing else, so these come out:
+
+- **The finding's id.** `G1` numbers a queue that exists on one machine.
+- **A proof that lives locally.** A failing test in a scratch file, an unpushed commit, a level document. Describe the failure so they can reproduce it.
+- **A rule id.** `PW-D005` names a handbook the author has never read. Make the argument the rule makes.
+- **The code quoted back.** The comment already sits on that line.
+
+When the text falls short, fix the finding first: update_finding with the corrected title or description, preserving the checked claim, then post the stored text. Never improve the wording only on GitHub.
+When asked to revise a posted comment, revise the finding the same way and edit the comment in place with PATCH repos/OWNER/REPO/pulls/comments/ID to the new body.
 
 After confirming a comment was posted (or finding its existing matching comment), update the finding's `links[]` with its comment URL and set `reportedAt` to the posting time in the same revision-checked `update_finding` call. Preserve existing links. Do not change `verdict`, `state`, or `closure` as a side effect of posting.

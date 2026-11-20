@@ -8,6 +8,12 @@ Use a short title naming the defect or the change needed: `Restore Retry after a
 
 Open the description with what breaks, including the condition needed to make that statement true. A reader who stops after the first sentence should understand the problem. Then give only the mechanism needed to assess it and the smallest useful remedy. Use exact code names where they clarify the cause; do not walk through every helper and state transition.
 
+Keep the explanation to what the author needs to judge the claim: usually one or two sentences of mechanism after the consequence. Name things the way the product does (the fixture, the project, pairing) and add a code name only where it locates the cause.
+
+One finding makes one claim. A second consequence ("This change also lets…") is its own finding or stays out.
+
+Put the remedy in its own paragraph, as an instruction: `Propagate local removal failures to the project caller so the fixture stays available for retry.` Do not soften it with "Please" or "Consider".
+
 Write as a news story, not a lab notebook: consequence first, supporting detail in descending importance. Avoid opening with scope labels such as “Change finding”, “pre-existing defect”, “Proven”, or an account of what you inspected. If an existing defect is newly reachable, explain that relationship briefly where it changes the author's decision.
 
 ## Length follows the argument
@@ -36,4 +42,20 @@ If the file is initially unavailable and its later download fails, the row keeps
 
 Handle timer-driven download failures the same way as immediate failures, then test the unavailable → available → failed path.
 
-The command, captured output, complete call chain and runtime limitations remain attached as evidence. The description should not need another rewrite merely because it is posted to a PR; posting only adapts context that the external reader cannot access.
+The command, captured output, complete call chain and runtime limitations remain attached as evidence.
+
+A description that falls short of this standard, before and after:
+
+> A fixture can join the mesh and appear in local mesh storage after the app has reported that pairing timed out. The existing 10-second timeout ends the app's wait while the provisioning flow keeps running. If cleanup checks storage before the node is saved, it misses the node and the pairing controller releases its lock without creating a project fixture. This change also lets the timed-out flow reserve its address range after cleanup.
+>
+> Cancel the provisioning flow at the transport and wait for it to stop before cleaning up the node and releasing the lock.
+
+> A fixture can join the mesh after the app reports that pairing timed out. The timeout ends the app's wait while provisioning continues. If cleanup checks mesh storage before the node is saved, the node can be left in the mesh without a fixture in the project.
+>
+> Cancel provisioning at the transport and wait for it to stop before checking for a node to clean up and releasing the pairing lock.
+
+The second drops the incidental timeout value and the unrelated second claim, and ends the problem on what the user is left with.
+
+## The finding is the PR comment
+
+Write the title and description as they will appear on the pull request, because posting copies them word for word. The reader there has the pull request and nothing else, so leave out finding IDs, rule IDs, proofs that exist only on this machine, and a restatement of the anchored line.
