@@ -29,7 +29,7 @@ For every assigned principle, derive concrete questions from its advice, trace t
 
 Read `context.md` when present. Record `investigation` with `status` (`complete`, `limited` or `not_applicable`), `reason`, `questions` and `limits`. Every verdict needs at least one question, answer and nonempty `evidence` array, including evidence explaining why advice does not apply.
 
-If a material question remains unresolved, use `limited` and name the missing evidence in `limits`. Missing context is a limit, not irrelevance. You may raise a concrete suspected issue without executable proof: identify its trigger, source mechanism and what the verifier should establish. Use Reasoned for source-supported claims and Speculative for unverified assumptions. Do not omit a useful candidate merely because proving it requires execution.
+If a material question remains unresolved, use `limited` and name the missing evidence in `limits`. Missing context is a limit, not irrelevance. You may raise a concrete suspected issue without executable proof. Write its title and description for the author as usual, and put its trigger, source mechanism and what the verifier should establish into evidence. Use Reasoned for source-supported claims and Speculative for unverified assumptions. Do not omit a useful candidate merely because proving it requires execution.
 
 ## Verdicts
 
@@ -52,15 +52,16 @@ Keep rule quotes, priorities, verification narration and reproduction commands i
 
 ## Findings
 
-- For `target.kind: snapshot`, use `scope: current` for in-scope defects. No baseline exists; do not call them introduced or consign them to unrelated pre-existing observations.
-- For a change review, set `scope` on each finding: `introduced` for a regression or new defect; `newly_exposed` when changed use makes an old defect reachable or materially more consequential; `incomplete_fix` when the stated problem remains unfixed on a relevant path; `pre_existing` for an unrelated old defect discovered while tracing.
-  Compare the base and head behavior and cite the changed trigger or the stated requirement for the first three categories.
+- Record the scope as a tag on the finding, never as prose in its description.
+- For `target.kind: snapshot`, tag in-scope defects `current`. No baseline exists; do not call them introduced or consign them to unrelated pre-existing observations.
+- For a change review, tag each finding with one scope: `introduced` for a regression or new defect; `newly-exposed` when changed use makes an old defect reachable or materially more consequential; `incomplete-fix` when the stated problem remains unfixed on a relevant path; `pre-existing` for an unrelated old defect discovered while tracing.
+  Compare the base and head behavior and cite the changed trigger or the stated requirement for the first three in evidence.
   Keep unrelated `pre_existing` observations separate and do not label them regressions or block this change on them.
   Location may be an unchanged line when the changed caller or incomplete contract explains relevance.
 - A coverage finding must identify behavior or a failure mode a meaningful test would protect.
   A test that merely asserts a wrapper agrees with the function it directly delegates to adds no independent protection.
 - A finding must be something the principle's advice actually says.
-  Quote the sentence of the advice it rests on.
+  Quote the sentence of the advice it rests on in the finding's evidence, not in its description.
 - Leave out what the project's compiler, linter or formatter would catch, as its configuration shows.
   A principle about formatting or layout is checked like any other when nothing in the project enforces it.
 - Give `file` as the path from the project root and `line` as the line in that file in the reviewed version, never a line of the patch.

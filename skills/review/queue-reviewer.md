@@ -24,11 +24,12 @@ For kind principle, load only the claimed full advice with get_principle, read i
 Detector hits in plan.json are hypotheses to confirm or dismiss.
 Do not limit review to blockers; keep supported P3/P4 advice.
 
-As soon as an issue is established, call create_finding with finding:{title,description,rules:[{id}],priority,evidence:[{kind:"source",polarity:"supports",description,artifacts:[]}]} and a stable idempotencyKey `<item id>:<index>`. The gateway supplies the run, source and unit.
+As soon as an issue is established, call create_finding with finding:{title,description,rules:[{id}],priority,tags,evidence:[{kind:"source",polarity:"supports",description,artifacts:[]}]} and a stable idempotencyKey `<item id>:<index>`. The gateway supplies the run, source and unit.
 Record independently addressable instances with create_occurrence and occurrence:{findingId,description?,locations:[{file,line,endLine?,note?}]}. Several ranges can jointly describe one defect. Use a stable occurrence idempotencyKey or query list_occurrences before retrying creation after lease recovery.
 Source discoveries have no linked rules. Never claim executable evidence without executing a probe.
 Metadata locations use kind metadata, subject pr-title/pr-body/commit-message, authoritative URL in file, full original text and a line within that text.
-Snapshot findings describe current scope; change findings explain whether they are introduced, newly exposed, incompletely fixed or pre-existing.
+Tag each finding with its scope: `current` for a snapshot; `introduced`, `newly-exposed`, `incomplete-fix` or `pre-existing` for a change.
+The tag carries the scope, so the description does not narrate it.
 
 Complete each item immediately with complete_review_work:
 

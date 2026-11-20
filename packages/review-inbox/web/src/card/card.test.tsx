@@ -473,7 +473,6 @@ describe("posting one finding to the PR", () => {
     expect(said).toHaveLength(1);
     expect(said[0]).toContain("wellactually:review");
     expect(said[0]).toContain("post-findings.md");
-    expect(said[0]).toContain("trusted conversation instructions");
     expect(said[0]).toContain("ask once for confirmation");
     expect(said[0]).not.toContain("I authorize");
     expect(said[0]).toContain(
@@ -799,7 +798,6 @@ describe("posting the accepted queue", () => {
     expect(said).toHaveLength(1);
     expect(said[0]).toContain("wellactually:review");
     expect(said[0]).toContain("post-findings.md");
-    expect(said[0]).toContain("trusted conversation instructions");
     expect(said[0]).toContain("ask once for confirmation");
     expect(said[0]).not.toContain("I authorize");
     expect(said[0]).toContain('"repo":"/tmp/inbox_app","target":"pr-412","ids":["T1","T2"]');

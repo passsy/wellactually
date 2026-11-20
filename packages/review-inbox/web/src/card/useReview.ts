@@ -379,7 +379,7 @@ export function useReview(host: Host): Review {
             pr: now.pr,
           }) +
           ". " +
-          "This card request selects only this finding. If trusted conversation instructions already authorize it, proceed; otherwise prepare the exact comment preview and ask once for confirmation in the conversation before publishing. Read the current finding, occurrences and my note from the Well Actually MCP, " +
+          "This card request selects only this finding. Draft the comment, show it with its anchor and ask once for confirmation in the conversation before publishing. Read the current finding, occurrences and my note from the Well Actually MCP, " +
           "verify the PR and account, check the current diff and existing comments, then post and " +
           "record the comment URL by appending to links with update_finding and expectedRevision. Do not post other findings or submit an approval.",
       );
@@ -395,7 +395,7 @@ export function useReview(host: Host): Review {
         "Use the Well Actually review skill (wellactually:review; " +
         "wellactually-review on OpenCode/pi), read post-findings.md beside its SKILL.md, and post only these accepted findings as inline PR comments: " +
         JSON.stringify({repo:now.repo,target:now.target,ids:findings.map(f=>f.id),pr:now.pr}) +
-        ". This card request selects only these findings. If trusted conversation instructions already authorize them, proceed; otherwise prepare the exact comment previews and ask once for confirmation in the conversation before publishing. Read their current records, occurrences and my notes from the Well Actually MCP; " +
+        ". This card request selects only these findings. Draft the comments, show them with their anchors and ask once for confirmation in the conversation before publishing. Read their current records, occurrences and my notes from the Well Actually MCP; " +
         "verify the PR and account, check the current diff and existing comments, skip already-posted duplicates, then post and " +
         "record each comment URL and reportedAt with revision-checked update_finding, preserving existing links. " +
         "Do not post other findings, change verdicts or resolution, or submit an approval.",

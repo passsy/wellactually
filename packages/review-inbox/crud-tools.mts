@@ -142,7 +142,7 @@ function tool(
 export const CRUD_TOOLS: Tool[] = [
   tool(
     "create_finding",
-    "Create a finding with a short defect-first title and a concise author-facing description: consequence, essential cause, remedy. Keep investigation detail in evidence/assessments and locations on occurrences. No candidate kind or verification status. User verdict, reportedAt, evidence, assessments, links and lifecycle are independent. Add separately addressable occurrences with create_occurrence. Optional idempotencyKey makes retries return the original record.",
+    "Create a finding with a headline title naming the defect or the change needed, and a description for the author whose first sentence says what breaks, with detail in descending importance and the remedy last. Length follows the argument: a one-line fix is one line. Put the scope (introduced, newly-exposed, incomplete-fix, pre-existing, current) in tags. Keep investigation detail in evidence/assessments and locations on occurrences. No candidate kind or verification status. User verdict, reportedAt, evidence, assessments, links and lifecycle are independent. Add separately addressable occurrences with create_occurrence. Optional idempotencyKey makes retries return the original record.",
     { finding: entry(finding, ["title"]), prefix, idempotencyKey: string },
     ["finding"],
     createFindingRecord,

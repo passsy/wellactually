@@ -50,6 +50,10 @@ Long enough that the author can act or disagree without booking a call.
 - **Leave the bookkeeping out of the prose.**
   Impact, evidence and why no test was written are fields on the finding, not sentences in it.
   So is the location: the finding already points at the line, so the description does not open by quoting the code back at its author.
+- **Leave the review's labels out too.**
+  Do not open with "Change finding", "pre-existing defect", "Proven" or an account of what you inspected.
+  Whether a defect is introduced, newly exposed or pre-existing goes into the finding's tags.
+  Mention an old defect the change newly reaches only where that changes what the author does, in one sentence.
 
 Inline `code`, bullets and short fenced blocks are welcome.
 A long finding needs them most: they are what keeps a written-out argument readable.
