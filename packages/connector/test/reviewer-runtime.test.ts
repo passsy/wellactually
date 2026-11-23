@@ -93,4 +93,20 @@ describe("reviewer capability boundary", () => {
     expect(access.verdict({ job: "all", verdicts: [], outside: [] })).toBe("Coverage saved");
     expect(fs.existsSync(path.join(review, "verdicts/all.json"))).toBe(true);
   });
+  test("searches source without rg on the PATH", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "reviewer-search-"));
+    const source = path.join(root, "source"), review = path.join(root, "review");
+    fs.mkdirSync(path.join(source, "node_modules"), { recursive: true }); fs.mkdirSync(review);
+    fs.writeFileSync(path.join(source, "code.rs"), "hello\nworld\n");
+    fs.writeFileSync(path.join(source, "node_modules", "dep.rs"), "world\n");
+    fs.writeFileSync(path.join(review, "plan.json"), JSON.stringify({ root: source, target: {}, principles: [] }));
+    fs.writeFileSync(path.join(review, "jobs.json"), JSON.stringify([{ id: "all", principles: [], parts: [] }]));
+    fs.writeFileSync(path.join(review, "tracking.json"), JSON.stringify({ target: "local", run: "r" }));
+    const access = reviewerAccess(review, "all");
+    const previous = process.env.PATH; process.env.PATH = path.join(root, "no-bin");
+    try {
+      expect(access.search("world")).toBe(`${fs.realpathSync(source)}/code.rs:2:world`);
+      expect(access.search("absent")).toBe("No matches");
+    } finally { process.env.PATH = previous; }
+  });
 });

@@ -222,6 +222,12 @@ describe("planning a review", () => {
       reason: "switched off with the disable skill",
     });
   });
+
+  test("a named commit that gives an empty range stops instead of switching scope", async () => {
+    const dir = repo();
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-review-out-"));
+    await expect(planReview(dir, "HEAD", out, { syncedAt: null, entries })).rejects.toThrow("gives an empty range");
+  });
 });
 
 function block(

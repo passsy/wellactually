@@ -61,12 +61,13 @@ Read source at plan.json.root and previous Git contents with git show <base>:<pa
 Reconcile task.md with actual root/base/head and omissions.
 Do not widen selected folders or initialize Git merely to enable review.
 Report empty input and binary/dependency/build/symlink exclusions.
+If the helper reports an empty range for a ref the user named, stop and ask which scope they meant; never review another scope in its place.
 
 ## 3. Detectors, principles and routing
 
 Run --load-principles <dir> first.
 It writes detectors-triggered.json and detectors-no-findings.json.
-Follow the generated <dir>/steps/3_filter-principles.md (written during preparation from filter-principles.md beside this skill): list_principles returns current-board short descriptions/tags only; use all task/source/diff/detector context, exclude definitively irrelevant advice, keep uncertain and triggered principles.
+Follow the generated <dir>/steps/3_filter-principles.md (written during preparation from filter-principles.md beside this skill): list_principles returns current-board short descriptions/tags only; use all task/source/diff/detector context, exclude only advice whose short description names a language, framework, platform, file type or operation the change provably lacks; keep general, uncertain and triggered principles.
 Write principles.md with retained IDs only.
 No project.md, scope.json or full-advice directory.
 Do not sync mid-review.

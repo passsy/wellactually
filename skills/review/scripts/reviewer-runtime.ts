@@ -11,6 +11,35 @@ import { createFindingRecord, getFindingRecord, updateFindingRecord, listFinding
 
 const json = (file: string): any => JSON.parse(fs.readFileSync(file, "utf8"));
 const contained = (root: string, file: string): boolean => file === root || file.startsWith(root + path.sep);
+const HIDDEN = [".git", ".well-actually", ".pascal-review", "node_modules"];
+
+/** `rg --fixed-strings --line-number --max-count 50` in process, for machines where rg is only a shell function of the host. */
+function searchFiles(query: string, target: string): string {
+  const out: string[] = [];
+  let size = 0;
+  const visit = (file: string): void => {
+    if (size > 40000) return;
+    const stat = fs.lstatSync(file);
+    if (stat.isDirectory()) {
+      if (!HIDDEN.includes(path.basename(file))) for (const name of fs.readdirSync(file)) visit(path.join(file, name));
+      return;
+    }
+    if (!stat.isFile() || stat.size > 2_000_000) return;
+    const text = fs.readFileSync(file, "utf8");
+    if (text.includes("\0")) return;
+    let hits = 0;
+    for (const [index, line] of text.split("\n").entries()) {
+      if (hits === 50) break;
+      if (!line.includes(query)) continue;
+      hits++;
+      const entry = `${file}:${index + 1}:${line}`;
+      out.push(entry);
+      size += entry.length + 1;
+    }
+  };
+  visit(target);
+  return out.join("\n").slice(0, 40000);
+}
 
 /** A capability boundary: no command strings, generic writes, registry mutations or other agents. */
 export function reviewerAccess(dir: string, jobId: string) {
@@ -26,7 +55,7 @@ export function reviewerAccess(dir: string, jobId: string) {
   const current = () => getReviewSession(queueArgs, root).queues.find(q => q.id === job.queue)?.items.find(item => !item.completed && !item.blocked && item.claim?.worker === jobId && Date.parse(item.claim.until) > Date.now());
   const sourcePath = (input: string): string => {
     const file = fs.realpathSync(path.resolve(root, input));
-    if (!contained(root, file) || contained(dir, file) || path.relative(root, file).split(path.sep).some(part => [".git", ".well-actually", ".pascal-review", "node_modules"].includes(part))) throw new Error("Source path is outside the review's readable source");
+    if (!contained(root, file) || contained(dir, file) || path.relative(root, file).split(path.sep).some(part => HIDDEN.includes(part))) throw new Error("Source path is outside the review's readable source");
     return file;
   };
   return {
@@ -40,9 +69,14 @@ export function reviewerAccess(dir: string, jobId: string) {
       return fs.readFileSync(file, "utf8").split("\n").slice(start - 1, start - 1 + count).map((line, i) => `${start + i}: ${line}`).join("\n");
     },
     search(query: string, input = "."): string {
+      const target = sourcePath(input);
       try {
-        return execFileSync("rg", ["--fixed-strings", "--line-number", "--max-count", "50", "--glob", "!.well-actually/**", "--glob", "!.pascal-review/**", "--", query, sourcePath(input)], { cwd: root, encoding: "utf8", maxBuffer: 1_000_000 }).slice(0, 40000);
-      } catch (error: any) { if (error.status === 1) return "No matches"; throw error; }
+        return execFileSync("rg", ["--fixed-strings", "--line-number", "--max-count", "50", "--glob", "!.well-actually/**", "--glob", "!.pascal-review/**", "--", query, target], { cwd: root, encoding: "utf8", maxBuffer: 1_000_000 }).slice(0, 40000);
+      } catch (error: any) {
+        if (error.status === 1) return "No matches";
+        if (error.code !== "ENOENT") throw error;
+        return searchFiles(query, target) || "No matches";
+      }
     },
     before(input: string): string {
       if (plan.before) {
