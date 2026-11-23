@@ -30,7 +30,7 @@ const MAX_FILE_BYTES = 512 * 1024;
 export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof frameEvents = frameEvents): Promise<string> {
   const payload = JSON.parse(stdin) as HookPayload;
   const event = payload.hook_event_name ?? "";
-  // Codex sets PLUGIN_ROOT. That a hook ran from this install is what tells the MCP server its hooks are trusted.
+  // Codex sets PLUGIN_ROOT. A hook that ran from this install proves its hooks trusted, also when the user trusted them mid-session.
   if (process.env.PLUGIN_ROOT) {
     noteCodexHook(process.env.PLUGIN_ROOT);
   }

@@ -1,28 +1,34 @@
+import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { boardHome } from "./board.ts";
 
 /**
- * Codex runs a plugin's hooks only after the user trusted them in /hooks, says
- * nothing while it skips them, and asks again after every update. Without the
- * hooks no principle reaches the agent.
+ * Codex runs a plugin's hooks only after the user trusted them in /hooks, and
+ * asks again after every update. Without the hooks no principle reaches the
+ * agent. Codex says so itself at the start of the CLI and on the composer of
+ * its app, but a user who skips that review never hears what it costs.
  *
- * Rather than copy how Codex decides, which it changes at will, this keeps its
- * own evidence: the Codex installs whose MCP server started, and whether any
- * hook ever ran from them. An install that served but never ran a hook has its
- * hooks switched off, for trust or any other reason.
- * shortcut: hooks distrusted again after they once ran go unnoticed; judge recency of runs if that ever matters.
+ * Whether the hooks need review is Codex's answer, asked when the MCP server
+ * starts. That a hook ran since is our own evidence, which retires the answer
+ * once the user trusted the hooks mid-session.
  */
 interface Install {
   /** When the MCP server last started from this install. */
   served?: string;
+  /** Whether Codex said then that its hooks need review. */
+  review?: boolean;
   /** When a hook first ran from it. */
   hooked?: string;
 }
 
-/** What the agent is asked to tell the user, short enough for the one line Codex shows of a server's instructions. */
+/**
+ * What the agent is told. Codex shows the model only the first line of a
+ * server's instructions, cut at 250 characters, among the descriptions of its
+ * tools, where models read it as one rather than as a request.
+ */
 export const HOOKS_NEED_REVIEW =
-  "Well Actually's hooks have not run since the plugin was installed or updated, so no principle reaches you. Codex skips them until they are trusted: tell the user to open /hooks in Codex (in the Codex app: Settings > Hooks) and trust the Well Actually hooks.";
+  "Codex skips Well Actually's hooks until the user trusts them in /hooks (Codex app: Settings > Hooks), so no principle reaches this session. Tell the user so.";
 
 function file(): string {
   return path.join(boardHome(), "codex-hooks.json");
@@ -66,9 +72,9 @@ function canonical(root: string): string {
   }
 }
 
-/** The MCP server of the Codex install at `root` started. */
-export function noteCodexServer(root: string, now = new Date()): void {
-  update(root, install => ({ ...install, served: now.toISOString() }));
+/** The MCP server of the Codex install at `root` started, and Codex said whether its hooks need review. */
+export function noteCodexServer(root: string, review: boolean | undefined, now = new Date()): void {
+  update(root, install => ({ ...install, served: now.toISOString(), review }));
 }
 
 /** A hook ran from the Codex install at `root`. Written once per install, so hooks stay cheap. */
@@ -80,18 +86,94 @@ export function noteCodexHook(root: string, now = new Date()): void {
 }
 
 /**
- * Whether the hooks of a Codex install have never run: of the install at
- * `root`, or else of the one whose server started last, which is what the
- * Review Inbox asks, served by whichever session holds its port.
+ * Whether Codex skips the hooks of an install: of the install at `root`, or
+ * else of the one whose server started last, which is what the Review Inbox
+ * asks, served by whichever session holds its port.
  */
 export function codexHooksSilent(root?: string): boolean {
   const installs = read();
+  const silent = (install?: Install) => Boolean(install?.review && !install.hooked);
   if (root) {
-    const install = installs[canonical(root)];
-    return Boolean(install?.served && !install.hooked);
+    return silent(installs[canonical(root)]);
   }
   const latest = Object.entries(installs)
     .filter(([where, install]) => install.served && fs.existsSync(where))
     .sort(([, a], [, b]) => (a.served! < b.served! ? 1 : -1))[0];
-  return Boolean(latest && !latest[1].hooked);
+  return silent(latest?.[1]);
+}
+
+/** The Codex that started this server and the arguments it runs with, or null when its parent is not Codex. */
+function parentCodex(): { bin: string; args: string } | null {
+  try {
+    if (process.platform === "win32") {
+      // shortcut: on Windows the codex on PATH answers, and a bypassed trust check goes unseen; read the parent there if Windows users report it.
+      return { bin: "codex", args: "" };
+    }
+    const linux = process.platform === "linux";
+    const ps = (field: string) => execFileSync("ps", ["-o", `${field}=`, "-p", String(process.ppid)], { encoding: "utf8" }).trim();
+    // The Codex app runs its own binary, which need not be on PATH.
+    const bin = linux ? fs.readlinkSync(`/proc/${process.ppid}/exe`) : ps("comm");
+    const args = linux ? fs.readFileSync(`/proc/${process.ppid}/cmdline`, "utf8").replaceAll("\0", " ") : ps("args");
+    return path.basename(bin) === "codex" ? { bin, args } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Asks the Codex that started this server whether the Well Actually hooks
+ * need review, from the `hooks/list` of its app server, where its own /hooks
+ * and the app's Hooks settings read it. Undefined when Codex cannot answer,
+ * which says nothing rather than something false.
+ */
+export async function askCodexHooksNeedReview(cwd = process.cwd(), codex = parentCodex(), timeoutMs = 5000): Promise<boolean | undefined> {
+  if (!codex) {
+    return undefined;
+  }
+  // Hooks run regardless of trust in this session.
+  if (codex.args.includes("--dangerously-bypass-hook-trust")) {
+    return false;
+  }
+  return new Promise(resolve => {
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(codex.bin, ["app-server"], { cwd, stdio: ["pipe", "pipe", "ignore"] });
+    } catch {
+      resolve(undefined);
+      return;
+    }
+    const done = (answer: boolean | undefined) => {
+      clearTimeout(timer);
+      child.kill();
+      resolve(answer);
+    };
+    const timer = setTimeout(() => done(undefined), timeoutMs);
+    child.on("error", () => done(undefined));
+    child.on("exit", () => done(undefined));
+    const send = (message: object) => child.stdin!.write(`${JSON.stringify(message)}\n`);
+    let buffer = "";
+    child.stdout!.on("data", (chunk: Buffer) => {
+      buffer += chunk.toString("utf8");
+      let end;
+      while ((end = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, end);
+        buffer = buffer.slice(end + 1);
+        let message: { id?: number; result?: { data?: { hooks?: { pluginId?: string; enabled?: boolean; trustStatus?: string }[] }[] } };
+        try {
+          message = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        if (message.id === 1) {
+          send({ method: "initialized" });
+          send({ id: 2, method: "hooks/list", params: { cwds: [cwd] } });
+        } else if (message.id === 2) {
+          const ours = (message.result?.data ?? []).flatMap(entry => entry.hooks ?? []).filter(hook => hook.pluginId?.startsWith("wellactually@") && hook.enabled);
+          done(message.result ? ours.some(hook => hook.trustStatus === "untrusted" || hook.trustStatus === "modified") : undefined);
+        }
+      }
+    });
+    child.stdin!.on("error", () => done(undefined));
+    send({ id: 1, method: "initialize", params: { clientInfo: { name: "wellactually", version: "0" } } });
+  });
 }

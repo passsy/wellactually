@@ -237,10 +237,10 @@ export function MergedBanner({
 }
 
 /**
- * Codex skips a plugin's hooks until they are trusted in /hooks, asks again
- * after every update, and says nothing meanwhile. Until then no advice reaches
- * the agent, and the agent only hears it from the MCP server, so the human
- * hears it here. No dismiss: it goes away by itself once a hook has run.
+ * Codex skips a plugin's hooks until they are trusted in /hooks, and asks
+ * again after every update. Until then no advice reaches the agent. Codex's
+ * own prompt can be skipped, so the human hears it here as well. No dismiss:
+ * it goes away by itself once a hook has run.
  */
 export function CodexHooksBanner() {
   return (

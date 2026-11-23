@@ -8,7 +8,7 @@ import { hasDetector } from "@wellactually/core/node";
 import { TOOLS as FINDINGS_TOOLS } from "../../review-inbox/tools.mts";
 import { reportPendingReviewSuggestions, REVIEW_REPORT_MS } from "../../board/src/registry/review-reports.ts";
 import { startInBackground } from "./hook/hook.ts";
-import { codexHooksSilent, HOOKS_NEED_REVIEW, noteCodexServer } from "../../board/src/codex-hooks.ts";
+import { askCodexHooksNeedReview, codexHooksSilent, HOOKS_NEED_REVIEW, noteCodexServer } from "../../board/src/codex-hooks.ts";
 import { claimReport } from "../../board/src/detections.ts";
 import { appToolMeta, drawsCards, registerReviewCard } from "../../review-inbox/serve/app.mts";
 import { startUi } from "../../review-inbox/serve/http.mts";
@@ -140,7 +140,7 @@ export async function serveMcp(): Promise<void> {
   const pluginRoot = path.resolve(path.dirname(process.argv[1] ?? ""), "..");
   const codex = process.env.WELLACTUALLY_REVIEW_HOST === "codex";
   if (codex) {
-    noteCodexServer(pluginRoot);
+    noteCodexServer(pluginRoot, await askCodexHooksNeedReview());
   }
   const hooksNeedReview = () => codex && codexHooksSilent(pluginRoot);
   // Codex shows the model only the first line of a server's instructions.

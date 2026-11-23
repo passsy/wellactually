@@ -7,7 +7,8 @@
         "mcp"
       ],
       "cwd": ".",
-      "env": { "WELLACTUALLY_REVIEW_HOST": "codex" }
+      "env": { "WELLACTUALLY_REVIEW_HOST": "codex" },
+      "env_vars": ["CODEX_HOME", "WELLACTUALLY_HOME"]
     }
   }
 }
