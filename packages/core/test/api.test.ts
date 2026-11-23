@@ -17,6 +17,7 @@ import {
   sdkImports,
   shapeOf,
   textCtx,
+  toolCtx,
   unsupported,
   validateFindings,
   type Manifest,
@@ -62,6 +63,10 @@ describe("every version of the detector API", () => {
     // A version from before deletions is never handed one.
     if ("delete" in promised) {
       today.delete = shapeOf(ctxFor(version, fileCtx("delete", "lib/a.dart", "a")));
+    }
+    // A version from before tool calls is never handed one.
+    if ("tool" in promised) {
+      today.tool = shapeOf(ctxFor(version, toolCtx("t3-code", "pull_request_create", { title: "a" })));
     }
     expect(
       today,
@@ -153,6 +158,38 @@ describe("a detector built against API 4", () => {
   test("still gets everything API 3 promised", async () => {
     const result = await run(written);
     expect(said(result.findings)).toEqual(["absolute", "shape", "fresh", "root", "reads", "line 3"]);
+  });
+});
+
+describe("a detector built against API 5", () => {
+  const { manifest, bundle } = frozen(5);
+  const run = (ctx: Ctx) => runDetector(bundle, ctx, undefined, project, apiOf(manifest));
+  const call = toolCtx("t3-code", "pull_request_create", { title: "Fix lost lines", body: "Why" });
+
+  test("says in its manifest that it wants tool calls", () => {
+    expect(manifest.events).toEqual(["write", "read", "delete", "prompt", "command", "output", "tool"]);
+    expect(manifest.handlers).toContainEqual({ event: "tool", globs: [] });
+  });
+
+  test("gets the server, the tool and what the agent passes to it", async () => {
+    expect(applies(manifest, call)).toBe(true);
+    const result = await run(call);
+    expect(result.dropped).toEqual([]);
+    expect(result.findings).toEqual([{ depth: "pointer" }, { match: "Fix lost lines" }]);
+  });
+
+  test("still gets everything API 4 promised", async () => {
+    const result = await run(written);
+    expect(said(result.findings)).toEqual(["absolute", "shape", "fresh", "root", "reads", "line 3"]);
+    expect((await run(textCtx("command", "echo shape"))).findings).toEqual([{ match: "shape" }]);
+  });
+});
+
+describe("a detector built against API 4 next to one built against API 5", () => {
+  test("is never asked about a tool call, and never sees one on its events", async () => {
+    const four = frozen(4);
+    expect(applies(four.manifest, toolCtx("t3-code", "pull_request_create", {}))).toBe(false);
+    expect(said((await runDetector(four.bundle, textCtx("command", "echo shape"), undefined, project, 4)).findings)).toEqual(["shape"]);
   });
 });
 

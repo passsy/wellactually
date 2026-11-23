@@ -8,7 +8,9 @@
     "./v3": "./src/v3.ts",
     "./v3/test": "./src/test.node.ts",
     "./v4": "./src/v4.ts",
-    "./v4/test": "./src/test.node.ts"
+    "./v4/test": "./src/test.node.ts",
+    "./v5": "./src/v5.ts",
+    "./v5/test": "./src/test.node.ts"
   },
   "dependencies": {
     "@wellactually/core": "0.1.0"

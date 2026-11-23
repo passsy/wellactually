@@ -1,9 +1,9 @@
-import { fileCtx, textCtx, type Ctx } from "@wellactually/detector-sdk";
+import { fileCtx, textCtx, toolCtx, type Ctx } from "@wellactually/detector-sdk";
 import { matchesGlobs } from "./glob.ts";
 import type { Manifest } from "../principle/manifest.ts";
 
 // The events themselves are built by the SDK, so a test builds exactly what the hook builds.
-export { fileCtx, textCtx };
+export { fileCtx, textCtx, toolCtx };
 
 /**
  * Whether a principle's detector runs for this context at all.

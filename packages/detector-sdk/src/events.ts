@@ -5,7 +5,7 @@
  * `wellactually test`, the browser editor and the registry. A path is relative
  * to a made-up project root, and the detector sees it below that root.
  */
-import { fileCtx, locateWritten, textCtx, type Ctx } from "./index.ts";
+import { fileCtx, locateWritten, textCtx, toolCtx, type Ctx } from "./index.ts";
 
 /** What `detect` takes besides the event. */
 export interface DetectOptions {
@@ -95,6 +95,14 @@ export function command(text: string): Ctx {
 /** `command` ran, and this is what it printed. */
 export function output(command: string, text: string): Ctx {
   return textCtx("output", text, undefined, command);
+}
+
+/**
+ * The agent is about to call the MCP tool `name` of `server` with `input`:
+ * `tool("t3-code", "pull_request_create", { title: "Fix login" })`.
+ */
+export function tool(server: string, name: string, input: Record<string, unknown> = {}): Ctx {
+  return toolCtx(server, name, input);
 }
 
 /**

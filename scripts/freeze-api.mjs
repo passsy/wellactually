@@ -6,7 +6,7 @@
 // bundle that is built again proves nothing about the hosts that come later.
 import fs from "node:fs";
 import path from "node:path";
-import { API_VERSION, fileCtx, textCtx } from "../packages/detector-sdk/src/index.ts";
+import { API_VERSION, fileCtx, textCtx, toolCtx } from "../packages/detector-sdk/src/index.ts";
 import { buildPrinciple, environmentFor, shapeOf } from "../packages/core/src/node.ts";
 
 const dir = path.resolve(import.meta.dirname, `../packages/core/test/api/v${API_VERSION}`);
@@ -38,6 +38,7 @@ fs.writeFileSync(
       delete: shapeOf(fileCtx("delete", "lib/a.dart", "a")),
       text: shapeOf(textCtx("prompt", "a")),
       output: shapeOf(textCtx("output", "a", undefined, "b")),
+      tool: shapeOf(toolCtx("t3-code", "pull_request_create", { title: "a" })),
       globals: Object.keys(environment.strings).sort(),
       functions: Object.keys(environment.functions).sort(),
     },

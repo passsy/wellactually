@@ -13,10 +13,18 @@
  * gets the event of its kind and yields findings. A write knows the lines
  * the agent removed as well as the ones it wrote. It can read files through
  * `node:fs`.
+ *
+ * The event names of version 4 are frozen here as they were. Version 5 added
+ * the `tool` event, which a detector of version 4 never sees.
  */
-export type { CommandEvent, DeleteEvent, Depth, EventName, File, FileEvent, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, RemovedLine, TextFinding, WriteEvent, WrittenLine } from "./index.ts";
-export { EVENTS, findWord, lineAt, mentioned } from "./index.ts";
+export type { CommandEvent, DeleteEvent, Depth, File, FileEvent, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, RemovedLine, TextFinding, WriteEvent, WrittenLine } from "./index.ts";
+export { findWord, lineAt, mentioned } from "./index.ts";
 export { matchesGlob, matchesGlobs } from "./glob.ts";
 export type { FileOptions } from "./handlers.ts";
 export { findUp } from "./find.ts";
 export { onCommand, onDelete, onOutput, onPrompt, onRead, onWrite } from "./handlers.ts";
+
+/** What happened in the session, as version 4 knows it. */
+export type EventName = "write" | "read" | "delete" | "prompt" | "command" | "output";
+
+export const EVENTS: readonly EventName[] = ["write", "read", "delete", "prompt", "command", "output"];

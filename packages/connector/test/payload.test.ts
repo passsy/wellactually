@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { eventsOf, type HookPayload } from "../src/hook/payload.ts";
+import { eventsOf, mcpToolOf, type HookPayload } from "../src/hook/payload.ts";
 
 /**
  * The payload shapes are the ones Claude Code and Codex send to a hook.
@@ -70,6 +70,25 @@ describe("Claude Code payloads", () => {
       expect(summary(payload)).toEqual([{ event: "prompt", path: null, text: "Add a late field to Session", written: null }]);
     }
     expect(summary({ hook_event_name: "PostToolUse", tool_name: "Task", tool_input: { prompt: "x" } })).toEqual([]);
+  });
+
+  test("an MCP tool call is a tool event before it runs, and never a command", () => {
+    const input = { title: "Fix lost lines", body: "Why it raced", command: "git push" };
+    const payload = { hook_event_name: "PreToolUse", tool_name: "mcp__t3-code__pull_request_create", tool_input: input };
+    const [ctx, ...rest] = eventsOf({ cwd, session_id: "s", ...payload }, disk({}));
+    expect(rest).toEqual([]);
+    expect(ctx?.event).toBe("tool");
+    expect(ctx?.tool).toEqual({ server: "t3-code", name: "pull_request_create", input });
+    expect(ctx?.command).toBeNull();
+    expect(JSON.parse(ctx?.text ?? "")).toEqual(input);
+    expect(summary({ ...payload, hook_event_name: "PostToolUse" })).toEqual([]);
+  });
+
+  test("the tool of an MCP name starts after the server's first double underscore", () => {
+    expect(mcpToolOf("mcp__plugin_wellactually_wellactually__list_principles")).toEqual({ server: "plugin_wellactually_wellactually", name: "list_principles" });
+    expect(mcpToolOf("mcp__wellactually__rate_principle_relevant")).toEqual({ server: "wellactually", name: "rate_principle_relevant" });
+    expect(mcpToolOf("Bash")).toBeNull();
+    expect(mcpToolOf("mcp__server")).toBeNull();
   });
 
   test("Write counts every line as written", () => {

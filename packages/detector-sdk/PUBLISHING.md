@@ -15,9 +15,9 @@ npm install --save-dev @wellactually/detector-sdk vitest
 ```
 
 ```ts
-import { onWrite } from "@wellactually/detector-sdk/v4";
+import { onWrite } from "@wellactually/detector-sdk/v5";
 // In detector.test.ts:
-import { detect, write } from "@wellactually/detector-sdk/v4/test";
+import { detect, write } from "@wellactually/detector-sdk/v5/test";
 ```
 
 The SDK requires Node >=22.18.0. It contains compiled JavaScript, public type

@@ -130,7 +130,7 @@ const EXAMPLE = 'onWrite({ globs: ["**/*.ts"], *detect(event) { ... } });';
 export function readHandlers(registered: unknown): Pick<Manifest, "events" | "globs" | "handlers"> {
   if (!Array.isArray(registered) || registered.length === 0) {
     throw new ManifestError(
-      `detector.ts registers no handler, so it would never run. Call onWrite, onRead, onPrompt, onCommand or onOutput at its top level, for example: ${EXAMPLE}`,
+      `detector.ts registers no handler, so it would never run. Call onWrite, onRead, onDelete, onPrompt, onCommand, onOutput or onTool at its top level, for example: ${EXAMPLE}`,
     );
   }
   const handlers: Handler[] = [];

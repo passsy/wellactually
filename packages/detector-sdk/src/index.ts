@@ -27,14 +27,16 @@
  * - 4: `event.removed` on a write, the lines the agent removed, and the
  *   `delete` event with `onDelete`, for a file the agent deleted. A finding
  *   with `removed: true` names a removed line.
+ * - 5: the `tool` event with `onTool`, for an MCP tool the agent is about to
+ *   call, with the server, the tool and what the agent passes to it.
  *
  * A detector says which one it was written against by where it imports from:
- * `@wellactually/detector-sdk/v4`. Each version has its own file next to this one. A
+ * `@wellactually/detector-sdk/v5`. Each version has its own file next to this one. A
  * principle is then handed the event of that version for as long as it is
  * run, also when it is uploaded again after the API has moved on. This file
  * itself is what the host imports, not a detector.
  */
-export const API_VERSION = 4;
+export const API_VERSION = 5;
 
 export { matchesGlob, matchesGlobs } from "./glob.ts";
 
@@ -47,10 +49,11 @@ export { matchesGlob, matchesGlobs } from "./glob.ts";
  * - `prompt`: the user typed a message, or the agent briefed a subagent.
  * - `command`: the agent is about to run a shell command.
  * - `output`: a shell command ran, and this is what it printed.
+ * - `tool`: the agent is about to call a tool of an MCP server.
  */
-export type EventName = "write" | "read" | "delete" | "prompt" | "command" | "output";
+export type EventName = "write" | "read" | "delete" | "prompt" | "command" | "output" | "tool";
 
-export const EVENTS: readonly EventName[] = ["write", "read", "delete", "prompt", "command", "output"];
+export const EVENTS: readonly EventName[] = ["write", "read", "delete", "prompt", "command", "output", "tool"];
 
 /** The events that carry a file, and so the ones a handler can have globs for. */
 export const FILE_EVENTS: readonly EventName[] = ["write", "read", "delete"];
@@ -101,7 +104,7 @@ export interface File {
 
 /**
  * An event as the host builds it and hands it to the isolate: one shape for
- * all six. A detector never sees this. Its handlers get the event of their
+ * all seven. A detector never sees this. Its handlers get the event of their
  * kind, see `WriteEvent` and the others.
  */
 export interface Ctx {
@@ -111,10 +114,12 @@ export interface Ctx {
    * is as it was before it was deleted, and every line of it is removed.
    */
   file: (File & { written: Written[]; removed: Written[] }) | null;
-  /** The file content on `write`, `read` and `delete`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */
+  /** The file content on `write`, `read` and `delete`, the prompt on `prompt`, the command line on `command`, what was printed on `output`, the input as JSON on `tool`. */
   text: string;
   /** The command line on `command` and `output`. Null on the others. */
   command: string | null;
+  /** The MCP tool on `tool`. Null on the others. */
+  tool: ToolCall | null;
   /** The folder the session runs in, as an absolute path, on the events without a file. Null on `write`, `read` and `delete`. */
   cwd: string | null;
   /**
@@ -126,7 +131,7 @@ export interface Ctx {
 
 /** What every event has. */
 interface EventBase {
-  /** The file content on `write`, `read` and `delete`, the prompt on `prompt`, the command line on `command`, what was printed on `output`. */
+  /** The file content on `write`, `read` and `delete`, the prompt on `prompt`, the command line on `command`, what was printed on `output`, the input as JSON on `tool`. */
   text: string;
   /** `text` split into lines. A finding's `line` counts in here. */
   lines: string[];
@@ -195,6 +200,30 @@ export interface OutputEvent extends TextEventBase {
   command: string;
 }
 
+/** The MCP tool of a `tool` event, as the host records it. */
+export interface ToolCall {
+  /** The MCP server as the agent knows it, e.g. "t3-code". The user names it, so it differs between machines. */
+  server: string;
+  /** The tool as the server names it, e.g. "pull_request_create". */
+  name: string;
+  /** What the agent passes to the tool: an object of its arguments, as the tool's schema describes them. */
+  input: Record<string, unknown>;
+}
+
+/**
+ * The agent is about to call a tool of an MCP server. `text` is `input` as
+ * indented JSON, so a `match` is a piece of that.
+ */
+export interface ToolEvent extends TextEventBase {
+  event: "tool";
+  /** The MCP server as the agent knows it, e.g. "t3-code". The user names it, so prefer to judge by `tool`. */
+  server: string;
+  /** The tool as the server names it, e.g. "pull_request_create". */
+  tool: string;
+  /** What the agent passes to the tool, e.g. `{ title: "Fix login", body: "..." }`. */
+  input: Record<string, unknown>;
+}
+
 /** An event that carries a file, for a helper that serves `onWrite`, `onRead` and `onDelete` alike. */
 export type FileEvent = WriteEvent | ReadEvent | DeleteEvent;
 
@@ -207,7 +236,7 @@ export type FileEvent = WriteEvent | ReadEvent | DeleteEvent;
 export type Depth = "pointer" | "full";
 
 /**
- * What a handler of `onPrompt` or `onCommand` yields. Nothing in it is
+ * What a handler of `onPrompt`, `onCommand` or `onTool` yields. Nothing in it is
  * required: `yield {}` fires the principle and says nothing more.
  */
 export interface TextFinding {
@@ -461,6 +490,7 @@ export function fileCtx(event: "write" | "read" | "delete", relativePath: string
     },
     text: content,
     command: null,
+    tool: null,
     cwd: null,
     project: root,
   };
@@ -477,6 +507,23 @@ export function textCtx(event: "prompt" | "command" | "output", text: string, ro
     file: null,
     text,
     command: event === "prompt" ? null : event === "command" ? text : command,
+    tool: null,
+    cwd,
+    project: root,
+  };
+}
+
+/**
+ * The event for an MCP tool the agent is about to call. `cwd` is the folder
+ * the session runs in, which is the project root unless said otherwise.
+ */
+export function toolCtx(server: string, name: string, input: Record<string, unknown>, root: string | null = TEST_ROOT, cwd: string = root ?? "/"): Ctx {
+  return {
+    event: "tool",
+    file: null,
+    text: JSON.stringify(input, null, 2),
+    command: null,
+    tool: { server, name, input },
     cwd,
     project: root,
   };

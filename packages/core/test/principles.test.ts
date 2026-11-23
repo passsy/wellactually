@@ -284,7 +284,7 @@ describe("a detector that cannot be loaded", () => {
   });
 
   test("is told what replaced detect, events and globs", async () => {
-    await expect(build(`export const globs = ["**/*.ts"]; export function detect() { return []; }`)).rejects.toThrow(/registers no handler, so it would never run. Call onWrite, onRead, onPrompt, onCommand or onOutput at its top level/);
+    await expect(build(`export const globs = ["**/*.ts"]; export function detect() { return []; }`)).rejects.toThrow(/registers no handler, so it would never run. Call onWrite, onRead, onDelete, onPrompt, onCommand, onOutput or onTool at its top level/);
   });
 });
 

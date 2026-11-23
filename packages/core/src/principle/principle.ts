@@ -1,7 +1,7 @@
 import { API_VERSION, TEST_ROOT, type Ctx, type EventName, type Finding } from "@wellactually/detector-sdk";
 import { apiOf, BUILT_IN_SINCE, importedApi } from "../detector/api.ts";
 import { buildDetector, buildTestBundle, BundleError, byteLength, codeFiles, detectorEntry, withNotices, type PrincipleFiles } from "../build/bundle.ts";
-import { applies, fileCtx, textCtx } from "../detector/ctx.ts";
+import { applies, fileCtx, textCtx, toolCtx } from "../detector/ctx.ts";
 import { ManifestError, parsePrinciple, parseSettings, parseTags, readHandlers, type Manifest } from "./manifest.ts";
 import { thirdPartyNotices } from "../build/licenses.ts";
 import { approvalKey, carriedPackages, isPackageFile, needsApproval, noticeOf, PackageError, type CarriedPackage, type PackageInfo } from "../build/packages.ts";
@@ -302,7 +302,7 @@ export function answerDetect(
   const { event, options } = (typeof call === "object" && call !== null ? call : {}) as { event?: unknown; options?: { project?: unknown } };
   const ctx = eventCtx(event);
   if (!ctx) {
-    return { error: "detect() needs an event from write(), edit(), read(), deleted(), prompt(), command() or output()" };
+    return { error: "detect() needs an event from write(), edit(), read(), deleted(), prompt(), command(), output() or tool()" };
   }
   const fixture = options?.project;
   if (fixture !== undefined && typeof fixture !== "string") {
@@ -371,9 +371,16 @@ function eventCtx(raw: unknown): Ctx | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
   }
-  const event = raw as { event?: unknown; text?: unknown; command?: unknown; file?: { relativePath?: unknown; content?: unknown; written?: unknown; removed?: unknown; isNew?: unknown } | null };
+  const event = raw as { event?: unknown; text?: unknown; command?: unknown; tool?: { server?: unknown; name?: unknown; input?: unknown } | null; file?: { relativePath?: unknown; content?: unknown; written?: unknown; removed?: unknown; isNew?: unknown } | null };
   if (event.event === "prompt" || event.event === "command") {
     return typeof event.text === "string" ? textCtx(event.event, event.text) : null;
+  }
+  if (event.event === "tool") {
+    const call = event.tool;
+    if (typeof call?.server !== "string" || typeof call.name !== "string" || typeof call.input !== "object" || call.input === null || Array.isArray(call.input)) {
+      return null;
+    }
+    return toolCtx(call.server, call.name, call.input as Record<string, unknown>);
   }
   if (event.event === "output") {
     return typeof event.text === "string" && typeof event.command === "string" ? textCtx("output", event.text, undefined, event.command) : null;

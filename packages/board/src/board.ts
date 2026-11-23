@@ -246,6 +246,7 @@ const OPENERS: Record<Ctx["event"], string> = {
   prompt: "This is about what was just asked for. No code was inspected and nothing is known to be wrong. Treat it as a recommendation while you work.",
   command: "This is about the command you are about to run.",
   output: "This is about what the command you ran printed.",
+  tool: "This is about the MCP tool you are about to call. It has not run yet, so you can still change what you pass to it.",
 };
 
 

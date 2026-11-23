@@ -1,0 +1,99 @@
+{
+  "file": {
+    "command": "null",
+    "cwd": "null",
+    "event": "string",
+    "file": {
+      "content": "string",
+      "ext": "string",
+      "isNew": "boolean",
+      "lines": [
+        "string"
+      ],
+      "name": "string",
+      "path": "string",
+      "relativePath": "string",
+      "removed": [
+        {
+          "line": "number",
+          "text": "string"
+        }
+      ],
+      "written": [
+        {
+          "line": "number",
+          "text": "string"
+        }
+      ]
+    },
+    "project": "string",
+    "text": "string",
+    "tool": "null"
+  },
+  "delete": {
+    "command": "null",
+    "cwd": "null",
+    "event": "string",
+    "file": {
+      "content": "string",
+      "ext": "string",
+      "isNew": "boolean",
+      "lines": [
+        "string"
+      ],
+      "name": "string",
+      "path": "string",
+      "relativePath": "string",
+      "removed": [
+        {
+          "line": "number",
+          "text": "string"
+        }
+      ],
+      "written": []
+    },
+    "project": "string",
+    "text": "string",
+    "tool": "null"
+  },
+  "text": {
+    "command": "null",
+    "cwd": "string",
+    "event": "string",
+    "file": "null",
+    "project": "string",
+    "text": "string",
+    "tool": "null"
+  },
+  "output": {
+    "command": "string",
+    "cwd": "string",
+    "event": "string",
+    "file": "null",
+    "project": "string",
+    "text": "string",
+    "tool": "null"
+  },
+  "tool": {
+    "command": "null",
+    "cwd": "string",
+    "event": "string",
+    "file": "null",
+    "project": "string",
+    "text": "string",
+    "tool": {
+      "input": {
+        "title": "string"
+      },
+      "name": "string",
+      "server": "string"
+    }
+  },
+  "globals": [
+    "__ctx",
+    "__cwd"
+  ],
+  "functions": [
+    "__fs"
+  ]
+}

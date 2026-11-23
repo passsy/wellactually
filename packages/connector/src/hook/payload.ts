@@ -1,5 +1,5 @@
 import path from "node:path";
-import { fileCtx, locateWritten, textCtx, type Change, type Ctx, type Where, type Written } from "@wellactually/detector-sdk";
+import { fileCtx, locateWritten, textCtx, toolCtx, type Change, type Ctx, type Where, type Written } from "@wellactually/detector-sdk";
 import { removedLines, type TurnDiff } from "./turn.ts";
 import { projectRootOf, toPosix } from "../../../board/src/files.ts";
 
@@ -31,6 +31,8 @@ export interface HookPayload {
     patch?: string;
     /** What the agent hands to a subagent. */
     prompt?: string;
+    /** The arguments of an MCP tool, whatever its schema names them. */
+    [argument: string]: unknown;
   };
   /**
    * What the tool answered. Claude Code says here whether a Write created the
@@ -117,6 +119,10 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
   if (event === "PreToolUse" && SUBAGENT_TOOLS.has(tool)) {
     return input.prompt ? [textCtx("prompt", input.prompt, sessionRoot(), "", toPosix(cwd))] : [];
   }
+  const mcp = event === "PreToolUse" ? mcpToolOf(tool) : null;
+  if (mcp) {
+    return [toolCtx(mcp.server, mcp.name, input, sessionRoot(), toPosix(cwd))];
+  }
   if (event !== "PostToolUse") {
     return [];
   }
@@ -178,6 +184,20 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
   }
   const fragments = tool === "Edit" ? [input.new_string ?? ""] : (input.edits ?? []).map((edit) => edit.new_string ?? "");
   return [file("write", absolute, content, { written: locateWritten(content, fragments), removed: removedFrom(absolute, content) })];
+}
+
+/**
+ * The server and the tool of an MCP tool name, `mcp__<server>__<tool>`, as
+ * Claude Code and Codex name one. Null for any other tool. A server name may
+ * hold single underscores, `plugin_wellactually_wellactually`, so the tool
+ * starts after the first double one.
+ */
+export function mcpToolOf(toolName: string): { server: string; name: string } | null {
+  const match = /^mcp__(.+?)__(.+)$/.exec(toolName);
+  if (!match?.[1] || !match[2]) {
+    return null;
+  }
+  return { server: match[1], name: match[2] };
 }
 
 /**

@@ -32,7 +32,7 @@
  * detector is bundled with its own copy and runs in a fresh isolate.
  */
 import { matchesGlobs } from "./glob.ts";
-import type { CommandEvent, Ctx, DeleteEvent, EventName, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, RemovedLine, TextFinding, WriteEvent, WrittenLine } from "./index.ts";
+import type { CommandEvent, Ctx, DeleteEvent, EventName, Finding, Findings, OutputEvent, PromptEvent, ReadEvent, RemovedLine, TextFinding, ToolEvent, WriteEvent, WrittenLine } from "./index.ts";
 
 /**
  * `F`, with every field that `Allowed` does not have turned into an error.
@@ -67,7 +67,7 @@ export interface FileOptions<E, F> {
   detect: FileHandler<E, F>;
 }
 
-/** What `onPrompt` and `onCommand` take. */
+/** What `onPrompt`, `onCommand` and `onTool` take. */
 export interface TextOptions<E, F> {
   /** Yields a finding for each thing it found in the event. */
   detect: TextHandler<E, F>;
@@ -137,6 +137,11 @@ export function onOutput<F extends Finding>(options: OutputOptions<F>): void {
   register("output", options);
 }
 
+/** Runs before the agent calls a tool of an MCP server. `event.tool` names it, `event.input` is what the agent passes. */
+export function onTool<F extends TextFinding>(options: TextOptions<ToolEvent, F>): void {
+  register("tool", options);
+}
+
 /** What the build reads: the handlers the detector file registered while it loaded. */
 export function __handlers(): Registered[] {
   return registered.map(({ handler: _, ...rest }) => rest);
@@ -147,6 +152,9 @@ function eventOf(ctx: Ctx): unknown {
   const base = { event: ctx.event, text: ctx.text, lines: ctx.file?.lines ?? ctx.text.split("\n"), project: ctx.project };
   if (!ctx.file) {
     const text = { ...base, cwd: ctx.cwd ?? ctx.project ?? "/" };
+    if (ctx.tool) {
+      return { ...text, server: ctx.tool.server, tool: ctx.tool.name, input: ctx.tool.input };
+    }
     return ctx.command === null ? text : { ...text, command: ctx.command };
   }
   const { written, removed, ...file } = ctx.file;

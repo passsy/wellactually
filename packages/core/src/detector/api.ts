@@ -59,6 +59,11 @@ const DOWNGRADE: Record<number, (ctx: never) => unknown> = {
     const { removed: _, ...file } = ctx.file;
     return { ...ctx, file };
   },
+  // Version 5 added the `tool` event. A detector of version 4 has no handler for one, so it is never asked about one.
+  5: (ctx: Ctx) => {
+    const { tool: _, ...rest } = ctx;
+    return rest;
+  },
 };
 
 /** Today's event as a detector of version `api` expects it. */
