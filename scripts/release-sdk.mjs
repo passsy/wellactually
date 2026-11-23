@@ -13,7 +13,8 @@ const version = values.version ?? JSON.parse(fs.readFileSync(path.join(root, "pa
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error("An exact SDK version is required");
 const artifacts = path.join(root, ".artifacts/detector-sdk");
 const target = path.join(artifacts, "package");
-const esbuildRange = JSON.parse(fs.readFileSync(path.join(root, "packages/core/package.json"), "utf8")).dependencies.esbuild;
+const coreDependencies = JSON.parse(fs.readFileSync(path.join(root, "packages/core/package.json"), "utf8")).dependencies;
+const esbuildRange = coreDependencies.esbuild;
 fs.rmSync(target, { recursive: true, force: true });
 fs.mkdirSync(target, { recursive: true });
 // One entry per detector API version: `v3.ts`. A principle imports the version it is written against.
@@ -49,6 +50,19 @@ for (const version of versions) {
 await bundle({ ...shared, entryPoints: [path.join(root, "packages/detector-sdk/src/test.node.ts")], outfile: path.join(target, "test.mjs") });
 // `detect()` runs this as a child process to build the principle under test.
 await bundle({ ...shared, entryPoints: [path.join(root, "packages/core/src/build-principle.ts")], outfile: path.join(target, "build-principle.mjs") });
+// The host: what builds, checks and runs principles outside a principle's own tests, such as the registry.
+// `host` runs anywhere, also in a browser, so it carries no require banner. `host/node` adds the native
+// engines and the disk. One build with shared chunks, so both entries share one module state: the
+// engines `host/node` sets are the ones `host` uses.
+await bundle({
+  ...shared,
+  banner: {},
+  entryPoints: { host: path.join(root, "packages/core/src/index.ts"), "host-node": path.join(root, "packages/core/src/node.ts") },
+  outdir: target,
+  splitting: true,
+  chunkNames: "host-chunks/[name]-[hash]",
+  outExtension: { ".js": ".mjs" },
+});
 
 // The types, for editors and for tsc. Declarations of the public files, with imports pointed at each other.
 const types = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-sdk-types-"));
@@ -68,6 +82,27 @@ try {
   fs.rmSync(types, { recursive: true, force: true });
 }
 
+// The host's types, as the tree of declarations tsc writes, with the SDK it imports by name pointed at its own copy.
+const hostTypes = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-host-types-"));
+try {
+  execFileSync(
+    path.join(root, "node_modules/.bin/tsc"),
+    ["--strict", "--declaration", "--emitDeclarationOnly", "--allowImportingTsExtensions", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--target", "ES2023", "--skipLibCheck", "--types", "node", "--rootDir", path.join(root, "packages"), "--outDir", hostTypes, path.join(root, "packages/detector-sdk/src/index.ts"), path.join(root, "packages/core/src/index.ts"), path.join(root, "packages/core/src/node.ts")],
+    { stdio: "pipe" },
+  );
+  const out = path.join(target, "host-types");
+  fs.cpSync(hostTypes, out, { recursive: true });
+  const sdkIndex = path.join(out, "detector-sdk/src/index.js");
+  for (const file of fs.readdirSync(out, { recursive: true }).map((name) => path.join(out, name)).filter((name) => name.endsWith(".d.ts"))) {
+    let relative = path.relative(path.dirname(file), sdkIndex).replaceAll("\\", "/");
+    relative = relative.startsWith(".") ? relative : `./${relative}`;
+    const text = fs.readFileSync(file, "utf8").replace(/(from\s+["']\.{1,2}\/[^"']+)\.ts(["'])/g, "$1.js$2").replace(/(["'])@wellactually\/detector-sdk\1/g, `$1${relative}$1`);
+    fs.writeFileSync(file, text);
+  }
+} finally {
+  fs.rmSync(hostTypes, { recursive: true, force: true });
+}
+
 write(
   "package.json",
   JSON.stringify(
@@ -81,14 +116,19 @@ write(
       repository: { type: "git", url: "git+https://github.com/passsy/wellactually.git" },
       engines: { node: ">=22.18.0" },
       // No "." on purpose: the detector API version is part of the path.
-      exports: Object.fromEntries(
-        versions.flatMap((version) => [
-          [`./${version}`, { types: `./${version}.d.ts`, default: `./${version}.mjs` }],
-          [`./${version}/test`, { types: "./test.d.ts", default: "./test.mjs" }],
-        ]),
-      ),
-      files: ["*.mjs", "*.d.ts", "README.md", "PUBLISHING.md", "LICENSE", "THIRD_PARTY_NOTICES.txt"],
-      dependencies: { esbuild: esbuildRange },
+      exports: {
+        ...Object.fromEntries(
+          versions.flatMap((version) => [
+            [`./${version}`, { types: `./${version}.d.ts`, default: `./${version}.mjs` }],
+            [`./${version}/test`, { types: "./test.d.ts", default: "./test.mjs" }],
+          ]),
+        ),
+        "./host": { types: "./host-types/core/src/index.d.ts", default: "./host.mjs" },
+        "./host/node": { types: "./host-types/core/src/node.d.ts", default: "./host-node.mjs" },
+      },
+      files: ["*.mjs", "*.d.ts", "host-chunks", "host-types", "README.md", "PUBLISHING.md", "LICENSE", "THIRD_PARTY_NOTICES.txt"],
+      // The isolate's code is bundled. Its types are not: the host's declarations name a QuickJS module.
+      dependencies: { esbuild: esbuildRange, "quickjs-emscripten-core": coreDependencies["quickjs-emscripten-core"] },
     },
     null,
     2,
@@ -160,6 +200,13 @@ A principle that imports ${newest} keeps getting the event of ${newest}, also af
 Bundled dependency licenses and upstream notices are included in \`THIRD_PARTY_NOTICES.txt\`.
 
 This package has ${versions.map((version) => `\`${version}\``).join(" and ")}.
+
+## Hosts
+
+\`@wellactually/detector-sdk/host\` builds, checks and runs principles: the isolate, the bundler, the test runner and the licence checks.
+It runs anywhere, also in a browser, where the bundler and the isolate are handed in with \`setEngines\`.
+\`@wellactually/detector-sdk/host/node\` sets the native engines and adds what needs a disk.
+The Well Actually registry runs principles with them.
 `,
 );
 
