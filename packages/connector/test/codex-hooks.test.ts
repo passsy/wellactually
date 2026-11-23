@@ -96,3 +96,13 @@ test.skipIf(process.platform === "win32")("Codex's hooks/list answers whether ou
   expect(await askCodexHooksNeedReview(cache, { bin: path.join(cache, "missing"), args: "codex" })).toBe(undefined);
   expect(await askCodexHooksNeedReview(cache, null)).toBe(undefined);
 });
+
+test("a hook in a session after the user trusted them mid-run tells the agent the review notice no longer holds", async () => {
+  const root = install("0.13.0");
+  process.env.PLUGIN_ROOT = root;
+  const start = JSON.stringify({ hook_event_name: "SessionStart", session_id: "s1", cwd: os.tmpdir() });
+  noteCodexServer(root, false);
+  expect((await runHook(start)) || "{}").not.toContain("ignore the Well Actually notice");
+  noteCodexServer(root, true);
+  expect(JSON.parse(await runHook(start)).hookSpecificOutput.additionalContext).toContain("ignore the Well Actually notice");
+});

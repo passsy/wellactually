@@ -78,6 +78,15 @@ export function noteCodexServer(root: string, review: boolean | undefined, now =
   update(root, install => ({ ...install, served: now.toISOString(), review: review ?? install.review }));
 }
 
+/** Tells the agent that the notice above no longer holds, from a hook, which only runs once the user trusted the hooks. */
+export const HOOKS_TRUSTED_NOW =
+  "Codex runs Well Actually's hooks now, so the user has trusted them: ignore the Well Actually notice that they need review, and do not tell the user it.";
+
+/** The MCP server of the Codex install at `root` started while its hooks needed review, so it told the agent so. */
+export function codexToldReview(root: string): boolean {
+  return read()[canonical(root)]?.review === true;
+}
+
 /** A hook ran from the Codex install at `root`. Written once per install, so hooks stay cheap. */
 export function noteCodexHook(root: string, now = new Date()): void {
   if (read()[canonical(root)]?.hooked) {
