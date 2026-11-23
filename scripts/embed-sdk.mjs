@@ -1,8 +1,9 @@
 // Writes the SDK's source into the core as strings.
 //
 // The bundler has to hand the SDK to esbuild wherever it runs. A browser has
-// no filesystem to read it from, so the source travels inside the code. Run
-// this after changing a file in packages/detector-sdk/src; a test fails when it is stale.
+// no filesystem to read it from, so the source travels inside the code. The
+// output is a build artifact and not in Git: npm runs this before typecheck,
+// test, build and package, and vitest runs it before any test.
 import fs from "node:fs";
 import path from "node:path";
 

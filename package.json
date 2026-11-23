@@ -23,14 +23,22 @@
     "packages/*"
   ],
   "scripts": {
+    "prebuild": "node scripts/embed-sdk.mjs",
     "build": "node scripts/build.mjs",
+    "prepackage": "node scripts/embed-sdk.mjs",
     "package": "node scripts/package.mjs",
     "test:package": "node scripts/test-package.mjs",
+    "prepackage:local": "node scripts/embed-sdk.mjs",
     "package:local": "node scripts/install-local.mjs",
+    "preinstall:local": "node scripts/embed-sdk.mjs",
     "install:local": "node scripts/install-local.mjs",
+    "pretest": "node scripts/embed-sdk.mjs",
     "test": "vitest run",
+    "pretypecheck": "node scripts/embed-sdk.mjs",
     "typecheck": "tsc --noEmit -p packages/tsconfig.json && tsc --noEmit -p evaluator/tsconfig.json && tsc --noEmit -p evaluator/principles/tsconfig.json",
+    "preeval": "node scripts/embed-sdk.mjs",
     "eval": "node evaluator/run.ts",
+    "prepackage:sdk": "node scripts/embed-sdk.mjs",
     "package:sdk": "node scripts/release-sdk.mjs",
     "test:package:sdk": "node scripts/test-sdk-package.mjs"
   },

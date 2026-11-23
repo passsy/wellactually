@@ -20,7 +20,7 @@ the repository root. Publishing procedures live in
 | `stage-package.mjs` | `publish-package.mjs`; publication tests | Validates npm's staged-package receipt and expected artifact identity. |
 | `verify-package.mjs` | `publish-package.mjs`; post-approval maintainer verification; tests | Verifies public npm metadata and tarball integrity. |
 | `version.mjs` | Maintainer plugin promotion | Updates exact plugin versions and npm dependency pins after verification. |
-| `embed-sdk.mjs` | Maintainer after detector SDK source changes | Refreshes embedded SDK source; a test detects stale output. |
+| `embed-sdk.mjs` | npm before typecheck, test, build and package, and vitest before tests | Writes the SDK source the core embeds; the output is ignored by Git. |
 | `freeze-api.mjs` | Maintainer introducing a new detector API version | Records the immutable event shape of a version; refuses to overwrite an existing version. |
 
 Build output and generated skill layouts are ignored. The embedded SDK source
