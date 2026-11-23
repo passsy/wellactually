@@ -13,6 +13,7 @@ import {
   GitCommitHorizontal,
   GitMerge,
   PanelLeftOpen,
+  TriangleAlert,
 } from "lucide-react";
 import {
   Tooltip,
@@ -231,6 +232,32 @@ export function MergedBanner({
       >
         Got it
       </button>
+    </div>
+  );
+}
+
+/**
+ * Codex skips a plugin's hooks until they are trusted in /hooks, and asks
+ * again after every update. Until then no advice reaches the agent. Codex's
+ * own prompt can be skipped, so the human hears it here as well. No dismiss:
+ * it goes away by itself once a hook has run.
+ */
+export function CodexHooksBanner() {
+  return (
+    <div
+      role="status"
+      className="flex flex-none items-center gap-2 border-b border-p1/35 bg-p1/10 px-4 py-1.5 text-[12.5px]"
+    >
+      <TriangleAlert className="size-3.5 flex-none text-p1" aria-hidden="true" />
+      <span>
+        Codex is not running Well Actually&rsquo;s hooks, so no advice reaches
+        your agent.{" "}
+        <span className="text-muted">
+          Codex skips them after every install or update until you trust them:
+          open <code>/hooks</code> in Codex, or Settings &gt; Hooks in the
+          Codex app.
+        </span>
+      </span>
     </div>
   );
 }

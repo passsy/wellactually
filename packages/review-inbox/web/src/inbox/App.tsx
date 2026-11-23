@@ -24,6 +24,7 @@ import {
   listReviews,
   markFollow,
   markSeen,
+  readHealth,
   setNote,
   setStage,
   type Where,
@@ -34,7 +35,7 @@ import { openedWith, useAddress } from "./hooks/useAddress.ts";
 import { Queue } from "./Queue.tsx";
 import { Detail } from "./Detail.tsx";
 import { NoteEditor } from "./NoteEditor.tsx";
-import { Header, MergedBanner } from "./Header.tsx";
+import { CodexHooksBanner, Header, MergedBanner } from "./Header.tsx";
 import { Rail } from "./Rail.tsx";
 import { counted, flagged, isMerged, marked } from "./reviews.ts";
 import { remember, remembered } from "./remembered.ts";
@@ -649,6 +650,12 @@ export function App() {
     () => remembered().mergedSeen ?? [],
   );
   const openKey = `${where?.repo ?? ""} ${where?.target ?? ""}`;
+  // Asked again on a timer, so the banner leaves once the user trusted the hooks.
+  const hooks = useQuery({
+    queryKey: ["codex-hooks"],
+    queryFn: readHealth,
+    refetchInterval: 30_000,
+  });
   const banner = isMerged(open) && !mergedSeen.includes(openKey);
 
   /**
@@ -794,6 +801,7 @@ export function App() {
                 }
           }
         />
+        {hooks.data?.codexHooksSilent && <CodexHooksBanner />}
         {banner && open && (
           <MergedBanner
             review={open}

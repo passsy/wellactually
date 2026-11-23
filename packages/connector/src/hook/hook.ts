@@ -12,6 +12,7 @@ import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots
 import { excerpt, type HookLogEntry, someFindings } from "./hook-log.ts";
 import { noteToolUse } from "../../../board/src/registry/rater.ts";
 import { agentOf, updateNotice } from "../update.ts";
+import { codexToldReview, HOOKS_TRUSTED_NOW, noteCodexHook } from "../../../board/src/codex-hooks.ts";
 
 const MAX_FILE_BYTES = 512 * 1024;
 
@@ -29,6 +30,10 @@ const MAX_FILE_BYTES = 512 * 1024;
 export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof frameEvents = frameEvents): Promise<string> {
   const payload = JSON.parse(stdin) as HookPayload;
   const event = payload.hook_event_name ?? "";
+  // Codex sets PLUGIN_ROOT. A hook that ran from this install proves its hooks trusted, also when the user trusted them mid-session.
+  if (process.env.PLUGIN_ROOT) {
+    noteCodexHook(process.env.PLUGIN_ROOT);
+  }
   if (log) {
     Object.assign(log, { hook: event, tool: payload.tool_name, session: payload.session_id, transcript: payload.transcript_path, cwd: payload.cwd });
   }
@@ -53,8 +58,16 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
     if (update.stale) {
       startInBackground("check-update");
     }
-    // Shown to the user, not to the agent, which has nothing to do with it.
-    return update.text ? JSON.stringify({ systemMessage: update.text }) : "";
+    // The Codex app keeps one MCP server across chats, so its notice that the hooks need review outlives a trust given since; this hook running proves it stale.
+    const stale = process.env.PLUGIN_ROOT && codexToldReview(process.env.PLUGIN_ROOT);
+    if (!update.text && !stale) {
+      return "";
+    }
+    return JSON.stringify({
+      // Shown to the user, not to the agent, which has nothing to do with it.
+      ...(update.text ? { systemMessage: update.text } : {}),
+      ...(stale ? { hookSpecificOutput: { hookEventName: event, additionalContext: HOOKS_TRUSTED_NOW } } : {}),
+    });
   }
   if (event === "PostCompact" || event === "SessionEnd") {
     // A compaction drops the advice from the context, so it may arrive in full again.

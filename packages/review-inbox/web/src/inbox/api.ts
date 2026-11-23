@@ -143,6 +143,11 @@ export interface Health {
    * one it acted on, which is the whole of "did I miss anything".
    */
   changedAt?: string;
+  /**
+   * Codex has not run the hooks of its newest Well Actually install, so no
+   * advice reaches the agent until the user trusts them in /hooks.
+   */
+  codexHooksSilent?: boolean;
 }
 
 /**
