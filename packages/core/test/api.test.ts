@@ -23,17 +23,25 @@ import {
   type Manifest,
   type ProjectFiles,
 } from "../src/node.ts";
+import { buildVersion } from "./api/build.ts";
 
 /**
- * Each folder in `api` is one version of the detector API, frozen:
- * `principle.json` is a bundle the toolchain of that version built, with the
- * SDK of that time inside, and `shape.json` is the event it was promised.
- * Nothing here is ever rebuilt. These tests are what a released principle
- * relies on when the API moves on.
+ * Each folder in `api` is one version of the detector API: `detector.ts`
+ * reports one finding for each thing its version promised, and `shape.json`
+ * is the event it was promised. The detectors are built from source on every
+ * run, no compiled bundle is checked in. `shape.json` is what never changes:
+ * these tests are what a released principle relies on when the API moves on.
  */
 const dir = path.resolve(import.meta.dirname, "api");
 const versions = Array.from({ length: API_VERSION - MIN_API_VERSION + 1 }, (_, index) => MIN_API_VERSION + index);
-const frozen = (version: number) => JSON.parse(fs.readFileSync(path.join(dir, `v${version}/principle.json`), "utf8")) as { manifest: Manifest; bundle: string };
+const builtVersions = new Map(await Promise.all(versions.filter((version) => fs.existsSync(path.join(dir, `v${version}/detector.ts`))).map(async (version) => [version, await buildVersion(version)] as const)));
+const frozen = (version: number): { manifest: Manifest; bundle: string } => {
+  const built = builtVersions.get(version);
+  if (!built) {
+    throw new Error(`API ${version} has no detector in test/api/v${version}`);
+  }
+  return built;
+};
 const shape = (version: number) => JSON.parse(fs.readFileSync(path.join(dir, `v${version}/shape.json`), "utf8")) as Record<string, unknown>;
 
 const session = ["// relative absolute shape alone fresh root reads", "class Session {", "  late User user;", "}"].join("\n");
@@ -45,7 +53,8 @@ const said = (findings: Finding[]) => findings.map((finding) => finding.match ??
 describe("every version of the detector API", () => {
   test("from the oldest this host runs to the newest is frozen", () => {
     for (const version of versions) {
-      expect(fs.existsSync(path.join(dir, `v${version}/principle.json`)), `API ${version} has no frozen bundle. After raising API_VERSION run: node scripts/freeze-api.mjs`).toBe(true);
+      expect(fs.existsSync(path.join(dir, `v${version}/detector.ts`)), `API ${version} has no detector. After raising API_VERSION write test/api/v${version}/detector.ts`).toBe(true);
+      expect(fs.existsSync(path.join(dir, `v${version}/shape.json`)), `API ${version} has no frozen shape. After raising API_VERSION run: node scripts/freeze-api.mjs`).toBe(true);
     }
     expect(apiOf(frozen(API_VERSION).manifest)).toBe(API_VERSION);
   });

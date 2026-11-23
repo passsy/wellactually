@@ -1,24 +1,29 @@
-// Runs the frozen bundle of every detector API version on the host of an
-// installed @wellactually/detector-sdk, the way the registry and the plugin run
-// released principles. test-sdk-package.mjs copies this file into a project
-// that has the packed archive installed, and passes the folder with the frozen
-// versions (packages/core/test/api).
+// Builds the detector of every detector API version with the host of an
+// installed @wellactually/detector-sdk and runs it there, the way the registry
+// and the plugin build and run principles. test-sdk-package.mjs copies this
+// file into a project that has the packed archive installed, and passes the
+// folder with the versions (packages/core/test/api).
 //
 // It keeps the promises packages/core/test/api.test.ts checks against the
-// source: each frozen bundle reports one finding for each thing its version
+// source: each detector reports one finding for each thing its version
 // promised, and an old version is never asked about what came after it.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { apiOf, applies, fileCtx, mapProject, runDetector, textCtx, toolCtx } from "@wellactually/detector-sdk/host/node";
+import { apiOf, applies, buildPrinciple, fileCtx, mapProject, runDetector, textCtx, toolCtx } from "@wellactually/detector-sdk/host/node";
 
 const dir = process.argv[2];
-const frozen = (version) => JSON.parse(fs.readFileSync(path.join(dir, `v${version}/principle.json`), "utf8"));
 const versions = fs
   .readdirSync(dir)
   .filter((name) => /^v\d+$/.test(name))
   .map((name) => Number(name.slice(1)))
   .sort((a, b) => a - b);
+const advice = "# Golden\n\nA detector that every later host has to keep running.\n\nIt reports one finding for each promise its detector API made about the event.";
+const built = new Map();
+for (const version of versions) {
+  built.set(version, await buildPrinciple({ "principle.md": advice, "detector.ts": fs.readFileSync(path.join(dir, `v${version}/detector.ts`), "utf8") }));
+}
+const frozen = (version) => built.get(version);
 
 const session = ["// relative absolute shape alone fresh root reads", "class Session {", "  late User user;", "}"].join("\n");
 const written = fileCtx("write", "lib/session.dart", session, {}, { isNew: true });
@@ -52,4 +57,4 @@ for (const version of versions) {
     assert.deepEqual(await run(version, call), [{ depth: "pointer" }, { match: "Fix lost lines" }], `API ${version} lost a promise on a tool call`);
   }
 }
-console.log(`Ran the frozen bundles of detector API ${versions.join(", ")} on the installed host.`);
+console.log(`Built and ran the detectors of detector API ${versions.join(", ")} on the installed host.`);

@@ -21,7 +21,7 @@ the repository root. Publishing procedures live in
 | `verify-package.mjs` | `publish-package.mjs`; post-approval maintainer verification; tests | Verifies public npm metadata and tarball integrity. |
 | `version.mjs` | Maintainer plugin promotion | Updates exact plugin versions and npm dependency pins after verification. |
 | `embed-sdk.mjs` | Maintainer after detector SDK source changes | Refreshes embedded SDK source; a test detects stale output. |
-| `freeze-api.mjs` | Maintainer introducing a new detector API version | Records immutable API fixtures; refuses to overwrite an existing version. |
+| `freeze-api.mjs` | Maintainer introducing a new detector API version | Records the immutable event shape of a version; refuses to overwrite an existing version. |
 
 Build output and generated skill layouts are ignored. The embedded SDK source
 and frozen detector API compatibility fixtures are tracked and checked by tests.
