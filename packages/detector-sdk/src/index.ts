@@ -202,7 +202,7 @@ export interface OutputEvent extends TextEventBase {
 
 /** The MCP tool of a `tool` event, as the host records it. */
 export interface ToolCall {
-  /** The MCP server as the agent knows it, e.g. "t3-code". The user names it, so it differs between machines. */
+  /** The MCP server as the agent knows it: "t3-code" in Claude Code, "t3_code" in Codex. The user names it, so it differs between machines. */
   server: string;
   /** The tool as the server names it, e.g. "pull_request_create". */
   name: string;
@@ -216,7 +216,7 @@ export interface ToolCall {
  */
 export interface ToolEvent extends TextEventBase {
   event: "tool";
-  /** The MCP server as the agent knows it, e.g. "t3-code". The user names it, so prefer to judge by `tool`. */
+  /** The MCP server as the agent knows it: "t3-code" in Claude Code, "t3_code" in Codex. The user names it, so prefer to judge by `tool`. */
   server: string;
   /** The tool as the server names it, e.g. "pull_request_create". */
   tool: string;

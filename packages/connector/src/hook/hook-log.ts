@@ -35,8 +35,10 @@ export interface HookLogEvent {
   /** The lines the agent removed on a write, by the line each had before. Left out when there are none. */
   removed?: number[];
   command?: string;
-  /** The start of the prompt, or of what a command printed. */
+  /** The start of the prompt, or of what a command printed. Never the input of an MCP tool. */
   text?: string;
+  /** The MCP tool of a tool event, as server/tool. */
+  tool?: string;
   detectors: {
     id: string;
     version: number;

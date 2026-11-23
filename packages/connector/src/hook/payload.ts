@@ -121,7 +121,13 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
   }
   const mcp = event === "PreToolUse" ? mcpToolOf(tool) : null;
   if (mcp) {
-    return [toolCtx(mcp.server, mcp.name, input, sessionRoot(), toPosix(cwd))];
+    // MCP passes arguments as an object, and the event promises one. Anything else is no call a detector can judge.
+    if (typeof payload.tool_input !== "object" || payload.tool_input === null || Array.isArray(payload.tool_input)) {
+      return [];
+    }
+    const ctx = toolCtx(mcp.server, mcp.name, input, sessionRoot(), toPosix(cwd));
+    // shortcut: a call with more input than a command prints, such as a whole file, is not shown to detectors; truncate instead if a principle needs those.
+    return ctx.text.length > MAX_OUTPUT_LENGTH ? [] : [ctx];
   }
   if (event !== "PostToolUse") {
     return [];
@@ -189,11 +195,12 @@ export function eventsOf(payload: HookPayload, readFile: (absolute: string) => s
 /**
  * The server and the tool of an MCP tool name, `mcp__<server>__<tool>`, as
  * Claude Code and Codex name one. Null for any other tool. A server name may
- * hold single underscores, `plugin_wellactually_wellactually`, so the tool
- * starts after the first double one.
+ * hold single underscores, `plugin_wellactually_wellactually`, and Codex may
+ * put an environment in front of it, `mcp__<env>__t3_code__<tool>`, so the
+ * tool starts after the last double underscore.
  */
 export function mcpToolOf(toolName: string): { server: string; name: string } | null {
-  const match = /^mcp__(.+?)__(.+)$/.exec(toolName);
+  const match = /^mcp__(.+)__(.+?)$/.exec(toolName);
   if (!match?.[1] || !match[2]) {
     return null;
   }

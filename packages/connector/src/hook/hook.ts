@@ -5,7 +5,7 @@ import type { Ctx } from "@wellactually/detector-sdk";
 import { ADVICE_BUDGET, adviceBytes } from "@wellactually/core/node";
 import { type EventFirings, type Lockfile, PARALLEL_FROM, boardHome, forgetShown, frameEvents, readConfig, readLockfile, readShown, runBoard, sweepShown, writeShown } from "../../../board/src/board.ts";
 import { claimReport, recordDetections } from "../../../board/src/detections.ts";
-import { type HookPayload, eventsOf } from "./payload.ts";
+import { type HookPayload, eventsOf, mcpToolOf } from "./payload.ts";
 import { DetectorPool } from "../../../board/src/pool.ts";
 import { boardOffIn, switchedOff } from "../../../board/src/switches.ts";
 import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, snapshotContent, snapshotRepos, sweepSnapshots } from "./turn.ts";
@@ -64,7 +64,7 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
     }
     return note("forgot what this session was shown");
   }
-  if (event === "PreToolUse" && /rate_principle(?:_relevant|_not_relevant)?$/.test(payload.tool_name ?? "")) {
+  if (event === "PreToolUse" && isRating(payload.tool_name ?? "")) {
     if (payload.tool_use_id && payload.transcript_path) {
       await noteToolUse(payload.tool_use_id, payload.transcript_path);
     }
@@ -108,6 +108,20 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
   }
 }
 
+/**
+ * Whether a tool is one of Well Actually's own rating tools. Hosts prefix
+ * them differently, so the name ends in the tool; an MCP name also has to
+ * come from a Well Actually server, or another server's tool of that name
+ * would never reach `onTool`.
+ */
+function isRating(toolName: string): boolean {
+  if (!/rate_principle(?:_relevant|_not_relevant)?$/.test(toolName)) {
+    return false;
+  }
+  const mcp = mcpToolOf(toolName);
+  return mcp === null || mcp.server.includes("wellactually");
+}
+
 async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile, pool: DetectorPool | null, frame: typeof frameEvents, log?: HookLogEntry): Promise<string> {
   const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
@@ -130,7 +144,9 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
       written: ctx.event === "write" ? ctx.file?.written.map((written) => written.line) : undefined,
       removed: ctx.event === "write" && ctx.file && ctx.file.removed.length > 0 ? ctx.file.removed.map((removed) => removed.line) : undefined,
       command: excerpt(ctx.command),
-      text: ctx.file ? undefined : excerpt(ctx.event === "command" ? null : ctx.text),
+      // What an agent passes to an MCP tool may hold a credential, so the log keeps only the tool's name.
+      text: ctx.file || ctx.event === "tool" ? undefined : excerpt(ctx.event === "command" ? null : ctx.text),
+      tool: ctx.tool ? `${ctx.tool.server}/${ctx.tool.name}` : undefined,
       detectors: run.detectors.map((detector) => ({
         id: detector.id,
         version: detector.version,

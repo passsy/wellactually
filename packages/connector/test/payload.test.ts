@@ -84,9 +84,19 @@ describe("Claude Code payloads", () => {
     expect(summary({ ...payload, hook_event_name: "PostToolUse" })).toEqual([]);
   });
 
+  test("an MCP call whose input is no object, or more than a command prints, is no event", () => {
+    const call = { hook_event_name: "PreToolUse", tool_name: "mcp__t3-code__pull_request_create" };
+    expect(summary({ ...call, tool_input: ["a"] as never })).toEqual([]);
+    expect(summary({ ...call, tool_input: "a" as never })).toEqual([]);
+    expect(summary({ ...call, tool_input: { body: "x".repeat(200_001) } })).toEqual([]);
+  });
+
   test("the tool of an MCP name starts after the server's first double underscore", () => {
     expect(mcpToolOf("mcp__plugin_wellactually_wellactually__list_principles")).toEqual({ server: "plugin_wellactually_wellactually", name: "list_principles" });
     expect(mcpToolOf("mcp__wellactually__rate_principle_relevant")).toEqual({ server: "wellactually", name: "rate_principle_relevant" });
+    // Codex turns the hyphen of a server name into an underscore.
+    expect(mcpToolOf("mcp__t3_code__pull_request_create")).toEqual({ server: "t3_code", name: "pull_request_create" });
+    expect(mcpToolOf("mcp__e3b0c442__t3_code__pull_request_create")).toEqual({ server: "e3b0c442__t3_code", name: "pull_request_create" });
     expect(mcpToolOf("Bash")).toBeNull();
     expect(mcpToolOf("mcp__server")).toBeNull();
   });

@@ -63,4 +63,36 @@ describe("the hook log", () => {
       }
     }
   });
+
+  test("shows a Codex MCP call to onTool and logs the tool, not what was passed to it", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "wa-hook-"));
+    const previous = process.env.WELLACTUALLY_HOME;
+    process.env.WELLACTUALLY_HOME = home;
+    try {
+      const bundle = await buildBundle({ "detector.ts": `import { onTool } from "@wellactually/detector-sdk/v5"; onTool({ detect: (event) => (event.tool === "pull_request_create" || event.tool === "rate_principle" ? [{}] : []) });` });
+      const manifest = { title: "PR text", summary: "Describe PRs.", tags: [], events: ["tool" as const], globs: [], handlers: [{ event: "tool" as const, globs: [] }], api: API_VERSION };
+      writeCached({ id: "ana/pr-text", version: 1, hash: "b".repeat(64), manifest, advice: "Describe PRs.", bundle });
+      writeLockfile({ syncedAt: null, entries: [{ id: "ana/pr-text", version: 1, hash: "b".repeat(64), enabled: true }] });
+      const hook = (tool_name: string, session_id: string) =>
+        execFileSync(process.execPath, [main, "hook"], { input: JSON.stringify({ hook_event_name: "PreToolUse", session_id, cwd: home, tool_name, tool_input: { title: "Fix", token: "secret-token" } }), env: { ...process.env, WELLACTUALLY_WORKERS: "0" } }).toString();
+
+      expect(hook("mcp__t3_code__pull_request_create", "s1")).toContain("ana/pr-text");
+      // Another server's tool that happens to be called like a rating is a tool call like any other.
+      expect(hook("mcp__survey__rate_principle", "s2")).toContain("ana/pr-text");
+
+      const logs = path.join(home, "logs");
+      await vi.waitFor(() => expect(fs.existsSync(logs) && fs.readdirSync(logs).length).toBe(1), { timeout: 5000 });
+      const file = path.join(logs, fs.readdirSync(logs)[0] as string);
+      await vi.waitFor(() => expect(fs.readFileSync(file, "utf8").trim().split("\n")).toHaveLength(2), { timeout: 5000 });
+      const log = fs.readFileSync(file, "utf8");
+      expect(log).not.toContain("secret-token");
+      expect(JSON.parse(log.split("\n")[0] as string).events).toMatchObject([{ event: "tool", tool: "t3_code/pull_request_create" }]);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.WELLACTUALLY_HOME;
+      } else {
+        process.env.WELLACTUALLY_HOME = previous;
+      }
+    }
+  });
 });
