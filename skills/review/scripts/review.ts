@@ -437,6 +437,10 @@ export async function planReview(cwd: string, spec?: string, dir?: string, lockf
   }
   const resolved = resolveTarget(root, spec);
   const target = { ...resolved, base: git(root, ["rev-parse", resolved.base as string]).trim(), head: resolved.head === null ? null : git(root, ["rev-parse", resolved.head]).trim() };
+  // An empty range is a misread request, not an empty review: never let the caller fall back to another scope.
+  if (spec && target.head !== null && target.base === target.head) {
+    throw new Error(`${spec} gives an empty range: ${resolved.label} has no commits. To review a single commit, pass <commit>^..<commit>. Ask the user which scope they meant instead of choosing another one.`);
+  }
   if (target.head !== null) {
     const gitDir = git(root, ["rev-parse", "--absolute-git-dir"]).trim();
     const commonDir = path.resolve(root, git(root, ["rev-parse", "--git-common-dir"]).trim());

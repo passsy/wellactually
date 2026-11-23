@@ -20,7 +20,9 @@ Do not read previous review comments, findings or principle advice, perform a co
   Preserve those source texts verbatim, including HTML comments and templates, and their URLs in `context.md`; do not replace raw text with a summary.
   Record unavailable context explicitly.
   Record known PR base/head revisions and distinguish the target branch tip from the comparison merge-base.
-- Local branch or Git range: inspect the compared commits' messages and a read-only diff for the requested comparison.
+- Local branch or Git range: first look up an open PR for the branch (`gh pr view --json url,title,body,baseRefName,headRefOid` from the assigned directory, when `gh` is available and signed in).
+  If one exists, gather it as a PR input above; record the lookup result either way.
+  Inspect the compared commits' messages and a read-only diff for the requested comparison.
   Read explicitly linked task/issue requirements when available.
   Preserve relevant source text and compared commit messages in `context.md`.
   A PR is optional; do not create one or require a remote service.

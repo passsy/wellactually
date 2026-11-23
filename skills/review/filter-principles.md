@@ -30,3 +30,9 @@ Operation-specific advice applies only when that operation is in the requested t
 For example, advice explicitly about drafting a commit message is irrelevant to reviewing someone else's existing commits.
 Check short descriptions against concrete diff operations before retaining such rules merely because the language matches.
 Keep uncertain applicability and triggered principles; do not use quiet detectors as a reason to skip general advice.
+
+Exclude a principle only when its short description names something the change provably lacks: another language, framework, platform, file type or operation.
+General advice about design, naming, state, errors, tests or simplicity applies to any code and stays.
+A short description cannot show that general advice is irrelevant; only the full advice could, and the filter does not read it.
+A kept principle costs seconds of review; a dropped one costs every finding it would have raised.
+On a small change, expect to keep most of the board.

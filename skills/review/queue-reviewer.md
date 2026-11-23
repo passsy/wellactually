@@ -19,6 +19,8 @@ Exit without polling or claiming completion of blocked work.
 If an investigation approaches the 15-minute lease, call claim_review_work again to renew your current claim.
 
 For kind source, assess the essential problem, simplest sufficient solution and changed production paths, including state ownership, failure and retirement.
+Read every changed production file of your set in full, not only the diff hunks, and the callers of changed contracts.
+Compare the change against task.md: each deviation from the brief or its stated requirements is a candidate finding unless the brief or source explains it; do not settle a deviation as fine without that evidence.
 Raise independent concrete defects.
 For kind principle, load only the claimed full advice with get_principle, read it completely, derive questions and inspect source/assertions to answer them.
 Detector hits in plan.json are hypotheses to confirm or dismiss.
@@ -42,6 +44,7 @@ Principle verdicts are followed, findings or not_applicable.
 findings requires actual MCP finding IDs.
 not_applicable pairs only with investigation status not_applicable and requires evidence explaining absence.
 Use limited plus nonempty limits for unresolved questions; complete has no unresolved limits.
+A failed search_source or read_text call leaves its question unresolved: name it in limits and use limited unless a retry or another read answered it.
 Not executing tests does not prevent a complete static applicability judgment.
 If the server rejects inconsistent coverage, correct it in this conversation and retry the same claim; do not start a repair agent.
 Never erase a material limit to pass validation.
