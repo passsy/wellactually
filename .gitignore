@@ -9,3 +9,5 @@ packages/review-inbox/web/dist
 /opencode/dist/
 /opencode/skills/
 /skills/review/scripts/*.mjs
+# Written by scripts/embed-sdk.mjs before every typecheck, test, build and package.
+/packages/core/src/build/sdk-source.generated.ts
