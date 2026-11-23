@@ -74,7 +74,8 @@ function canonical(root: string): string {
 
 /** The MCP server of the Codex install at `root` started, and Codex said whether its hooks need review. */
 export function noteCodexServer(root: string, review: boolean | undefined, now = new Date()): void {
-  update(root, install => ({ ...install, served: now.toISOString(), review }));
+  // A probe that could not answer keeps the last answer, so a timeout never hides a known review.
+  update(root, install => ({ ...install, served: now.toISOString(), review: review ?? install.review }));
 }
 
 /** A hook ran from the Codex install at `root`. Written once per install, so hooks stay cheap. */

@@ -44,6 +44,15 @@ test("an install whose hooks Codex trusts, or could not answer for, is not silen
   expect(codexHooksSilent(unknown)).toBe(false);
 });
 
+test("a probe that cannot answer keeps the last answer", () => {
+  const root = install("0.13.0");
+  noteCodexServer(root, true);
+  noteCodexServer(root, undefined);
+  expect(codexHooksSilent(root)).toBe(true);
+  noteCodexServer(root, false);
+  expect(codexHooksSilent(root)).toBe(false);
+});
+
 test("an update is a new install that has to prove its hooks again, and the old one drops out", () => {
   const old = install("0.12.0");
   noteCodexServer(old, true, new Date("2026-11-17T10:00:00Z"));
