@@ -6,10 +6,11 @@ import type { Finding } from "@wellactually/detector-sdk";
 import { fileCtx, type Manifest } from "@wellactually/core/node";
 import { runBoard, writeCached } from "../../board/src/board.ts";
 import { DetectorPool } from "../../board/src/pool.ts";
+import { buildVersion } from "../../core/test/api/build.ts";
 
-/** A detector bundle built by the toolchain of API 3, frozen in the core's tests. */
-const frozen = (version: number) =>
-  JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, `../../core/test/api/v${version}/principle.json`), "utf8")) as { manifest: Manifest; bundle: string };
+/** The detector of API 3 from the core's tests, built from source. */
+const builtThree = await buildVersion(3);
+const frozen = (_version: 3): { manifest: Manifest; bundle: string } => builtThree;
 const session = ["// relative absolute shape alone fresh root reads", "class Session {", "  late User user;", "}"].join("\n");
 const said = (findings: Finding[]) => findings.map((finding) => finding.match ?? `line ${finding.line}`);
 
@@ -28,7 +29,7 @@ describe("an advisory board", () => {
       return { id: `x/v3-${index}`, version: 1, hash, enabled: true };
     });
     const lockfile = { syncedAt: null, entries };
-    // The frozen bundle expects its project at /project, so here it only proves the file access and the shape.
+    // The detector of API 3 expects its project at /project, so here it only proves the file access and the shape.
     const expected = entries.map((entry) => [entry.id, ["shape", "fresh", "reads", "line 3"]]);
     const summary = (run: Awaited<ReturnType<typeof runBoard>>) => run.firings.map((firing) => [firing.principle.id, said(firing.findings)]);
 

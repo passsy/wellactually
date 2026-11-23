@@ -44,10 +44,10 @@ try {
     'import { checkPrinciple, scaffoldFiles } from "@wellactually/detector-sdk/host/node";\nconst { report } = await checkPrinciple(scaffoldFiles("no-todo"));\nif (!report.ok) { throw new Error(JSON.stringify(report.problems)); }\n',
   );
   execFileSync(process.execPath, [path.join(project, "host.mjs")], { cwd: project, stdio: "inherit" });
-  // Released principles keep running: the frozen bundle of every API version, on the packed host.
-  fs.copyFileSync(path.join(root, "scripts/frozen-on-host.mjs"), path.join(project, "frozen-on-host.mjs"));
-  execFileSync(process.execPath, [path.join(project, "frozen-on-host.mjs"), path.join(root, "packages/core/test/api")], { cwd: project, stdio: "inherit" });
-  console.log(`Verified packed ${packed.name}@${packed.version}: public types, v3/v4 detector tests, the host and every frozen API version on it.`);
+  // Released principles keep running: the detector of every API version, built and run by the packed host.
+  fs.copyFileSync(path.join(root, "scripts/api-versions-on-host.mjs"), path.join(project, "api-versions-on-host.mjs"));
+  execFileSync(process.execPath, [path.join(project, "api-versions-on-host.mjs"), path.join(root, "packages/core/test/api")], { cwd: project, stdio: "inherit" });
+  console.log(`Verified packed ${packed.name}@${packed.version}: public types, v3/v4 detector tests, the host and every API version on it.`);
 } finally {
   fs.rmSync(project, { recursive: true, force: true });
 }

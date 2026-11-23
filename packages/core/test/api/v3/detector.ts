@@ -1,7 +1,6 @@
 /**
- * The source of the frozen bundle next to this file. It was built once, by
- * the toolchain of detector API 3, and is never built again: the point of the
- * bundle is that it carries the SDK of that time.
+ * The detector of detector API 3, built from source on every test run.
+ * Its event is pinned by `shape.json` next to this file.
  *
  * It reports one finding for everything about its events that API 3 promised,
  * so a host that stops keeping one of those promises loses that finding.

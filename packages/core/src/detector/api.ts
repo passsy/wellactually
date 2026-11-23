@@ -19,8 +19,10 @@ import { fsHost, type ProjectFiles } from "./project.ts";
  *    new one. A detector says its version by importing from one of them.
  * 3. Add the step that turns the new event into that one to `DOWNGRADE`.
  * 4. Say in `environmentFor` which globals and host functions each version has.
- * 5. Add `test/api/v<n>`: the new event's shape, and a bundle built once by
- *    the new toolchain. The tests there fail until all of this is done.
+ * 5. Add `test/api/v<n>`: a detector that reports one finding for each thing
+ *    the version promises, and the new event's shape from
+ *    `scripts/freeze-api.mjs`. The tests build the detector from source on
+ *    every run and fail until all of this is done.
  */
 
 /** The oldest version this host still runs. Raise it to retire one, and delete its step. */

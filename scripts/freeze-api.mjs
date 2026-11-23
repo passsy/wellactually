@@ -1,31 +1,24 @@
-// Freezes the current detector API version: its event's shape, and a bundle
-// built by today's toolchain that later hosts have to keep running.
+// Freezes the current detector API version: the shape of its event and the
+// globals and host functions it gets, which later hosts have to keep.
 //
 // Run it once, right after raising API_VERSION and writing
-// packages/core/test/api/v<n>/detector.ts. It refuses to overwrite: a frozen
-// bundle that is built again proves nothing about the hosts that come later.
+// packages/core/test/api/v<n>/detector.ts. It refuses to overwrite: a shape
+// that is written again proves nothing about the hosts that come later. The
+// detector itself is built from source by the tests, nothing compiled is kept.
 import fs from "node:fs";
 import path from "node:path";
 import { API_VERSION, fileCtx, textCtx, toolCtx } from "../packages/detector-sdk/src/index.ts";
-import { buildPrinciple, environmentFor, shapeOf } from "../packages/core/src/node.ts";
+import { environmentFor, shapeOf } from "../packages/core/src/node.ts";
 
 const dir = path.resolve(import.meta.dirname, `../packages/core/test/api/v${API_VERSION}`);
 const source = path.join(dir, "detector.ts");
-const frozen = path.join(dir, "principle.json");
 const shape = path.join(dir, "shape.json");
 if (!fs.existsSync(source)) {
   throw new Error(`write ${source} first: a detector that reports a finding for everything API ${API_VERSION} promises`);
 }
-if (fs.existsSync(frozen) || fs.existsSync(shape)) {
+if (fs.existsSync(shape)) {
   throw new Error(`API ${API_VERSION} is frozen already. A change to the API is a new version: raise API_VERSION in packages/detector-sdk/src/index.ts.`);
 }
-
-const built = await buildPrinciple({
-  "principle.md":
-    "# Golden\n\nA frozen detector that later hosts have to keep running.\n\nIt reports one finding for each promise its detector API made about the event. A host that breaks one of them loses that finding, and the test that runs this bundle fails.",
-  "detector.ts": fs.readFileSync(source, "utf8"),
-});
-fs.writeFileSync(frozen, `${JSON.stringify({ manifest: built.manifest, bundle: built.bundle }, null, 2)}\n`);
 
 // A write that removed a line, so the shape says what a removed line is.
 const file = fileCtx("write", "lib/a.dart", "a", { removed: [{ line: 1, text: "b" }] });
