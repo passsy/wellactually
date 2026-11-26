@@ -918,7 +918,12 @@ export function setupAgents(dir: string): string[] {
 }
 
 function setupQueueAgents(dir: string, plan: ReviewPlan, jobs: ReviewJob[], source: string): string[] {
-  const tracking = readJson<{ target: string; run: string; session?: string }>(dir, "tracking.json");
+  const tracking = readJson<{ repo?: string; target: string; run: string; session?: string }>(dir, "tracking.json");
+  // Workers store findings at plan.root, which is the review checkout when the helper made one; a review registered elsewhere stays empty.
+  const real = (p: string) => fs.existsSync(p) ? fs.realpathSync(p) : path.resolve(p);
+  if (tracking.repo && real(tracking.repo) !== real(plan.root)) {
+    throw new Error(`tracking.json registers the review at ${tracking.repo}, but its findings are stored at the plan.json root ${plan.root}. Call start_review again with repo ${plan.root}, write that repo to tracking.json, and run --setup-agents again.`);
+  }
   const units = [...new Set(jobs.map(job => job.queue!))];
   const scope = createHash("sha256").update(JSON.stringify(plan.target)).update(fs.readFileSync(path.join(dir, "diff.patch"))).digest("hex");
   const retained = plan.principles.map(p => {
