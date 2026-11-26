@@ -13,7 +13,7 @@ import { findProjectRoot, toPosix } from "../../../packages/board/src/files.ts";
 import { collectInput, type CollectedInput, type InputOptions } from "./inputs.ts";
 import { switchedOff } from "../../../packages/board/src/switches.ts";
 import { claimReviewSession, getReviewSession, verificationProblems } from "../../../packages/review-inbox/queues.mts";
-import { listFindingRecords } from "../../../packages/review-inbox/crud.mts";
+import { listFindingRecords, listOccurrences } from "../../../packages/review-inbox/crud.mts";
 
 /**
  * What a review compares: `base` against `head`, or against the working tree
@@ -953,7 +953,7 @@ export function setupVerificationAgents(dir: string): string[] {
   const source = stepsSource(); if (!source) throw new Error("Missing skill templates");
   return Array.from({ length: queue.workers }, (_, index) => {
     const id = `verification-worker-${index + 1}`, folder = path.join(dir, "agents", id); fs.mkdirSync(folder, { recursive: true });
-    const workingRoot = prepareProofWorktree(plan, folder);
+    const workingRoot = prepareProofWorktree(plan, proofCheckout(dir, index + 1));
     const file = path.join(folder, "INSTRUCTIONS.md");
     fs.writeFileSync(path.join(folder, "workspace.json"), JSON.stringify({ root: workingRoot, isolated: workingRoot !== plan.root }, null, 2) + "\n");
     fs.writeFileSync(file, `# ${id}\nWorker: ${id}\nQueue: verification\nReview directory: ${dir}\nReviewed source root: ${plan.root}\nProof working root: ${workingRoot}\nExecute tests/probes from the proof working root. Do not mutate the reviewed source or another worker's checkout.\nRead ${dir}/tracking.json, ${dir}/task.md, ${dir}/plan.json and optional context.md.\n\n` + fs.readFileSync(path.join(source, "verification-worker.md"), "utf8").replaceAll("<dir>", dir)
@@ -962,12 +962,19 @@ export function setupVerificationAgents(dir: string): string[] {
   });
 }
 
-function prepareProofWorktree(plan: ReviewPlan, folder: string): string {
+/** Proof checkouts are disposable: system temp catches an aborted run, and the review name tells a human whose they are. */
+function proofCheckout(dir: string, worker: number): string {
+  return path.join(os.tmpdir(), `${path.basename(path.resolve(dir))}-verification-${worker}`);
+}
+
+function prepareProofWorktree(plan: ReviewPlan, checkout: string): string {
   const gitRoot = gitOrNull(plan.root, ["rev-parse", "--show-toplevel"]), head = gitOrNull(plan.root, ["rev-parse", "--verify", "HEAD"]);
   if (!gitRoot || !head) return plan.root; // The MCP session allocates a single proof worker without Git.
-  const checkout = path.join(folder, "checkout");
   if (!fs.existsSync(checkout)) execFileSync("git", ["worktree", "add", "--detach", checkout, head.trim()], { cwd: plan.root, stdio: ["ignore", "pipe", "pipe"] });
-  else if (gitOrNull(checkout, ["rev-parse", "HEAD"])?.trim() !== head.trim()) throw new Error("Existing proof worktree has a different HEAD; choose a fresh worker directory");
+  else if (gitOrNull(checkout, ["rev-parse", "HEAD"])?.trim() !== head.trim() || gitOrNull(checkout, ["rev-parse", "--git-common-dir"]) === null
+    || fs.realpathSync(path.resolve(checkout, git(checkout, ["rev-parse", "--git-common-dir"]).trim())) !== fs.realpathSync(path.resolve(plan.root, git(plan.root, ["rev-parse", "--git-common-dir"]).trim()))) {
+    throw new Error(`${checkout} already exists and is not this review's proof checkout; remove it or choose another review directory name`);
+  }
   const actualRoot = fs.realpathSync(plan.root), actualGitRoot = fs.realpathSync(gitRoot.trim());
   const relativeRoot = path.relative(actualGitRoot, actualRoot), workingRoot = path.join(fs.realpathSync(checkout), relativeRoot);
   if (relativeRoot === ".." || relativeRoot.startsWith(".." + path.sep)) throw new Error("Reviewed root is outside its Git repository");
@@ -980,6 +987,46 @@ function prepareProofWorktree(plan: ReviewPlan, folder: string): string {
     if (file.from && file.from !== file.path && !fs.existsSync(path.join(actualRoot, file.from))) { const previous = path.resolve(workingRoot, file.from); if (!previous.startsWith(path.resolve(workingRoot) + path.sep)) throw new Error("Rename escapes proof root"); fs.rmSync(previous, { force: true }); }
   }
   return workingRoot;
+}
+
+/** This review's proof worktrees that still exist, from each verification worker's workspace.json. */
+function proofCheckouts(dir: string): { file: string; checkout: string }[] {
+  const agents = path.join(dir, "agents");
+  if (!fs.existsSync(agents)) return [];
+  return fs.readdirSync(agents).filter(name => /^verification-worker-\d+$/.test(name)).flatMap(worker => {
+    const file = path.join(agents, worker, "workspace.json");
+    if (!fs.existsSync(file)) return [];
+    const workspace = JSON.parse(fs.readFileSync(file, "utf8")) as { root: string; isolated: boolean };
+    if (!workspace.isolated || !fs.existsSync(workspace.root)) return [];
+    return [{ file, checkout: fs.realpathSync(git(workspace.root, ["rev-parse", "--show-toplevel"]).trim()) }];
+  });
+}
+
+/** Proof worktrees are removed after verification, so a saved proof must not live inside one. */
+export function proofLinksInCheckouts(dir: string, plan: ReviewPlan, target: string, run: string): string[] {
+  const checkouts = proofCheckouts(dir).map(c => c.checkout);
+  if (!checkouts.length) return [];
+  const insideOf = (artifact: string) => {
+    const file = /^(.*?)(:\d+(?:-\d+)?)?$/.exec(artifact)![1]!;
+    if (!path.isAbsolute(file)) return undefined;
+    const real = fs.existsSync(file) ? fs.realpathSync(file) : file;
+    return checkouts.find(checkout => real === checkout || real.startsWith(checkout + path.sep));
+  };
+  const at = { repo: plan.root, target };
+  const records = listFindingRecords({ ...at, run }, plan.root).flatMap(finding => [finding, ...listOccurrences({ ...at, findingId: finding.id }, plan.root)]);
+  return records.flatMap(record => record.evidence.flatMap(evidence => evidence.artifacts.flatMap(artifact => {
+    const checkout = insideOf(artifact);
+    return checkout ? [`${record.id}: proof ${artifact} is inside the proof worktree ${checkout}, which is removed after verification; save it outside the worktree and update the evidence`] : [];
+  })));
+}
+
+/** Removes the review's proof worktrees; system temp is only the fallback for an aborted run. */
+export function removeProofCheckouts(dir: string, root: string): string[] {
+  return proofCheckouts(dir).map(({ file, checkout }) => {
+    git(root, ["worktree", "remove", "--force", checkout]);
+    fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, "utf8")), removed: true }, null, 2) + "\n");
+    return checkout;
+  });
 }
 
 /** A budget as the user writes it: 100000, 100k or 1m. */
@@ -1020,8 +1067,9 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
     if (stage === "verify" && session.phase !== "verification") pending.push("aggregation/verification queue not initialized");
     const candidates = listFindingRecords({ repo: queuedPlan.root, target: tracking.target, run: session.run }, queuedPlan.root).filter(f => f.closure?.reason !== "superseded");
     // Queue completion references saved assessments; findings have no pending/promotion state.
-    if (stage === "verify") pending.push(...verificationProblems(session, queuedPlan.root, tracking.target));
+    if (stage === "verify") pending.push(...verificationProblems(session, queuedPlan.root, tracking.target), ...proofLinksInCheckouts(dir, queuedPlan, tracking.target, session.run));
     if (pending.length) throw new Error(`Review ${stage} is incomplete:\n- ${pending.join("\n- ")}`);
+    if (stage === "verify") removeProofCheckouts(dir, queuedPlan.root);
     return { stage: stage as ReviewStage, jobs: queues.reduce((n, q) => n + q.workers, 0), units: queues.filter(q => q.phase === "review").length, candidates: candidates.length };
   }
   const stages: ReviewStage[] = ["review", "test", "verify"];
