@@ -55,8 +55,8 @@ Snapshots review current contents, not invented regressions.
 Fetch exact PR facts/revisions when needed; preserve user boundaries.
 Git revision reviews reuse a clean linked worktree at HEAD or create a detached worktree; local/non-Git reviews stay in the assigned directory.
 Never create source/ or before/ copies.
-The helper creates review checkouts beside the artifact directory, with a default under ~/.wellactually/reviews/.
-Choose a durable --out directory; do not put the checkout or its authoritative .well-actually store in system temporary storage.
+The helper creates review checkouts beside the artifact directory as <out>-checkout, with a default under ~/.wellactually/reviews/.
+Choose a durable --out directory named after the project and PR, such as ~/.wellactually/reviews/<project>-pr<number>, so a human can tell its checkouts apart; do not put the checkout or its authoritative .well-actually store in system temporary storage.
 Read source at plan.json.root and previous Git contents with git show <base>:<path>.
 Reconcile task.md with actual root/base/head and omissions.
 Do not widen selected folders or initialize Git merely to enable review.
@@ -126,7 +126,7 @@ Grouping stays in MCP.
 ## 6. Verify through the proof queue
 
 Run --setup-verifiers <dir> after aggregation.
-With Git, it creates ceil(unique issue groups/10) verification workers, each in its own detached proof worktree.
+With Git, it creates ceil(unique issue groups/10) verification workers, each in its own detached proof worktree <out>-verification-<n> in system temporary storage.
 Local/patch/snapshot contents are overlaid so a HEAD-only checkout cannot silently drop reviewed changes.
 Without Git, use one verifier in the assigned directory.
 Zero issues needs zero workers.
@@ -146,7 +146,7 @@ Keep useful Reasoned/Speculative claims explicit.
 Product files remain unchanged; use disposable probe copies where needed and separate per-issue proof directories.
 
 Follow the host adapter for proof execution: Claude uses native Agent workers inheriting parent permissions; Codex passes its actual sandbox policy through the launcher. Reviewer permissions stay read-only.
-If infrastructure is corrected after an issue completed, the coordinator may call retry_verification with selected issue IDs and a reason.
+If infrastructure is corrected after an issue completed, the coordinator may call retry_verification with selected issue IDs and a reason, then run --setup-verifiers <dir> again to recreate the proof worktrees.
 Prior attempts and finding IDs are retained, worker count is ceil(retried issues/10), and only those proofs rerun.
 Never restart the whole review or silently omit the original blocked work from the report.
 
@@ -163,6 +163,7 @@ Human verdicts stay unchanged; existing executable proof is not erased by a bloc
 
 Wait for all workers and require --check <dir> --stage verify plus saved assessments for every completed investigation.
 The gate checks final evidence, locations and proof/limit persistence against the published findings, not just queue completion.
+Once it passes, it copies the files each proof worker added or changed to agents/verification-worker-<n>/scratchpad/, points saved proof artifacts there and removes the proof worktrees. Only the review checkout stays.
 Read authoritative session/findings; no finalizer/report worker.
 Retain coverage and platform limits.
 Aggregation saves one retry-safe suggestion per distinct issue and attributed principle in the MCP session.

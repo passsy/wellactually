@@ -34,6 +34,7 @@ import {
   checkReview,
   setupVerificationAgents,
   setupAgents,
+  removeProofCheckouts,
 } from "../../../skills/review/scripts/review.ts";
 
 test("session details can be bounded to one queue item without changing stored coverage", async () => {
@@ -633,4 +634,39 @@ test("restricted reviewer and aggregation instructions embed the shared finding 
     expect(files).toHaveLength(2);
     for(const file of files)expect(fs.readFileSync(file,"utf8")).toContain(writing);
   } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});
+
+test("finished verification keeps the proof worker's files and removes its checkout", () => {
+  const { repo, manifest } = setup(0);
+  const commit = ["-c", "user.name=Queue Test", "-c", "user.email=queue@example.invalid", "commit", "-qm", "Initial fixture"];
+  execFileSync("git", ["init", "-q"], { cwd: repo });
+  execFileSync("git", ["add", "state.ts"], { cwd: repo });
+  execFileSync("git", commit, { cwd: repo });
+  const session = claimReviewSession({ ...manifest, run: "cleanup" }, repo), args = { repo, target: "test", session: session.id };
+  finish(args, repo, claim(args, repo).work);
+  finish(args, repo, claim(args, repo, "wb", "b").work, "wb", "b");
+  const record = createFindingRecord({ target: "test", finding: { title: "Issue", description: "Problem. Remedy.", origins: [{ run: "cleanup", source: "s", unit: "a" }] } }, repo);
+  beginVerification({ ...args, groups: [{ findings: [record.id], reason: "Single issue" }] }, repo);
+  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "wa-reviews-")), "shop-pr891");
+  fs.mkdirSync(dir);
+  const plan = { reviewProtocol: 4, root: repo, target: { kind: "git", head: "HEAD" }, files: [] };
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
+  fs.writeFileSync(path.join(dir, "tracking.json"), JSON.stringify(args));
+  const [file] = setupVerificationAgents(dir);
+  const root = JSON.parse(fs.readFileSync(path.join(path.dirname(file!), "workspace.json"), "utf8")).root;
+  expect(path.basename(root)).toBe("shop-pr891-verification-1");
+  fs.mkdirSync(path.join(root, "test"));
+  fs.writeFileSync(path.join(root, "test", "probe.test.ts"), "probe();\n");
+  fs.writeFileSync(path.join(root, "state.ts"), "changed();\n");
+  const saved = getFindingRecord({ repo, target: "test", id: record.id }, repo);
+  updateFindingRecord({ repo, target: "test", id: record.id, expectedRevision: saved.revision, patch: { evidence: [{ kind: "test", polarity: "supports", description: "Probe fails", artifacts: [path.join(root, "test", "probe.test.ts") + ":1", "state.ts:1"] }] } }, repo);
+
+  expect(removeProofCheckouts(dir, plan as never, "test", "cleanup")).toHaveLength(1);
+
+  const scratchpad = path.join(dir, "agents", "verification-worker-1", "scratchpad");
+  expect(fs.existsSync(root)).toBe(false);
+  expect(execFileSync("git", ["worktree", "list"], { cwd: repo, encoding: "utf8" })).not.toContain("verification-1");
+  expect(fs.readFileSync(path.join(scratchpad, "test", "probe.test.ts"), "utf8")).toBe("probe();\n");
+  expect(fs.readFileSync(path.join(scratchpad, "state.ts"), "utf8")).toBe("changed();\n");
+  expect(getFindingRecord({ repo, target: "test", id: record.id }, repo).evidence[0]!.artifacts).toEqual([path.join(scratchpad, "test", "probe.test.ts") + ":1", "state.ts:1"]);
 });

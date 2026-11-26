@@ -13,7 +13,8 @@ import { findProjectRoot, toPosix } from "../../../packages/board/src/files.ts";
 import { collectInput, type CollectedInput, type InputOptions } from "./inputs.ts";
 import { switchedOff } from "../../../packages/board/src/switches.ts";
 import { claimReviewSession, getReviewSession, verificationProblems } from "../../../packages/review-inbox/queues.mts";
-import { listFindingRecords } from "../../../packages/review-inbox/crud.mts";
+import { listFindingRecords, listOccurrences, updateFindingRecord, updateOccurrence } from "../../../packages/review-inbox/crud.mts";
+import type { EvidenceEntry } from "../../../packages/review-inbox/model/records.mts";
 
 /**
  * What a review compares: `base` against `head`, or against the working tree
@@ -948,7 +949,7 @@ export function setupVerificationAgents(dir: string): string[] {
   const source = stepsSource(); if (!source) throw new Error("Missing skill templates");
   return Array.from({ length: queue.workers }, (_, index) => {
     const id = `verification-worker-${index + 1}`, folder = path.join(dir, "agents", id); fs.mkdirSync(folder, { recursive: true });
-    const workingRoot = prepareProofWorktree(plan, folder);
+    const workingRoot = prepareProofWorktree(plan, proofCheckout(dir, index + 1));
     const file = path.join(folder, "INSTRUCTIONS.md");
     fs.writeFileSync(path.join(folder, "workspace.json"), JSON.stringify({ root: workingRoot, isolated: workingRoot !== plan.root }, null, 2) + "\n");
     fs.writeFileSync(file, `# ${id}\nWorker: ${id}\nQueue: verification\nReview directory: ${dir}\nReviewed source root: ${plan.root}\nProof working root: ${workingRoot}\nExecute tests/probes from the proof working root. Do not mutate the reviewed source or another worker's checkout.\nRead ${dir}/tracking.json, ${dir}/task.md, ${dir}/plan.json and optional context.md.\n\n` + fs.readFileSync(path.join(source, "verification-worker.md"), "utf8").replaceAll("<dir>", dir)
@@ -957,12 +958,19 @@ export function setupVerificationAgents(dir: string): string[] {
   });
 }
 
-function prepareProofWorktree(plan: ReviewPlan, folder: string): string {
+/** Proof checkouts are disposable: system temp catches an aborted run, and the review name tells a human whose they are. */
+function proofCheckout(dir: string, worker: number): string {
+  return path.join(os.tmpdir(), `${path.basename(path.resolve(dir))}-verification-${worker}`);
+}
+
+function prepareProofWorktree(plan: ReviewPlan, checkout: string): string {
   const gitRoot = gitOrNull(plan.root, ["rev-parse", "--show-toplevel"]), head = gitOrNull(plan.root, ["rev-parse", "--verify", "HEAD"]);
   if (!gitRoot || !head) return plan.root; // The MCP session allocates a single proof worker without Git.
-  const checkout = path.join(folder, "checkout");
   if (!fs.existsSync(checkout)) execFileSync("git", ["worktree", "add", "--detach", checkout, head.trim()], { cwd: plan.root, stdio: ["ignore", "pipe", "pipe"] });
-  else if (gitOrNull(checkout, ["rev-parse", "HEAD"])?.trim() !== head.trim()) throw new Error("Existing proof worktree has a different HEAD; choose a fresh worker directory");
+  else if (gitOrNull(checkout, ["rev-parse", "HEAD"])?.trim() !== head.trim() || gitOrNull(checkout, ["rev-parse", "--git-common-dir"]) === null
+    || fs.realpathSync(path.resolve(checkout, git(checkout, ["rev-parse", "--git-common-dir"]).trim())) !== fs.realpathSync(path.resolve(plan.root, git(plan.root, ["rev-parse", "--git-common-dir"]).trim()))) {
+    throw new Error(`${checkout} already exists and is not this review's proof checkout; remove it or choose another review directory name`);
+  }
   const actualRoot = fs.realpathSync(plan.root), actualGitRoot = fs.realpathSync(gitRoot.trim());
   const relativeRoot = path.relative(actualGitRoot, actualRoot), workingRoot = path.join(fs.realpathSync(checkout), relativeRoot);
   if (relativeRoot === ".." || relativeRoot.startsWith(".." + path.sep)) throw new Error("Reviewed root is outside its Git repository");
@@ -975,6 +983,59 @@ function prepareProofWorktree(plan: ReviewPlan, folder: string): string {
     if (file.from && file.from !== file.path && !fs.existsSync(path.join(actualRoot, file.from))) { const previous = path.resolve(workingRoot, file.from); if (!previous.startsWith(path.resolve(workingRoot) + path.sep)) throw new Error("Rename escapes proof root"); fs.rmSync(previous, { force: true }); }
   }
   return workingRoot;
+}
+
+/**
+ * After verification, copies what each proof worker added or changed in its checkout to
+ * agents/<worker>/scratchpad, points saved proof artifacts there, and removes the checkout.
+ */
+export function removeProofCheckouts(dir: string, plan: ReviewPlan, target: string, run: string): string[] {
+  const agents = path.join(dir, "agents");
+  const workers = fs.existsSync(agents) ? fs.readdirSync(agents).filter(name => /^verification-worker-\d+$/.test(name)) : [];
+  const moved = new Map<string, string>(), removed: string[] = [];
+  for (const worker of workers) {
+    const file = path.join(agents, worker, "workspace.json");
+    if (!fs.existsSync(file)) continue;
+    const workspace = readJson<{ root: string; isolated: boolean }>(path.join(agents, worker), "workspace.json");
+    if (!workspace.isolated || !fs.existsSync(workspace.root)) continue;
+    const checkout = fs.realpathSync(git(workspace.root, ["rev-parse", "--show-toplevel"]).trim());
+    const scratchpad = path.join(agents, worker, "scratchpad");
+    // Ignored build output stays behind; added, changed and untracked files are the probes and tests.
+    const changed = git(checkout, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]).split("\0").filter(entry => entry.length > 3 && entry[0] !== "D" && entry[1] !== "D").map(entry => entry.slice(3));
+    for (const relative of changed) {
+      const from = path.join(checkout, relative), to = path.join(scratchpad, relative);
+      if (!fs.lstatSync(from, { throwIfNoEntry: false })?.isFile()) continue;
+      fs.mkdirSync(path.dirname(to), { recursive: true });
+      fs.copyFileSync(from, to);
+      moved.set(from, to);
+    }
+    moved.set(checkout, scratchpad);
+    git(plan.root, ["worktree", "remove", "--force", checkout]);
+    fs.writeFileSync(file, JSON.stringify({ ...workspace, removed: true, scratchpad }, null, 2) + "\n");
+    removed.push(checkout);
+  }
+  if (!removed.length) return removed;
+  const relocate = (artifact: string): string => {
+    const [, file, suffix = ""] = /^(.*?)(:\d+(?:-\d+)?)?$/.exec(artifact)!;
+    for (const checkout of removed) {
+      for (const prefix of new Set([checkout, checkout.replace(/^\/private\//, "/")])) {
+        if (file !== prefix && !file!.startsWith(prefix + path.sep)) continue;
+        const original = path.join(checkout, path.relative(prefix, file!));
+        return (moved.get(original) ?? path.join(moved.get(checkout)!, path.relative(prefix, file!))) + suffix;
+      }
+    }
+    return artifact;
+  };
+  const relocated = (evidence: EvidenceEntry[]) => evidence.map(e => ({ ...e, artifacts: e.artifacts.map(relocate) }));
+  const changedEvidence = (evidence: EvidenceEntry[]) => evidence.some(e => e.artifacts.some(a => relocate(a) !== a));
+  const at = { repo: plan.root, target };
+  for (const finding of listFindingRecords({ ...at, run }, plan.root)) {
+    if (changedEvidence(finding.evidence)) updateFindingRecord({ ...at, id: finding.id, expectedRevision: finding.revision, patch: { evidence: relocated(finding.evidence) } }, plan.root);
+    for (const occurrence of listOccurrences({ ...at, findingId: finding.id }, plan.root)) {
+      if (changedEvidence(occurrence.evidence)) updateOccurrence({ ...at, id: occurrence.id, expectedRevision: occurrence.revision, patch: { evidence: relocated(occurrence.evidence) } }, plan.root);
+    }
+  }
+  return removed;
 }
 
 /** A budget as the user writes it: 100000, 100k or 1m. */
@@ -1017,6 +1078,7 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
     // Queue completion references saved assessments; findings have no pending/promotion state.
     if (stage === "verify") pending.push(...verificationProblems(session, queuedPlan.root, tracking.target));
     if (pending.length) throw new Error(`Review ${stage} is incomplete:\n- ${pending.join("\n- ")}`);
+    if (stage === "verify") removeProofCheckouts(dir, queuedPlan, tracking.target, session.run);
     return { stage: stage as ReviewStage, jobs: queues.reduce((n, q) => n + q.workers, 0), units: queues.filter(q => q.phase === "review").length, candidates: candidates.length };
   }
   const stages: ReviewStage[] = ["review", "test", "verify"];
