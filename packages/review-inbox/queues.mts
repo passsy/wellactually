@@ -11,6 +11,7 @@ import {
   listFindingRecords,
 } from "./crud.mts";
 import { upsertRegistry } from "./store/registry.mts";
+import type { FindingRecord } from "./model/records.mts";
 import { InputError, requireObject, str, optionalArray } from "./validate.mts";
 
 type Json = Record<string, unknown>;
@@ -551,7 +552,17 @@ export function completeReviewWork(raw: unknown, repo: string): unknown {
     if (!queue || !item) throw new InputError("Unknown queue item");
     const token = str(args, "claim"),
       worker = str(args, "worker"),
-      result = requireObject(args.result);
+      at = location(args, repo);
+    // A review item reports what it filed or attached; the server derives that instead of trusting a list.
+    const result =
+      item.kind === "verification"
+        ? requireObject(args.result)
+        : {
+            ...requireObject(args.result),
+            findings: listFindingRecords({ repo: at.repo, target: at.target, run: session.run }, at.repo)
+              .filter((f) => f.origins.some((o) => fromItem(o, session.run, queue.id, item.id)))
+              .map((f) => f.id),
+          };
     if (item.completed) {
       if (
         item.completed.token === token &&
@@ -571,52 +582,9 @@ export function completeReviewWork(raw: unknown, repo: string): unknown {
       throw new InputError(
         "Claim expired, blocked or belongs to another worker; claim again",
       );
-    const at = location(args, repo);
-    const findings = listFindingRecords(
-      { repo: at.repo, target: at.target, run: session.run },
-      at.repo,
-    );
-    if (item.kind !== "verification") {
+    if (item.kind !== "verification")
       validateInvestigation(result, item.kind === "source");
-      for (const id of result.findings as string[]) {
-        const finding = findings.find((c) => c.id === id);
-        if (
-          !finding ||
-          !finding.origins.some(
-            (o) => o.run === session.run && o.unit === queue.id,
-          )
-        )
-          throw new InputError(`${id} is not a finding for this queue item`);
-      }
-      // A principle item may cite an issue another item filed first; it then counts for this principle too.
-      const principle = item.principle;
-      if (principle)
-        for (const finding of findings.filter(
-          (f) =>
-            (result.findings as string[]).includes(f.id) &&
-            !f.rules.some((r) => r.id === principle.id),
-        ))
-          updateFindingRecord(
-            {
-              ...at,
-              id: finding.id,
-              expectedRevision: finding.revision,
-              patch: {
-                rules: [...finding.rules, { id: principle.id }],
-                origins: [
-                  ...finding.origins,
-                  {
-                    run: session.run,
-                    unit: queue.id,
-                    source: `${queue.id}/${item.id}/cited`,
-                    rule: principle.id,
-                  },
-                ],
-              },
-            },
-            at.repo,
-          );
-    } else {
+    else {
       str(result, "summary");
       if (!strings(result.limits) || !strings(result.proofs))
         throw new InputError("Verification needs proofs and limits arrays");
@@ -635,6 +603,52 @@ export function completeReviewWork(raw: unknown, repo: string): unknown {
     }
     item.completed = { worker, token, at: new Date().toISOString(), result };
     return { state: "completed", item: item.id };
+  });
+}
+
+const fromItem = (
+  o: { run: string; unit: string; source: string },
+  run: string,
+  queue: string,
+  item: string,
+) => o.run === run && o.unit === queue && o.source.startsWith(`${queue}/${item}/`);
+
+/** A principle item adds its principle to an issue of its set that it would otherwise file twice. */
+export function attachReviewFinding(raw: unknown, repo: string): FindingRecord {
+  return access(raw, repo, (session, args) => {
+    const queue = session.queues.find((q) => q.id === str(args, "queue")),
+      worker = str(args, "worker");
+    const item = queue?.items.find(
+      (i) =>
+        !i.completed &&
+        !i.blocked &&
+        i.claim?.worker === worker &&
+        Date.parse(i.claim.until) > Date.now(),
+    );
+    if (!queue || queue.phase !== session.phase || !item?.principle)
+      throw new InputError("Claim a principle item before attaching a finding");
+    const at = location(args, repo),
+      finding = getFindingRecord({ ...at, id: str(args, "finding") }, at.repo);
+    if (!finding.origins.some((o) => o.run === session.run && o.unit === queue.id))
+      throw new InputError("Only findings of this review set can be attached");
+    if (finding.origins.some((o) => fromItem(o, session.run, queue.id, item.id)))
+      return finding;
+    const rule = item.principle.id;
+    return updateFindingRecord(
+      {
+        ...at,
+        id: finding.id,
+        expectedRevision: finding.revision,
+        patch: {
+          ...(finding.rules.some((r) => r.id === rule) ? {} : { rules: [...finding.rules, { id: rule }] }),
+          origins: [
+            ...finding.origins,
+            { run: session.run, unit: queue.id, source: `${queue.id}/${item.id}/attached`, rule },
+          ],
+        },
+      },
+      at.repo,
+    );
   });
 }
 

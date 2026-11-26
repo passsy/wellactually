@@ -43,7 +43,7 @@ test("packaged MCP aggregation delivers the pinned issue once and exposes acknow
       PATH: process.env.PATH!, WELLACTUALLY_HOME: home, WELLACTUALLY_REVIEW_INBOX_HOME: path.join(root, "index"), WELLACTUALLY_TOKEN: "", WELLACTUALLY_REVIEW_PORT: String(uiPort),
     } }));
     const session = await call("claim_review_session", { run: "transport", sets: [{ id: "all", principles: [{ id: "expert/docs", version: 2 }] }] });
-    const finding = await call("create_finding", { finding: { title: "Documentation absent", rules: [{ id: "expert/docs" }], origins: [{ run: "transport", source: "review", unit: "all" }] } });
+    const finding = await call("create_finding", { finding: { title: "Documentation absent", rules: [{ id: "expert/docs" }], origins: [{ run: "transport", source: "all/source/0", unit: "all" }, { run: "transport", source: "all/expert/docs/0", unit: "all" }] } });
     for (let i = 0; i < 2; i++) {
       const work = await call("claim_review_work", { session: session.id, queue: "all", worker: i ? "reviewer" : "reviewer-holistic" });
       await call("complete_review_work", { session: session.id, queue: "all", worker: i ? "reviewer" : "reviewer-holistic", item: work.work.id, claim: work.work.claim.token, result: {

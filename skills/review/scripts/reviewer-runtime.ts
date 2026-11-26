@@ -7,7 +7,7 @@ import { z } from "zod";
 import { zodSchema } from "../../../packages/review-inbox/zod-schema.mts";
 import { toolNamed } from "../../../packages/review-inbox/tools.mts";
 import { readCached, readLockfile } from "../../../packages/board/src/board.ts";
-import { createFindingRecord, getFindingRecord, updateFindingRecord, listFindingRecords, createOccurrence, getOccurrence, listOccurrences, updateOccurrence, claimReviewWork, completeReviewWork, getReviewSession, blockReviewWork } from "../../../packages/review-inbox/index.mts";
+import { createFindingRecord, getFindingRecord, updateFindingRecord, listFindingRecords, createOccurrence, getOccurrence, listOccurrences, updateOccurrence, claimReviewWork, completeReviewWork, attachReviewFinding, getReviewSession, blockReviewWork } from "../../../packages/review-inbox/index.mts";
 
 const json = (file: string): any => JSON.parse(fs.readFileSync(file, "utf8"));
 const contained = (root: string, file: string): boolean => file === root || file.startsWith(root + path.sep);
@@ -106,7 +106,7 @@ export function reviewerAccess(dir: string, jobId: string) {
       const address = {repo:root,target:tracking.target};
       const own = (id: string) => {
         const finding = getFindingRecord({...address,id},root);
-        if (!finding.origins.some(o=>o.run===tracking.run && o.unit===(job.queue??job.set??"all") && (!active || o.source.startsWith(`${job.queue}/${active.id}/`)))) throw new Error("Finding is outside the claimed review item");
+        if (!finding.origins.some(o=>o.run===tracking.run && o.unit===(job.queue??job.set??"all") && (!active || (o.source.startsWith(`${job.queue}/${active.id}/`) && !o.source.endsWith("/attached"))))) throw new Error("Finding is outside the claimed review item");
         return finding;
       };
       const rulesAllowed = (data: any) => {
@@ -136,6 +136,7 @@ export function reviewerAccess(dir: string, jobId: string) {
       rulesAllowed(patch); return updateOccurrence({...input,...address,patch:artifacts.record(patch)},root);
     },
     claim(): unknown { if (!job.queue) throw new Error("This is a legacy static assignment"); return claimReviewWork(queueArgs, root); },
+    attach(finding: string): unknown { if (!job.queue) throw new Error("This is a legacy static assignment"); return attachReviewFinding({ ...queueArgs, finding }, root); },
     complete(item: string, claim: string, result: Record<string, unknown>): unknown { if (!job.queue) throw new Error("This is a legacy static assignment"); return completeReviewWork({ ...queueArgs, item, claim, result }, root); },
     verdict(value: Record<string, unknown>): string {
       if (job.queue) throw new Error("Queue workers submit coverage with complete_review_work; no verdict files");
@@ -170,6 +171,7 @@ export async function serveReviewer(dir: string, job: string): Promise<void> {
     ["update_occurrence",{id:z.string(),expectedRevision:z.number().int(),patch:data}],
   ] as const) server.registerTool(name,{inputSchema},async (input: Record<string,unknown>)=>reply(access.recordTool(name,input)));
   server.registerTool("claim_review_work", { inputSchema: {} }, async () => reply(access.claim()));
+  server.registerTool("attach_finding", { inputSchema: { id: z.string() } }, async args => reply(access.attach(args.id)));
   server.registerTool("complete_review_work", { inputSchema: { item: z.string(), claim: z.string(), result: z.record(z.string(), z.unknown()) } }, async args => reply(access.complete(args.item, args.claim, args.result)));
   server.registerTool("write_verdict", { inputSchema: { value: z.record(z.string(), z.unknown()) } }, async args => reply(access.verdict(args.value)));
   await server.connect(new StdioServerTransport());
