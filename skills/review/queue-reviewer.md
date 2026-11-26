@@ -28,7 +28,9 @@ Do not limit review to blockers; keep supported P3/P4 advice.
 
 As soon as an issue is established, call create_finding with finding:{title,description,rules:[{id}],priority,tags,evidence:[{kind:"source",polarity:"supports",description,artifacts:[]}]} and a stable idempotencyKey `<item id>:<index>`. The gateway supplies the run, source and unit.
 Record independently addressable instances with create_occurrence and occurrence:{findingId,title,description?,locations:[{file,line,endLine?,note?}]}. Several ranges can jointly describe one defect. Use a stable occurrence idempotencyKey or query list_occurrences before retrying creation after lease recovery.
-Source discoveries have no linked rules. Never claim executable evidence without executing a probe.
+Source discoveries have no linked rules.
+If your principle raises an issue you already filed for another item, call attach_finding with its id instead of filing it again.
+Never claim executable evidence without executing a probe.
 Metadata locations use kind metadata, subject pr-title/pr-body/commit-message, authoritative URL in file, full original text and a line within that text.
 Tag each finding with its scope: `current` for a snapshot; `introduced`, `newly-exposed`, `incomplete-fix` or `pre-existing` for a change.
 The tag carries the scope, so the description does not narrate it.
@@ -36,12 +38,12 @@ The tag carries the scope, so the description does not narrate it.
 Complete each item immediately with complete_review_work:
 
 ```json
-{"item":"<id>","claim":"<token>","result":{"verdict":"followed","where":"path:line","findings":[],"investigation":{"status":"complete","reason":"What settles the advice","questions":[{"question":"Specific advice-derived question","answer":"Source-supported answer","evidence":["path:line"]}],"limits":[]}}}
+{"item":"<id>","claim":"<token>","result":{"verdict":"followed","where":"path:line","investigation":{"status":"complete","reason":"What settles the advice","questions":[{"question":"Specific advice-derived question","answer":"Source-supported answer","evidence":["path:line"]}],"limits":[]}}}
 ```
 
 Source items omit verdict and where.
 Principle verdicts are followed, findings or not_applicable.
-findings requires actual MCP finding IDs.
+The gateway fills in the findings this item created or attached; the findings verdict needs at least one.
 not_applicable pairs only with investigation status not_applicable and requires evidence explaining absence.
 Use limited plus nonempty limits for unresolved questions; complete has no unresolved limits.
 A failed search_source or read_text call leaves its question unresolved: name it in limits and use limited unless a retry or another read answered it.

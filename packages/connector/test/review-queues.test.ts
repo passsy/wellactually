@@ -10,6 +10,7 @@ import {
   claimReviewSession,
   claimReviewWork,
   completeReviewWork,
+  attachReviewFinding,
   getReviewSession,
   beginVerification,
   retryVerification,
@@ -395,6 +396,29 @@ describe("MCP-owned dynamic review and proof queues", () => {
     finish(args, repo, recovered.work, "replacement-holistic"); // Lost completion response is safe to retry.
     clock.mockRestore();
     expect(claim(args, repo, "isolated", "b").work.id).toBe("source");
+  });
+
+  test("a principle item attaches itself to an issue of its set instead of filing it twice", () => {
+    const { repo, args } = setup(2);
+    const finding = (source: string, unit = "a") =>
+      createFindingRecord({ target: "test", finding: { title: "Issue", description: "Problem. Remedy.", origins: [{ run: "r", source, unit }] } }, repo);
+    const attach = (id: string, worker = "w") => attachReviewFinding({ ...args, queue: "a", worker, finding: id }, repo);
+    const source = claim(args, repo, "w-holistic");
+    const filed = finding("a/source/source:0");
+    expect(() => attach(filed.id, "w-holistic")).toThrow("Claim a principle item");
+    finish(args, repo, source.work, "w-holistic");
+    expect(getReviewSession(args, repo).queues[0]!.items[0]!.completed!.result.findings).toEqual([filed.id]);
+    const principle = claim(args, repo);
+    expect(() => attach(finding("b/source/x", "b").id)).toThrow("this review set");
+    expect(() => finish(args, repo, principle.work, "w", "a", { ...result("principle"), verdict: "findings" })).toThrow("finding id");
+    attach(filed.id);
+    const attached = attach(filed.id); // Attaching twice changes nothing.
+    expect(attached.rules).toEqual([{ id: principle.work.id }]);
+    expect(attached.origins.filter((o) => o.rule)).toEqual([{ run: "r", unit: "a", source: `a/${principle.work.id}/attached`, rule: principle.work.id }]);
+    const cited = { ...result("principle"), verdict: "findings" };
+    finish(args, repo, principle.work, "w", "a", cited);
+    finish(args, repo, principle.work, "w", "a", cited); // A lost completion response is safe to retry.
+    expect(getReviewSession(args, repo).queues[0]!.items.find((i) => i.id === principle.work.id)!.completed!.result.findings).toEqual([filed.id]);
   });
 
   test("aggregates only after coverage, accounts for saved investigations and preserves human triage", () => {

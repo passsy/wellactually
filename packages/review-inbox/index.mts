@@ -20,7 +20,7 @@
  *            a tool call go through the same checks.
  */
 
-export { claimReviewSession, getReviewSession, claimReviewWork, completeReviewWork, beginVerification, retryVerification, blockReviewWork } from "./queues.mts";
+export { claimReviewSession, getReviewSession, claimReviewWork, completeReviewWork, attachReviewFinding, beginVerification, retryVerification, blockReviewWork } from "./queues.mts";
 export {
   addLocation,
   baselineCheck,
