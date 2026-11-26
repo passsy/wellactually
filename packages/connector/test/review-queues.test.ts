@@ -51,6 +51,20 @@ test("session details can be bounded to one queue item without changing stored c
   expect(getReviewSession(args, repo)).toEqual(original);
 });
 
+test("principles are checked in an order seeded by the review, after the source item", () => {
+  const ids = (run: string) => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), "wa-order-"));
+    const principles = Array.from({ length: 20 }, (_, i) => ({ id: `p/${i}`, version: 1 }));
+    return claimReviewSession({ repo, target: "test", run, sets: [{ id: "a", principles }] }, repo)
+      .queues[0]!.items.map(i => i.id);
+  };
+  const first = ids("one");
+  expect(first[0]).toBe("source");
+  expect(first.slice(1).sort()).toEqual(Array.from({ length: 20 }, (_, i) => `p/${i}`).sort());
+  expect(ids("one")).toEqual(first);
+  expect(ids("two")).not.toEqual(first);
+});
+
 const inquiry = {
   status: "complete",
   reason: "Source traced",
@@ -358,7 +372,7 @@ describe("MCP-owned dynamic review and proof queues", () => {
     const first = claim(args, repo),
       second = claim(args, repo, "other");
     expect(first.work.id).toBe("source");
-    expect(second.work.id).toBe("p/0");
+    expect(second.work.kind).toBe("principle");
     expect(claim(args, repo).work.claim.token).toBe(first.work.claim.token);
     expect(() => finish(args, repo, first.work, "intruder")).toThrow("belongs");
     expect(() =>

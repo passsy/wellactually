@@ -90,7 +90,7 @@ describe("reporting after aggregation", () => {
     const events = reviewActivityEvents(getReviewSession(s.args, s.repo), s.repo, "test");
     expect(events).toHaveLength(2);
     expect(events.every(e => e.type === "review_selection")).toBe(true);
-    expect(events.map(e => e.principle)).toEqual(["expert/a", "expert/b"]);
+    expect(events.map(e => e.principle).sort()).toEqual(["expert/a", "expert/b"]);
   });
   test("reports each resolved finding after its own grace period even with open occurrences", () => {
     const s = setup(), session = beginVerification({ ...s.args, groups: s.groups }, s.repo);

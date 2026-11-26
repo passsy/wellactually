@@ -296,7 +296,10 @@ export function claimReviewSession(raw: unknown, repo: string): ReviewSession {
         workers: Math.max(1, Math.ceil(set.principles.length / 20)),
         items: [
           { id: "source", kind: "source" },
-          ...set.principles.map((principle) => ({
+          // Seeded by the review so no principle is always checked first, yet a run's order is stable.
+          ...[...set.principles]
+            .sort((a, b) => hash(`${at.target}:${run}:${a.id}`).localeCompare(hash(`${at.target}:${run}:${b.id}`)))
+            .map((principle) => ({
             id: principle.id,
             kind: "principle" as const,
             principle,
