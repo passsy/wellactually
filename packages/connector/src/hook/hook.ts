@@ -7,6 +7,7 @@ import { type EventFirings, type Lockfile, PARALLEL_FROM, boardHome, forgetShown
 import { claimReport, recordDetections } from "../../../board/src/detections.ts";
 import { type HookPayload, eventsOf, mcpToolOf } from "./payload.ts";
 import { DetectorPool } from "../../../board/src/pool.ts";
+import { HookPool } from "../../../board/src/warm.ts";
 import { boardOffIn, switchedOff } from "../../../board/src/switches.ts";
 import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, snapshotContent, snapshotRepos, sweepSnapshots } from "./turn.ts";
 import { excerpt, type HookLogEntry, someFindings } from "./hook-log.ts";
@@ -110,10 +111,12 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
     return note("nothing in this call is an event detectors see");
   }
 
-  // Worker threads are only started when an event concerns enough detectors to need them.
+  // Worker threads are only started when an event concerns enough detectors to need them, unless a warm pool runs them.
   // WELLACTUALLY_WORKERS=0 keeps everything on one thread, a number sets how many there may be.
+  // WELLACTUALLY_WARM=0 keeps the workers to this hook, as before there was a warm pool.
   const setting = process.env.WELLACTUALLY_WORKERS;
-  const pool = setting === "0" ? null : new DetectorPool(workerFile(), Number(setting) > 0 ? Number(setting) : undefined);
+  const size = Number(setting) > 0 ? Number(setting) : undefined;
+  const pool = setting === "0" ? null : process.env.WELLACTUALLY_WARM === "0" ? new DetectorPool(workerFile(), size) : await HookPool.open(workerFile(), size);
   try {
     return await runEvents(payload, events, lockfile, pool, frame, log);
   } finally {
@@ -135,7 +138,7 @@ function isRating(toolName: string): boolean {
   return mcp === null || mcp.server.includes("wellactually");
 }
 
-async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile, pool: DetectorPool | null, frame: typeof frameEvents, log?: HookLogEntry): Promise<string> {
+async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile, pool: DetectorPool | HookPool | null, frame: typeof frameEvents, log?: HookLogEntry): Promise<string> {
   const event = payload.hook_event_name ?? "";
   const sessionId = payload.session_id ?? "unknown";
   const agentId = payload.agent_id;
@@ -144,7 +147,8 @@ async function runEvents(payload: HookPayload, events: Ctx[], lockfile: Lockfile
   const fired: EventFirings[] = [];
   const failures = new Map<string, string>();
   const cwd = payload.cwd ?? process.cwd();
-  const parallelFrom = Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
+  // A warm pool is quicker than this thread for any number of detectors.
+  const parallelFrom = pool instanceof HookPool && pool.warm ? 1 : Number(process.env.WELLACTUALLY_PARALLEL_FROM) || PARALLEL_FROM;
 
   // Most payloads are one event. A Codex patch is one per file it changes, a shell command one per file it wrote.
   for (const ctx of events) {

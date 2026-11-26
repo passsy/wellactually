@@ -20,6 +20,28 @@ import { diskFiles } from "./files.ts";
  */
 export const MAX_WORKERS = 8;
 
+/**
+ * How much detector time one warm worker takes per event before another
+ * worker pays off. A warm detector on a small file takes about a millisecond,
+ * so a board of 200 gets about 13 workers and answers in about 20 ms. On a
+ * large file every detector takes longer, and the pool grows further.
+ */
+export const WARM_MS_PER_WORKER = 15;
+
+/**
+ * The most workers a pool that stays alive may hold: every core but two, for
+ * the agent and the editor. Each one holds about 40 MB.
+ */
+export function warmWorkers(): number {
+  return Math.max(1, os.availableParallelism() - 2);
+}
+
+/** What runs detectors for the advisory board: a pool of threads, here or in another process. */
+export interface Runner {
+  run(ctx: Ctx, tasks: Task[], deadline: number, skipped: string): Promise<DetectorRun[]>;
+  close(): Promise<void>;
+}
+
 /** How long a worker may take beyond the detector's own limit before it is given up on. */
 const GRACE_MS = 400;
 const START_MS = 5000;
@@ -31,6 +53,8 @@ type ToWorker = { ctx: Ctx } | { id: number; bundle: string; api: number };
 export interface Task {
   bundle: string;
   api: number;
+  /** The hash the bundle is cached under, which another process can read it by. */
+  hash?: string;
 }
 
 function failed(error: string): DetectorRun {
@@ -65,15 +89,20 @@ interface Member {
   ready: Promise<boolean>;
 }
 
-export class DetectorPool {
+export class DetectorPool implements Runner {
   private members: Member[] = [];
   private readonly file: string;
   private readonly size: number;
+  /** One run at a time: a worker holds the event of the run it is in. */
+  private turn: Promise<unknown> = Promise.resolve();
 
-  /** `file` is the script the workers run. It must call `serveDetectors()` when it is not the main thread. */
-  constructor(file: string, size: number = MAX_WORKERS) {
+  /**
+   * `file` is the script the workers run. It must call `serveDetectors()` when it is not the main thread.
+   * A pool holds at most `size` workers, and no more than `cap`.
+   */
+  constructor(file: string, size: number = MAX_WORKERS, cap: number = MAX_WORKERS) {
     this.file = file;
-    this.size = Math.max(1, Math.min(size, MAX_WORKERS, os.availableParallelism()));
+    this.size = Math.max(1, Math.min(size, cap, os.availableParallelism()));
   }
 
   private start(): Member {
@@ -101,10 +130,17 @@ export class DetectorPool {
   /**
    * Runs every detector against `ctx` and resolves to one result per detector, in order.
    * A detector that is not started before `deadline` (from `performance.now()`) gets `skipped` as its error.
+   * The pool starts up to `workers` workers for it, or one per detector, and keeps those it started.
    */
-  async run(ctx: Ctx, tasks: Task[], deadline: number, skipped: string): Promise<DetectorRun[]> {
+  run(ctx: Ctx, tasks: Task[], deadline: number, skipped: string, workers: number = tasks.length): Promise<DetectorRun[]> {
+    const done = this.turn.then(() => this.runNow(ctx, tasks, deadline, skipped, workers));
+    this.turn = done.catch(() => undefined);
+    return done;
+  }
+
+  private async runNow(ctx: Ctx, tasks: Task[], deadline: number, skipped: string, workers: number): Promise<DetectorRun[]> {
     const results: (DetectorRun | undefined)[] = new Array<DetectorRun | undefined>(tasks.length).fill(undefined);
-    while (this.members.length < Math.min(this.size, tasks.length)) {
+    while (this.members.length < Math.min(this.size, tasks.length, Math.max(1, workers))) {
       this.start();
     }
     let next = 0;
@@ -139,7 +175,8 @@ export class DetectorPool {
           member.worker.on("message", onMessage);
           member.worker.once("error", onGone);
           member.worker.once("exit", onGone);
-          member.worker.postMessage({ id, ...(tasks[id] as Task) } satisfies ToWorker);
+          const task = tasks[id] as Task;
+          member.worker.postMessage({ id, bundle: task.bundle, api: task.api } satisfies ToWorker);
         });
         if (answer === null) {
           // It hangs or it died. Either way this thread is not trusted with another detector.
