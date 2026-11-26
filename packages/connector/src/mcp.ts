@@ -6,7 +6,7 @@ import { z } from "zod";
 import { zodSchema } from "../../review-inbox/zod-schema.mts";
 import { hasDetector } from "@wellactually/core/node";
 import { TOOLS as FINDINGS_TOOLS } from "../../review-inbox/tools.mts";
-import { reportPendingReviewSuggestions, REVIEW_REPORT_MS } from "../../board/src/registry/review-reports.ts";
+import { REVIEW_REPORT_MS } from "../../board/src/registry/review-reports.ts";
 import { startInBackground } from "./hook/hook.ts";
 import { askCodexHooksNeedReview, codexHooksSilent, HOOKS_NEED_REVIEW, noteCodexServer } from "../../board/src/codex-hooks.ts";
 import { claimReport } from "../../board/src/detections.ts";
@@ -160,10 +160,6 @@ export async function serveMcp(): Promise<void> {
     });
   const workspace = currentWorkspace();
   registerFindingsTools(server, workspace);
-  server.registerTool("report_review_suggestions", {
-    description: "Upload pending review selections, aggregated suggestions, and fixed or rejected findings. Upload cycles are at least five minutes apart; fixed and rejected findings also wait at least five minutes after closing. Call once at review completion; a network failure leaves events pending without blocking the review. Respects stats off.",
-    inputSchema: {}, annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-  }, async () => text(JSON.stringify({ reported: await reportPendingReviewSuggestions() })));
   server.registerTool("list_principles", {
     description: "Current advisory board metadata for review filtering: id, version, short description and tags only. No full advice bodies. Pass the reviewed repo to respect project switches.",
     inputSchema: { repo: z.string() },

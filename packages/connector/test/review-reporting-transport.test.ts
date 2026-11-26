@@ -52,7 +52,6 @@ test("packaged MCP aggregation delivers the pinned issue once and exposes acknow
     }
     const grouped = await call("begin_verification", { session: session.id, groups: [{ findings: [finding.id], reason: "One issue" }] });
     expect(grouped.suggestions.count).toBe(1);
-    await call("report_review_suggestions");
     await expect.poll(async () => (await call("get_review_session", { session: session.id })).suggestions.sentAt, { timeout: 3000 }).toBeTruthy();
     expect([...received.values()]).toEqual(expect.arrayContaining([
       { id: expect.any(String), type: "review_selection", principle: "expert/docs", revision: 2, occurred_at: expect.any(String) },

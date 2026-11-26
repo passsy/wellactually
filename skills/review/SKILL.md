@@ -168,7 +168,6 @@ Retain coverage and platform limits.
 Aggregation saves one retry-safe suggestion per distinct issue and attributed principle in the MCP session.
 Reporting starts automatically after begin_verification and retries with normal detection uploads.
 Do not report raw findings, individual occurrences, review selections or helpfulness ratings.
-At completion, call report_review_suggestions once to upload eligible pending events within the five-minute throttle; an upload failure must not block review delivery.
 Read get_review_session for suggestion delivery status; never create a local telemetry or findings shadow file.
 On incomplete coverage leave baseline untouched.
 After complete coverage, call baseline_check once with currentFindingIds containing every surviving finding ID from this run, including metadata findings.
