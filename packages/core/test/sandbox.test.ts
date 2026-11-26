@@ -32,6 +32,21 @@ describe("the isolate", () => {
     expect(run.findings).toEqual([{ line: 2 }]);
   });
 
+  test.each([
+    ["a file", "a\u0001b\nconst c = 1;\n"],
+    ["a file with a NUL", "a\0b\nconst c = 1;\n"],
+  ])("a detector gets all of %s, however it crossed into the isolate", async (_, content) => {
+    const bundle = await bundleOf(`
+      export function* detect(ctx) {
+        const expected = ${JSON.stringify(content)};
+        if (ctx.file.content === expected && ctx.text === expected && ctx.file.lines.join("\\n") === expected && ctx.written[1].text === "const c = 1;") yield { line: 2 };
+      }
+    `);
+    const run = await runDetector(bundle, fileCtx("write", "lib/a.ts", content));
+    expect(run.error).toBeNull();
+    expect(run.findings).toEqual([{ line: 2 }]);
+  });
+
   test("there is no process, require, fetch or filesystem to reach for", async () => {
     const bundle = await bundleOf(`
       export function detect(ctx) {

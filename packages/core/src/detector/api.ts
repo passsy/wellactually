@@ -83,16 +83,111 @@ export function ctxFor(api: number, ctx: Ctx): unknown {
 
 /** What the isolate holds besides the detector: its event, other globals, and the functions it may call on the host. */
 export interface Environment {
-  /** Globals that are strings. `__ctx` is the event as JSON. */
+  /** Globals that are strings. `__ctx` is the event, packed by `packCtx`. */
   strings: Record<string, string>;
   functions: Record<string, (argument: string) => string>;
+}
+
+/**
+ * The event of a write carries the file four times: as `text`, as `content`,
+ * split into `lines`, and once more in `written`. Parsing all of that as JSON
+ * in every isolate cost more than most detectors, so the text crosses once
+ * and `UNPACK_CTX` builds the same event from it in the isolate.
+ *
+ * `__ctx` is JSON of `[event, length of the content, where the text is]`,
+ * then U+0001, which JSON output never holds unescaped, then the content and
+ * the text as they are. In the JSON, what the isolate puts back is null: the
+ * content, the lines when they are the content split, and the text. A list of
+ * written or removed lines that are all the file's lines is just their
+ * numbers; in any other list, such a line has a null text. Everything else
+ * stays in the JSON, so the event a detector sees is the one it always saw.
+ *
+ * A string reaches the isolate only up to its first NUL, so an event with a
+ * NUL in its text crosses as JSON, as before.
+ */
+function packCtx(event: Record<string, unknown>): string {
+  const file = event.file as { content: string; lines: string[]; written?: Line[]; removed?: Line[] } | null | undefined;
+  if (file?.content.includes("\0") || (typeof event.text === "string" && event.text.includes("\0"))) {
+    return `${JSON.stringify([event, -1, TEXT_IN_JSON])}\u0001`;
+  }
+  const packed: Record<string, unknown> = { ...event };
+  let content = "";
+  let length = -1;
+  if (file) {
+    const lines = file.content.split("\n");
+    const derived = lines.length === file.lines.length && lines.every((line, index) => line === file.lines[index]);
+    // A list whose every line is the file's line crosses as its line numbers. Otherwise each such line has a null text.
+    const fromLines = (list: Line[] | undefined): (Line | number)[] | undefined => {
+      if (list === undefined) return undefined;
+      const same = list.map((entry) => file.lines[entry.line - 1] === entry.text && Object.keys(entry).join() === "line,text");
+      return same.every(Boolean) ? list.map((entry) => entry.line) : list.map((entry, index) => (same[index] ? { ...entry, text: null } : entry));
+    };
+    packed.file = { ...file, content: null, lines: derived ? null : file.lines, ...("written" in file ? { written: fromLines(file.written) } : {}), ...("removed" in file ? { removed: fromLines(file.removed) } : {}) };
+    content = file.content;
+    length = content.length;
+  }
+  let text = "";
+  let where = TEXT_IN_JSON;
+  if (typeof event.text === "string") {
+    packed.text = null;
+    where = file && event.text === file.content ? TEXT_IS_CONTENT : TEXT_FOLLOWS;
+    text = where === TEXT_FOLLOWS ? event.text : "";
+  }
+  return `${JSON.stringify([packed, length, where])}\u0001${content}${text}`;
+}
+
+const TEXT_IN_JSON = 0;
+const TEXT_IS_CONTENT = 1;
+const TEXT_FOLLOWS = 2;
+
+interface Line {
+  line: number;
+  text: string | null;
+}
+
+/** The event `packCtx` packed, as the detector expects it. Keys are assigned where the JSON holds them as null, so they keep their order. */
+export const UNPACK_CTX = `(() => {
+  const cut = __ctx.indexOf("\\u0001");
+  const [ctx, length, where] = JSON.parse(__ctx.slice(0, cut));
+  const file = ctx.file;
+  if (file && file.content === null) {
+    file.content = __ctx.slice(cut + 1, cut + 1 + length);
+    if (file.lines === null) file.lines = file.content.split("\\n");
+    for (const list of [file.written, file.removed]) {
+      if (list) for (let i = 0; i < list.length; i++) {
+        const entry = list[i];
+        if (typeof entry === "number") list[i] = { line: entry, text: file.lines[entry - 1] };
+        else if (entry.text === null) entry.text = file.lines[entry.line - 1];
+      }
+    }
+  }
+  if (where === ${TEXT_IS_CONTENT}) ctx.text = file.content;
+  if (where === ${TEXT_FOLLOWS}) ctx.text = __ctx.slice(cut + 1 + Math.max(length, 0));
+  return ctx;
+})()`;
+
+/** The packed event per version, for each event: every detector on one event gets the same. */
+const packedCtx = new WeakMap<Ctx, Map<number, string>>();
+
+function packedFor(api: number, ctx: Ctx): string {
+  let byApi = packedCtx.get(ctx);
+  if (byApi === undefined) {
+    byApi = new Map();
+    packedCtx.set(ctx, byApi);
+  }
+  let packed = byApi.get(api);
+  if (packed === undefined) {
+    packed = packCtx(ctxFor(api, ctx) as Record<string, unknown>);
+    byApi.set(api, packed);
+  }
+  return packed;
 }
 
 /** The isolate a detector of version `api` was built to run in. */
 export function environmentFor(api: number, ctx: Ctx, project: ProjectFiles | null): Environment {
   return {
     // `node:path` resolves against the project root, and `node:fs` asks the host.
-    strings: { __ctx: JSON.stringify(ctxFor(api, ctx)), __cwd: ctx.project ?? "/" },
+    strings: { __ctx: packedFor(api, ctx), __cwd: ctx.project ?? "/" },
     functions: { __fs: fsHost(ctx.project ?? "/", project) },
   };
 }
