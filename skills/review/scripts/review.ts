@@ -875,7 +875,8 @@ export function buildSets(dir: string): ReviewJob[] {
 }
 
 function queueJobs(unit: string, parts: string[], principles: number, set: string | null): ReviewJob[] {
-  return Array.from({ length: Math.max(1, Math.ceil(principles / 20)) }, (_, index) => ({ id: `${unit}-worker-${index + 1}`, parts, principles: [], set, queue: unit }));
+  // The holistic source review gets a fresh context of its own, so principle checks neither crowd it out nor are pre-empted by it.
+  return [`${unit}-holistic`, ...Array.from({ length: Math.ceil(principles / 20) }, (_, index) => `${unit}-worker-${index + 1}`)].map(id => ({ id, parts, principles: [], set, queue: unit }));
 }
 
 export function renderSets(jobs: ReviewJob[]): string {

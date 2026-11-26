@@ -234,17 +234,17 @@ describe("MCP-owned dynamic review and proof queues", () => {
 
   test("blocked work is not replayed while other eligible work continues", () => {
     const { repo, args } = setup(1),
-      owned = claim(args, repo);
+      owned = claim(args, repo, "w-holistic");
     blockReviewWork(
       {
         ...args,
         queue: "a",
-        worker: "w",
+        worker: "w-holistic",
         reason: "Explicit safeguard rejection",
       },
       repo,
     );
-    expect(() => finish(args, repo, owned.work)).toThrow("blocked");
+    expect(() => finish(args, repo, owned.work, "w-holistic")).toThrow("blocked");
     const other = claim(args, repo, "healthy");
     expect(other.work.id).toBe("p/0");
     finish(args, repo, other.work, "healthy");
@@ -366,14 +366,14 @@ describe("MCP-owned dynamic review and proof queues", () => {
   }, 20000);
   test("pins a session, sizes workers, isolates sets, validates coverage and recovers expired claims", () => {
     const { repo, args, manifest, session } = setup(21);
-    expect(session.queues.map((q) => q.workers)).toEqual([2, 1]);
+    expect(session.queues.map((q) => q.workers)).toEqual([3, 1]);
     expect(claimReviewSession(manifest, repo).id).toBe(session.id);
     expect(() => claimReviewSession({ ...manifest, sets: [] }, repo)).toThrow();
-    const first = claim(args, repo),
+    const first = claim(args, repo, "w-holistic"),
       second = claim(args, repo, "other");
     expect(first.work.id).toBe("source");
     expect(second.work.kind).toBe("principle");
-    expect(claim(args, repo).work.claim.token).toBe(first.work.claim.token);
+    expect(claim(args, repo, "w-holistic").work.claim.token).toBe(first.work.claim.token);
     expect(() => finish(args, repo, first.work, "intruder")).toThrow("belongs");
     expect(() =>
       finish(args, repo, second.work, "other", "a", {
@@ -387,24 +387,24 @@ describe("MCP-owned dynamic review and proof queues", () => {
     const clock = vi
       .spyOn(Date, "now")
       .mockReturnValue(Date.now() + 16 * 60_000);
-    const recovered = claim(args, repo, "replacement");
+    const recovered = claim(args, repo, "replacement-holistic");
     expect(recovered.work.id).toBe(first.work.id);
     expect(recovered.work.claim.token).not.toBe(first.work.claim.token);
     expect(() => finish(args, repo, first.work)).toThrow("belongs");
-    finish(args, repo, recovered.work, "replacement");
-    finish(args, repo, recovered.work, "replacement"); // Lost completion response is safe to retry.
+    finish(args, repo, recovered.work, "replacement-holistic");
+    finish(args, repo, recovered.work, "replacement-holistic"); // Lost completion response is safe to retry.
     clock.mockRestore();
     expect(claim(args, repo, "isolated", "b").work.id).toBe("source");
   });
 
   test("a principle item citing an issue filed by the source item attaches its principle to it", () => {
     const { repo, args } = setup(1);
-    const source = claim(args, repo);
+    const source = claim(args, repo, "w-holistic");
     const filed = createFindingRecord(
       { target: "test", finding: { title: "Issue", description: "Problem. Remedy.", origins: [{ run: "r", source: "a/source/source:0", unit: "a" }] } },
       repo,
     );
-    finish(args, repo, source.work, "w", "a", { ...result("source"), findings: [filed.id] });
+    finish(args, repo, source.work, "w-holistic", "a", { ...result("source"), findings: [filed.id] });
     const principle = claim(args, repo);
     const cited = { ...result("principle"), verdict: "findings", findings: [filed.id] };
     finish(args, repo, principle.work, "w", "a", cited);
@@ -577,7 +577,7 @@ describe("MCP-owned dynamic review and proof queues", () => {
 
   test("metadata baseline uses saved IDs and review ratings are durable and deduplicated", async () => {
     const { repo, args } = setup(1);
-    finish(args, repo, claim(args, repo).work);
+    finish(args, repo, claim(args, repo, "w-holistic").work, "w-holistic");
     finish(args, repo, claim(args, repo).work);
     finish(args, repo, claim(args, repo, "wb", "b").work, "wb", "b");
     beginVerification({ ...args, groups: [] }, repo);
@@ -639,7 +639,7 @@ describe("MCP-owned dynamic review and proof queues", () => {
           "-e",
           code,
           JSON.stringify(args),
-          `worker-${i}`,
+          i ? `worker-${i}` : "worker-holistic",
         ]),
       ),
     );

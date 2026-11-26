@@ -122,9 +122,9 @@ test("step 2 preserves the brief and defers board work until step 3", async () =
   write(out, "tracking.json", JSON.stringify({ repo: root, target: "local", run: "step-1" }));
   const agents = setupAgents(out);
   expect(agents.map(file => path.relative(out, file))).toEqual([
-    "agents/reviewer-all-worker-1/INSTRUCTIONS.md", "agents/aggregator/INSTRUCTIONS.md",
+    "agents/reviewer-all-holistic/INSTRUCTIONS.md", "agents/reviewer-all-worker-1/INSTRUCTIONS.md", "agents/aggregator/INSTRUCTIONS.md",
   ]);
-  const instructions = fs.readFileSync(agents[0]!, "utf8");
+  const instructions = fs.readFileSync(agents[1]!, "utf8");
   expect(instructions).toContain("Worker: all-worker-1");
   expect(instructions).toContain(path.join(out, "task.md"));
   expect(instructions).toContain(path.join(out, "diff/part-01.patch"));
