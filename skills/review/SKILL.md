@@ -163,7 +163,7 @@ Human verdicts stay unchanged; existing executable proof is not erased by a bloc
 
 Wait for all workers and require --check <dir> --stage verify plus saved assessments for every completed investigation.
 The gate checks final evidence, locations and proof/limit persistence against the published findings, not just queue completion.
-Once it passes, it copies the files each proof worker added or changed to agents/verification-worker-<n>/scratchpad/, points saved proof artifacts there and removes the proof worktrees. Only the review checkout stays.
+It fails while a saved proof artifact points inside a proof worktree; once it passes, it removes the proof worktrees. Only the review checkout stays.
 Read authoritative session/findings; no finalizer/report worker.
 Retain coverage and platform limits.
 Aggregation saves one retry-safe suggestion per distinct issue and attributed principle in the MCP session.

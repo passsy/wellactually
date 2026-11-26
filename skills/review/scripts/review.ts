@@ -13,8 +13,7 @@ import { findProjectRoot, toPosix } from "../../../packages/board/src/files.ts";
 import { collectInput, type CollectedInput, type InputOptions } from "./inputs.ts";
 import { switchedOff } from "../../../packages/board/src/switches.ts";
 import { claimReviewSession, getReviewSession, verificationProblems } from "../../../packages/review-inbox/queues.mts";
-import { listFindingRecords, listOccurrences, updateFindingRecord, updateOccurrence } from "../../../packages/review-inbox/crud.mts";
-import type { EvidenceEntry } from "../../../packages/review-inbox/model/records.mts";
+import { listFindingRecords, listOccurrences } from "../../../packages/review-inbox/crud.mts";
 
 /**
  * What a review compares: `base` against `head`, or against the working tree
@@ -985,57 +984,44 @@ function prepareProofWorktree(plan: ReviewPlan, checkout: string): string {
   return workingRoot;
 }
 
-/**
- * After verification, copies what each proof worker added or changed in its checkout to
- * agents/<worker>/scratchpad, points saved proof artifacts there, and removes the checkout.
- */
-export function removeProofCheckouts(dir: string, plan: ReviewPlan, target: string, run: string): string[] {
+/** This review's proof worktrees that still exist, from each verification worker's workspace.json. */
+function proofCheckouts(dir: string): { file: string; checkout: string }[] {
   const agents = path.join(dir, "agents");
-  const workers = fs.existsSync(agents) ? fs.readdirSync(agents).filter(name => /^verification-worker-\d+$/.test(name)) : [];
-  const moved = new Map<string, string>(), removed: string[] = [];
-  for (const worker of workers) {
+  if (!fs.existsSync(agents)) return [];
+  return fs.readdirSync(agents).filter(name => /^verification-worker-\d+$/.test(name)).flatMap(worker => {
     const file = path.join(agents, worker, "workspace.json");
-    if (!fs.existsSync(file)) continue;
-    const workspace = readJson<{ root: string; isolated: boolean }>(path.join(agents, worker), "workspace.json");
-    if (!workspace.isolated || !fs.existsSync(workspace.root)) continue;
-    const checkout = fs.realpathSync(git(workspace.root, ["rev-parse", "--show-toplevel"]).trim());
-    const scratchpad = path.join(agents, worker, "scratchpad");
-    // Ignored build output stays behind; added, changed and untracked files are the probes and tests.
-    const changed = git(checkout, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]).split("\0").filter(entry => entry.length > 3 && entry[0] !== "D" && entry[1] !== "D").map(entry => entry.slice(3));
-    for (const relative of changed) {
-      const from = path.join(checkout, relative), to = path.join(scratchpad, relative);
-      if (!fs.lstatSync(from, { throwIfNoEntry: false })?.isFile()) continue;
-      fs.mkdirSync(path.dirname(to), { recursive: true });
-      fs.copyFileSync(from, to);
-      moved.set(from, to);
-    }
-    moved.set(checkout, scratchpad);
-    git(plan.root, ["worktree", "remove", "--force", checkout]);
-    fs.writeFileSync(file, JSON.stringify({ ...workspace, removed: true, scratchpad }, null, 2) + "\n");
-    removed.push(checkout);
-  }
-  if (!removed.length) return removed;
-  const relocate = (artifact: string): string => {
-    const [, file, suffix = ""] = /^(.*?)(:\d+(?:-\d+)?)?$/.exec(artifact)!;
-    for (const checkout of removed) {
-      for (const prefix of new Set([checkout, checkout.replace(/^\/private\//, "/")])) {
-        if (file !== prefix && !file!.startsWith(prefix + path.sep)) continue;
-        const original = path.join(checkout, path.relative(prefix, file!));
-        return (moved.get(original) ?? path.join(moved.get(checkout)!, path.relative(prefix, file!))) + suffix;
-      }
-    }
-    return artifact;
+    if (!fs.existsSync(file)) return [];
+    const workspace = JSON.parse(fs.readFileSync(file, "utf8")) as { root: string; isolated: boolean };
+    if (!workspace.isolated || !fs.existsSync(workspace.root)) return [];
+    return [{ file, checkout: fs.realpathSync(git(workspace.root, ["rev-parse", "--show-toplevel"]).trim()) }];
+  });
+}
+
+/** Proof worktrees are removed after verification, so a saved proof must not live inside one. */
+export function proofLinksInCheckouts(dir: string, plan: ReviewPlan, target: string, run: string): string[] {
+  const checkouts = proofCheckouts(dir).map(c => c.checkout);
+  if (!checkouts.length) return [];
+  const insideOf = (artifact: string) => {
+    const file = /^(.*?)(:\d+(?:-\d+)?)?$/.exec(artifact)![1]!;
+    if (!path.isAbsolute(file)) return undefined;
+    const real = fs.existsSync(file) ? fs.realpathSync(file) : file;
+    return checkouts.find(checkout => real === checkout || real.startsWith(checkout + path.sep));
   };
-  const relocated = (evidence: EvidenceEntry[]) => evidence.map(e => ({ ...e, artifacts: e.artifacts.map(relocate) }));
-  const changedEvidence = (evidence: EvidenceEntry[]) => evidence.some(e => e.artifacts.some(a => relocate(a) !== a));
   const at = { repo: plan.root, target };
-  for (const finding of listFindingRecords({ ...at, run }, plan.root)) {
-    if (changedEvidence(finding.evidence)) updateFindingRecord({ ...at, id: finding.id, expectedRevision: finding.revision, patch: { evidence: relocated(finding.evidence) } }, plan.root);
-    for (const occurrence of listOccurrences({ ...at, findingId: finding.id }, plan.root)) {
-      if (changedEvidence(occurrence.evidence)) updateOccurrence({ ...at, id: occurrence.id, expectedRevision: occurrence.revision, patch: { evidence: relocated(occurrence.evidence) } }, plan.root);
-    }
-  }
-  return removed;
+  const records = listFindingRecords({ ...at, run }, plan.root).flatMap(finding => [finding, ...listOccurrences({ ...at, findingId: finding.id }, plan.root)]);
+  return records.flatMap(record => record.evidence.flatMap(evidence => evidence.artifacts.flatMap(artifact => {
+    const checkout = insideOf(artifact);
+    return checkout ? [`${record.id}: proof ${artifact} is inside the proof worktree ${checkout}, which is removed after verification; save it outside the worktree and update the evidence`] : [];
+  })));
+}
+
+/** Removes the review's proof worktrees; system temp is only the fallback for an aborted run. */
+export function removeProofCheckouts(dir: string, root: string): string[] {
+  return proofCheckouts(dir).map(({ file, checkout }) => {
+    git(root, ["worktree", "remove", "--force", checkout]);
+    fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, "utf8")), removed: true }, null, 2) + "\n");
+    return checkout;
+  });
 }
 
 /** A budget as the user writes it: 100000, 100k or 1m. */
@@ -1076,9 +1062,9 @@ export function checkReview(dir: string, stage: string): { stage: ReviewStage; j
     if (stage === "verify" && session.phase !== "verification") pending.push("aggregation/verification queue not initialized");
     const candidates = listFindingRecords({ repo: queuedPlan.root, target: tracking.target, run: session.run }, queuedPlan.root).filter(f => f.closure?.reason !== "superseded");
     // Queue completion references saved assessments; findings have no pending/promotion state.
-    if (stage === "verify") pending.push(...verificationProblems(session, queuedPlan.root, tracking.target));
+    if (stage === "verify") pending.push(...verificationProblems(session, queuedPlan.root, tracking.target), ...proofLinksInCheckouts(dir, queuedPlan, tracking.target, session.run));
     if (pending.length) throw new Error(`Review ${stage} is incomplete:\n- ${pending.join("\n- ")}`);
-    if (stage === "verify") removeProofCheckouts(dir, queuedPlan, tracking.target, session.run);
+    if (stage === "verify") removeProofCheckouts(dir, queuedPlan.root);
     return { stage: stage as ReviewStage, jobs: queues.reduce((n, q) => n + q.workers, 0), units: queues.filter(q => q.phase === "review").length, candidates: candidates.length };
   }
   const stages: ReviewStage[] = ["review", "test", "verify"];

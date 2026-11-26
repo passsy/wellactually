@@ -35,6 +35,7 @@ import {
   setupVerificationAgents,
   setupAgents,
   removeProofCheckouts,
+  proofLinksInCheckouts,
 } from "../../../skills/review/scripts/review.ts";
 
 test("session details can be bounded to one queue item without changing stored coverage", async () => {
@@ -636,7 +637,7 @@ test("restricted reviewer and aggregation instructions embed the shared finding 
   } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
 
-test("finished verification keeps the proof worker's files and removes its checkout", () => {
+test("verification refuses proofs inside a proof worktree, then removes the worktree", () => {
   const { repo, manifest } = setup(0);
   const commit = ["-c", "user.name=Queue Test", "-c", "user.email=queue@example.invalid", "commit", "-qm", "Initial fixture"];
   execFileSync("git", ["init", "-q"], { cwd: repo });
@@ -655,18 +656,23 @@ test("finished verification keeps the proof worker's files and removes its check
   const [file] = setupVerificationAgents(dir);
   const root = JSON.parse(fs.readFileSync(path.join(path.dirname(file!), "workspace.json"), "utf8")).root;
   expect(path.basename(root)).toBe("shop-pr891-verification-1");
-  fs.mkdirSync(path.join(root, "test"));
-  fs.writeFileSync(path.join(root, "test", "probe.test.ts"), "probe();\n");
-  fs.writeFileSync(path.join(root, "state.ts"), "changed();\n");
-  const saved = getFindingRecord({ repo, target: "test", id: record.id }, repo);
-  updateFindingRecord({ repo, target: "test", id: record.id, expectedRevision: saved.revision, patch: { evidence: [{ kind: "test", polarity: "supports", description: "Probe fails", artifacts: [path.join(root, "test", "probe.test.ts") + ":1", "state.ts:1"] }] } }, repo);
+  const inside = path.join(root, "probe.test.ts"), outside = path.join(dir, "probes", "probe.test.ts");
+  fs.writeFileSync(inside, "probe();\n");
+  const prove = (artifact: string) => {
+    const saved = getFindingRecord({ repo, target: "test", id: record.id }, repo);
+    updateFindingRecord({ repo, target: "test", id: record.id, expectedRevision: saved.revision, patch: { evidence: [{ kind: "test", polarity: "supports", description: "Probe fails", artifacts: [artifact + ":1", "state.ts:1"] }] } }, repo);
+  };
 
-  expect(removeProofCheckouts(dir, plan as never, "test", "cleanup")).toHaveLength(1);
+  prove(inside);
+  expect(proofLinksInCheckouts(dir, plan as never, "test", "cleanup")).toEqual([expect.stringContaining(`proof ${inside}:1 is inside the proof worktree`)]);
 
-  const scratchpad = path.join(dir, "agents", "verification-worker-1", "scratchpad");
+  fs.mkdirSync(path.dirname(outside));
+  fs.copyFileSync(inside, outside);
+  prove(outside);
+  expect(proofLinksInCheckouts(dir, plan as never, "test", "cleanup")).toEqual([]);
+
+  expect(removeProofCheckouts(dir, repo)).toHaveLength(1);
   expect(fs.existsSync(root)).toBe(false);
   expect(execFileSync("git", ["worktree", "list"], { cwd: repo, encoding: "utf8" })).not.toContain("verification-1");
-  expect(fs.readFileSync(path.join(scratchpad, "test", "probe.test.ts"), "utf8")).toBe("probe();\n");
-  expect(fs.readFileSync(path.join(scratchpad, "state.ts"), "utf8")).toBe("changed();\n");
-  expect(getFindingRecord({ repo, target: "test", id: record.id }, repo).evidence[0]!.artifacts).toEqual([path.join(scratchpad, "test", "probe.test.ts") + ":1", "state.ts:1"]);
+  expect(removeProofCheckouts(dir, repo)).toEqual([]);
 });

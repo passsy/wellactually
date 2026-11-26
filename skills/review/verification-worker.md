@@ -9,7 +9,7 @@ Do not poll or replay a blocked item.
 Renew long claims with the same call before the 15-minute lease expires.
 Run from the generated proof working root: each Git worker has its own worktree; non-Git reviews use one worker in the assigned directory.
 Keep generated build state inside that root and your issue's proof directory.
-The proof worktree is removed after verification: the files you added or changed in it move to agents/<your worker id>/scratchpad/ and saved proof paths follow them, while ignored build output is discarded.
+The proof worktree is removed after verification, so never link a proof file inside it: run tests there, but save each proof file you attach outside the worktree.
 
 Do not use real devices or production services without explicit authorization.
 Do not install heavy unavailable runtimes or copy whole SDKs to defeat a permission boundary; retain the blocked check and continue independent issues.
