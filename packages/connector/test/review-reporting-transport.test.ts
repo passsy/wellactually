@@ -45,8 +45,8 @@ test("packaged MCP aggregation delivers the pinned issue once and exposes acknow
     const session = await call("claim_review_session", { run: "transport", sets: [{ id: "all", principles: [{ id: "expert/docs", version: 2 }] }] });
     const finding = await call("create_finding", { finding: { title: "Documentation absent", rules: [{ id: "expert/docs" }], origins: [{ run: "transport", source: "review", unit: "all" }] } });
     for (let i = 0; i < 2; i++) {
-      const work = await call("claim_review_work", { session: session.id, queue: "all", worker: "reviewer" });
-      await call("complete_review_work", { session: session.id, queue: "all", worker: "reviewer", item: work.work.id, claim: work.work.claim.token, result: {
+      const work = await call("claim_review_work", { session: session.id, queue: "all", worker: i ? "reviewer" : "reviewer-holistic" });
+      await call("complete_review_work", { session: session.id, queue: "all", worker: i ? "reviewer" : "reviewer-holistic", item: work.work.id, claim: work.work.claim.token, result: {
         ...(work.work.kind === "principle" ? { verdict: "findings", where: "a.ts:1" } : {}), findings: [finding.id], investigation: { status: "complete", reason: "Read source", questions: [{ question: "Documented?", answer: "No", evidence: ["a.ts:1"] }], limits: [] },
       } });
     }

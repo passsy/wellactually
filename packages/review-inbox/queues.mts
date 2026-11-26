@@ -293,7 +293,7 @@ export function claimReviewSession(raw: unknown, repo: string): ReviewSession {
       queues: sets.map((set) => ({
         id: set.id,
         phase: "review",
-        workers: Math.max(1, Math.ceil(set.principles.length / 20)),
+        workers: 1 + Math.ceil(set.principles.length / 20),
         items: [
           { id: "source", kind: "source" },
           // Seeded by the review so no principle is always checked first, yet a run's order is stable.
@@ -397,12 +397,16 @@ export function claimReviewWork(raw: unknown, repo: string): unknown {
         item.claim?.worker === worker &&
         Date.parse(item.claim.until) > now,
     );
+    // A `-holistic` worker owns the source item; principle workers take it only in a queue without principles.
+    const holistic = worker.endsWith("-holistic"),
+      principles = queue.items.some((item) => item.kind === "principle");
     const item =
       active ??
       queue.items.find(
         (item) =>
           !item.completed &&
           !item.blocked &&
+          (holistic ? item.kind === "source" : item.kind !== "source" || !principles) &&
           (!item.claim || Date.parse(item.claim.until) <= now),
       );
     if (!item)

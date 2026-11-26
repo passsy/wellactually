@@ -22,8 +22,8 @@ function setup() {
   } }, repo));
   // Many occurrences remain one suggestion, not one per source location.
   for (let i = 0; i < 12; i++) createOccurrence({ repo, target: "test", occurrence: { findingId: findings[0]!.id, locations: [{ file: "a.ts", line: 1 }] } }, repo);
-  const workArgs = { ...args, queue: "all", worker: "review" };
   for (let i = 0; i < 3; i++) {
+    const workArgs = { ...args, queue: "all", worker: i ? "review" : "review-holistic" };
     const claimed = claimReviewWork(workArgs, repo) as any;
     completeReviewWork({ ...workArgs, item: claimed.work.id, claim: claimed.work.claim.token, result: { ...(claimed.work.kind === "principle" ? { verdict: "followed", where: "a.ts:1" } : {}), findings: [], investigation: inquiry } }, repo);
   }
