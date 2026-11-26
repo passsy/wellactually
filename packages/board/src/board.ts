@@ -4,7 +4,7 @@ import path from "node:path";
 import type { Ctx, Finding } from "@wellactually/detector-sdk";
 import { ADVICE_BUDGET, adviceBytes, apiOf, applies, DEFAULT_LIMITS, type DetectorRun, type Manifest, runDetector } from "@wellactually/core/node";
 import { describeFinding } from "./finding.ts";
-import type { DetectorPool } from "./pool.ts";
+import type { Runner } from "./pool.ts";
 import { diskFiles } from "./files.ts";
 
 /** The agent hosts Well Actually runs in. OpenCode 1 runs the plugin from a git clone; only OpenCode 2 has `opencode plugin update`. */
@@ -178,7 +178,7 @@ export async function runBoard(
   ctx: Ctx,
   lockfile: Lockfile = readLockfile(),
   off: ReadonlySet<string> = new Set(),
-  pool: DetectorPool | null = null,
+  pool: Runner | null = null,
   parallelFrom: number = PARALLEL_FROM,
   budgetMs: number = BOARD_BUDGET_MS,
 ): Promise<BoardRun> {
@@ -212,7 +212,7 @@ export async function runBoard(
 
   let results: DetectorRun[];
   if (pool !== null && applying.length >= parallelFrom) {
-    const tasks = applying.map((principle) => ({ bundle: principle.bundle, api: apiOf(principle.manifest) }));
+    const tasks = applying.map((principle) => ({ bundle: principle.bundle, api: apiOf(principle.manifest), hash: principle.hash }));
     results = await pool.run(ctx, tasks, started + budgetMs, skipped);
   } else {
     results = [];
