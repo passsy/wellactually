@@ -634,3 +634,19 @@ test("restricted reviewer and aggregation instructions embed the shared finding 
     for(const file of files)expect(fs.readFileSync(file,"utf8")).toContain(writing);
   } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
+
+test("setting up agents refuses a review registered outside the plan root", () => {
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"wa-plan-root-"));
+  const project=path.join(dir,"project"),checkout=path.join(dir,"review-checkout");
+  fs.mkdirSync(project);fs.mkdirSync(checkout);
+  try {
+    for (const [name, data] of Object.entries({
+      "plan.json":{reviewProtocol:4,root:checkout,target:{kind:"snapshot"},parts:[],principles:[]},
+      "jobs.json":[{id:"all",queue:"all",parts:[]}],"route.json":{route:"single"},
+      "tracking.json":{repo:project,target:"pr-1",run:"pr-1"},
+    })) fs.writeFileSync(path.join(dir,name),JSON.stringify(data));
+    fs.writeFileSync(path.join(dir,"diff.patch"),"");
+    expect(()=>setupAgents(dir)).toThrow(`Call start_review again with repo ${checkout}`);
+    expect(fs.existsSync(path.join(checkout,".well-actually"))).toBe(false);
+  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});
