@@ -1,6 +1,6 @@
 import { shouldInterruptAfterDeadline, type QuickJSWASMModule } from "quickjs-emscripten-core";
 import { API_VERSION, type Ctx, type Finding } from "@wellactually/detector-sdk";
-import { environmentFor, unsupported, type Environment } from "./api.ts";
+import { environmentFor, UNPACK_CTX, unsupported, type Environment } from "./api.ts";
 import { BUNDLE_GLOBAL, TESTS_GLOBAL } from "../build/bundle.ts";
 import { loadSandbox } from "../build/engines.ts";
 import { normalizeAbsolute, type ProjectFiles } from "./project.ts";
@@ -40,7 +40,7 @@ export interface DetectorRun {
   ms: number;
 }
 
-const RUN = `JSON.stringify(${BUNDLE_GLOBAL}.run(JSON.parse(__ctx), ${MAX_FINDINGS}))`;
+const RUN = `JSON.stringify(${BUNDLE_GLOBAL}.run(${UNPACK_CTX}, ${MAX_FINDINGS}))`;
 
 /**
  * The limits for loading a detector at build time. Nothing waits on a build
