@@ -397,25 +397,6 @@ describe("MCP-owned dynamic review and proof queues", () => {
     expect(claim(args, repo, "isolated", "b").work.id).toBe("source");
   });
 
-  test("a principle item citing an issue filed by the source item attaches its principle to it", () => {
-    const { repo, args } = setup(1);
-    const source = claim(args, repo, "w-holistic");
-    const filed = createFindingRecord(
-      { target: "test", finding: { title: "Issue", description: "Problem. Remedy.", origins: [{ run: "r", source: "a/source/source:0", unit: "a" }] } },
-      repo,
-    );
-    finish(args, repo, source.work, "w-holistic", "a", { ...result("source"), findings: [filed.id] });
-    const principle = claim(args, repo);
-    const cited = { ...result("principle"), verdict: "findings", findings: [filed.id] };
-    finish(args, repo, principle.work, "w", "a", cited);
-    finish(args, repo, principle.work, "w", "a", cited); // A retried completion does not attach twice.
-    const attached = getFindingRecord({ repo, target: "test", id: filed.id }, repo);
-    expect(attached.rules).toEqual([{ id: "p/0" }]);
-    expect(attached.origins.filter((o) => o.rule === "p/0")).toEqual([
-      { run: "r", unit: "a", source: "a/p/0/cited", rule: "p/0" },
-    ]);
-  });
-
   test("aggregates only after coverage, accounts for saved investigations and preserves human triage", () => {
     const { repo, args } = setup(0);
     expect(() => beginVerification({ ...args, groups: [] }, repo)).toThrow(

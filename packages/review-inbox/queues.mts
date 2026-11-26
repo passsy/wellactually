@@ -584,38 +584,12 @@ export function completeReviewWork(raw: unknown, repo: string): unknown {
           !finding ||
           !finding.origins.some(
             (o) => o.run === session.run && o.unit === queue.id,
-          )
+          ) ||
+          (item.principle &&
+            !finding.rules.some((r) => r.id === item.principle!.id))
         )
           throw new InputError(`${id} is not a finding for this queue item`);
       }
-      // A principle item may cite an issue another item filed first; it then counts for this principle too.
-      const principle = item.principle;
-      if (principle)
-        for (const finding of findings.filter(
-          (f) =>
-            (result.findings as string[]).includes(f.id) &&
-            !f.rules.some((r) => r.id === principle.id),
-        ))
-          updateFindingRecord(
-            {
-              ...at,
-              id: finding.id,
-              expectedRevision: finding.revision,
-              patch: {
-                rules: [...finding.rules, { id: principle.id }],
-                origins: [
-                  ...finding.origins,
-                  {
-                    run: session.run,
-                    unit: queue.id,
-                    source: `${queue.id}/${item.id}/cited`,
-                    rule: principle.id,
-                  },
-                ],
-              },
-            },
-            at.repo,
-          );
     } else {
       str(result, "summary");
       if (!strings(result.limits) || !strings(result.proofs))

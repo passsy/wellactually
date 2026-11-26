@@ -28,9 +28,7 @@ Do not limit review to blockers; keep supported P3/P4 advice.
 
 As soon as an issue is established, call create_finding with finding:{title,description,rules:[{id}],priority,tags,evidence:[{kind:"source",polarity:"supports",description,artifacts:[]}]} and a stable idempotencyKey `<item id>:<index>`. The gateway supplies the run, source and unit.
 Record independently addressable instances with create_occurrence and occurrence:{findingId,title,description?,locations:[{file,line,endLine?,note?}]}. Several ranges can jointly describe one defect. Use a stable occurrence idempotencyKey or query list_occurrences before retrying creation after lease recovery.
-Source discoveries have no linked rules.
-If the issue your principle raises is already filed in this run, cite that finding's ID in findings instead of filing it again; completing the item attaches your principle to it.
-Never claim executable evidence without executing a probe.
+Source discoveries have no linked rules. Never claim executable evidence without executing a probe.
 Metadata locations use kind metadata, subject pr-title/pr-body/commit-message, authoritative URL in file, full original text and a line within that text.
 Tag each finding with its scope: `current` for a snapshot; `introduced`, `newly-exposed`, `incomplete-fix` or `pre-existing` for a change.
 The tag carries the scope, so the description does not narrate it.
