@@ -28,6 +28,17 @@ Anyone can publish principles on [the Well Actually registry](https://wellactual
 The plugin needs [Node](https://nodejs.org) 20 or newer. Use the latest LTS release; Node 20 is retained for compatibility but has reached end of life.
 Check with `node --version` before you install it, because without Node no principle reaches your agent.
 
+One command adds the plugin to every agent on this machine, Claude Code, Codex, OpenCode and pi, and signs you in:
+
+```bash
+npx wellactually@latest install
+```
+
+It uses each agent's own plugin manager, so running it again updates what is there.
+In Codex, then type `/hooks` and press `t` to trust the plugin's hooks.
+
+To install into one agent by hand instead:
+
 Claude Code:
 
 ```text

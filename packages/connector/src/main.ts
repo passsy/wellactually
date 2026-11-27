@@ -41,6 +41,7 @@ import { handleHook } from "./hook/command.ts";
 import { writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
 import { autoUpdate, update } from "./runtime.ts";
+import { install } from "./install.ts";
 import { serveDesktop } from "../../review-inbox/serve/desktop.mts";
 import { main as findingsServer } from "../../review-inbox/serve/server.mts";
 import { type Agent, checkForUpdate, updateCheckOff, updateNotice } from "./update.ts";
@@ -69,6 +70,7 @@ Authoring
   wellactually sync-repo <owner/repo>   Have the registry read a connected GitHub repository now
 
 Your advisory board
+  wellactually install                  Add the plugin to Claude Code, Codex, OpenCode and pi, then sign in
   wellactually login [--registry <url>] Sign in through the browser
   wellactually logout
   wellactually whoami
@@ -97,6 +99,21 @@ Every authoring command takes --json.
 
 On a CI runner or a cloud agent, set WELLACTUALLY_TOKEN to a token created on your
 advisory board on the website instead of signing in, and run \`wellactually sync\` first.`;
+
+/** Signs in through the browser and downloads the advisory board right away, so the next session does not wait for its own sync. */
+async function login(print: (data: unknown, rendered: string) => void): Promise<void> {
+  const start = await startDeviceLogin();
+  console.log(`Open ${start.verification_url}\nand confirm the code ${start.user_code}`);
+  const handle = await finishDeviceLogin(start);
+  console.log(`Signed in as ${handle}.`);
+  try {
+    const result = await sync();
+    print(result, renderSync(result));
+  } catch (error) {
+    console.log(`Could not download your advisory board yet: ${error instanceof Error ? error.message : String(error)}`);
+    console.log("Run `wellactually sync` to try again. The next session also syncs on its own.");
+  }
+}
 
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
@@ -256,22 +273,37 @@ async function main(): Promise<number> {
       print(result, renderPull(result));
       return 0;
     }
+    case "install": {
+      const results = install();
+      const named = (statuses: string[]) => results.filter((result) => statuses.includes(result.outcome.status)).map((result) => result.host.name).join(", ");
+      const ready = results.filter((result) => ["installed", "updated", "present", "pinned"].includes(result.outcome.status));
+      if (ready.length > 0 && !readConfig().token) {
+        if (values.registry) writeConfig({ ...readConfig(), registry: values.registry });
+        // One sign-in serves every agent: they share ~/.wellactually. A failed one still leaves the plugins installed.
+        console.log("");
+        try {
+          await login(print);
+        } catch (error) {
+          console.log(`Could not sign in: ${error instanceof Error ? error.message : String(error)}. Run \`npx wellactually@latest login\` to try again.`);
+        }
+      }
+      console.log("");
+      if (named(["installed"])) console.log(`Installed for ${named(["installed"])}.`);
+      if (named(["updated"])) console.log(`Updated for ${named(["updated"])}.`);
+      if (named(["present"])) console.log(`Already installed for ${named(["present"])}; it updates itself.`);
+      for (const { host, outcome } of results) {
+        if (outcome.status === "pinned") console.log(`${host.name} keeps ${outcome.entry}, pinned in ${outcome.file}; its runtime still updates itself.`);
+      }
+      if (named(["missing"])) console.log(`Not found on this machine: ${named(["missing"])}.`);
+      if (named(["failed"])) console.error(`Could not install for ${named(["failed"])}; the output above says why.`);
+      for (const { host } of ready) if (host.then) console.log(`Last step in ${host.name}: ${host.then}.`);
+      return ready.length === 0 || named(["failed"]) ? 1 : 0;
+    }
     case "login": {
       if (values.registry) {
         writeConfig({ ...readConfig(), registry: values.registry });
       }
-      const start = await startDeviceLogin();
-      console.log(`Open ${start.verification_url}\nand confirm the code ${start.user_code}`);
-      const handle = await finishDeviceLogin(start);
-      console.log(`Signed in as ${handle}.`);
-      // The advisory board comes down right away, so the next session does not have to wait for its own sync.
-      try {
-        const result = await sync();
-        print(result, renderSync(result));
-      } catch (error) {
-        console.log(`Could not download your advisory board yet: ${error instanceof Error ? error.message : String(error)}`);
-        console.log("Run `wellactually sync` to try again. The next session also syncs on its own.");
-      }
+      await login(print);
       return 0;
     }
     case "logout":
