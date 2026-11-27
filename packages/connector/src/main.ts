@@ -88,7 +88,7 @@ Integration
   wellactually mcp                      Serve the authoring commands as an MCP server
   wellactually update-notice --agent <opencode|opencode-1|pi> Print what to tell the user about a newer release
   wellactually check-update             Look up the newest release on npm
-  wellactually update                   Install the newest release of the followed channel for Claude Code and Codex
+  wellactually update                   Install the newest release of the followed channel for the plugins
         --channel <tag>          ... and follow this npm dist-tag from now on, such as next for previews
         --version <version>      ... install exactly this release and pause auto-update
         --from <file.tgz>        ... install a local package from npm run package and pause auto-update
@@ -306,7 +306,8 @@ async function main(): Promise<number> {
       }
       // The plugin's folder, above dist/ where this command is, which an OpenCode 1 user pulls in.
       const update = updateNotice(agent satisfies Agent, undefined, undefined, path.resolve(path.dirname(process.argv[1] as string), ".."));
-      if (update.stale) {
+      // Under the shim the shim starts the check, as for Claude Code and Codex.
+      if (update.stale && !process.env.WELLACTUALLY_PLUGIN_ROOT) {
         startInBackground("check-update");
       }
       if (update.text) {

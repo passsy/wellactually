@@ -5,7 +5,7 @@ import path from "node:path";
 import { boardHome } from "../../board/src/board.ts";
 
 /**
- * The Well Actually runtime the Claude Code and Codex plugins run.
+ * The Well Actually runtime the Claude Code, Codex, OpenCode and pi plugins run.
  *
  * The plugins are frozen shells: their hooks and MCP server run `shim.mjs`,
  * which never changes, so Codex keeps the approval it pins to a hash of the

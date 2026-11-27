@@ -285,10 +285,13 @@ replacing its bytes. Existing plugin users stay on the previous pin.
 
 ### 5. Promote the verified version to plugin users
 
-Claude Code and Codex plugins from 0.14.0 on are frozen: `shim.mjs` runs the
-runtime in `~/.wellactually/runtime`, which installs the newest `latest` release
-once a day. Moving `latest` is therefore the rollout to plugin users, and to
-OpenCode, pi and direct npm installs:
+Claude Code and Codex plugins are frozen shells: `shim.mjs` runs the runtime
+in `~/.wellactually/runtime`, which installs the newest `latest` release once a
+day. OpenCode and pi run their hooks through the same shim. Moving `latest` is
+therefore the rollout to every plugin user and to direct npm installs. A second
+updater in `shim.mjs` installs the tag's release itself when the runtime's own
+updater has not done so after two days, so a release with a broken updater
+still gets replaced:
 
 ```sh
 npm dist-tag add wellactually@<published-version> latest
