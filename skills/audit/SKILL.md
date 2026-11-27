@@ -27,11 +27,14 @@ When the formats below no longer match what you find, because an agent changed h
 They are in `~/.wellactually`, or in `$WELLACTUALLY_HOME` when that is set.
 
 - `logs/hooks-<YYYY-MM-DDTHH>.jsonl`: the hook log, one file per hour in UTC, kept for one day.
-  One line per hook call: `time`, `hook` (such as `UserPromptSubmit` or `PostToolUse`), `session`, `transcript` (the agent's conversation file), `cwd`, `shown` (characters of advice the agent was given, 0 for none), and `note` (why no detector ran, when none did).
+  One line per hook call: `time`, `release` (the Well Actually release that handled it), `hook` (such as `UserPromptSubmit` or `PostToolUse`), `session`, `transcript` (the agent's conversation file), `cwd`, `shown` (characters of advice the agent was given, 0 for none), and `note` (why no detector ran, when none did).
   `events[].detectors[]` holds every detector that ran, with its `id`, its `findings` (it fired when they are not empty), and `error` or `thrown` when it failed.
   `events[].skipped[]` holds the principles that did not run and why, such as switched off.
   `grep -h '"session":"<id>' ~/.wellactually/logs/*.jsonl` gives one session's calls, and `jq -s 'group_by(.hook) | map({hook: .[0].hook, calls: length, advised: map(select(.shown > 0)) | length})'` counts them.
   `session` is the agent's own session id, and `transcript` the path of its conversation, which tells the agents apart: `/.claude/`, `/.codex/`, `/.pi/`, or a session id starting with `ses_` for OpenCode.
+- `runtime/state.json`: the release the Claude Code and Codex plugins run (`current`), the one they fall back to (`previous`), the npm dist-tag auto-update follows (`channel`), and `pinned` when the user installed one exact release.
+  The releases are in `runtime/versions/<version>/`; until the first download the plugin runs the copy it ships with.
+  Why the last auto-update failed is in `sync.log`, as `auto-update failed: <reason>`.
   Most calls give no advice, so a session with many calls of `shown` 0 and a few above it is normal.
   `WELLACTUALLY_HOOK_LOG=0` where the agent runs turns the log off.
 - `hook.log`: the hook's crashes, each with a timestamp and a stack trace.
