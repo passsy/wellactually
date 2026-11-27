@@ -30,13 +30,16 @@ const tooOld = root => {
   } catch {}
   return false;
 };
-const roots = [state.current, state.previous].filter(v => typeof v === "string" && /^[0-9A-Za-z.+-]+$/.test(v)).map(v => path.join(runtime, "versions", v)).filter(root => !tooOld(root));
+// A release folder name: a semver version, so a state.json or registry answer can never name a path such as "..".
+const VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?$/;
+/** Whether a release folder holds the files the shim starts, so a deleted or half-removed one counts as not installed. */
+const complete = root => ["dist/wellactually.mjs", "dist/wellactually-hook.mjs"].every(entry => fs.statSync(path.join(root, entry), { throwIfNoEntry: false })?.isFile());
+const roots = [state.current, state.previous].filter(v => typeof v === "string" && VERSION.test(v)).map(v => path.join(runtime, "versions", v)).filter(root => !tooOld(root));
 roots.push(plugin);
 // The updater must survive a release that breaks it: when it fails it falls back, down to the copy in the plugin.
 const recovers = command === "update" || command === "check-update";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const VERSION = /^[0-9A-Za-z.+-]+$/;
 
 /** Starts `shim.mjs <task>` in the background when the stamp file `name` is a day old, so the hook does not wait for npm. */
 const daily = (name, task) => {
@@ -51,9 +54,13 @@ const daily = (name, task) => {
 };
 
 // Once a day the first hook starts both updaters itself, so even a release that breaks its hooks gets replaced.
-if (command === "hook") {
-  daily("checked", "check-update");
-  daily("rescue-checked", "rescue-update");
+// WELLACTUALLY_UPDATE_CHECK=0 and the usual switches keep both off the network; WELLACTUALLY_AUTO_UPDATE=0 alone still checks for the notice.
+// The stamps are per Node major: a host on an old Node, which cannot install a release that needs a newer one, does not use up the day of a host that can.
+const quiet = process.env.WELLACTUALLY_UPDATE_CHECK === "0" || process.env.NO_UPDATE_NOTIFIER || process.env.CI;
+if (command === "hook" && !quiet) {
+  const node = process.versions.node.split(".")[0];
+  daily(`checked-node${node}`, "check-update");
+  daily(`rescue-checked-node${node}`, "rescue-update");
 }
 
 /**
@@ -74,7 +81,13 @@ async function rescue() {
     throw new Error(`npm answered for ${channel} without a version, tarball and sha512 integrity`);
   }
   const seenFile = path.join(runtime, "rescue.json");
-  if (version === state.current) {
+  const writeSeen = value => {
+    const temp = `${seenFile}.${process.pid}.tmp`;
+    fs.writeFileSync(temp, JSON.stringify(value));
+    fs.renameSync(temp, seenFile);
+  };
+  const upToDate = version === state.current && complete(path.join(runtime, "versions", version));
+  if (upToDate) {
     fs.rmSync(seenFile, { force: true });
     return;
   }
@@ -82,21 +95,30 @@ async function rescue() {
   try {
     seen = JSON.parse(fs.readFileSync(seenFile, "utf8")) || {};
   } catch {}
-  if (seen.version !== version || typeof seen.since !== "number") {
-    seen = { version, since: Date.now() };
-    fs.writeFileSync(seenFile, JSON.stringify(seen));
+  // The wait counts from when this channel of this registry first named this release.
+  if (seen.version !== version || seen.channel !== channel || seen.registry !== registry || typeof seen.since !== "number") {
+    seen = { registry, channel, version, since: Date.now() };
+    writeSeen(seen);
   }
-  // The first updater gets two days to install it; only then is it failing.
-  if (Date.now() - seen.since < 2 * DAY_MS) return;
-  console.error(`${channel} has named ${version} for two days and the runtime still runs ${state.current ?? "the plugin's bundled copy"}: installing it`);
+  // The first updater gets two days to install it; only then is it failing. A current release whose files are gone is repaired at once.
+  if (version !== state.current && Date.now() - seen.since < 2 * DAY_MS) return;
+  console.error(`${channel} has named ${version} since ${new Date(seen.since).toISOString()} and the runtime still runs ${state.current ?? "the plugin's bundled copy"}: installing it`);
 
   const url = new URL(dist.tarball);
   const loopback = url.hostname === "127.0.0.1" || url.hostname === "localhost";
   if ((url.protocol !== "https:" && !(loopback && url.protocol === "http:")) || url.username || url.password) throw new Error(`npm pointed at ${url.origin}, which is not a plain https address`);
   const download = await fetch(url, { signal: AbortSignal.timeout(60_000) });
   if (!download.ok) throw new Error(`could not download ${dist.tarball} (${download.status})`);
-  const tarball = Buffer.from(await download.arrayBuffer());
-  if (tarball.length > 100 * 1024 * 1024) throw new Error("the release is larger than 100 MB");
+  const MAX_BYTES = 100 * 1024 * 1024;
+  if (Number(download.headers.get("content-length") ?? 0) > MAX_BYTES) throw new Error("the release is larger than 100 MB");
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of download.body ?? []) {
+    size += chunk.length;
+    if (size > MAX_BYTES) throw new Error("the release is larger than 100 MB");
+    chunks.push(chunk);
+  }
+  const tarball = Buffer.concat(chunks);
   const digest = crypto.createHash("sha512").update(tarball).digest("base64");
   if (`sha512-${digest}` !== dist.integrity) throw new Error("the downloaded release does not match the integrity npm published for it");
 
@@ -115,12 +137,14 @@ async function rescue() {
   } catch {
     return;
   }
+  // shortcut: two processes that both find the lock stale at the same moment can both get in; each unpacks into its own staging folder and every switch is a rename, so the worst case is one failed install that the next day retries.
   try {
     let now = {};
     try {
       now = JSON.parse(fs.readFileSync(path.join(runtime, "state.json"), "utf8")) || {};
     } catch {}
-    if (now.pinned || (now.channel ?? "latest") !== channel || now.current === version) return;
+    // Another install while this one downloaded wins: its release may be newer than what this one resolved.
+    if (now.pinned || (now.channel ?? "latest") !== channel || now.current !== state.current) return;
     const versions = path.join(runtime, "versions");
     fs.mkdirSync(versions, { recursive: true });
     const staging = fs.mkdtempSync(path.join(versions, ".staging-"));
@@ -148,7 +172,7 @@ async function rescue() {
       try {
         installed = fs.readFileSync(path.join(target, ".integrity"), "utf8");
       } catch {}
-      if (installed !== digest) {
+      if (installed !== digest || !complete(target)) {
         if (fs.existsSync(target)) {
           const old = path.join(versions, `.old-${version}-${crypto.randomUUID()}`);
           fs.renameSync(target, old);
@@ -164,7 +188,7 @@ async function rescue() {
         } catch {}
       }
       const temp = path.join(runtime, `state.json.${process.pid}.tmp`);
-      fs.writeFileSync(temp, `${JSON.stringify({ ...now, previous: now.current ?? now.previous, current: version }, null, 2)}\n`);
+      fs.writeFileSync(temp, `${JSON.stringify({ ...now, previous: now.current && now.current !== version ? now.current : now.previous, current: version }, null, 2)}\n`);
       fs.renameSync(temp, path.join(runtime, "state.json"));
       fs.rmSync(seenFile, { force: true });
       console.log(`Installed Well Actually ${version} with the second updater.`);

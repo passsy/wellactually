@@ -337,7 +337,10 @@ a maintainer's 2FA approval. This account setting lives on npm, outside the repo
 ## Rollback
 
 Move `latest` back with `npm dist-tag add wellactually@<previous-version> latest`;
-frozen plugins install it on their next daily check. For the catalog, pin it and both compatibility dependencies to a previously published
+frozen plugins install it on their next daily check. The target must be a
+release that ships `shim.mjs`, 0.14.0 or later: both updaters refuse older
+releases, which cannot update themselves. To go back to older code, publish it
+again under a new version. For the catalog, pin it and both compatibility dependencies to a previously published
 npm version, refresh the lockfile and push. To restore a historical Git-based
 catalog, restore its built payload from the same historical revision too. Never
 point a Git installer at a source-only tree without its npm adapter. Leave stored

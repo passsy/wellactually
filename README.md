@@ -91,7 +91,7 @@ Once a day, at the start of a session, the plugin looks up the newest release on
 The next session runs it.
 Until the first download, the plugin runs the copy it ships with.
 If a release cannot load, the plugin runs the one before it, and so does its updater.
-A second updater in `shim.mjs` itself, which runs none of the downloaded code, steps in when a release has been out on npm for two days and the first one still has not installed it.
+A second updater in `shim.mjs` itself, which runs none of the downloaded code, steps in when the followed npm tag has named a release for two days and the first one still has not installed it, and at once when the current release's files are gone.
 If a release misbehaves, delete `~/.wellactually/runtime`: the plugin goes back to the copy it ships with and downloads the newest release again.
 
 Run these with `node "<plugin folder>/shim.mjs"`, the folder the plugin is installed in:

@@ -234,7 +234,7 @@ test("the first hook of the day starts the update check through the shim", async
   expect(fs.readFileSync(ran, "utf8")).toBe(path.join(runtimeDir(), "versions/1.0.0/dist/wellactually.mjs"));
   fs.rmSync(ran);
   // The second updater is started the same day, from the shim alone.
-  expect(fs.existsSync(path.join(runtimeDir(), "rescue-checked"))).toBe(true);
+  expect(fs.existsSync(path.join(runtimeDir(), `rescue-checked-node${process.versions.node.split(".")[0]}`))).toBe(true);
   execFileSync(process.execPath, [path.join(root, "shim.mjs"), "hook"], { env: process.env });
   await new Promise(resolve => setTimeout(resolve, 500));
   expect(fs.existsSync(ran)).toBe(false);
@@ -272,13 +272,15 @@ test("a background download does not undo a channel the user picked meanwhile", 
 });
 
 /** A registry that names `version` for `latest` and serves `tarball` for it. */
-async function registryServing(version: string, tarball: Buffer, integrity = `sha512-${crypto.createHash("sha512").update(tarball).digest("base64")}`) {
+async function registryServing(version: string, tarball: Buffer, integrity = `sha512-${crypto.createHash("sha512").update(tarball).digest("base64")}`, beforeTarball?: () => void) {
   const http = await import("node:http");
   const server = http.createServer((request, response) => {
     const port = (server.address() as { port: number }).port;
     if (request.url === "/wellactually/latest") response.end(JSON.stringify({ version, dist: { tarball: `http://127.0.0.1:${port}/t.tgz`, integrity } }));
-    else if (request.url === "/t.tgz") response.end(tarball);
-    else response.writeHead(404).end();
+    else if (request.url === "/t.tgz") {
+      beforeTarball?.();
+      response.end(tarball);
+    } else response.writeHead(404).end();
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   return { url: `http://127.0.0.1:${(server.address() as { port: number }).port}/wellactually`, close: () => server.close() };
@@ -350,4 +352,77 @@ test("the second updater forgets a release once the first installed it", async (
   } finally {
     registry.close();
   }
+});
+
+test("the second updater does not undo an install that finished while it downloaded", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  const registry = await registryServing("1.1.0", release("1.1.0"), undefined, () => installTarball(release("1.2.0")));
+  try {
+    const env = { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url };
+    await rescue(root, env);
+    ageRescue(3);
+    await rescue(root, env);
+    expect(readRuntime().current).toBe("1.2.0");
+  } finally {
+    registry.close();
+  }
+  // The first updater keeps to the same rule.
+  expect(installTarball(release("1.3.0"), { auto: true, resolvedFrom: "1.0.0" })).toBeUndefined();
+});
+
+test("both updaters reinstall a current release whose files are gone, at once", async () => {
+  const root = plugin();
+  const tarball = release("2.0.0");
+  installTarball(tarball);
+  fs.rmSync(path.join(runtimeDir(), "versions/2.0.0/dist"), { recursive: true });
+  const registry = await registryServing("2.0.0", tarball);
+  try {
+    await rescue(root, { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url });
+    expect(shim(root, "hook").version).toBe("2.0.0");
+    fs.rmSync(path.join(runtimeDir(), "versions/2.0.0/dist"), { recursive: true });
+    expect(await update({ registry: registry.url })).toMatch(/Installed Well Actually 2.0.0/);
+    expect(shim(root, "hook").version).toBe("2.0.0");
+  } finally {
+    registry.close();
+  }
+});
+
+test("the second updater's wait starts again on another channel", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  const registry = await registryServing("2.0.0", release("2.0.0"));
+  try {
+    const env = { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url };
+    await rescue(root, env);
+    ageRescue(3);
+    fs.writeFileSync(rescueFile(), JSON.stringify({ ...JSON.parse(fs.readFileSync(rescueFile(), "utf8")), channel: "next" }));
+    await rescue(root, env);
+    expect(readRuntime().current).toBe("1.0.0");
+  } finally {
+    registry.close();
+  }
+});
+
+test("the first hook of the day starts the second updater, which reaches the registry; the update-check switch keeps both off", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  const registry = await registryServing("2.0.0", release("2.0.0"));
+  try {
+    await promisify(execFile)(process.execPath, [path.join(root, "shim.mjs"), "hook"], { env: { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url } });
+    for (let i = 0; i < 50 && !fs.existsSync(rescueFile()); i++) await new Promise(resolve => setTimeout(resolve, 100));
+    expect(JSON.parse(fs.readFileSync(rescueFile(), "utf8"))).toMatchObject({ channel: "latest", version: "2.0.0" });
+  } finally {
+    registry.close();
+  }
+  for (const entry of fs.readdirSync(runtimeDir())) if (entry.includes("checked")) fs.rmSync(path.join(runtimeDir(), entry));
+  execFileSync(process.execPath, [path.join(root, "shim.mjs"), "hook"], { env: { ...process.env, WELLACTUALLY_UPDATE_CHECK: "0" } });
+  expect(fs.readdirSync(runtimeDir()).filter(entry => entry.includes("checked"))).toEqual([]);
+});
+
+test("a state.json that names a path instead of a version is ignored", () => {
+  const root = plugin();
+  fs.mkdirSync(runtimeDir(), { recursive: true });
+  fs.writeFileSync(path.join(runtimeDir(), "state.json"), JSON.stringify({ current: "..", previous: "../.." }));
+  expect(shim(root, "hook").version).toBe("0.0.1");
 });

@@ -43,7 +43,7 @@ import { serveMcp } from "./mcp.ts";
 import { autoUpdate, update } from "./runtime.ts";
 import { serveDesktop } from "../../review-inbox/serve/desktop.mts";
 import { main as findingsServer } from "../../review-inbox/serve/server.mts";
-import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
+import { type Agent, checkForUpdate, updateCheckOff, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "../../board/src/registry/client.ts";
 
 const HELP = `wellactually: author principles and run your advisory board
@@ -288,6 +288,7 @@ async function main(): Promise<number> {
     }
     case "check-update":
       // Started in the background at session start, at most once a day.
+      if (updateCheckOff(process.env)) return 0;
       console.log(`The newest release is ${(await checkForUpdate()) ?? "unknown"}.`);
       // Run from the frozen Claude Code or Codex plugin, which takes new releases from npm itself.
       if (process.env.WELLACTUALLY_PLUGIN_ROOT && !(await autoUpdate())) {
