@@ -43,7 +43,7 @@ import { serveMcp } from "./mcp.ts";
 import { autoUpdate, update } from "./runtime.ts";
 import { serveDesktop } from "../../review-inbox/serve/desktop.mts";
 import { main as findingsServer } from "../../review-inbox/serve/server.mts";
-import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
+import { type Agent, checkForUpdate, updateCheckOff, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "../../board/src/registry/client.ts";
 
 const HELP = `wellactually: author principles and run your advisory board
@@ -88,7 +88,7 @@ Integration
   wellactually mcp                      Serve the authoring commands as an MCP server
   wellactually update-notice --agent <opencode|opencode-1|pi> Print what to tell the user about a newer release
   wellactually check-update             Look up the newest release on npm
-  wellactually update                   Install the newest release of the followed channel for Claude Code and Codex
+  wellactually update                   Install the newest release of the followed channel for the plugins
         --channel <tag>          ... and follow this npm dist-tag from now on, such as next for previews
         --version <version>      ... install exactly this release and pause auto-update
         --from <file.tgz>        ... install a local package from npm run package and pause auto-update
@@ -288,6 +288,7 @@ async function main(): Promise<number> {
     }
     case "check-update":
       // Started in the background at session start, at most once a day.
+      if (updateCheckOff(process.env)) return 0;
       console.log(`The newest release is ${(await checkForUpdate()) ?? "unknown"}.`);
       // Run from the frozen Claude Code or Codex plugin, which takes new releases from npm itself.
       if (process.env.WELLACTUALLY_PLUGIN_ROOT && !(await autoUpdate())) {
@@ -306,7 +307,8 @@ async function main(): Promise<number> {
       }
       // The plugin's folder, above dist/ where this command is, which an OpenCode 1 user pulls in.
       const update = updateNotice(agent satisfies Agent, undefined, undefined, path.resolve(path.dirname(process.argv[1] as string), ".."));
-      if (update.stale) {
+      // Under the shim the shim starts the check, as for Claude Code and Codex.
+      if (update.stale && !process.env.WELLACTUALLY_PLUGIN_ROOT) {
         startInBackground("check-update");
       }
       if (update.text) {

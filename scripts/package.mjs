@@ -35,10 +35,10 @@ for (const name of fs.readdirSync(path.join(root, "skills"))) {
 }
 // Review-specific orchestration remains in the skill. Both native skill layouts
 // invoke one compiled helper, rather than carrying a copy of its runtime each.
-// The Claude Code and Codex skill runs the runtime the frozen plugin keeps up to date; OpenCode loads the npm package itself.
+// Every host's skill runs the runtime the frozen plugin keeps up to date.
 write("skills/review/scripts/review.mjs", 'process.argv.splice(2, 0, "review");\nawait import("../../../shim.mjs");\n');
 syncSkills(stage);
-write("opencode/skills/wellactually-review/scripts/review.mjs", 'import "../../../../dist/review.mjs";\n');
+write("opencode/skills/wellactually-review/scripts/review.mjs", 'process.argv.splice(2, 0, "review");\nawait import("../../../../shim.mjs");\n');
 
 // npm renders both GitHub theme variants. Keep GitHub's themed source README,
 // but publish one illustration without a GitHub-only visibility fragment.

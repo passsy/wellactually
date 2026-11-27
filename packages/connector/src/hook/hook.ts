@@ -56,7 +56,7 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
       return "";
     }
     const update = updateNotice(agentOf(process.env));
-    // In the frozen Claude Code and Codex plugin the shim starts the check, whatever this release does.
+    // Under the shim, which every plugin runs, the shim starts the check, whatever this release does.
     if (update.stale && !process.env.WELLACTUALLY_PLUGIN_ROOT) {
       startInBackground("check-update");
     }

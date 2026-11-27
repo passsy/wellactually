@@ -84,12 +84,14 @@ Revoke the token on the website to stop it.
 
 ## Updates
 
-In Claude Code and Codex the plugin itself stays the same, so Codex keeps the approval you gave its hooks.
+Claude Code, Codex, OpenCode and pi update the same way.
+The plugin itself stays the same, so Codex keeps the approval you gave its hooks.
 Its hooks and MCP server run `shim.mjs`, which runs the Well Actually runtime in `~/.wellactually/runtime`.
 Once a day, at the start of a session, the plugin looks up the newest release on npm in the background, checks it against the integrity npm publishes and installs it there.
 The next session runs it.
 Until the first download, the plugin runs the copy it ships with.
-If a release cannot load, the plugin runs the one before it.
+If a release cannot load, the plugin runs the one before it, and so does its updater.
+A second updater in `shim.mjs` itself, which runs none of the downloaded code, steps in when the runtime has been behind the followed npm tag for two days and the first one still has not caught up, and at once when the current release's files are gone.
 If a release misbehaves, delete `~/.wellactually/runtime`: the plugin goes back to the copy it ships with and downloads the newest release again.
 
 Run these with `node "<plugin folder>/shim.mjs"`, the folder the plugin is installed in:
@@ -100,7 +102,6 @@ Run these with `node "<plugin folder>/shim.mjs"`, the folder the plugin is insta
 - `update --from <file.tgz>` installs a package built with `npm run package`, also pausing auto-update.
 
 Set `WELLACTUALLY_AUTO_UPDATE=0` to turn auto-update off; the plugin then tells you at the start of a session, at most once a day, when a newer release is out.
-OpenCode and pi update the npm package themselves and tell you the command.
 Set `WELLACTUALLY_UPDATE_CHECK=0` to turn off both the check and the notice.
 
 ## What it does on your machine
@@ -111,7 +112,7 @@ Set `WELLACTUALLY_UPDATE_CHECK=0` to turn off both the check and the notice.
   It reads the principles `sync` downloaded earlier.
 - `sync` runs when a session starts.
   It downloads what is new on your advisory board and reports counts, see "What leaves your machine".
-- Once a day, in the background, it checks the published npm release for updates and, in Claude Code and Codex, installs it.
+- Once a day, in the background, it checks the published npm release for updates and installs it.
 
 ## Detectors are other people's code
 

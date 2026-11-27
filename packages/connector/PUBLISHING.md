@@ -285,10 +285,13 @@ replacing its bytes. Existing plugin users stay on the previous pin.
 
 ### 5. Promote the verified version to plugin users
 
-Claude Code and Codex plugins from 0.14.0 on are frozen: `shim.mjs` runs the
-runtime in `~/.wellactually/runtime`, which installs the newest `latest` release
-once a day. Moving `latest` is therefore the rollout to plugin users, and to
-OpenCode, pi and direct npm installs:
+Claude Code and Codex plugins are frozen shells: `shim.mjs` runs the runtime
+in `~/.wellactually/runtime`, which installs the newest `latest` release once a
+day. OpenCode and pi run their hooks through the same shim. Moving `latest` is
+therefore the rollout to every plugin user and to direct npm installs. A second
+updater in `shim.mjs` installs the tag's release itself when the runtime's own
+updater has not done so after two days, so a release with a broken updater
+still gets replaced:
 
 ```sh
 npm dist-tag add wellactually@<published-version> latest
@@ -334,7 +337,10 @@ a maintainer's 2FA approval. This account setting lives on npm, outside the repo
 ## Rollback
 
 Move `latest` back with `npm dist-tag add wellactually@<previous-version> latest`;
-frozen plugins install it on their next daily check. For the catalog, pin it and both compatibility dependencies to a previously published
+frozen plugins install it on their next daily check. The target must be a
+release that ships `shim.mjs`, 0.14.0 or later: both updaters refuse older
+releases, which cannot update themselves. To go back to older code, publish it
+again under a new version. For the catalog, pin it and both compatibility dependencies to a previously published
 npm version, refresh the lockfile and push. To restore a historical Git-based
 catalog, restore its built payload from the same historical revision too. Never
 point a Git installer at a source-only tree without its npm adapter. Leave stored

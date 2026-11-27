@@ -1,4 +1,5 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
+import { promisify } from "node:util";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -16,7 +17,8 @@ beforeEach(() => {
   process.env.WELLACTUALLY_HOME = path.join(work, "home");
   delete process.env.CI;
   delete process.env.WELLACTUALLY_AUTO_UPDATE;
-  delete process.env.WELLACTUALLY_NPM_REGISTRY;
+  // Nothing a test starts in the background reaches the real npm.
+  process.env.WELLACTUALLY_NPM_REGISTRY = "http://127.0.0.1:9/wellactually";
 });
 afterEach(() => {
   process.env = { ...saved };
@@ -192,7 +194,7 @@ test("a rebuilt release under the same version replaces the old bytes", () => {
 
 test("a pin made while auto-update downloads wins", () => {
   installTarball(release("1.0.0"), { pin: true });
-  expect(installTarball(release("2.0.0"), { auto: true })).toBeUndefined();
+  expect(installTarball(release("2.0.0"), { auto: true, resolvedFrom: "1.0.0" })).toBeUndefined();
   expect(readRuntime()).toMatchObject({ current: "1.0.0", pinned: true });
 });
 
@@ -231,6 +233,8 @@ test("the first hook of the day starts the update check through the shim", async
   for (let i = 0; i < 50 && !fs.existsSync(ran); i++) await new Promise(resolve => setTimeout(resolve, 100));
   expect(fs.readFileSync(ran, "utf8")).toBe(path.join(runtimeDir(), "versions/1.0.0/dist/wellactually.mjs"));
   fs.rmSync(ran);
+  // The second updater is started the same day, from the shim alone.
+  expect(fs.existsSync(path.join(runtimeDir(), `rescue-checked-node${process.versions.node.split(".")[0]}`))).toBe(true);
   execFileSync(process.execPath, [path.join(root, "shim.mjs"), "hook"], { env: process.env });
   await new Promise(resolve => setTimeout(resolve, 500));
   expect(fs.existsSync(ran)).toBe(false);
@@ -263,6 +267,205 @@ test("a release whose archive holds another version than npm announced, or that 
 
 test("a background download does not undo a channel the user picked meanwhile", () => {
   installTarball(release("1.0.0-next.1"), { channel: "next" });
-  expect(installTarball(release("1.0.0"), { auto: true, channel: "latest" })).toBeUndefined();
+  expect(installTarball(release("1.0.0"), { auto: true, channel: "latest", resolvedFrom: "1.0.0-next.1" })).toBeUndefined();
   expect(readRuntime()).toMatchObject({ current: "1.0.0-next.1", channel: "next" });
+});
+
+/** A registry that names `version` for `latest` and serves `tarball` for it. */
+async function registryServing(version: string, tarball: Buffer, integrity = `sha512-${crypto.createHash("sha512").update(tarball).digest("base64")}`, beforeTarball?: () => void) {
+  const http = await import("node:http");
+  const serve = (next: string, bytes: Buffer) => {
+    version = next;
+    tarball = bytes;
+    integrity = `sha512-${crypto.createHash("sha512").update(bytes).digest("base64")}`;
+  };
+  const server = http.createServer((request, response) => {
+    const port = (server.address() as { port: number }).port;
+    if (request.url === "/wellactually/latest") response.end(JSON.stringify({ version, dist: { tarball: `http://127.0.0.1:${port}/t.tgz`, integrity } }));
+    else if (request.url === "/t.tgz") {
+      beforeTarball?.();
+      response.end(tarball);
+    } else response.writeHead(404).end();
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  return { url: `http://127.0.0.1:${(server.address() as { port: number }).port}/wellactually`, close: () => server.close(), serve };
+}
+
+/** Runs the shim's second updater; async, since the registry answers from this process. */
+const rescue = (root: string, env: NodeJS.ProcessEnv) => promisify(execFile)(process.execPath, [path.join(root, "shim.mjs"), "rescue-update"], { env });
+const rescueFile = () => path.join(runtimeDir(), "rescue.json");
+const ageRescue = (days: number) => {
+  const seen = JSON.parse(fs.readFileSync(rescueFile(), "utf8"));
+  fs.writeFileSync(rescueFile(), JSON.stringify({ ...seen, since: seen.since - days * 24 * 60 * 60 * 1000 }));
+};
+
+test("the second updater installs the tag's release once the first has not for two days, running no downloaded code", async () => {
+  const root = plugin();
+  // The current release's own updater is broken without failing: it never installs anything.
+  installTarball(release("1.0.0", "process.exit(0);"));
+  const registry = await registryServing("2.0.0", release("2.0.0"));
+  try {
+    const env = { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url };
+    await rescue(root, env);
+    expect(readRuntime().current).toBe("1.0.0");
+    expect(JSON.parse(fs.readFileSync(rescueFile(), "utf8"))).toMatchObject({ channel: "latest", from: "1.0.0" });
+    ageRescue(1);
+    await rescue(root, env);
+    expect(readRuntime().current).toBe("1.0.0");
+    ageRescue(1.1);
+    const { stdout } = await rescue(root, env);
+    expect(stdout).toMatch(/Installed Well Actually 2.0.0 with the second updater/);
+    expect(readRuntime()).toMatchObject({ current: "2.0.0", previous: "1.0.0" });
+    expect(fs.existsSync(rescueFile())).toBe(false);
+    expect(shim(root, "hook").version).toBe("2.0.0");
+  } finally {
+    registry.close();
+  }
+});
+
+test("the second updater leaves a pin alone and refuses a release that does not match its integrity", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"), { pin: true });
+  const registry = await registryServing("2.0.0", release("2.0.0"), `sha512-${crypto.createHash("sha512").update("other").digest("base64")}`);
+  try {
+    const env = { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url };
+    await rescue(root, env);
+    expect(fs.existsSync(rescueFile())).toBe(false);
+    installTarball(release("1.0.0"));
+    await rescue(root, env);
+    ageRescue(3);
+    await expect(rescue(root, env)).rejects.toMatchObject({ stderr: expect.stringMatching(/rescue-update failed: the downloaded release does not match/) });
+    expect(readRuntime().current).toBe("1.0.0");
+    expect(fs.readdirSync(path.join(runtimeDir(), "versions")).filter(name => name.startsWith(".staging-"))).toEqual([]);
+  } finally {
+    registry.close();
+  }
+});
+
+test("the second updater forgets a release once the first installed it", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  const tarball = release("2.0.0");
+  const registry = await registryServing("2.0.0", tarball);
+  try {
+    const env = { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url };
+    await rescue(root, env);
+    expect(fs.existsSync(rescueFile())).toBe(true);
+    installTarball(tarball);
+    await rescue(root, env);
+    expect(fs.existsSync(rescueFile())).toBe(false);
+  } finally {
+    registry.close();
+  }
+});
+
+test("the second updater does not undo an install that finished while it downloaded", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  const registry = await registryServing("1.1.0", release("1.1.0"), undefined, () => installTarball(release("1.2.0")));
+  try {
+    const env = { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url };
+    await rescue(root, env);
+    ageRescue(3);
+    await rescue(root, env);
+    expect(readRuntime().current).toBe("1.2.0");
+  } finally {
+    registry.close();
+  }
+  // The first updater keeps to the same rule.
+  expect(installTarball(release("1.3.0"), { auto: true, resolvedFrom: "1.0.0" })).toBeUndefined();
+});
+
+test("both updaters reinstall a current release whose files are gone, at once", async () => {
+  const root = plugin();
+  const tarball = release("2.0.0");
+  installTarball(tarball);
+  fs.rmSync(path.join(runtimeDir(), "versions/2.0.0/dist"), { recursive: true });
+  const registry = await registryServing("2.0.0", tarball);
+  try {
+    await rescue(root, { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url });
+    expect(shim(root, "hook").version).toBe("2.0.0");
+    fs.rmSync(path.join(runtimeDir(), "versions/2.0.0/dist"), { recursive: true });
+    expect(await update({ registry: registry.url })).toMatch(/Installed Well Actually 2.0.0/);
+    expect(shim(root, "hook").version).toBe("2.0.0");
+  } finally {
+    registry.close();
+  }
+});
+
+test("the second updater's wait starts again on another channel", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  const registry = await registryServing("2.0.0", release("2.0.0"));
+  try {
+    const env = { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url };
+    await rescue(root, env);
+    ageRescue(3);
+    fs.writeFileSync(rescueFile(), JSON.stringify({ ...JSON.parse(fs.readFileSync(rescueFile(), "utf8")), channel: "next" }));
+    await rescue(root, env);
+    expect(readRuntime().current).toBe("1.0.0");
+  } finally {
+    registry.close();
+  }
+});
+
+test("the first hook of the day starts the second updater, which reaches the registry; the update-check switch keeps both off", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  const registry = await registryServing("2.0.0", release("2.0.0"));
+  try {
+    await promisify(execFile)(process.execPath, [path.join(root, "shim.mjs"), "hook"], { env: { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url } });
+    for (let i = 0; i < 50 && !fs.existsSync(rescueFile()); i++) await new Promise(resolve => setTimeout(resolve, 100));
+    expect(JSON.parse(fs.readFileSync(rescueFile(), "utf8"))).toMatchObject({ channel: "latest", from: "1.0.0" });
+  } finally {
+    registry.close();
+  }
+  for (const entry of fs.readdirSync(runtimeDir())) if (entry.includes("checked")) fs.rmSync(path.join(runtimeDir(), entry));
+  execFileSync(process.execPath, [path.join(root, "shim.mjs"), "hook"], { env: { ...process.env, WELLACTUALLY_UPDATE_CHECK: "0" } });
+  expect(fs.readdirSync(runtimeDir()).filter(entry => entry.includes("checked"))).toEqual([]);
+});
+
+test("a state.json that names a path instead of a version is ignored", () => {
+  const root = plugin();
+  fs.mkdirSync(runtimeDir(), { recursive: true });
+  fs.writeFileSync(path.join(runtimeDir(), "state.json"), JSON.stringify({ current: "..", previous: "../.." }));
+  expect(shim(root, "hook").version).toBe("0.0.1");
+});
+
+test("the second updater's wait is not restarted by a run of quick releases, and works on a fresh home", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  const registry = await registryServing("1.0.1", release("1.0.1"));
+  try {
+    const env = { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url };
+    await rescue(root, env);
+    ageRescue(2.1);
+    registry.serve("1.0.2", release("1.0.2"));
+    await rescue(root, env);
+    expect(readRuntime()).toMatchObject({ current: "1.0.2", previous: "1.0.0" });
+    // Nothing under the home yet: the observation is still written.
+    fs.rmSync(runtimeDir(), { recursive: true });
+    await rescue(root, env);
+    expect(fs.existsSync(rescueFile())).toBe(true);
+  } finally {
+    registry.close();
+  }
+});
+
+test("the second updater follows a tag moved back, and leaves the runtime alone when auto-update is off", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  installTarball(release("2.0.0"));
+  const registry = await registryServing("1.0.0", release("1.0.0"));
+  try {
+    const env = { ...process.env, WELLACTUALLY_NPM_REGISTRY: registry.url };
+    await rescue(root, { ...env, WELLACTUALLY_AUTO_UPDATE: "0" });
+    expect(fs.existsSync(rescueFile())).toBe(false);
+    await rescue(root, env);
+    ageRescue(3);
+    await rescue(root, env);
+    expect(readRuntime()).toMatchObject({ current: "1.0.0", previous: "2.0.0" });
+  } finally {
+    registry.close();
+  }
 });

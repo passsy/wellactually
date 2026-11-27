@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { eventsOf, type HookPayload } from "../src/hook/payload.ts";
-import { Pending, adviceOf, contentBefore, nodeMissing, updateNoticeFor } from "../src/agents/bridge.ts";
+import { Pending, adviceOf, command, contentBefore, nodeMissing, updateNoticeFor } from "../src/agents/bridge.ts";
 import { opencodePayload } from "../src/agents/opencode.ts";
 import { piPayload } from "../src/agents/pi.ts";
 
@@ -127,6 +127,19 @@ describe("the hook's answer", () => {
     expect(pending.take("c1")).toBe("first\n\nsecond");
     expect(pending.take("c1")).toBe("");
   });
+});
+
+test("OpenCode and pi start the shim, as Claude Code and Codex do, so they run the self-updating runtime", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "wellactually-"));
+  try {
+    fs.mkdirSync(path.join(root, "dist"));
+    fs.writeFileSync(path.join(root, "dist", "wellactually.mjs"), "");
+    expect(command(root)).toEqual({ file: "node", args: [path.join(root, "dist", "wellactually.mjs")] });
+    fs.writeFileSync(path.join(root, "shim.mjs"), "");
+    expect(command(root)).toEqual({ file: "node", args: [path.join(root, "shim.mjs")] });
+  } finally {
+    fs.rmSync(root, { recursive: true });
+  }
 });
 
 describe("without Node", () => {
