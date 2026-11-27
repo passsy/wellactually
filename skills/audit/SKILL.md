@@ -27,7 +27,7 @@ When the formats below no longer match what you find, because an agent changed h
 They are in `~/.wellactually`, or in `$WELLACTUALLY_HOME` when that is set.
 
 - `logs/hooks-<YYYY-MM-DDTHH>.jsonl`: the hook log, one file per hour in UTC, kept for one day.
-  One line per hook call: `time`, `hook` (such as `UserPromptSubmit` or `PostToolUse`), `session`, `transcript` (the agent's conversation file), `cwd`, `shown` (characters of advice the agent was given, 0 for none), and `note` (why no detector ran, when none did).
+  One line per hook call: `time`, `release` (the Well Actually release that handled it), `hook` (such as `UserPromptSubmit` or `PostToolUse`), `session`, `transcript` (the agent's conversation file), `cwd`, `shown` (characters of advice the agent was given, 0 for none), and `note` (why no detector ran, when none did).
   `events[].detectors[]` holds every detector that ran, with its `id`, its `findings` (it fired when they are not empty), and `error` or `thrown` when it failed.
   `events[].skipped[]` holds the principles that did not run and why, such as switched off.
   `grep -h '"session":"<id>' ~/.wellactually/logs/*.jsonl` gives one session's calls, and `jq -s 'group_by(.hook) | map({hook: .[0].hook, calls: length, advised: map(select(.shown > 0)) | length})'` counts them.
@@ -68,11 +68,14 @@ The tool names are in every block of advice and in the agent's list of tools, so
 ## Codex
 
 - Setup: in `~/.codex/config.toml` (or under `$CODEX_HOME`), a table `[plugins."wellactually@..."]`, which `enabled = false` switches off.
-  Codex runs a plugin's hook only once the user trusted it in `/hooks`, and says nothing while it is not.
-  A stored trust entry alone does not prove a hook can run: Codex also fingerprints the entire installed plugin directory, including scripts, skills, UI assets and documentation. A separate hook executable inside that same plugin does not isolate trust from other plugin changes. Inspect `/hooks` or the read-only app-server `hooks/list` response for the session directory (params `cwds: ["<directory>"]`); require `enabled: true` and `trustStatus: "trusted"`. `modified` or `untrusted` hooks are skipped even when config.toml contains trusted_hash. Never rewrite hashes to self-approve a changed hook; the user reviews it in `/hooks`. A trusted hook has a table `[hooks.state."wellactually@...:hooks/hooks.json:<event>:0:0"]` with a `trusted_hash`.
+  The hooks are not in the plugin but in `~/.codex/hooks.json` (or under `$CODEX_HOME`): one entry per event, each running `node "<WELLACTUALLY_HOME>/codex-hook.mjs"`, which the plugin's MCP server adds when Codex starts it, next to the entries of other tools.
+  That launcher runs `dist/wellactually-hook.mjs` of the version Codex uses, a `local` folder or else the highest version in `~/.codex/plugins/cache/wellactually/wellactually/`, and exits without a word when there is none, when `enabled = false`, or when that version still brings hooks of its own.
+  Codex runs a hook only once the user trusted it in `/hooks`, and says nothing while it is not.
+  Inspect `/hooks` or the read-only app-server `hooks/list` response for the session directory (params `cwds: ["<directory>"]`); for each entry whose `command` names `codex-hook.mjs`, require `enabled: true` and `trustStatus: "trusted"`.
+  `modified` or `untrusted` hooks are skipped even when config.toml contains a trusted_hash.
+  Never rewrite hashes to self-approve a hook; the user reviews it in `/hooks`.
+  A trusted entry has a table `[hooks.state."<path of hooks.json>:<event>:<group>:<handler>"]` with a `trusted_hash`, pinned to the entry and its position: an update of the plugin keeps it, a tool that inserts entries before ours does not.
   The plugin registers `session_start`, `user_prompt_submit`, `pre_tool_use`, `post_tool_use`, `post_compact` and `session_end`, so check each of them.
-  Codex asks again after an update changed a hook.
-  The installed versions are folders in `~/.codex/plugins/cache/<marketplace>/wellactually/`.
 - Conversations: `~/.codex/sessions/YYYY/MM/DD/rollout-<time>-<session id>.jsonl`.
   Its `session_meta` line has the `id` and `cwd`.
   A subagent has a file of its own, whose `session_meta` names the session that started it as `session_id`, and its hooks are logged under that one.

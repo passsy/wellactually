@@ -2,6 +2,7 @@ import { type SpawnSyncOptions, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { ensureCodexHooks } from "./codex-user-hooks.ts";
 
 /** Runs an agent's command with its output shown; false when it failed, timed out or could not start. */
 export type Run = (file: string, args: string[]) => boolean;
@@ -13,7 +14,7 @@ export type Outcome = { status: "installed" | "updated" | "present" | "failed" }
 export interface Host {
   name: string;
   bin: string;
-  setup: (file: string, exec: Run, env: NodeJS.ProcessEnv) => Outcome;
+  setup: (file: string, exec: Run, env: NodeJS.ProcessEnv, codexHooks: (env: NodeJS.ProcessEnv) => unknown) => Outcome;
   then?: string;
 }
 
@@ -87,12 +88,20 @@ export const HOSTS: Host[] = [
   {
     name: "Codex",
     bin: "codex",
-    setup(file, exec) {
+    setup(file, exec, env, codexHooks) {
       if (!exec(file, ["plugin", "marketplace", "add", "passsy/wellactually"]) || !exec(file, ["plugin", "marketplace", "upgrade", "wellactually"])) return { status: "failed" };
-      return step(exec(file, ["plugin", "add", "wellactually@wellactually"]), "installed");
+      if (!exec(file, ["plugin", "add", "wellactually@wellactually"])) return { status: "failed" };
+      // The hooks go into ~/.codex/hooks.json, not the plugin, so trusting them once survives every update.
+      try {
+        codexHooks(env);
+      } catch (error) {
+        console.log(`Could not add the hooks to Codex: ${error instanceof Error ? error.message : String(error)}`);
+        return { status: "failed" };
+      }
+      return { status: "installed" };
     },
-    // Codex runs no hook of a new plugin until the user trusts it, and offers no command to do that for them.
-    then: "open Codex, type /hooks and press t to trust the new hooks",
+    // Codex runs no new hook until the user trusts it, and offers no command to do that for them. Trusted once, it stays trusted.
+    then: "open Codex, type /hooks and press t to trust the Well Actually hooks, once; updates keep them trusted",
   },
   {
     name: "OpenCode",
@@ -103,7 +112,7 @@ export const HOSTS: Host[] = [
       const json = readJson(config) as { plugins?: unknown; plugin?: unknown } | undefined;
       const entry = entryOf(json?.plugins, /^wellactually(@|$)/) ?? entryOf(json?.plugin, /^wellactually(@|$)/);
       if (entry?.includes("@")) return { status: "pinned", entry, file: config };
-      // shortcut: OpenCode 2.3's `plugin update` does not find plugins that `plugin add` configured, so an installed one is left as it is; its runtime updates itself through the shim. Update it here once OpenCode's update works.
+      // shortcut: OpenCode 2.3's `plugin update` did not find plugins `plugin add` configured in a sandboxed home, so an installed one is left as it is and the user is told the command. Run it here once that is confirmed to work.
       return entry ? { status: "present" } : step(exec(file, ["plugin", "add", "wellactually"]), "installed");
     },
   },
@@ -124,11 +133,11 @@ export const HOSTS: Host[] = [
  * through the agent's own plugin manager, or updates it where it is already
  * installed. A version the user pinned stays as it is.
  */
-export function install(hosts = HOSTS, exec: Run = run, find = which, env = process.env): { host: Host; outcome: Outcome | { status: "missing" } }[] {
+export function install(hosts = HOSTS, exec: Run = run, find = which, env = process.env, codexHooks: (env: NodeJS.ProcessEnv) => unknown = ensureCodexHooks): { host: Host; outcome: Outcome | { status: "missing" } }[] {
   return hosts.map((host) => {
     const file = find(host.bin);
     if (!file) return { host, outcome: { status: "missing" } };
     console.log(`\n${host.name}:`);
-    return { host, outcome: host.setup(file, exec, env) };
+    return { host, outcome: host.setup(file, exec, env, codexHooks) };
   });
 }

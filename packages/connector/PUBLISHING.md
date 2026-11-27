@@ -308,9 +308,14 @@ disabled; use the browser inbox there. Posting findings to a PR is a separate
 explicit action. Verify natural fixed-event delivery after its grace/throttle
 rather than fabricating a fix.
 
-Codex may require a one-time `/hooks` review after an update because it fingerprints
-the installed plugin. Do not write trust hashes programmatically. Review stores
-and credentials remain outside plugin caches.
+The Codex plugin declares no hooks of its own (`"hooks": {"hooks": {}}` in
+`.codex-plugin/plugin.json`), since Codex fingerprints a plugin folder and would
+ask for a new `/hooks` review after every update. Its MCP server adds the hooks
+to the user's `~/.codex/hooks.json` instead, running `~/.wellactually/codex-hook.mjs`,
+whose trust survives updates. Changing an entry, such as a matcher in
+`hooks/hooks.json` or a timeout, does cost every Codex user one more review.
+Do not write trust hashes programmatically. Review stores and credentials
+remain outside plugin caches.
 
 ### One-time npm setup
 

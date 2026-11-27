@@ -4,8 +4,8 @@ import path from "node:path";
 import { boardHome } from "./board.ts";
 
 /**
- * Codex runs a plugin's hooks only after the user trusted them in /hooks, and
- * asks again after every update. Without the hooks no principle reaches the
+ * Codex runs the Well Actually hooks, which live in ~/.codex/hooks.json, only
+ * after the user trusted them in /hooks; once trusted they stay trusted across updates. Without the hooks no principle reaches the
  * agent. Codex says so itself at the start of the CLI and on the composer of
  * its app, but a user who skips that review never hears what it costs.
  *
@@ -168,7 +168,7 @@ export async function askCodexHooksNeedReview(cwd = process.cwd(), codex = paren
       while ((end = buffer.indexOf("\n")) >= 0) {
         const line = buffer.slice(0, end);
         buffer = buffer.slice(end + 1);
-        let message: { id?: number; result?: { data?: { hooks?: { pluginId?: string; enabled?: boolean; trustStatus?: string }[] }[] } };
+        let message: { id?: number; result?: { data?: { hooks?: { pluginId?: string | null; command?: string; enabled?: boolean; trustStatus?: string }[] }[] } };
         try {
           message = JSON.parse(line);
         } catch {
@@ -178,7 +178,7 @@ export async function askCodexHooksNeedReview(cwd = process.cwd(), codex = paren
           send({ method: "initialized" });
           send({ id: 2, method: "hooks/list", params: { cwds: [cwd] } });
         } else if (message.id === 2) {
-          const ours = (message.result?.data ?? []).flatMap(entry => entry.hooks ?? []).filter(hook => hook.pluginId?.startsWith("wellactually@") && hook.enabled);
+          const ours = (message.result?.data ?? []).flatMap(entry => entry.hooks ?? []).filter(hook => (hook.pluginId?.startsWith("wellactually@") || hook.command?.includes("codex-hook.mjs")) && hook.enabled);
           done(message.result ? ours.some(hook => hook.trustStatus === "untrusted" || hook.trustStatus === "modified") : undefined);
         }
       }

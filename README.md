@@ -62,9 +62,12 @@ codex plugin marketplace add passsy/wellactually
 codex plugin add wellactually@wellactually
 ```
 
-Then open Codex, type `/hooks` and press `t` to trust the plugin's hooks, then type `$wellactually:login`.
-Codex does not run a new plugin's hooks until you trust them, so no principle reaches the agent before that.
-Codex asks again after every update of the plugin: the CLI when it starts, the app under Settings > Hooks.
+Then open Codex, type `/hooks` and press `t` to trust the Well Actually hooks, then type `$wellactually:login`.
+Codex does not run a new hook until you trust it, so no principle reaches the agent before that.
+You trust them once.
+The Codex plugin brings no hooks of its own: Codex would ask again after every update of a plugin that does.
+Instead, when Codex first starts the plugin, it adds its hooks to your `~/.codex/hooks.json`, next to any others, and Codex keeps the trust of those across updates.
+Each runs `~/.wellactually/codex-hook.mjs`, which starts the hook of the plugin version Codex has installed, and does nothing while the plugin is switched off or removed.
 Until you trust them, the Review Inbox shows a banner and the agent is asked to tell you.
 
 OpenCode:
@@ -191,19 +194,19 @@ A principle written against `v3` keeps running as it was.
 
 ## What is in here
 
-| Path              | What it is                                                                            |
-| ----------------- | ------------------------------------------------------------------------------------- |
-| `hooks`, `skills` | The plugin: when the hook runs, and the skills such as `login`, `sync` and `audit`.   |
-| `dist`            | Ignored development build output; install payloads are published to npm.             |
+| Path | What it is |
+| --- | --- |
+| `hooks`, `skills` | The plugin: when the hook runs, and the skills such as `login`, `sync` and `audit`. |
+| `dist` | Ignored development build output; install payloads are published to npm. |
 | [`compat`](compat/README.md) | pi adapter for existing Git installs, loading the pinned npm runtime. |
-| `opencode`        | Compatibility adapters for existing Git installs, loading the npm runtime.           |
-| `packages/core`   | Builds, checks and runs principles: the isolate, the bundler and the tests.           |
-| `packages/detector-sdk`    | The types and helpers a detector may import.                                          |
+| `opencode` | Compatibility adapters for existing Git installs, loading the npm runtime. |
+| `packages/core` | Builds, checks and runs principles: the isolate, the bundler and the tests. |
+| `packages/detector-sdk` | The types and helpers a detector may import. |
 | `packages/connector` | Connects agent hosts: the hooks, the host adapters, the MCP server and the `wellactually` command. |
-| `packages/board`  | The advisory board on this machine: which principles run, their detectors and the registry sync. |
+| `packages/board` | The advisory board on this machine: which principles run, their detectors and the registry sync. |
 | `packages/review-inbox` | Review sessions, findings and verdicts, and the Review Inbox and review card that show them. |
-| `evaluator`       | Checks with real agents that the framing around advice moves them the right way.      |
-| `scripts`         | Builds `dist` and `opencode`, sets the version of a release, packs the detector SDK. |
+| `evaluator` | Checks with real agents that the framing around advice moves them the right way. |
+| `scripts` | Builds `dist` and `opencode`, sets the version of a release, packs the detector SDK. |
 
 The registry is not in this repository.
 

@@ -7,6 +7,8 @@ import { afterAll } from "vitest";
 const registry=fs.mkdtempSync(path.join(os.tmpdir(),"wa-test-registry-"));
 process.env.WELLACTUALLY_REVIEW_INBOX_HOME=registry;
 process.env.WELLACTUALLY_HOME=path.join(registry,"advice");
+// Codex hooks are written to CODEX_HOME: never the user's own.
+process.env.CODEX_HOME=path.join(registry,"codex");
 afterAll(()=>fs.rmSync(registry,{recursive:true,force:true}));
 // The agent running the tests must not decide the review host, its port or the rater's transcripts.
 // A test that needs a host sets WELLACTUALLY_REVIEW_HOST itself.

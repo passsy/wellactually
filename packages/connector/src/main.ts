@@ -282,7 +282,7 @@ async function main(): Promise<number> {
       console.log("");
       if (named(["installed"])) console.log(`Installed for ${named(["installed"])}.`);
       if (named(["updated"])) console.log(`Updated for ${named(["updated"])}.`);
-      if (named(["present"])) console.log(`Already installed for ${named(["present"])}; it updates itself.`);
+      if (named(["present"])) console.log(`Already installed for ${named(["present"])}; \`opencode plugin update wellactually\` updates it.`);
       for (const { host, outcome } of results) {
         if (outcome.status === "pinned") console.log(`${host.name} keeps ${outcome.entry}, pinned in ${outcome.file}; remove the pin there to get new releases.`);
       }

@@ -8,6 +8,7 @@ import { hasDetector } from "@wellactually/core/node";
 import { TOOLS as FINDINGS_TOOLS } from "../../review-inbox/tools.mts";
 import { REVIEW_REPORT_MS } from "../../board/src/registry/review-reports.ts";
 import { startInBackground } from "./hook/hook.ts";
+import { ensureCodexHooks, installedByCodex } from "./codex-user-hooks.ts";
 import { askCodexHooksNeedReview, codexHooksSilent, HOOKS_NEED_REVIEW, noteCodexServer } from "../../board/src/codex-hooks.ts";
 import { claimReport } from "../../board/src/detections.ts";
 import { appToolMeta, drawsCards, registerReviewCard } from "../../review-inbox/serve/app.mts";
@@ -140,6 +141,12 @@ export async function serveMcp(): Promise<void> {
   const pluginRoot = path.resolve(path.dirname(process.argv[1] ?? ""), "..");
   const codex = process.env.WELLACTUALLY_REVIEW_HOST === "codex";
   if (codex) {
+    // Codex always starts this server, also for a plugin added by hand, so it keeps the user-level hooks in place.
+    try {
+      if (installedByCodex(pluginRoot)) ensureCodexHooks();
+    } catch (error) {
+      console.error(`Could not set up the Codex hooks: ${error instanceof Error ? error.message : String(error)}`);
+    }
     noteCodexServer(pluginRoot, await askCodexHooksNeedReview());
   }
   const hooksNeedReview = () => codex && codexHooksSilent(pluginRoot);

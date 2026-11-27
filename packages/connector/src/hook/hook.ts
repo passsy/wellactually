@@ -12,7 +12,7 @@ import { boardOffIn, switchedOff } from "../../../board/src/switches.ts";
 import { type TurnDiff, absorbWrites, diffRepos, ensureSnapshot, forgetSnapshots, snapshotContent, snapshotRepos, sweepSnapshots } from "./turn.ts";
 import { excerpt, type HookLogEntry, someFindings } from "./hook-log.ts";
 import { noteToolUse } from "../../../board/src/registry/rater.ts";
-import { agentOf, updateNotice } from "../update.ts";
+import { agentOf, CLIENT_VERSION, updateNotice } from "../update.ts";
 import { codexToldReview, HOOKS_TRUSTED_NOW, noteCodexHook } from "../../../board/src/codex-hooks.ts";
 
 const MAX_FILE_BYTES = 512 * 1024;
@@ -36,7 +36,7 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
     noteCodexHook(process.env.PLUGIN_ROOT);
   }
   if (log) {
-    Object.assign(log, { hook: event, tool: payload.tool_name, session: payload.session_id, transcript: payload.transcript_path, cwd: payload.cwd });
+    Object.assign(log, { release: CLIENT_VERSION, hook: event, tool: payload.tool_name, session: payload.session_id, transcript: payload.transcript_path, cwd: payload.cwd });
   }
   const note = (text: string): string => {
     if (log) {
