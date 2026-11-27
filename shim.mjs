@@ -17,10 +17,21 @@ const args = command in entries ? rest : [command, ...rest];
 
 let state = {};
 try {
-  state = JSON.parse(fs.readFileSync(path.join(runtime, "state.json"), "utf8"));
+  state = JSON.parse(fs.readFileSync(path.join(runtime, "state.json"), "utf8")) || {};
 } catch {}
-const roots = [state.current, state.previous].filter(v => typeof v === "string" && /^[0-9A-Za-z.+-]+$/.test(v)).map(v => path.join(runtime, "versions", v));
+/** Whether a release's `engines.node`, such as `>=20.3`, rules out the Node this runs on: each agent may bring its own. */
+const tooOld = root => {
+  try {
+    const wanted = /^>=\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).engines?.node ?? "");
+    const have = process.versions.node.split(".").map(Number);
+    for (let i = 0; wanted && i < 3; i++) if (have[i] !== Number(wanted[i + 1] ?? 0)) return have[i] < Number(wanted[i + 1] ?? 0);
+  } catch {}
+  return false;
+};
+const roots = [state.current, state.previous].filter(v => typeof v === "string" && /^[0-9A-Za-z.+-]+$/.test(v)).map(v => path.join(runtime, "versions", v)).filter(root => !tooOld(root));
 roots.push(plugin);
+// The updater must survive a release that breaks it: one that throws while loading falls back, down to the copy in the plugin.
+const recovers = command === "update" || command === "check-update";
 
 // The runtime finds the plugin it serves here, not beside its own files.
 process.env.WELLACTUALLY_PLUGIN_ROOT = plugin;
@@ -34,6 +45,7 @@ for (const root of roots) {
     break;
   } catch (error) {
     // Only a release that cannot load falls back to the one before; an error while it runs is its own.
-    if (!(error instanceof SyntaxError) && error?.code !== "ERR_MODULE_NOT_FOUND") throw error;
+    if (root === plugin || (!recovers && !(error instanceof SyntaxError) && error?.code !== "ERR_MODULE_NOT_FOUND")) throw error;
+    if (recovers) console.error(`${path.basename(root)} failed to load (${error?.message ?? error}), trying the release before it`);
   }
 }

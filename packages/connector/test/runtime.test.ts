@@ -16,17 +16,18 @@ beforeEach(() => {
   process.env.WELLACTUALLY_HOME = path.join(work, "home");
   delete process.env.CI;
   delete process.env.WELLACTUALLY_AUTO_UPDATE;
+  delete process.env.WELLACTUALLY_NPM_REGISTRY;
 });
 afterEach(() => {
   process.env = { ...saved };
 });
 
 /** An npm tarball of a wellactually release whose entry points print what they ran with. `body` replaces their code. */
-function release(version: string, body?: string): Buffer {
+function release(version: string, body?: string, engines?: string): Buffer {
   const dir = path.join(work, `pack-${version}-${crypto.randomUUID()}`);
   const pkg = path.join(dir, "package");
   fs.mkdirSync(path.join(pkg, "dist"), { recursive: true });
-  fs.writeFileSync(path.join(pkg, "package.json"), JSON.stringify({ name: "wellactually", version }));
+  fs.writeFileSync(path.join(pkg, "package.json"), JSON.stringify({ name: "wellactually", version, ...(engines ? { engines: { node: engines } } : {}) }));
   fs.writeFileSync(path.join(pkg, "shim.mjs"), "");
   for (const entry of ["wellactually.mjs", "wellactually-hook.mjs"]) {
     fs.writeFileSync(path.join(pkg, "dist", entry), body ?? `console.log(JSON.stringify({ version: ${JSON.stringify(version)}, entry: process.argv[1], args: process.argv.slice(2), plugin: process.env.WELLACTUALLY_PLUGIN_ROOT }));`);
@@ -76,14 +77,19 @@ test("an error while the release runs is not hidden by running another release",
   expect(() => shim(root, "hook")).toThrow(/boom/);
 });
 
-test("installing keeps the current, previous and one more release, and a pin pauses auto-update", async () => {
-  for (const version of ["1.0.0", "1.1.0", "1.2.0", "1.3.0"]) installTarball(release(version));
+test("installing keeps recent releases for running sessions, and a pin pauses auto-update", async () => {
+  for (const version of ["1.0.0", "1.1.0", "1.2.0"]) installTarball(release(version));
+  const old = path.join(runtimeDir(), "versions/1.0.0");
+  expect(fs.existsSync(old)).toBe(true);
+  const weeksAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
+  fs.utimesSync(old, weeksAgo, weeksAgo);
+  installTarball(release("1.3.0"));
   expect(fs.readdirSync(path.join(runtimeDir(), "versions")).sort()).toEqual(["1.1.0", "1.2.0", "1.3.0"]);
   const tgz = path.join(work, "local.tgz");
   fs.writeFileSync(tgz, release("1.4.0-local.1"));
   expect(await update({ from: tgz })).toMatch(/Installed 1.4.0-local.1/);
   expect(readRuntime()).toMatchObject({ current: "1.4.0-local.1", previous: "1.3.0", pinned: true });
-  await autoUpdate({ ...process.env, WELLACTUALLY_REGISTRY: "http://127.0.0.1:9" });
+  await autoUpdate({ ...process.env, WELLACTUALLY_NPM_REGISTRY: "http://127.0.0.1:9" });
   expect(readRuntime().current).toBe("1.4.0-local.1");
 });
 
@@ -127,11 +133,81 @@ test("auto-update installs the channel's newest release from the registry and ve
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   try {
     const registry = `http://127.0.0.1:${(server.address() as { port: number }).port}/wellactually`;
-    await autoUpdate({ ...process.env, WELLACTUALLY_REGISTRY: registry });
+    await autoUpdate({ ...process.env, WELLACTUALLY_NPM_REGISTRY: registry });
     expect(readRuntime()).toMatchObject({ current: "2.0.0", pinned: false });
-    await autoUpdate({ ...process.env, WELLACTUALLY_REGISTRY: registry, WELLACTUALLY_AUTO_UPDATE: "0" });
+    await autoUpdate({ ...process.env, WELLACTUALLY_NPM_REGISTRY: registry, WELLACTUALLY_AUTO_UPDATE: "0" });
     expect(await update({ registry })).toMatch(/already installed, following latest/);
   } finally {
     server.close();
   }
+});
+
+test("a state.json that holds null or garbage falls back to the bundled release", () => {
+  const root = plugin();
+  fs.mkdirSync(runtimeDir(), { recursive: true });
+  for (const content of ["null", "[1]", "{"]) {
+    fs.writeFileSync(path.join(runtimeDir(), "state.json"), content);
+    expect(shim(root, "hook").version).toBe("0.0.1");
+    expect(readRuntime()).toEqual({});
+  }
+});
+
+test("an archive with a link or a path outside its package is refused before unpacking", () => {
+  for (const make of [
+    (pkg: string) => fs.symlinkSync("/etc/passwd", path.join(pkg, "dist/wellactually.mjs")),
+    (pkg: string) => fs.symlinkSync("..", path.join(pkg, "escape")),
+  ]) {
+    const dir = fs.mkdtempSync(path.join(work, "evil-"));
+    const pkg = path.join(dir, "package");
+    fs.mkdirSync(path.join(pkg, "dist"), { recursive: true });
+    fs.writeFileSync(path.join(pkg, "package.json"), JSON.stringify({ name: "wellactually", version: "6.6.6" }));
+    make(pkg);
+    execFileSync("tar", ["-czf", path.join(dir, "x.tgz"), "-C", dir, "package"]);
+    expect(() => installTarball(fs.readFileSync(path.join(dir, "x.tgz")))).toThrow(/link or special file/);
+  }
+  const dir = fs.mkdtempSync(path.join(work, "evil-"));
+  fs.mkdirSync(path.join(dir, "other"));
+  fs.writeFileSync(path.join(dir, "other/x"), "");
+  execFileSync("tar", ["-czf", path.join(dir, "x.tgz"), "-C", dir, "other"]);
+  expect(() => installTarball(fs.readFileSync(path.join(dir, "x.tgz")))).toThrow(/outside its package folder/);
+  expect(readRuntime()).toEqual({});
+});
+
+test("a release that needs a newer Node is refused, and the shim skips one installed by an agent with a newer Node", () => {
+  expect(() => installTarball(release("9.0.0", undefined, ">=999"))).toThrow(/needs Node >=999/);
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  installTarball(release("1.1.0"));
+  fs.writeFileSync(path.join(runtimeDir(), "versions/1.1.0/package.json"), JSON.stringify({ name: "wellactually", version: "1.1.0", engines: { node: ">=999.1" } }));
+  expect(shim(root, "hook").version).toBe("1.0.0");
+});
+
+test("a rebuilt release under the same version replaces the old bytes", () => {
+  const root = plugin();
+  installTarball(release("1.0.0-local.1", "console.log(JSON.stringify({ version: 'first' }));"));
+  expect(shim(root, "hook").version).toBe("first");
+  installTarball(release("1.0.0-local.1", "console.log(JSON.stringify({ version: 'second' }));"));
+  expect(shim(root, "hook").version).toBe("second");
+});
+
+test("a pin made while auto-update downloads wins", () => {
+  installTarball(release("1.0.0"), { pin: true });
+  expect(installTarball(release("2.0.0"), { auto: true })).toBeUndefined();
+  expect(readRuntime()).toMatchObject({ current: "1.0.0", pinned: true });
+});
+
+test("the updater falls back to the release before when the current one throws while loading", () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  installTarball(release("1.1.0", "throw new TypeError('boom');"));
+  expect(shim(root, "update")).toMatchObject({ version: "1.0.0", args: ["update"] });
+  expect(() => shim(root, "hook")).toThrow(/boom/);
+});
+
+test("a second installer does not remove the lock of the one holding it", () => {
+  const lock = path.join(runtimeDir(), "install.lock");
+  installTarball(release("1.0.0"));
+  fs.writeFileSync(lock, "someone else");
+  expect(installTarball(release("1.1.0"))).toBeUndefined();
+  expect(fs.readFileSync(lock, "utf8")).toBe("someone else");
 });
