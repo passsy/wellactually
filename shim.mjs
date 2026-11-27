@@ -17,21 +17,28 @@ const entries = { hook: "wellactually-hook.mjs", review: "review.mjs" };
 const file = entries[command] ?? "wellactually.mjs";
 const args = command in entries ? rest : process.argv.slice(2);
 
-let state = {};
-try {
-  state = JSON.parse(fs.readFileSync(path.join(runtime, "state.json"), "utf8")) || {};
-} catch {}
-/** Whether a release's `engines.node`, such as `>=20.3`, rules out the Node this runs on: each agent may bring its own. */
-const tooOld = root => {
+/** A JSON file that holds an object, or {} for anything else: missing, garbage, null, an array or a string. */
+const readObject = file => {
   try {
-    const wanted = /^>=\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).engines?.node ?? "");
-    const have = process.versions.node.split(".").map(Number);
-    for (let i = 0; wanted && i < 3; i++) if (have[i] !== Number(wanted[i + 1] ?? 0)) return have[i] < Number(wanted[i + 1] ?? 0);
-  } catch {}
+    const value = JSON.parse(fs.readFileSync(file, "utf8"));
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+};
+const state = readObject(path.join(runtime, "state.json"));
+/** Whether a release's `engines.node`, such as `>=20.3`, rules out the Node this runs on: each agent may bring its own. */
+const tooOldFor = engines => {
+  const wanted = /^>=\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(typeof engines === "string" ? engines : "");
+  const have = process.versions.node.split(".").map(Number);
+  for (let i = 0; wanted && i < 3; i++) if (have[i] !== Number(wanted[i + 1] ?? 0)) return have[i] < Number(wanted[i + 1] ?? 0);
   return false;
 };
+const tooOld = root => tooOldFor(readObject(path.join(root, "package.json")).engines?.node);
 // A release folder name: a semver version, so a state.json or registry answer can never name a path such as "..".
-const VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?$/;
+const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+/** The npm dist-tag followed: `latest` unless state.json names a plain tag, so every check below compares the same value. */
+const channelOf = value => (typeof value === "string" && /^[0-9A-Za-z][0-9A-Za-z._-]*$/.test(value) ? value : "latest");
 /** Whether a release folder holds the files the shim starts, so a deleted or half-removed one counts as not installed. */
 const complete = root => ["dist/wellactually.mjs", "dist/wellactually-hook.mjs"].every(entry => fs.statSync(path.join(root, entry), { throwIfNoEntry: false })?.isFile());
 const roots = [state.current, state.previous].filter(v => typeof v === "string" && VERSION.test(v)).map(v => path.join(runtime, "versions", v)).filter(root => !tooOld(root));
@@ -45,11 +52,14 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const daily = (name, task) => {
   try {
     const stamp = path.join(runtime, name);
-    if (Date.now() - (fs.statSync(stamp, { throwIfNoEntry: false })?.mtimeMs ?? 0) < DAY_MS) return;
+    // A stamp from the future, left by a clock that ran ahead, counts as old rather than blocking the check until that date.
+    const age = Date.now() - (fs.statSync(stamp, { throwIfNoEntry: false })?.mtimeMs ?? 0);
+    if (age >= 0 && age < DAY_MS) return;
     fs.mkdirSync(runtime, { recursive: true });
     fs.writeFileSync(stamp, "");
     const log = fs.openSync(path.join(runtime, "..", "sync.log"), "a");
     spawn(process.execPath, [fileURLToPath(import.meta.url), task], { detached: true, windowsHide: true, stdio: ["ignore", log, log] }).unref();
+    fs.closeSync(log);
   } catch {}
 };
 
@@ -60,7 +70,7 @@ const quiet = process.env.WELLACTUALLY_UPDATE_CHECK === "0" || process.env.NO_UP
 if (command === "hook" && !quiet) {
   const node = process.versions.node.split(".")[0];
   daily(`checked-node${node}`, "check-update");
-  daily(`rescue-checked-node${node}`, "rescue-update");
+  if (process.env.WELLACTUALLY_AUTO_UPDATE !== "0" && !state.pinned) daily(`rescue-checked-node${node}`, "rescue-update");
 }
 
 /**
@@ -72,42 +82,50 @@ if (command === "hook" && !quiet) {
 async function rescue() {
   const env = process.env;
   if (env.WELLACTUALLY_AUTO_UPDATE === "0" || env.WELLACTUALLY_UPDATE_CHECK === "0" || env.NO_UPDATE_NOTIFIER || env.CI || state.pinned) return;
-  const channel = typeof state.channel === "string" && /^[0-9A-Za-z._-]+$/.test(state.channel) ? state.channel : "latest";
-  const registry = env.WELLACTUALLY_NPM_REGISTRY || "https://registry.npmjs.org/wellactually";
+  const started = Date.now();
+  const channel = channelOf(state.channel);
+  const registry = (env.WELLACTUALLY_NPM_REGISTRY || "https://registry.npmjs.org/wellactually").replace(/\/+$/, "");
   const response = await fetch(`${registry}/${channel}`, { signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`npm has no wellactually release ${channel} (${response.status})`);
-  const { version, dist } = (await response.json()) ?? {};
-  if (typeof version !== "string" || !VERSION.test(version) || typeof dist?.tarball !== "string" || !/^sha512-/.test(dist?.integrity ?? "")) {
+  const { version, dist, engines } = (await response.json()) ?? {};
+  if (typeof version !== "string" || !VERSION.test(version) || typeof dist?.tarball !== "string" || typeof dist?.integrity !== "string" || !/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(dist.integrity)) {
     throw new Error(`npm answered for ${channel} without a version, tarball and sha512 integrity`);
   }
+  fs.mkdirSync(runtime, { recursive: true });
   const seenFile = path.join(runtime, "rescue.json");
-  const writeSeen = value => {
-    const temp = `${seenFile}.${process.pid}.tmp`;
-    fs.writeFileSync(temp, JSON.stringify(value));
-    fs.renameSync(temp, seenFile);
-  };
-  const upToDate = version === state.current && complete(path.join(runtime, "versions", version));
-  if (upToDate) {
+  if (version === state.current && complete(path.join(runtime, "versions", version))) {
     fs.rmSync(seenFile, { force: true });
     return;
   }
-  let seen = {};
-  try {
-    seen = JSON.parse(fs.readFileSync(seenFile, "utf8")) || {};
-  } catch {}
-  // The wait counts from when this channel of this registry first named this release.
-  if (seen.version !== version || seen.channel !== channel || seen.registry !== registry || typeof seen.since !== "number") {
-    seen = { registry, channel, version, since: Date.now() };
-    writeSeen(seen);
+  // The wait counts from when the runtime was first seen behind this channel, from the release it still runs: a run of
+  // quick releases does not restart it, while a first updater that works moves `current` and gets a fresh two days.
+  const from = state.current ?? null;
+  let seen = readObject(seenFile);
+  if (seen.registry !== registry || seen.channel !== channel || seen.from !== from || !Number.isFinite(seen.since) || seen.since > Date.now()) {
+    seen = { registry, channel, from, since: started };
+    const temp = `${seenFile}.${process.pid}.tmp`;
+    fs.writeFileSync(temp, JSON.stringify(seen));
+    fs.renameSync(temp, seenFile);
   }
-  // The first updater gets two days to install it; only then is it failing. A current release whose files are gone is repaired at once.
+  // The first updater gets two days; a current release whose files are gone is repaired at once.
   if (version !== state.current && Date.now() - seen.since < 2 * DAY_MS) return;
-  console.error(`${channel} has named ${version} since ${new Date(seen.since).toISOString()} and the runtime still runs ${state.current ?? "the plugin's bundled copy"}: installing it`);
+  // A release for a newer Node than this one is left to a host that has it, without downloading it every day.
+  if (tooOldFor(engines?.node)) return;
+  console.error(`the runtime has run ${from ?? "the plugin's bundled copy"} since ${new Date(seen.since).toISOString()} while ${channel} names ${version}: installing it`);
 
-  const url = new URL(dist.tarball);
-  const loopback = url.hostname === "127.0.0.1" || url.hostname === "localhost";
-  if ((url.protocol !== "https:" && !(loopback && url.protocol === "http:")) || url.username || url.password) throw new Error(`npm pointed at ${url.origin}, which is not a plain https address`);
-  const download = await fetch(url, { signal: AbortSignal.timeout(60_000) });
+  // Plain https without credentials, at every redirect; http only to a loopback registry named in WELLACTUALLY_NPM_REGISTRY, as in tests.
+  const localRegistry = Boolean(env.WELLACTUALLY_NPM_REGISTRY) && /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(`${registry}/`);
+  let url = new URL(dist.tarball);
+  let download;
+  for (let hop = 0; ; hop++) {
+    const loopback = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+    if ((url.protocol !== "https:" && !(localRegistry && loopback && url.protocol === "http:")) || url.username || url.password) throw new Error(`npm pointed at ${url.origin}, which is not a plain https address`);
+    download = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(60_000) });
+    const location = download.headers.get("location");
+    if (download.status < 300 || download.status >= 400 || !location) break;
+    if (hop === 5) throw new Error(`${dist.tarball} redirects more than five times`);
+    url = new URL(location, url);
+  }
   if (!download.ok) throw new Error(`could not download ${dist.tarball} (${download.status})`);
   const MAX_BYTES = 100 * 1024 * 1024;
   if (Number(download.headers.get("content-length") ?? 0) > MAX_BYTES) throw new Error("the release is larger than 100 MB");
@@ -122,45 +140,49 @@ async function rescue() {
   const digest = crypto.createHash("sha512").update(tarball).digest("base64");
   if (`sha512-${digest}` !== dist.integrity) throw new Error("the downloaded release does not match the integrity npm published for it");
 
-  // The same lock as the first updater: whoever holds it installs, the other one skips.
+  // The same lock as the first updater. Both start from the same hook, so this one waits a little for the other to finish.
   const lock = path.join(runtime, "install.lock");
   const token = `${process.pid}.${crypto.randomUUID()}`;
-  try {
-    if (Date.now() - fs.statSync(lock).mtimeMs > 10 * 60 * 1000) {
-      const taken = `${lock}.${token}`;
-      fs.renameSync(lock, taken);
-      fs.rmSync(taken, { force: true });
-    }
-  } catch {}
-  try {
-    fs.writeFileSync(lock, token, { flag: "wx" });
-  } catch {
-    return;
+  let locked = false;
+  for (let attempt = 0; attempt < 10 && !locked; attempt++) {
+    if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      // A lock older than ten minutes, or from the future, belongs to a process that is gone.
+      const age = Date.now() - fs.statSync(lock).mtimeMs;
+      if (age > 10 * 60 * 1000 || age < -60 * 1000) {
+        const taken = `${lock}.${token}`;
+        fs.renameSync(lock, taken);
+        fs.rmSync(taken, { force: true });
+      }
+    } catch {}
+    try {
+      fs.writeFileSync(lock, token, { flag: "wx" });
+      locked = true;
+    } catch {}
   }
+  if (!locked) return;
   // shortcut: two processes that both find the lock stale at the same moment can both get in; each unpacks into its own staging folder and every switch is a rename, so the worst case is one failed install that the next day retries.
   try {
-    let now = {};
-    try {
-      now = JSON.parse(fs.readFileSync(path.join(runtime, "state.json"), "utf8")) || {};
-    } catch {}
+    const now = readObject(path.join(runtime, "state.json"));
     // Another install while this one downloaded wins: its release may be newer than what this one resolved.
-    if (now.pinned || (now.channel ?? "latest") !== channel || now.current !== state.current) return;
+    if (now.pinned || channelOf(now.channel) !== channel || now.current !== state.current) return;
     const versions = path.join(runtime, "versions");
     fs.mkdirSync(versions, { recursive: true });
     const staging = fs.mkdtempSync(path.join(versions, ".staging-"));
+    const tar = args => execFileSync("tar", args, { cwd: staging, encoding: "utf8", windowsHide: true });
     try {
       fs.writeFileSync(path.join(staging, "release.tgz"), tarball);
       // Only plain files and folders inside package/, listed before anything is unpacked.
-      for (const name of execFileSync("tar", ["-tzf", "release.tgz"], { cwd: staging, encoding: "utf8" }).split(/\r?\n/).filter(Boolean)) {
+      for (const name of tar(["-tzf", "release.tgz"]).split(/\r?\n/).filter(Boolean)) {
         const parts = name.replace(/\\/g, "/").split("/");
         if (parts[0] !== "package" || parts.includes("..") || path.isAbsolute(name)) throw new Error(`the release archive holds ${name}, outside its package folder`);
       }
-      for (const line of execFileSync("tar", ["-tvzf", "release.tgz"], { cwd: staging, encoding: "utf8" }).split(/\r?\n/).filter(Boolean)) {
+      for (const line of tar(["-tvzf", "release.tgz"]).split(/\r?\n/).filter(Boolean)) {
         if (line[0] !== "-" && line[0] !== "d") throw new Error(`the release archive holds a link or special file: ${line}`);
       }
-      execFileSync("tar", ["-xzf", "release.tgz"], { cwd: staging, stdio: "ignore" });
+      tar(["-xzf", "release.tgz"]);
       const unpacked = path.join(staging, "package");
-      const manifest = JSON.parse(fs.readFileSync(path.join(unpacked, "package.json"), "utf8"));
+      const manifest = readObject(path.join(unpacked, "package.json"));
       if (manifest.name !== "wellactually" || manifest.version !== version) throw new Error(`npm announced ${version}, the archive holds ${manifest.name}@${manifest.version}`);
       for (const entry of ["dist/wellactually.mjs", "dist/wellactually-hook.mjs", "shim.mjs"]) {
         if (!fs.statSync(path.join(unpacked, entry), { throwIfNoEntry: false })?.isFile()) throw new Error(`${version} cannot run as the plugin's runtime: it lacks ${entry}`);
@@ -173,33 +195,61 @@ async function rescue() {
         installed = fs.readFileSync(path.join(target, ".integrity"), "utf8");
       } catch {}
       if (installed !== digest || !complete(target)) {
+        let old;
         if (fs.existsSync(target)) {
-          const old = path.join(versions, `.old-${version}-${crypto.randomUUID()}`);
-          fs.renameSync(target, old);
-          fs.utimesSync(old, new Date(), new Date());
+          old = path.join(versions, `.old-${version}-${crypto.randomUUID()}`);
+          rename(target, old);
         }
-        fs.renameSync(unpacked, target);
+        try {
+          rename(unpacked, target);
+        } catch (error) {
+          // Put the old folder back, so state.json never names a release that is gone.
+          if (old) rename(old, target);
+          throw error;
+        }
+        if (old) touch(old);
       }
       // npm dates archive entries 1985; the first updater prunes by age, counting from now.
-      fs.utimesSync(target, new Date(), new Date());
-      if (now.current) {
-        try {
-          fs.utimesSync(path.join(versions, now.current), new Date(), new Date());
-        } catch {}
-      }
+      touch(target);
+      if (now.current) touch(path.join(versions, now.current));
       const temp = path.join(runtime, `state.json.${process.pid}.tmp`);
       fs.writeFileSync(temp, `${JSON.stringify({ ...now, previous: now.current && now.current !== version ? now.current : now.previous, current: version }, null, 2)}\n`);
-      fs.renameSync(temp, path.join(runtime, "state.json"));
+      try {
+        rename(temp, path.join(runtime, "state.json"));
+      } catch (error) {
+        fs.rmSync(temp, { force: true });
+        throw error;
+      }
       fs.rmSync(seenFile, { force: true });
       console.log(`Installed Well Actually ${version} with the second updater.`);
     } finally {
-      fs.rmSync(staging, { recursive: true, force: true });
+      try {
+        fs.rmSync(staging, { recursive: true, force: true });
+      } catch {}
     }
   } finally {
     try {
       if (fs.readFileSync(lock, "utf8") === token) fs.rmSync(lock, { force: true });
     } catch {}
   }
+}
+
+/** A rename that retries briefly where Windows holds a fresh file open, for a virus scanner or an indexer. */
+function rename(from, to) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return fs.renameSync(from, to);
+    } catch (error) {
+      if (attempt >= 5 || !["EPERM", "EBUSY", "EACCES"].includes(error?.code)) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
+    }
+  }
+}
+
+function touch(file) {
+  try {
+    fs.utimesSync(file, new Date(), new Date());
+  } catch {}
 }
 
 if (command === "rescue-update") {

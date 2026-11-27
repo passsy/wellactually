@@ -35,7 +35,7 @@ They are in `~/.wellactually`, or in `$WELLACTUALLY_HOME` when that is set.
 - `runtime/state.json`: the release the plugin runs (`current`), the one they fall back to (`previous`), the npm dist-tag auto-update follows (`channel`), and `pinned` when the user installed one exact release.
   The releases are in `runtime/versions/<version>/`; until the first download the plugin runs the copy it ships with.
   Why the last auto-update failed is in `sync.log`, as `auto-update failed: <reason>`, and the second updater's as `rescue-update failed: <reason>`.
-  `runtime/rescue.json` names the release the second updater waits for and since when; it installs it after two days.
+  `runtime/rescue.json` holds the channel, the release the runtime was behind on (`from`) and since when (`since`); after two days the second updater installs the release the channel names.
   Most calls give no advice, so a session with many calls of `shown` 0 and a few above it is normal.
   `WELLACTUALLY_HOOK_LOG=0` where the agent runs turns the log off.
 - `hook.log`: the hook's crashes, each with a timestamp and a stack trace.
