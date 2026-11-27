@@ -290,8 +290,8 @@ async function main(): Promise<number> {
       // Started in the background at session start, at most once a day.
       console.log(`The newest release is ${(await checkForUpdate()) ?? "unknown"}.`);
       // Run from the frozen Claude Code or Codex plugin, which takes new releases from npm itself.
-      if (process.env.WELLACTUALLY_PLUGIN_ROOT) {
-        await autoUpdate();
+      if (process.env.WELLACTUALLY_PLUGIN_ROOT && !(await autoUpdate())) {
+        return 1;
       }
       return 0;
     case "update":
@@ -430,8 +430,9 @@ async function readStdin(): Promise<string> {
 }
 
 // The hook starts this same file again as worker threads, to run detectors in parallel.
+// Awaited, so that the plugin's shim sees the exit code and can retry a failed update with an older release.
 if (isMainThread) {
-  main().then(
+  await main().then(
     (code) => {
       process.exitCode = code;
     },

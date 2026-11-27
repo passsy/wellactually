@@ -9,7 +9,7 @@ export async function buildRuntime(root, destination, version) {
     banner: { js: 'import { createRequire as __createRequire } from "node:module";\nconst require = __createRequire(import.meta.url);' },
     legalComments: "none", logLevel: "warning",
     plugins: [{ name: "release-version", setup(build) {
-      build.onLoad({ filter: /packages\/connector\/package\.json$/ }, () => ({
+      build.onLoad({ filter: /packages[\\/]connector[\\/]package\.json$/ }, () => ({
         contents: JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(root, "packages/connector/package.json"), "utf8")), version }), loader: "json",
       }));
     } }],

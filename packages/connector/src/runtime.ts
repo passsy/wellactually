@@ -81,7 +81,7 @@ function withLock<T>(run: () => T): T | undefined {
   try {
     return run();
   } finally {
-    // shortcut: a process that outlives LOCK_STALE_MS loses its lock to another installer; installs take seconds.
+    // shortcut: a process that outlives LOCK_STALE_MS, or pauses between the stale check and the rename, can lose its lock to another installer; installs take seconds and every write is a rename.
     try {
       if (fs.readFileSync(lock, "utf8") === token) fs.rmSync(lock, { force: true });
     } catch {}
@@ -97,12 +97,12 @@ export function verifyIntegrity(tarball: Buffer, integrity: string): void {
 }
 
 /** Lists the archive before unpacking it: only plain files and folders inside `package/`, so it cannot write outside the staging folder or link to anything. */
-function checkArchive(file: string): void {
-  for (const name of execFileSync("tar", ["-tzf", file], { encoding: "utf8" }).split("\n").filter(Boolean)) {
+function checkArchive(dir: string, file: string): void {
+  for (const name of execFileSync("tar", ["-tzf", file], { cwd: dir, encoding: "utf8" }).split(/\r?\n/).filter(Boolean)) {
     const parts = name.replace(/\\/g, "/").split("/");
     if (parts[0] !== "package" || parts.includes("..") || path.isAbsolute(name)) throw new Error(`the release archive holds ${name}, outside its package folder`);
   }
-  for (const line of execFileSync("tar", ["-tvzf", file], { encoding: "utf8" }).split("\n").filter(Boolean)) {
+  for (const line of execFileSync("tar", ["-tvzf", file], { cwd: dir, encoding: "utf8" }).split(/\r?\n/).filter(Boolean)) {
     if (line[0] !== "-" && line[0] !== "d") throw new Error(`the release archive holds a link or special file: ${line}`);
   }
 }
@@ -124,19 +124,19 @@ function nodeTooOld(engines: string | undefined, version = process.versions.node
  * makes it current. Returns the version, or undefined when another process
  * holds the install lock, or when `auto` and the user pinned a release meanwhile.
  */
-export function installTarball(tarball: Buffer, { pin = false, channel, auto = false }: { pin?: boolean; channel?: string; auto?: boolean } = {}): string | undefined {
+export function installTarball(tarball: Buffer, { pin = false, channel, auto = false, version }: { pin?: boolean; channel?: string; auto?: boolean; version?: string } = {}): string | undefined {
   return withLock(() => {
-    // Read under the lock: a pin set while this download ran wins over it.
+    // Read under the lock: a pin or channel the user set while this download ran wins over it.
     const state = readRuntime();
-    if (auto && state.pinned) return undefined;
+    if (auto && (state.pinned || (state.channel ?? "latest") !== (channel ?? "latest"))) return undefined;
     const versions = path.join(runtimeDir(), "versions");
     fs.mkdirSync(versions, { recursive: true });
     const staging = fs.mkdtempSync(path.join(versions, ".staging-"));
     try {
-      const file = path.join(staging, "release.tgz");
-      fs.writeFileSync(file, tarball);
-      checkArchive(file);
-      execFileSync("tar", ["-xzf", file, "-C", staging], { stdio: "ignore" });
+      // tar runs in the staging folder on a relative name: a Windows drive letter reads as a remote host to GNU tar.
+      fs.writeFileSync(path.join(staging, "release.tgz"), tarball);
+      checkArchive(staging, "release.tgz");
+      execFileSync("tar", ["-xzf", "release.tgz"], { cwd: staging, stdio: "ignore" });
       const unpacked = path.join(staging, "package");
       const manifest = JSON.parse(fs.readFileSync(path.join(unpacked, "package.json"), "utf8")) as { name?: string; version?: string; engines?: { node?: string } };
       if (manifest.name !== "wellactually" || !manifest.version || !/^[0-9A-Za-z.+-]+$/.test(manifest.version)) throw new Error("this is not a wellactually release");
@@ -144,6 +144,7 @@ export function installTarball(tarball: Buffer, { pin = false, channel, auto = f
         // A release without the shim predates this runtime: it cannot update itself, so the install would be stuck on it.
         if (!fs.statSync(path.join(unpacked, entry), { throwIfNoEntry: false })?.isFile()) throw new Error(`${manifest.version} cannot run as the plugin's runtime: it lacks ${entry}`);
       }
+      if (version && manifest.version !== version) throw new Error(`npm announced ${version}, the archive holds ${manifest.version}`);
       if (nodeTooOld(manifest.engines?.node)) throw new Error(`${manifest.version} needs Node ${manifest.engines?.node}, this is ${process.versions.node}`);
       const digest = crypto.createHash("sha512").update(tarball).digest("base64");
       fs.writeFileSync(path.join(unpacked, ".integrity"), digest);
@@ -164,6 +165,12 @@ export function installTarball(tarball: Buffer, { pin = false, channel, auto = f
       }
       // npm archives date every entry 1985; prune counts from the install.
       fs.utimesSync(target, new Date(), new Date());
+      // A release that stops being current keeps KEEP_MS from now on for the sessions still running it.
+      if (state.current && state.current !== manifest.version) {
+        try {
+          fs.utimesSync(path.join(versions, state.current), new Date(), new Date());
+        } catch {}
+      }
       writeRuntime({
         ...state,
         previous: state.current && state.current !== manifest.version ? state.current : state.previous,
@@ -186,7 +193,11 @@ function prune(): void {
   for (const name of fs.readdirSync(versions)) {
     if (name === state.current || name === state.previous || name.startsWith(".staging-")) continue;
     const dir = path.join(versions, name);
-    if (Date.now() - fs.statSync(dir).mtimeMs > KEEP_MS) fs.rmSync(dir, { recursive: true, force: true });
+    try {
+      if (Date.now() - fs.statSync(dir).mtimeMs > KEEP_MS) fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // A file still open, as on Windows: the next install tries again.
+    }
   }
 }
 
@@ -206,10 +217,17 @@ export async function resolveRelease(tagOrVersion: string, registry = process.en
   return release;
 }
 
+const MAX_BYTES = 100 * 1024 * 1024;
+
 async function download(release: Release): Promise<Buffer> {
-  const response = await fetch(release.dist.tarball, { signal: AbortSignal.timeout(60_000) });
+  const url = new URL(release.dist.tarball);
+  const loopback = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  if ((url.protocol !== "https:" && !(loopback && url.protocol === "http:")) || url.username || url.password) throw new Error(`npm pointed at ${url.origin}, which is not a plain https address`);
+  const response = await fetch(url, { signal: AbortSignal.timeout(60_000) });
   if (!response.ok) throw new Error(`could not download ${release.dist.tarball} (${response.status})`);
+  if (Number(response.headers.get("content-length") ?? 0) > MAX_BYTES) throw new Error(`the release is larger than ${MAX_BYTES} bytes`);
   const tarball = Buffer.from(await response.arrayBuffer());
+  if (tarball.length > MAX_BYTES) throw new Error(`the release is larger than ${MAX_BYTES} bytes`);
   verifyIntegrity(tarball, release.dist.integrity);
   return tarball;
 }
@@ -231,25 +249,29 @@ export async function update(options: { channel?: string; version?: string; from
   if (release.version === state.current) {
     if (options.auto) return `Well Actually ${release.version} is already installed.`;
     const written = withLock(() => {
-      writeRuntime({ ...readRuntime(), channel, pinned: pin });
+      const now = readRuntime();
+      if (now.current !== release.version) return false;
+      writeRuntime({ ...now, channel, pinned: pin });
       return true;
     });
     if (!written) return "Another install is running; try again in a moment.";
     return `Well Actually ${release.version} is already installed${pin ? " and pinned" : `, following ${channel}`}.`;
   }
-  const version = installTarball(await download(release), { pin, channel, auto: options.auto });
+  const version = installTarball(await download(release), { pin, channel, auto: options.auto, version: release.version });
   if (!version) return "Another install is running; try again in a moment.";
   return `Installed Well Actually ${version}${pin ? ", pinned: auto-update is paused until you run update --channel latest" : `, following ${channel}`}. New sessions use it.`;
 }
 
-/** The background auto-update, started at most once a day from SessionStart. Silent: a failure waits for the next day. */
-export async function autoUpdate(env = process.env): Promise<void> {
+/** The background auto-update, which the plugin's shim starts at most once a day. False when it failed, so the shim can retry with an older release. */
+export async function autoUpdate(env = process.env): Promise<boolean> {
   const state = readRuntime();
-  if (autoUpdateOff(env) || state.pinned) return;
+  if (autoUpdateOff(env) || state.pinned) return true;
   try {
     await update({ registry: env.WELLACTUALLY_NPM_REGISTRY || REGISTRY, auto: true });
+    return true;
   } catch (error) {
     // Offline or npm down: the current release keeps running. The reason goes to sync.log, where the background command writes.
     console.error(`auto-update failed: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
   }
 }

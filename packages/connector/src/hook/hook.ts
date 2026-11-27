@@ -56,7 +56,8 @@ export async function runHook(stdin: string, log?: HookLogEntry, frame: typeof f
       return "";
     }
     const update = updateNotice(agentOf(process.env));
-    if (update.stale) {
+    // In the frozen Claude Code and Codex plugin the shim starts the check, whatever this release does.
+    if (update.stale && !process.env.WELLACTUALLY_PLUGIN_ROOT) {
       startInBackground("check-update");
     }
     // The Codex app keeps one MCP server across chats, so its notice that the hooks need review outlives a trust given since; this hook running proves it stale.
@@ -311,11 +312,8 @@ export function startInBackground(command: "sync" | "report-detections" | "check
   // The file this process was started from: main.ts in a checkout, the single bundled file in the plugin.
   const entry = process.argv[1] as string;
   const main = path.basename(entry) === "wellactually-hook.mjs" ? path.join(path.dirname(entry), "wellactually.mjs") : entry;
-  // In the frozen plugin the update check goes through the shim, which falls back to an older release when this one breaks the updater.
-  const plugin = process.env.WELLACTUALLY_PLUGIN_ROOT;
-  const args = command === "check-update" && plugin ? [path.join(plugin, "shim.mjs"), command] : [main, command];
   const log = fs.openSync(path.join(ensureHome(), "sync.log"), "a");
-  const child = spawn(process.execPath, args, { detached: true, stdio: ["ignore", log, log] });
+  const child = spawn(process.execPath, [main, command], { detached: true, stdio: ["ignore", log, log] });
   child.unref();
 }
 

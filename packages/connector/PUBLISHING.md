@@ -102,11 +102,11 @@ The maintainer first completes release steps 1–4 below, including npm 2FA appr
 and artifact verification, but does not promote the public marketplace pins.
 Share the exact published version and these instructions with testers.
 
-Here, “before release to plugin users” means before **marketplace promotion**.
-The npm version is already public and is `latest`; anyone installing directly
-from npm receives it. Normal Claude/Codex marketplace installations stay on the
-previous exact pin. A staged but unapproved package cannot be installed this way.
-We do not maintain a `next` tag.
+Here, “before release to plugin users” means before `latest` moves to it.
+The npm version is already public under `next`; anyone asking for that exact
+version or tag receives it, and frozen plugins following the preview channel
+install it. Everyone else stays on `latest`. A staged but unapproved package
+cannot be installed this way.
 
 A tester needs Node/npm and the chosen host CLI, but no repository checkout or
 npm publishing credentials. Create a local marketplace with an exact npm source.

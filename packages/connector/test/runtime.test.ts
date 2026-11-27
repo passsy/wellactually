@@ -211,3 +211,58 @@ test("a second installer does not remove the lock of the one holding it", () => 
   expect(installTarball(release("1.1.0"))).toBeUndefined();
   expect(fs.readFileSync(lock, "utf8")).toBe("someone else");
 });
+
+test("the updater retries with the release before when the current one fails, and the shim without a command shows the help", () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  installTarball(release("1.1.0", "process.exitCode = 1;"));
+  expect(shim(root, "check-update")).toMatchObject({ version: "1.0.0", args: ["check-update"] });
+  installTarball(release("1.2.0"));
+  expect(shim(root)).toMatchObject({ version: "1.2.0", args: [] });
+});
+
+test("the first hook of the day starts the update check through the shim", async () => {
+  const root = plugin();
+  installTarball(release("1.0.0"));
+  fs.writeFileSync(path.join(runtimeDir(), "versions/1.0.0/dist/wellactually.mjs"), "import fs from 'node:fs'; if (process.argv[2] === 'check-update') fs.writeFileSync(process.env.WELLACTUALLY_HOME + '/ran', process.argv[1]);");
+  fs.writeFileSync(path.join(runtimeDir(), "versions/1.0.0/dist/wellactually-hook.mjs"), "");
+  execFileSync(process.execPath, [path.join(root, "shim.mjs"), "hook"], { env: process.env });
+  const ran = path.join(process.env.WELLACTUALLY_HOME as string, "ran");
+  for (let i = 0; i < 50 && !fs.existsSync(ran); i++) await new Promise(resolve => setTimeout(resolve, 100));
+  expect(fs.readFileSync(ran, "utf8")).toBe(path.join(runtimeDir(), "versions/1.0.0/dist/wellactually.mjs"));
+  fs.rmSync(ran);
+  execFileSync(process.execPath, [path.join(root, "shim.mjs"), "hook"], { env: process.env });
+  await new Promise(resolve => setTimeout(resolve, 500));
+  expect(fs.existsSync(ran)).toBe(false);
+});
+
+test("a release whose archive holds another version than npm announced, or that comes over plain http, is refused", async () => {
+  const tarball = release("2.0.0");
+  const integrity = `sha512-${crypto.createHash("sha512").update(tarball).digest("base64")}`;
+  const http = await import("node:http");
+  let announced = "2.0.1";
+  let host = "127.0.0.1";
+  const server = http.createServer((request, response) => {
+    const port = (server.address() as { port: number }).port;
+    if (request.url === "/wellactually/latest") response.end(JSON.stringify({ version: announced, dist: { tarball: `http://${host}:${port}/t.tgz`, integrity } }));
+    else if (request.url === "/t.tgz") response.end(tarball);
+    else response.writeHead(404).end();
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const registry = `http://127.0.0.1:${(server.address() as { port: number }).port}/wellactually`;
+    await expect(update({ registry })).rejects.toThrow(/npm announced 2.0.1, the archive holds 2.0.0/);
+    announced = "2.0.0";
+    host = "example.com";
+    await expect(update({ registry })).rejects.toThrow(/not a plain https address/);
+    expect(readRuntime()).toEqual({});
+  } finally {
+    server.close();
+  }
+});
+
+test("a background download does not undo a channel the user picked meanwhile", () => {
+  installTarball(release("1.0.0-next.1"), { channel: "next" });
+  expect(installTarball(release("1.0.0"), { auto: true, channel: "latest" })).toBeUndefined();
+  expect(readRuntime()).toMatchObject({ current: "1.0.0-next.1", channel: "next" });
+});
