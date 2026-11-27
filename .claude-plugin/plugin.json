@@ -12,7 +12,7 @@
         "WELLACTUALLY_REVIEW_HOST": "claude"
       },
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/shim.mjs",
+        "${CLAUDE_PLUGIN_ROOT}/dist/wellactually.mjs",
         "mcp"
       ]
     }

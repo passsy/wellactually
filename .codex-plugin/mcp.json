@@ -3,7 +3,7 @@
     "wellactually": {
       "command": "node",
       "args": [
-        "./shim.mjs",
+        "./dist/wellactually.mjs",
         "mcp"
       ],
       "cwd": ".",

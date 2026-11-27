@@ -90,10 +90,9 @@ try {
   const hook = read(path.join(installed, "hooks/hooks.json"));
   assert.equal(Object.keys(hook.hooks).length, 6);
   for (const entries of Object.values(hook.hooks)) for (const { hooks } of entries) for (const item of hooks) {
-    assert.equal(item.command, 'node "${CLAUDE_PLUGIN_ROOT}/shim.mjs" hook');
+    assert(item.command.includes("${CLAUDE_PLUGIN_ROOT}/dist/wellactually-hook.mjs"));
   }
-  // Hooks and the MCP server reach the runtime through the frozen shim.
-  run([path.join(installed, "shim.mjs"), "hook"], JSON.stringify({ hook_event_name: "SessionEnd", session_id: "packed", cwd: temp }));
+  run([path.join(installed, "dist/wellactually-hook.mjs")], JSON.stringify({ hook_event_name: "SessionEnd", session_id: "packed", cwd: temp }));
 
   for (const host of ["claude", "codex", "opencode"]) {
     let command;
