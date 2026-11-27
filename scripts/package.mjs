@@ -35,7 +35,8 @@ for (const name of fs.readdirSync(path.join(root, "skills"))) {
 }
 // Review-specific orchestration remains in the skill. Both native skill layouts
 // invoke one compiled helper, rather than carrying a copy of its runtime each.
-write("skills/review/scripts/review.mjs", 'import "../../../dist/review.mjs";\n');
+// The Claude Code and Codex skill runs the runtime the frozen plugin keeps up to date; OpenCode loads the npm package itself.
+write("skills/review/scripts/review.mjs", 'process.argv.splice(2, 0, "review");\nawait import("../../../shim.mjs");\n');
 syncSkills(stage);
 write("opencode/skills/wellactually-review/scripts/review.mjs", 'import "../../../../dist/review.mjs";\n');
 
@@ -49,7 +50,7 @@ write("README.md", fs.readFileSync(path.join(root, "README.md"), "utf8")
   .replaceAll("packages/detector-sdk/PUBLISHING.md", "https://github.com/passsy/wellactually/blob/main/packages/detector-sdk/PUBLISHING.md"));
 write("PUBLISHING.md", fs.readFileSync(path.join(root, "packages/connector/PUBLISHING.md"), "utf8")
   .replaceAll("../detector-sdk/PUBLISHING.md", "https://github.com/passsy/wellactually/blob/main/packages/detector-sdk/PUBLISHING.md"));
-for (const file of ["LICENSE", "hooks/hooks.json", ".codex-plugin/mcp.json"]) {
+for (const file of ["LICENSE", "hooks/hooks.json", ".codex-plugin/mcp.json", "shim.mjs"]) {
   write(file, fs.readFileSync(path.join(root, file)));
 }
 for (const file of [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"]) {
@@ -66,7 +67,7 @@ const manifest = {
   main: "./dist/opencode.mjs",
   exports: { ".": "./dist/opencode.mjs", "./server": "./dist/opencode.mjs", "./tui": "./dist/tui.mjs", "./pi": "./dist/pi.mjs" },
   pi: { extensions: ["./dist/pi.mjs"], skills: ["./opencode/skills"] },
-  files: ["dist/", "skills/", "opencode/skills/", "hooks/", ".claude-plugin/", ".codex-plugin/", "assets/", "PUBLISHING.md", "LICENSE", "README.md"],
+  files: ["dist/", "shim.mjs", "skills/", "opencode/skills/", "hooks/", ".claude-plugin/", ".codex-plugin/", "assets/", "PUBLISHING.md", "LICENSE", "README.md"],
   publishConfig: { access: "public" },
 };
 json("package.json", manifest);

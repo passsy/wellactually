@@ -12,6 +12,8 @@ import path from "node:path";
  */
 export interface HookLogEntry {
   time: string;
+  /** The Well Actually release that handled the hook. */
+  release?: string;
   hook: string;
   tool?: string;
   session?: string;

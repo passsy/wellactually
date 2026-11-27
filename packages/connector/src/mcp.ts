@@ -137,7 +137,8 @@ export async function serveMcp(): Promise<void> {
   const reporting = setInterval(() => { if (readConfig().stats && claimReport()) startInBackground("report-detections"); }, REVIEW_REPORT_MS);
   reporting.unref();
   // The plugin's folder, above dist/ where this server runs. Codex is named by the plugin's own .codex-plugin/mcp.json.
-  const pluginRoot = path.resolve(path.dirname(process.argv[1] ?? ""), "..");
+  // The frozen plugin names itself; a checkout or an npm install runs from dist/ below it.
+  const pluginRoot = process.env.WELLACTUALLY_PLUGIN_ROOT ?? path.resolve(path.dirname(process.argv[1] ?? ""), "..");
   const codex = process.env.WELLACTUALLY_REVIEW_HOST === "codex";
   if (codex) {
     noteCodexServer(pluginRoot, await askCodexHooksNeedReview());

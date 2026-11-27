@@ -40,6 +40,7 @@ import { startInBackground } from "./hook/hook.ts";
 import { handleHook } from "./hook/command.ts";
 import { writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
+import { autoUpdate, update } from "./runtime.ts";
 import { serveDesktop } from "../../review-inbox/serve/desktop.mts";
 import { main as findingsServer } from "../../review-inbox/serve/server.mts";
 import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
@@ -86,7 +87,11 @@ Integration
   wellactually desktop-mcp              Serve the read-only Desktop review connector
   wellactually mcp                      Serve the authoring commands as an MCP server
   wellactually update-notice --agent <opencode|opencode-1|pi> Print what to tell the user about a newer release
-  wellactually check-update             Look up the newest release on GitHub
+  wellactually check-update             Look up the newest release on npm
+  wellactually update                   Install the newest release of the followed channel for Claude Code and Codex
+        --channel <tag>          ... and follow this npm dist-tag from now on, such as next for previews
+        --version <version>      ... install exactly this release and pause auto-update
+        --from <file.tgz>        ... install a local package from npm run package and pause auto-update
 
 Every authoring command takes --json.
 
@@ -112,6 +117,9 @@ async function main(): Promise<number> {
       registry: { type: "string" },
       global: { type: "boolean", default: false },
       agent: { type: "string" },
+      channel: { type: "string" },
+      version: { type: "string" },
+      from: { type: "string" },
     },
   });
   const print = (data: unknown, rendered: string): void => {
@@ -281,6 +289,13 @@ async function main(): Promise<number> {
     case "check-update":
       // Started in the background at session start, at most once a day.
       console.log(`The newest release is ${(await checkForUpdate()) ?? "unknown"}.`);
+      // Run from the frozen Claude Code or Codex plugin, which takes new releases from npm itself.
+      if (process.env.WELLACTUALLY_PLUGIN_ROOT) {
+        await autoUpdate();
+      }
+      return 0;
+    case "update":
+      console.log(await update({ channel: values.channel, version: values.version, from: values.from && path.resolve(values.from) }));
       return 0;
     case "update-notice": {
       // The OpenCode and pi plugins show this where their agent shows notices.
