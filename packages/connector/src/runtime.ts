@@ -5,7 +5,7 @@ import path from "node:path";
 import { boardHome } from "../../board/src/board.ts";
 
 /**
- * The Well Actually runtime the Claude Code, Codex, OpenCode and pi plugins run.
+ * The Well Actually runtime the Claude Code and Codex plugins run.
  *
  * The plugins are frozen shells: their hooks and MCP server run `shim.mjs`,
  * which never changes, so Codex keeps the approval it pins to a hash of the
@@ -29,13 +29,6 @@ export const REGISTRY = "https://registry.npmjs.org/wellactually";
 /** A release stays this long after it stops being current or previous: a session started on it may still load files from it. */
 const KEEP_MS = 14 * 24 * 60 * 60 * 1000;
 const LOCK_STALE_MS = 10 * 60 * 1000;
-/** A release folder name, as the shim accepts it: semver, so no name can point outside versions/. */
-const VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?$/;
-
-/** Whether a release folder holds the files the shim starts, so a deleted or damaged one is installed again. */
-function complete(root: string): boolean {
-  return ["dist/wellactually.mjs", "dist/wellactually-hook.mjs"].every((entry) => fs.statSync(path.join(root, entry), { throwIfNoEntry: false })?.isFile());
-}
 
 export function runtimeDir(): string {
   return path.join(boardHome(), "runtime");
@@ -73,9 +66,7 @@ function withLock<T>(run: () => T): T | undefined {
   const lock = path.join(runtimeDir(), "install.lock");
   const token = `${process.pid}.${crypto.randomUUID()}`;
   try {
-    // A lock from the future, left by a clock that ran ahead, is as stale as an old one.
-    const age = Date.now() - fs.statSync(lock).mtimeMs;
-    if (age > LOCK_STALE_MS || age < -60_000) {
+    if (Date.now() - fs.statSync(lock).mtimeMs > LOCK_STALE_MS) {
       // Renaming takes the stale lock for one process only; the others find it gone and skip.
       const taken = `${lock}.${token}`;
       fs.renameSync(lock, taken);
@@ -107,11 +98,11 @@ export function verifyIntegrity(tarball: Buffer, integrity: string): void {
 
 /** Lists the archive before unpacking it: only plain files and folders inside `package/`, so it cannot write outside the staging folder or link to anything. */
 function checkArchive(dir: string, file: string): void {
-  for (const name of execFileSync("tar", ["-tzf", file], { cwd: dir, encoding: "utf8", windowsHide: true }).split(/\r?\n/).filter(Boolean)) {
+  for (const name of execFileSync("tar", ["-tzf", file], { cwd: dir, encoding: "utf8" }).split(/\r?\n/).filter(Boolean)) {
     const parts = name.replace(/\\/g, "/").split("/");
     if (parts[0] !== "package" || parts.includes("..") || path.isAbsolute(name)) throw new Error(`the release archive holds ${name}, outside its package folder`);
   }
-  for (const line of execFileSync("tar", ["-tvzf", file], { cwd: dir, encoding: "utf8", windowsHide: true }).split(/\r?\n/).filter(Boolean)) {
+  for (const line of execFileSync("tar", ["-tvzf", file], { cwd: dir, encoding: "utf8" }).split(/\r?\n/).filter(Boolean)) {
     if (line[0] !== "-" && line[0] !== "d") throw new Error(`the release archive holds a link or special file: ${line}`);
   }
 }
@@ -133,11 +124,11 @@ function nodeTooOld(engines: string | undefined, version = process.versions.node
  * makes it current. Returns the version, or undefined when another process
  * holds the install lock, or when `auto` and the user pinned a release meanwhile.
  */
-export function installTarball(tarball: Buffer, { pin = false, channel, auto = false, version, resolvedFrom }: { pin?: boolean; channel?: string; auto?: boolean; version?: string; resolvedFrom?: string } = {}): string | undefined {
+export function installTarball(tarball: Buffer, { pin = false, channel, auto = false, version }: { pin?: boolean; channel?: string; auto?: boolean; version?: string } = {}): string | undefined {
   return withLock(() => {
-    // Read under the lock: a pin, a channel or another install that happened while this download ran wins over it.
+    // Read under the lock: a pin or channel the user set while this download ran wins over it.
     const state = readRuntime();
-    if (auto && (state.pinned || (state.channel ?? "latest") !== (channel ?? "latest") || state.current !== resolvedFrom)) return undefined;
+    if (auto && (state.pinned || (state.channel ?? "latest") !== (channel ?? "latest"))) return undefined;
     const versions = path.join(runtimeDir(), "versions");
     fs.mkdirSync(versions, { recursive: true });
     const staging = fs.mkdtempSync(path.join(versions, ".staging-"));
@@ -145,10 +136,10 @@ export function installTarball(tarball: Buffer, { pin = false, channel, auto = f
       // tar runs in the staging folder on a relative name: a Windows drive letter reads as a remote host to GNU tar.
       fs.writeFileSync(path.join(staging, "release.tgz"), tarball);
       checkArchive(staging, "release.tgz");
-      execFileSync("tar", ["-xzf", "release.tgz"], { cwd: staging, stdio: "ignore", windowsHide: true });
+      execFileSync("tar", ["-xzf", "release.tgz"], { cwd: staging, stdio: "ignore" });
       const unpacked = path.join(staging, "package");
       const manifest = JSON.parse(fs.readFileSync(path.join(unpacked, "package.json"), "utf8")) as { name?: string; version?: string; engines?: { node?: string } };
-      if (manifest.name !== "wellactually" || !manifest.version || !VERSION.test(manifest.version)) throw new Error("this is not a wellactually release");
+      if (manifest.name !== "wellactually" || !manifest.version || !/^[0-9A-Za-z.+-]+$/.test(manifest.version)) throw new Error("this is not a wellactually release");
       for (const entry of ["dist/wellactually.mjs", "dist/wellactually-hook.mjs", "shim.mjs"]) {
         // A release without the shim predates this runtime: it cannot update itself, so the install would be stuck on it.
         if (!fs.statSync(path.join(unpacked, entry), { throwIfNoEntry: false })?.isFile()) throw new Error(`${manifest.version} cannot run as the plugin's runtime: it lacks ${entry}`);
@@ -164,7 +155,7 @@ export function installTarball(tarball: Buffer, { pin = false, channel, auto = f
       } catch {}
       // The same bytes stay where they are, since running sessions may be loading files from them.
       // Other bytes under the same version, a local rebuild or a damaged folder, replace them; the old folder waits for prune.
-      if (installed !== digest || !complete(target)) {
+      if (installed !== digest) {
         if (fs.existsSync(target)) {
           const old = path.join(versions, `.old-${manifest.version}-${crypto.randomUUID()}`);
           fs.renameSync(target, old);
@@ -190,9 +181,7 @@ export function installTarball(tarball: Buffer, { pin = false, channel, auto = f
       prune();
       return manifest.version;
     } finally {
-      try {
-        fs.rmSync(staging, { recursive: true, force: true });
-      } catch {}
+      fs.rmSync(staging, { recursive: true, force: true });
     }
   });
 }
@@ -219,7 +208,7 @@ interface Release {
 
 /** The release a dist-tag or an exact version names on npm. */
 export async function resolveRelease(tagOrVersion: string, registry = process.env.WELLACTUALLY_NPM_REGISTRY || REGISTRY): Promise<Release> {
-  const response = await fetch(`${registry.replace(/\/+$/, "")}/${encodeURIComponent(tagOrVersion)}`, { signal: AbortSignal.timeout(10_000) });
+  const response = await fetch(`${registry}/${encodeURIComponent(tagOrVersion)}`, { signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`npm has no wellactually release ${tagOrVersion} (${response.status})`);
   const release = (await response.json()) as Release;
   if (typeof release.version !== "string" || typeof release.dist?.tarball !== "string" || typeof release.dist?.integrity !== "string") {
@@ -230,30 +219,15 @@ export async function resolveRelease(tagOrVersion: string, registry = process.en
 
 const MAX_BYTES = 100 * 1024 * 1024;
 
-/** Downloads a release over plain https, checked at every redirect, within MAX_BYTES; http only from a loopback registry, as in tests. */
-async function download(release: Release, registry: string): Promise<Buffer> {
-  const localRegistry = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(`${registry}/`);
-  let url = new URL(release.dist.tarball);
-  let response: Response;
-  for (let hop = 0; ; hop++) {
-    const loopback = url.hostname === "127.0.0.1" || url.hostname === "localhost";
-    if ((url.protocol !== "https:" && !(localRegistry && loopback && url.protocol === "http:")) || url.username || url.password) throw new Error(`npm pointed at ${url.origin}, which is not a plain https address`);
-    response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(60_000) });
-    const location = response.headers.get("location");
-    if (response.status < 300 || response.status >= 400 || !location) break;
-    if (hop === 5) throw new Error(`${release.dist.tarball} redirects more than five times`);
-    url = new URL(location, url);
-  }
+async function download(release: Release): Promise<Buffer> {
+  const url = new URL(release.dist.tarball);
+  const loopback = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  if ((url.protocol !== "https:" && !(loopback && url.protocol === "http:")) || url.username || url.password) throw new Error(`npm pointed at ${url.origin}, which is not a plain https address`);
+  const response = await fetch(url, { signal: AbortSignal.timeout(60_000) });
   if (!response.ok) throw new Error(`could not download ${release.dist.tarball} (${response.status})`);
   if (Number(response.headers.get("content-length") ?? 0) > MAX_BYTES) throw new Error(`the release is larger than ${MAX_BYTES} bytes`);
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of response.body ?? []) {
-    size += chunk.length;
-    if (size > MAX_BYTES) throw new Error(`the release is larger than ${MAX_BYTES} bytes`);
-    chunks.push(Buffer.from(chunk));
-  }
-  const tarball = Buffer.concat(chunks);
+  const tarball = Buffer.from(await response.arrayBuffer());
+  if (tarball.length > MAX_BYTES) throw new Error(`the release is larger than ${MAX_BYTES} bytes`);
   verifyIntegrity(tarball, release.dist.integrity);
   return tarball;
 }
@@ -272,7 +246,7 @@ export async function update(options: { channel?: string; version?: string; from
   const channel = options.channel ?? state.channel ?? "latest";
   const release = await resolveRelease(options.version ?? channel, options.registry);
   const pin = Boolean(options.version);
-  if (release.version === state.current && complete(path.join(runtimeDir(), "versions", release.version))) {
+  if (release.version === state.current) {
     if (options.auto) return `Well Actually ${release.version} is already installed.`;
     const written = withLock(() => {
       const now = readRuntime();
@@ -283,7 +257,7 @@ export async function update(options: { channel?: string; version?: string; from
     if (!written) return "Another install is running; try again in a moment.";
     return `Well Actually ${release.version} is already installed${pin ? " and pinned" : `, following ${channel}`}.`;
   }
-  const version = installTarball(await download(release, options.registry ?? (process.env.WELLACTUALLY_NPM_REGISTRY || REGISTRY)), { pin, channel, auto: options.auto, version: release.version, resolvedFrom: state.current });
+  const version = installTarball(await download(release), { pin, channel, auto: options.auto, version: release.version });
   if (!version) return "Another install is running; try again in a moment.";
   return `Installed Well Actually ${version}${pin ? ", pinned: auto-update is paused until you run update --channel latest" : `, following ${channel}`}. New sessions use it.`;
 }

@@ -64,16 +64,10 @@ export function pluginRoot(): string {
 }
 
 /**
- * How to start the command: the shim beside the plugin, which runs the
- * self-updating runtime as in Claude Code and Codex, the bundled file of an
- * older package without one, or the `wellactually` on the PATH when the
- * plugin runs from a checkout.
+ * How to start the command: the bundled file beside the plugin, or the
+ * `wellactually` on the PATH when the plugin runs from a checkout.
  */
 export function command(root = pluginRoot()): { file: string; args: string[] } {
-  const shim = path.join(root, "shim.mjs");
-  if (fs.existsSync(shim)) {
-    return { file: "node", args: [shim] };
-  }
   const bundled = path.join(root, "dist", "wellactually.mjs");
   return fs.existsSync(bundled) ? { file: "node", args: [bundled] } : { file: "wellactually", args: [] };
 }

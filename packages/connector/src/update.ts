@@ -35,9 +35,9 @@ export function agentOf(env: NodeJS.ProcessEnv): Agent {
 
 /** How a user of each agent gets the new release. `folder` is where the plugin is, which OpenCode 1 users pull in. */
 export function howToUpdate(agent: Agent, folder = ""): string {
-  // Every plugin runs its hooks through the shim, whose runtime updates from npm, not from the agent's plugin manager.
+  // The frozen Claude Code and Codex plugins run a runtime that updates from npm, not from their marketplace.
   const plugin = process.env.WELLACTUALLY_PLUGIN_ROOT;
-  if (plugin) {
+  if (plugin && (agent === "codex" || agent === "claude-code")) {
     return `run \`node "${path.join(plugin, "shim.mjs")}" update\` and start a new session`;
   }
   if (agent === "codex") {
