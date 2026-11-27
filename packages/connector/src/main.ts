@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
@@ -41,6 +42,7 @@ import { handleHook } from "./hook/command.ts";
 import { writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
 import { install } from "./install.ts";
+import { codexHome, removeCodexHooks } from "./codex-user-hooks.ts";
 import { serveDesktop } from "../../review-inbox/serve/desktop.mts";
 import { main as findingsServer } from "../../review-inbox/serve/server.mts";
 import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
@@ -70,6 +72,7 @@ Authoring
 
 Your advisory board
   wellactually install                  Add the plugin to Claude Code, Codex, OpenCode and pi, then sign in
+  wellactually uninstall                Take the Well Actually hooks out of ~/.codex/hooks.json
   wellactually login [--registry <url>] Sign in through the browser
   wellactually logout
   wellactually whoami
@@ -290,6 +293,16 @@ async function main(): Promise<number> {
       if (named(["failed"])) console.error(`Could not install for ${named(["failed"])}; the output above says why.`);
       for (const { host } of ready) if (host.then) console.log(`Last step in ${host.name}: ${host.then}.`);
       return ready.length === 0 || named(["failed"]) ? 1 : 0;
+    }
+    case "uninstall": {
+      // The plugins come out through each agent; only the Codex hooks live outside one.
+      if (fs.existsSync(path.join(codexHome(), "plugins", "cache", "wellactually", "wellactually"))) {
+        console.log("Codex still has the plugin, whose MCP server adds the hooks again. Run `codex plugin remove wellactually@wellactually` first.");
+      }
+      const { changed, file } = removeCodexHooks();
+      console.log(changed ? `Removed the Well Actually hooks from ${file}.` : `${file} holds no Well Actually hooks.`);
+      console.log("Remove the plugin itself in each agent: `claude plugin uninstall wellactually@wellactually`, `codex plugin remove wellactually@wellactually`, `opencode plugin remove wellactually`, `pi remove npm:wellactually`.");
+      return 0;
     }
     case "login": {
       if (values.registry) {

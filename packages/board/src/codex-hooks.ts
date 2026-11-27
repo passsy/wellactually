@@ -179,7 +179,8 @@ export async function askCodexHooksNeedReview(cwd = process.cwd(), codex = paren
           send({ id: 2, method: "hooks/list", params: { cwds: [cwd] } });
         } else if (message.id === 2) {
           const ours = (message.result?.data ?? []).flatMap(entry => entry.hooks ?? []).filter(hook => (hook.pluginId?.startsWith("wellactually@") || hook.command?.includes("codex-hook.mjs")) && hook.enabled);
-          done(message.result ? ours.some(hook => hook.trustStatus === "untrusted" || hook.trustStatus === "modified") : undefined);
+          // None of ours means none run, as much as an untrusted one: the hooks were never added, or another tool removed them.
+          done(message.result ? ours.length === 0 || ours.some(hook => hook.trustStatus === "untrusted" || hook.trustStatus === "modified") : undefined);
         }
       }
     });

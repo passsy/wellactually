@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import template from "../../../hooks/hooks.json" with { type: "json" };
-import { desiredGroups, ensureCodexHooks, hookCommand, installedByCodex, LAUNCHER, launcherPath } from "../src/codex-user-hooks.ts";
+import { desiredGroups, ensureCodexHooks, hookCommand, installedByCodex, LAUNCHER, launcherPath, reconcile, removeCodexHooks } from "../src/codex-user-hooks.ts";
 
 let work: string;
 let env: NodeJS.ProcessEnv;
@@ -43,7 +43,7 @@ test("leaves other tools' hooks where they are, and changes nothing on a second 
   expect(fs.readFileSync(hooksFile(), "utf8")).toBe(first);
 });
 
-test("replaces an entry of ours the plugin no longer has, keeping the rest in place", () => {
+test("changes an entry of ours where it stands and drops one the plugin no longer has", () => {
   const command = hookCommand(launcherPath(home));
   const stale = { matcher: "Old", hooks: [{ type: "command", command, timeout: 1 }] };
   const other = { hooks: [{ type: "command", command: "other", timeout: 3 }] };
@@ -52,7 +52,7 @@ test("replaces an entry of ours the plugin no longer has, keeping the rest in pl
   ensureCodexHooks(env, home);
   const hooks = readHooks().hooks;
   expect(hooks.Removed).toBeUndefined();
-  expect(hooks.PreToolUse).toEqual([other, ...desiredGroups(command).PreToolUse!]);
+  expect(hooks.PreToolUse).toEqual([...desiredGroups(command).PreToolUse!, other]);
 });
 
 test("refuses to touch a hooks.json it cannot read as an object", () => {
@@ -117,4 +117,99 @@ test("the launcher leaves an older release that brings its own Codex hooks to th
   fs.mkdirSync(path.join(base, "0.13.2", "hooks"));
   fs.writeFileSync(path.join(base, "0.13.2", "hooks", "hooks.json"), "{}");
   expect(launch()).toBe("");
+});
+
+test("a shared group stays as it is, ours change in place, and nothing after them moves", () => {
+  const command = hookCommand(launcherPath(home));
+  const other = { hooks: [{ type: "command", command: "other", timeout: 3 }] };
+  const later = { hooks: [{ type: "command", command: "later", timeout: 3 }] };
+  const stale = { matcher: "Bash", hooks: [{ type: "command", command, timeout: 1 }] };
+  const sharedGroup = { hooks: [{ type: "command", command, timeout: 1 }, { type: "command", command: "neighbour" }] };
+  const want = desiredGroups(command);
+  const result = reconcile({ PreToolUse: [other, stale, later], SessionStart: [sharedGroup, later] }, want);
+  expect(result.PreToolUse).toEqual([other, want.PreToolUse![0], later]);
+  expect(result.SessionStart).toEqual([sharedGroup, later]);
+});
+
+test("entries written under another WELLACTUALLY_HOME are replaced in place, not doubled", () => {
+  ensureCodexHooks(env, path.join(work, "old-home"));
+  ensureCodexHooks(env, home);
+  const hooks = readHooks().hooks;
+  for (const groups of Object.values(hooks) as { hooks: { command: string }[] }[][]) {
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.hooks[0]!.command).toBe(hookCommand(launcherPath(home)));
+  }
+});
+
+test("a hooks.json that cannot be read, or holds the wrong shape, is left untouched", () => {
+  fs.mkdirSync(path.dirname(hooksFile()), { recursive: true });
+  fs.writeFileSync(hooksFile(), JSON.stringify({ hooks: { Stop: "not a list" } }));
+  expect(() => ensureCodexHooks(env, home)).toThrow(/form Codex reads/);
+  if (process.getuid?.() !== 0) {
+    fs.writeFileSync(hooksFile(), JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "keep" }] }] } }));
+    fs.chmodSync(hooksFile(), 0o000);
+    expect(() => ensureCodexHooks(env, home)).toThrow();
+    fs.chmodSync(hooksFile(), 0o644);
+    expect(readHooks().hooks.Stop).toHaveLength(1);
+    expect(readHooks().hooks.PreToolUse).toBeUndefined();
+  }
+});
+
+test("a symlinked hooks.json keeps its link and its mode", () => {
+  const real = path.join(work, "dotfiles", "hooks.json");
+  fs.mkdirSync(path.dirname(real), { recursive: true });
+  fs.writeFileSync(real, "{}", { mode: 0o600 });
+  fs.mkdirSync(path.dirname(hooksFile()), { recursive: true });
+  fs.symlinkSync(real, hooksFile());
+  ensureCodexHooks(env, home);
+  expect(fs.lstatSync(hooksFile()).isSymbolicLink()).toBe(true);
+  expect(fs.statSync(real).mode & 0o777).toBe(0o600);
+  expect(Object.keys(JSON.parse(fs.readFileSync(real, "utf8")).hooks)).toContain("PreToolUse");
+});
+
+test("uninstall takes out only our entries and the launcher", () => {
+  fs.mkdirSync(path.dirname(hooksFile()), { recursive: true });
+  const other = { hooks: [{ type: "command", command: "other", timeout: 3 }] };
+  fs.writeFileSync(hooksFile(), JSON.stringify({ hooks: { PreToolUse: [other] } }));
+  ensureCodexHooks(env, home);
+  expect(removeCodexHooks(env, home).changed).toBe(true);
+  expect(readHooks()).toEqual({ hooks: { PreToolUse: [other] } });
+  expect(fs.existsSync(launcherPath(home))).toBe(false);
+});
+
+test("the command quotes the path for the shell Codex runs it in", () => {
+  expect(hookCommand("/home/a$b/x/codex-hook.mjs", "linux")).toBe("node '/home/a$b/x/codex-hook.mjs'");
+  expect(hookCommand("/home/o'neil/codex-hook.mjs", "darwin")).toBe(`node '/home/o'\\''neil/codex-hook.mjs'`);
+  expect(hookCommand("C:\\Users\\Ann Lee\\.wellactually\\codex-hook.mjs", "win32")).toBe('node "C:\\Users\\Ann Lee\\.wellactually\\codex-hook.mjs"');
+  const dollar = path.join(work, "a$b");
+  ensureCodexHooks(env, dollar);
+  cache(["1.0.0"]);
+  const command = readHooks().hooks.SessionStart[0].hooks[0].command;
+  expect(JSON.parse(execFileSync("/bin/sh", ["-lc", command], { env: { ...process.env, ...env }, input: "{}", encoding: "utf8" })).version).toBe("1.0.0");
+});
+
+test("the launcher orders versions as Codex does, build metadata included", () => {
+  cache(["1.0.0", "1.0.0+1"]);
+  expect(JSON.parse(launch()).version).toBe("1.0.0+1");
+  cache(["1.0.0+1.2", "1.0.0-rc.10", "1.0.0-rc.9"]);
+  expect(JSON.parse(launch()).version).toBe("1.0.0+1.2");
+});
+
+test("the launcher does nothing when Codex has plugins off, however config.toml spells it", () => {
+  cache(["1.0.0"]);
+  const config = path.join(work, "codex", "config.toml");
+  for (const off of ["[features]\nplugins = false\n", "features.plugins = false\n", "[plugins.'wellactually@wellactually']\nenabled = false # off\n", 'plugins."wellactually@wellactually".enabled = false\n']) {
+    fs.writeFileSync(config, off);
+    expect(launch()).toBe("");
+  }
+  fs.writeFileSync(config, "[features]\nplugins = true\n");
+  expect(JSON.parse(launch()).version).toBe("1.0.0");
+});
+
+test("the launcher runs only a version that opted in with an empty hooks list", () => {
+  const base = cache(["1.0.0"]);
+  for (const manifest of ["{ broken", JSON.stringify({ name: "wellactually" }), JSON.stringify({ hooks: "./hooks/hooks.json" })]) {
+    fs.writeFileSync(path.join(base, "1.0.0", ".codex-plugin", "plugin.json"), manifest);
+    expect(launch()).toBe("");
+  }
 });

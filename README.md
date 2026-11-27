@@ -69,6 +69,7 @@ The Codex plugin brings no hooks of its own: Codex would ask again after every u
 Instead, when Codex first starts the plugin, it adds its hooks to your `~/.codex/hooks.json`, next to any others, and Codex keeps the trust of those across updates.
 Each runs `~/.wellactually/codex-hook.mjs`, which starts the hook of the plugin version Codex has installed, and does nothing while the plugin is switched off or removed.
 Until you trust them, the Review Inbox shows a banner and the agent is asked to tell you.
+To remove it, run `codex plugin remove wellactually@wellactually` and then `npx wellactually@latest uninstall`, which takes our entries out of `~/.codex/hooks.json` and leaves the others.
 
 OpenCode:
 
