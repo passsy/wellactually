@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { parseArgs } from "node:util";
@@ -40,11 +41,11 @@ import { startInBackground } from "./hook/hook.ts";
 import { handleHook } from "./hook/command.ts";
 import { writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
-import { autoUpdate, update } from "./runtime.ts";
 import { install } from "./install.ts";
+import { codexHome, removeCodexHooks } from "./codex-user-hooks.ts";
 import { serveDesktop } from "../../review-inbox/serve/desktop.mts";
 import { main as findingsServer } from "../../review-inbox/serve/server.mts";
-import { type Agent, checkForUpdate, updateCheckOff, updateNotice } from "./update.ts";
+import { type Agent, checkForUpdate, updateNotice } from "./update.ts";
 import { finishDeviceLogin, logout, RegistryError, reportDetections, startDeviceLogin, sync, whoami, type DraftResult } from "../../board/src/registry/client.ts";
 
 const HELP = `wellactually: author principles and run your advisory board
@@ -71,6 +72,7 @@ Authoring
 
 Your advisory board
   wellactually install                  Add the plugin to Claude Code, Codex, OpenCode and pi, then sign in
+  wellactually uninstall                Take the Well Actually hooks out of ~/.codex/hooks.json
   wellactually login [--registry <url>] Sign in through the browser
   wellactually logout
   wellactually whoami
@@ -89,11 +91,7 @@ Integration
   wellactually desktop-mcp              Serve the read-only Desktop review connector
   wellactually mcp                      Serve the authoring commands as an MCP server
   wellactually update-notice --agent <opencode|opencode-1|pi> Print what to tell the user about a newer release
-  wellactually check-update             Look up the newest release on npm
-  wellactually update                   Install the newest release of the followed channel for the plugins
-        --channel <tag>          ... and follow this npm dist-tag from now on, such as next for previews
-        --version <version>      ... install exactly this release and pause auto-update
-        --from <file.tgz>        ... install a local package from npm run package and pause auto-update
+  wellactually check-update             Look up the newest release on GitHub
 
 Every authoring command takes --json.
 
@@ -134,9 +132,6 @@ async function main(): Promise<number> {
       registry: { type: "string" },
       global: { type: "boolean", default: false },
       agent: { type: "string" },
-      channel: { type: "string" },
-      version: { type: "string" },
-      from: { type: "string" },
     },
   });
   const print = (data: unknown, rendered: string): void => {
@@ -290,14 +285,24 @@ async function main(): Promise<number> {
       console.log("");
       if (named(["installed"])) console.log(`Installed for ${named(["installed"])}.`);
       if (named(["updated"])) console.log(`Updated for ${named(["updated"])}.`);
-      if (named(["present"])) console.log(`Already installed for ${named(["present"])}; it updates itself.`);
+      if (named(["present"])) console.log(`Already installed for ${named(["present"])}; \`opencode plugin update wellactually\` updates it.`);
       for (const { host, outcome } of results) {
-        if (outcome.status === "pinned") console.log(`${host.name} keeps ${outcome.entry}, pinned in ${outcome.file}; its runtime still updates itself.`);
+        if (outcome.status === "pinned") console.log(`${host.name} keeps ${outcome.entry}, pinned in ${outcome.file}; remove the pin there to get new releases.`);
       }
       if (named(["missing"])) console.log(`Not found on this machine: ${named(["missing"])}.`);
       if (named(["failed"])) console.error(`Could not install for ${named(["failed"])}; the output above says why.`);
       for (const { host } of ready) if (host.then) console.log(`Last step in ${host.name}: ${host.then}.`);
       return ready.length === 0 || named(["failed"]) ? 1 : 0;
+    }
+    case "uninstall": {
+      // The plugins come out through each agent; only the Codex hooks live outside one.
+      if (fs.existsSync(path.join(codexHome(), "plugins", "cache", "wellactually", "wellactually"))) {
+        console.log("Codex still has the plugin, whose MCP server adds the hooks again. Run `codex plugin remove wellactually@wellactually` first.");
+      }
+      const { changed, file } = removeCodexHooks();
+      console.log(changed ? `Removed the Well Actually hooks from ${file}.` : `${file} holds no Well Actually hooks.`);
+      console.log("Remove the plugin itself in each agent: `claude plugin uninstall wellactually@wellactually`, `codex plugin remove wellactually@wellactually`, `opencode plugin remove wellactually`, `pi remove npm:wellactually`.");
+      return 0;
     }
     case "login": {
       if (values.registry) {
@@ -320,15 +325,7 @@ async function main(): Promise<number> {
     }
     case "check-update":
       // Started in the background at session start, at most once a day.
-      if (updateCheckOff(process.env)) return 0;
       console.log(`The newest release is ${(await checkForUpdate()) ?? "unknown"}.`);
-      // Run from the frozen Claude Code or Codex plugin, which takes new releases from npm itself.
-      if (process.env.WELLACTUALLY_PLUGIN_ROOT && !(await autoUpdate())) {
-        return 1;
-      }
-      return 0;
-    case "update":
-      console.log(await update({ channel: values.channel, version: values.version, from: values.from && path.resolve(values.from) }));
       return 0;
     case "update-notice": {
       // The OpenCode and pi plugins show this where their agent shows notices.
@@ -339,8 +336,7 @@ async function main(): Promise<number> {
       }
       // The plugin's folder, above dist/ where this command is, which an OpenCode 1 user pulls in.
       const update = updateNotice(agent satisfies Agent, undefined, undefined, path.resolve(path.dirname(process.argv[1] as string), ".."));
-      // Under the shim the shim starts the check, as for Claude Code and Codex.
-      if (update.stale && !process.env.WELLACTUALLY_PLUGIN_ROOT) {
+      if (update.stale) {
         startInBackground("check-update");
       }
       if (update.text) {
@@ -464,9 +460,8 @@ async function readStdin(): Promise<string> {
 }
 
 // The hook starts this same file again as worker threads, to run detectors in parallel.
-// Awaited, so that the plugin's shim sees the exit code and can retry a failed update with an older release.
 if (isMainThread) {
-  await main().then(
+  main().then(
     (code) => {
       process.exitCode = code;
     },

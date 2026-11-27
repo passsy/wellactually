@@ -102,11 +102,11 @@ The maintainer first completes release steps 1–4 below, including npm 2FA appr
 and artifact verification, but does not promote the public marketplace pins.
 Share the exact published version and these instructions with testers.
 
-Here, “before release to plugin users” means before `latest` moves to it.
-The npm version is already public under `next`; anyone asking for that exact
-version or tag receives it, and frozen plugins following the preview channel
-install it. Everyone else stays on `latest`. A staged but unapproved package
-cannot be installed this way.
+Here, “before release to plugin users” means before **marketplace promotion**.
+The npm version is already public and is `latest`; anyone installing directly
+from npm receives it. Normal Claude/Codex marketplace installations stay on the
+previous exact pin. A staged but unapproved package cannot be installed this way.
+We do not maintain a `next` tag.
 
 A tester needs Node/npm and the chosen host CLI, but no repository checkout or
 npm publishing credentials. Create a local marketplace with an exact npm source.
@@ -233,22 +233,22 @@ and stages it with provenance using GitHub OIDC. It does not install dependencie
 or execute the package. Only that job has `id-token: write`. Releases run serially.
 
 A passing stage job means **awaiting approval**, not published. Its summary and
-`wellactually-stage` artifact contain the stage ID and expected integrity. The
-plugin package is staged under `next`; the detector SDK under `latest`.
+`wellactually-stage` artifact contain the stage ID and expected integrity. All
+versions, including RCs, are staged under `latest`. No tag synchronization or
+second npm tag approval is needed.
 
 ### 3. Review and approve on npm
 
 Open your npm account settings and choose **Staged Packages**.
 Do not rely on an approval-request email. Check the package, version, publisher,
-`next` tag and archive against the successful Actions run. You can inspect and
+`latest` tag and archive against the successful Actions run. You can inspect and
 download it with `npm stage view <stage-id>` and `npm stage download <stage-id>`;
 compare SHA-512 with the Actions `pack.json` before approval.
 
 Click **Approve** on npm and complete 2FA, or run `npm stage approve <stage-id>`
 and complete its interactive authentication. Approval publishes the archive and
-moves `next`. Installs that follow the preview channel
-(`shim.mjs update --channel next`) receive it on their next daily check; nobody
-else does yet.
+moves `latest`, selecting the default npm package page/README. Direct npm
+consumers also receive it. The public marketplace pins remain unchanged.
 
 A rejected candidate must be corrected and staged under a new version. If an
 upload fails, inspect any existing pending stage instead of blindly uploading
@@ -285,22 +285,8 @@ replacing its bytes. Existing plugin users stay on the previous pin.
 
 ### 5. Promote the verified version to plugin users
 
-Claude Code and Codex plugins are frozen shells: `shim.mjs` runs the runtime
-in `~/.wellactually/runtime`, which installs the newest `latest` release once a
-day. OpenCode and pi run their hooks through the same shim. Moving `latest` is
-therefore the rollout to every plugin user and to direct npm installs. A second
-updater in `shim.mjs` installs the tag's release itself when the runtime's own
-updater has not done so after two days, so a release with a broken updater
-still gets replaced:
-
-```sh
-npm dist-tag add wellactually@<published-version> latest
-```
-
-Change the catalog pins only when the plugin shell itself changes (`shim.mjs`,
-`hooks/hooks.json`, the manifests or the skills): every such change costs Codex
-users one more `/hooks` approval. In that case, on a fresh branch from current
-`main`, run:
+When satisfied with local and optional external testing, explicitly start
+promotion. On a fresh branch from current `main`, run:
 
 ```sh
 node scripts/version.mjs <published-version>
@@ -322,9 +308,14 @@ disabled; use the browser inbox there. Posting findings to a PR is a separate
 explicit action. Verify natural fixed-event delivery after its grace/throttle
 rather than fabricating a fix.
 
-Codex requires a `/hooks` review after a catalog pin change because it fingerprints
-the installed plugin. Do not write trust hashes programmatically. Review stores
-and credentials remain outside plugin caches.
+The Codex plugin declares no hooks of its own (`"hooks": {"hooks": {}}` in
+`.codex-plugin/plugin.json`), since Codex fingerprints a plugin folder and would
+ask for a new `/hooks` review after every update. Its MCP server adds the hooks
+to the user's `~/.codex/hooks.json` instead, running `~/.wellactually/codex-hook.mjs`,
+whose trust survives updates. Changing an entry, such as a matcher in
+`hooks/hooks.json` or a timeout, does cost every Codex user one more review.
+Do not write trust hashes programmatically. Review stores and credentials
+remain outside plugin caches.
 
 ### One-time npm setup
 
@@ -336,11 +327,7 @@ a maintainer's 2FA approval. This account setting lives on npm, outside the repo
 
 ## Rollback
 
-Move `latest` back with `npm dist-tag add wellactually@<previous-version> latest`;
-frozen plugins install it on their next daily check. The target must be a
-release that ships `shim.mjs`, 0.14.0 or later: both updaters refuse older
-releases, which cannot update themselves. To go back to older code, publish it
-again under a new version. For the catalog, pin it and both compatibility dependencies to a previously published
+Pin the catalog and both compatibility dependencies to a previously published
 npm version, refresh the lockfile and push. To restore a historical Git-based
 catalog, restore its built payload from the same historical revision too. Never
 point a Git installer at a source-only tree without its npm adapter. Leave stored

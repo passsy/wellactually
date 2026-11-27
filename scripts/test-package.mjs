@@ -28,6 +28,7 @@ const env = {
   PATH: process.env.PATH, CI: "1", WELLACTUALLY_UPDATE_CHECK: "0",
   WELLACTUALLY_HOOK_LOG: "0", WELLACTUALLY_GIT: "0",
   WELLACTUALLY_HOME: path.join(temp, "advice"), WELLACTUALLY_REVIEW_INBOX_HOME: path.join(temp, "findings"),
+  CODEX_HOME: path.join(temp, "codex"), HOME: path.join(temp, "home"),
 };
 const run = (args, input) => execFileSync(process.execPath, args, { cwd: temp, env, encoding: "utf8", input, timeout: 30_000 });
 try {
@@ -90,10 +91,9 @@ try {
   const hook = read(path.join(installed, "hooks/hooks.json"));
   assert.equal(Object.keys(hook.hooks).length, 6);
   for (const entries of Object.values(hook.hooks)) for (const { hooks } of entries) for (const item of hooks) {
-    assert.equal(item.command, 'node "${CLAUDE_PLUGIN_ROOT}/shim.mjs" hook');
+    assert(item.command.includes("${CLAUDE_PLUGIN_ROOT}/dist/wellactually-hook.mjs"));
   }
-  // Hooks and the MCP server reach the runtime through the frozen shim.
-  run([path.join(installed, "shim.mjs"), "hook"], JSON.stringify({ hook_event_name: "SessionEnd", session_id: "packed", cwd: temp }));
+  run([path.join(installed, "dist/wellactually-hook.mjs")], JSON.stringify({ hook_event_name: "SessionEnd", session_id: "packed", cwd: temp }));
 
   for (const host of ["claude", "codex", "opencode"]) {
     let command;
@@ -104,6 +104,8 @@ try {
     } else if (host === "codex") {
       const plugin = read(path.join(installed, ".codex-plugin/plugin.json"));
       assert.equal(plugin.version, manifest.version);
+      // Codex gets its hooks from ~/.codex/hooks.json, whose trust survives updates; an empty list keeps it off hooks/hooks.json.
+      assert.deepEqual(plugin.hooks, { hooks: {} });
       command = read(path.join(installed, plugin.mcpServers)).mcpServers.wellactually.args;
     } else {
       const { default: adapter } = await import(pathToFileURL(path.join(installed, manifest.exports["."])));

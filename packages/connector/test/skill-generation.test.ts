@@ -25,15 +25,13 @@ function fixture() {
 
 test("generates installable namespaced skills with their instructions and nested helpers", () => {
   const { root, write, read, sync } = fixture();
-  const source = "---\nname: review\ndescription: Review changes\n---\nRun `node shim.mjs review`. Read reviewer.md.\n";
+  const source = "---\nname: review\ndescription: Review changes\n---\nRead reviewer.md.\n";
   write("skills/review/SKILL.md", source);
   write("skills/review/reviewer.md", "Review instructions");
   write("skills/review/scripts/nested/helper.mjs", "export const answer = 42;");
   write("skills/not-a-skill/notes.md", "Not installed");
   sync();
   expect(read("opencode/skills/wellactually-review/SKILL.md")).toContain('name: wellactually-review\nmetadata:\n  opencode/slash: "true"');
-  // OpenCode and pi run commands through the shim too, so the copy keeps it.
-  expect(read("opencode/skills/wellactually-review/SKILL.md")).toContain("shim.mjs");
   expect(read("opencode/skills/wellactually-review/reviewer.md")).toBe("Review instructions");
   expect(read("opencode/skills/wellactually-review/scripts/nested/helper.mjs")).toBe("export const answer = 42;");
   expect(fs.existsSync(path.join(root, "opencode/skills/wellactually-not-a-skill"))).toBe(false);

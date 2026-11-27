@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import cli from "../package.json" with { type: "json" };
 import { type Agent, boardHome } from "../../board/src/board.ts";
-import { autoUpdateOff } from "./runtime.ts";
 
 /** The release this plugin is, which scripts/version.mjs writes into the package. */
 export const CLIENT_VERSION: string = cli.version;
@@ -35,14 +34,8 @@ export function agentOf(env: NodeJS.ProcessEnv): Agent {
 
 /** How a user of each agent gets the new release. `folder` is where the plugin is, which OpenCode 1 users pull in. */
 export function howToUpdate(agent: Agent, folder = ""): string {
-  // Every plugin runs its hooks through the shim, whose runtime updates from npm, not from the agent's plugin manager.
-  const plugin = process.env.WELLACTUALLY_PLUGIN_ROOT;
-  if (plugin) {
-    return `run \`node "${path.join(plugin, "shim.mjs")}" update\` and start a new session`;
-  }
   if (agent === "codex") {
-    // Codex skips an updated plugin's hooks until they are trusted again.
-    return "run `codex plugin marketplace upgrade wellactually`, restart Codex and trust its hooks again in /hooks";
+    return "run `codex plugin marketplace upgrade wellactually` and restart Codex";
   }
   if (agent === "opencode-1") {
     return `run \`git pull && npm install --ignore-scripts\` in ${folder} and restart OpenCode`;
@@ -108,10 +101,6 @@ export function updateNotice(agent: Agent, now = Date.now(), current = CLIENT_VE
   }
   const state = readState();
   const stale = !state.checkedAt || now - Date.parse(state.checkedAt) >= DAY_MS;
-  // The background check installs the release itself; the next session runs it without a word.
-  if (process.env.WELLACTUALLY_PLUGIN_ROOT && !autoUpdateOff(process.env)) {
-    return { text: "", stale };
-  }
   if (!state.latest || !isNewer(state.latest, current)) {
     return { text: "", stale };
   }

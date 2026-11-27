@@ -14,7 +14,6 @@ export function syncSkills(root) {
     }
     const copy = path.join(destination, `wellactually-${name}`);
     fs.mkdirSync(copy, { recursive: true });
-    // Like Claude Code and Codex, OpenCode and pi run every command through the shim and its self-updating runtime.
     fs.writeFileSync(path.join(copy, "SKILL.md"), fs.readFileSync(source, "utf8").replace(/^name: (.+)$/m, "name: wellactually-$1\nmetadata:\n  opencode/slash: \"true\""));
     if (fs.existsSync(path.join(skills, name, "scripts"))) {
       // Installed helpers run the generated bundles; authored sources stay in the source tree.

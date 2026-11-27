@@ -7,6 +7,9 @@
   },
   "skills": "./skills/",
   "mcpServers": "./.codex-plugin/mcp.json",
+  "hooks": {
+    "hooks": {}
+  },
   "interface": {
     "displayName": "Well Actually",
     "shortDescription": "Engineering principles from the experts you choose.",

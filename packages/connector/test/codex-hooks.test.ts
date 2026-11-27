@@ -70,7 +70,10 @@ test("a Codex hook call records that it ran from its install", async () => {
   const root = install("0.12.0");
   noteCodexServer(root, true);
   process.env.PLUGIN_ROOT = root;
-  await runHook(JSON.stringify({ hook_event_name: "SessionEnd", session_id: "s" }));
+  await runHook(JSON.stringify({ hook_event_name: "SessionStart", session_id: "s" }));
+  // Codex trusts each event on its own: a session start says nothing about the tool hooks.
+  expect(codexHooksSilent(root)).toBe(true);
+  await runHook(JSON.stringify({ hook_event_name: "PostToolUse", session_id: "s", tool_name: "Bash", tool_input: { command: "ls" }, tool_response: { stdout: "" } }));
   expect(codexHooksSilent(root)).toBe(false);
 });
 
@@ -78,7 +81,7 @@ test("a Codex hook call records that it ran from its install", async () => {
 function fakeCodex(status: string): string {
   const bin = path.join(cache, "codex");
   fs.writeFileSync(bin, `#!/usr/bin/env node
-const hooks = [{ pluginId: "wellactually@wellactually", enabled: true, trustStatus: ${JSON.stringify(status)} }, { pluginId: "other@x", enabled: true, trustStatus: "untrusted" }];
+const hooks = [${status === "none" ? "" : `{ pluginId: null, command: "node '/home/a/.wellactually/codex-hook.mjs'", enabled: true, trustStatus: ${JSON.stringify(status)} }, `}{ pluginId: "other@x", enabled: true, trustStatus: "untrusted" }];
 require("node:readline").createInterface({ input: process.stdin }).on("line", line => {
   const m = JSON.parse(line);
   if (m.id === 1) console.log(JSON.stringify({ id: 1, result: {} }));
@@ -92,6 +95,8 @@ test.skipIf(process.platform === "win32")("Codex's hooks/list answers whether ou
   expect(await askCodexHooksNeedReview(cache, { bin: fakeCodex("untrusted"), args: "codex" })).toBe(true);
   expect(await askCodexHooksNeedReview(cache, { bin: fakeCodex("modified"), args: "codex" })).toBe(true);
   expect(await askCodexHooksNeedReview(cache, { bin: fakeCodex("trusted"), args: "codex" })).toBe(false);
+  // None of ours listed: nothing runs, as much as when they are untrusted.
+  expect(await askCodexHooksNeedReview(cache, { bin: fakeCodex("none"), args: "codex" })).toBe(true);
   expect(await askCodexHooksNeedReview(cache, { bin: fakeCodex("untrusted"), args: "codex exec --dangerously-bypass-hook-trust" })).toBe(false);
   expect(await askCodexHooksNeedReview(cache, { bin: path.join(cache, "missing"), args: "codex" })).toBe(undefined);
   expect(await askCodexHooksNeedReview(cache, null)).toBe(undefined);
@@ -104,5 +109,8 @@ test("a hook in a session after the user trusted them mid-run tells the agent th
   noteCodexServer(root, false);
   expect((await runHook(start)) || "{}").not.toContain("ignore the Well Actually notice");
   noteCodexServer(root, true);
+  // A session start alone proves nothing about the tool hooks, which Codex trusts on their own.
+  expect((await runHook(start)) || "{}").not.toContain("ignore the Well Actually notice");
+  await runHook(JSON.stringify({ hook_event_name: "PreToolUse", session_id: "s1", cwd: os.tmpdir(), tool_name: "Bash", tool_input: { command: "ls" } }));
   expect(JSON.parse(await runHook(start)).hookSpecificOutput.additionalContext).toContain("ignore the Well Actually notice");
 });

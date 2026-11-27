@@ -22,14 +22,12 @@ if (packed.version !== process.env.RELEASE_VERSION) throw new Error("Artifact ve
 const tarball = path.join(root, artifactDirectory, packed.filename);
 const integrity = `sha512-${createHash("sha512").update(fs.readFileSync(tarball)).digest("base64")}`;
 if (integrity !== packed.integrity) throw new Error("Downloaded build artifact differs from the tested archive");
-// Frozen plugins install the newest `latest` release on their own, so a plugin candidate starts on `next` and reaches users only once promoted.
-const tag = sdk ? "latest" : "next";
 const existing = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packed.name)}/${encodeURIComponent(packed.version)}`, { signal: AbortSignal.timeout(15000) });
 if (existing.status === 404) {
-  const output = execFileSync("npm", ["stage", "publish", tarball, "--json", "--ignore-scripts", "--access", "public", "--provenance", "--tag", tag], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+  const output = execFileSync("npm", ["stage", "publish", tarball, "--json", "--ignore-scripts", "--access", "public", "--provenance", "--tag", "latest"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
   const receipt = stagedReceipt(output, packed);
   fs.writeFileSync(path.join(root, artifactDirectory, "stage.json"), JSON.stringify(receipt, null, 2) + "\n");
-  const summary = `Staged ${packed.name}@${packed.version}: ${receipt.stageId}. Not published. Approval will move ${tag}${sdk ? "" : "; plugin installs pick it up only after npm dist-tag add " + packed.name + "@" + packed.version + " latest"}. Review the staged archive and approve with npm stage approve ${receipt.stageId} using 2FA, then verify public registry integrity before announcing the release.\n`;
+  const summary = `Staged ${packed.name}@${packed.version}: ${receipt.stageId}. Not published. Approval will move latest; plugin marketplace pins stay unchanged. Review the staged archive and approve with npm stage approve ${receipt.stageId} using 2FA, then verify public registry integrity before announcing the release.\n`;
   console.log(summary);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
   process.exit(0);

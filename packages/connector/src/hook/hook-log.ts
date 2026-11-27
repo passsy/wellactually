@@ -11,9 +11,9 @@ import path from "node:path";
  * own transcript, which `transcript` points at.
  */
 export interface HookLogEntry {
-  time: string;
   /** The Well Actually release that handled the hook. */
   release?: string;
+  time: string;
   hook: string;
   tool?: string;
   session?: string;

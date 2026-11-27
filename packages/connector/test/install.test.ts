@@ -9,7 +9,7 @@ let env: NodeJS.ProcessEnv;
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   home = fs.mkdtempSync(path.join(os.tmpdir(), "wa-install-"));
-  env = { CLAUDE_CONFIG_DIR: path.join(home, "claude"), XDG_CONFIG_HOME: path.join(home, "config"), PI_CODING_AGENT_DIR: path.join(home, "pi") };
+  env = { CODEX_HOME: path.join(home, "codex"), WELLACTUALLY_HOME: path.join(home, "wellactually"), CLAUDE_CONFIG_DIR: path.join(home, "claude"), XDG_CONFIG_HOME: path.join(home, "config"), PI_CODING_AGENT_DIR: path.join(home, "pi") };
 });
 afterEach(() => {
   fs.rmSync(home, { recursive: true, force: true });
@@ -34,7 +34,10 @@ function recorder(fails: string[] = []) {
 
 test("a fresh machine gets the plugin installed in every agent found", () => {
   const { ran, exec } = recorder();
-  const results = install(HOSTS, exec, (bin) => (bin === "opencode" ? undefined : `/bin/${bin}`), env);
+  const codexHooks = vi.fn();
+  const results = install(HOSTS, exec, (bin) => (bin === "opencode" ? undefined : `/bin/${bin}`), env, codexHooks);
+  // Codex gets its hooks in ~/.codex/hooks.json, once the plugin is in.
+  expect(codexHooks).toHaveBeenCalledWith(env);
   expect(results.map(({ host, outcome }) => [host.name, outcome.status])).toEqual([["Claude Code", "installed"], ["Codex", "installed"], ["OpenCode", "missing"], ["pi", "installed"]]);
   expect(ran).toEqual([
     "/bin/claude plugin marketplace add passsy/wellactually",
@@ -52,7 +55,7 @@ test("installed plugins are updated or kept, and pinned ones stay as they are", 
   write(path.join(env.XDG_CONFIG_HOME as string, "opencode/opencode.json"), { plugins: ["other", "wellactually"] });
   write(path.join(env.PI_CODING_AGENT_DIR as string, "settings.json"), { packages: [{ source: "npm:wellactually@0.13.1" }] });
   const { ran, exec } = recorder();
-  const results = install(HOSTS, exec, (bin) => (bin === "codex" ? undefined : `/bin/${bin}`), env);
+  const results = install(HOSTS, exec, (bin) => (bin === "codex" ? undefined : `/bin/${bin}`), env, () => {});
   expect(results.map(({ outcome }) => outcome)).toEqual([
     { status: "updated" },
     { status: "missing" },
@@ -83,7 +86,15 @@ test("which finds a launcher on the PATH, never in the current folder, and with 
 
 test("a marketplace that cannot be refreshed fails the agent instead of installing from a stale catalog", () => {
   const { ran, exec } = recorder(["/bin/claude plugin marketplace update wellactually"]);
-  const [claude] = install(HOSTS.slice(0, 1), exec, (bin) => `/bin/${bin}`, env);
+  const [claude] = install(HOSTS.slice(0, 1), exec, (bin) => `/bin/${bin}`, env, () => {});
   expect(claude?.outcome).toEqual({ status: "failed" });
   expect(ran.some((line) => line.includes("plugin install"))).toBe(false);
+});
+
+test("Codex fails when its hooks cannot be added, and the plugin still counts as not ready", () => {
+  const { exec } = recorder();
+  const [, codex] = install(HOSTS.slice(0, 2), exec, (bin) => `/bin/${bin}`, env, () => {
+    throw new Error("hooks.json does not hold a JSON object");
+  });
+  expect(codex?.outcome).toEqual({ status: "failed" });
 });
