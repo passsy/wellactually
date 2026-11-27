@@ -41,6 +41,7 @@ import { handleHook } from "./hook/command.ts";
 import { writeHookLogFromStdin } from "./hook/hook-log.ts";
 import { serveMcp } from "./mcp.ts";
 import { autoUpdate, update } from "./runtime.ts";
+import { install } from "./install.ts";
 import { serveDesktop } from "../../review-inbox/serve/desktop.mts";
 import { main as findingsServer } from "../../review-inbox/serve/server.mts";
 import { type Agent, checkForUpdate, updateCheckOff, updateNotice } from "./update.ts";
@@ -69,6 +70,7 @@ Authoring
   wellactually sync-repo <owner/repo>   Have the registry read a connected GitHub repository now
 
 Your advisory board
+  wellactually install                  Add the plugin to Claude Code, Codex, OpenCode and pi, then sign in
   wellactually login [--registry <url>] Sign in through the browser
   wellactually logout
   wellactually whoami
@@ -97,6 +99,21 @@ Every authoring command takes --json.
 
 On a CI runner or a cloud agent, set WELLACTUALLY_TOKEN to a token created on your
 advisory board on the website instead of signing in, and run \`wellactually sync\` first.`;
+
+/** Signs in through the browser and downloads the advisory board right away, so the next session does not wait for its own sync. */
+async function login(print: (data: unknown, rendered: string) => void): Promise<void> {
+  const start = await startDeviceLogin();
+  console.log(`Open ${start.verification_url}\nand confirm the code ${start.user_code}`);
+  const handle = await finishDeviceLogin(start);
+  console.log(`Signed in as ${handle}.`);
+  try {
+    const result = await sync();
+    print(result, renderSync(result));
+  } catch (error) {
+    console.log(`Could not download your advisory board yet: ${error instanceof Error ? error.message : String(error)}`);
+    console.log("Run `wellactually sync` to try again. The next session also syncs on its own.");
+  }
+}
 
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
@@ -256,22 +273,23 @@ async function main(): Promise<number> {
       print(result, renderPull(result));
       return 0;
     }
+    case "install": {
+      const { installed, failed, missing } = install();
+      console.log("");
+      if (installed.length > 0) console.log(`Installed for ${installed.map((host) => host.name).join(", ")}.`);
+      if (failed.length > 0) console.log(`Could not install for ${failed.map((host) => host.name).join(", ")}; the output above says why.`);
+      if (missing.length > 0) console.log(`Not found on this machine: ${missing.map((host) => host.name).join(", ")}.`);
+      if (installed.length === 0) return 1;
+      // One sign-in serves every agent: they share ~/.wellactually.
+      if (!readConfig().token && !tokenFromEnvironment()) await login(print);
+      for (const host of installed) if (host.then) console.log(`Last step in ${host.name}: ${host.then}.`);
+      return failed.length > 0 ? 1 : 0;
+    }
     case "login": {
       if (values.registry) {
         writeConfig({ ...readConfig(), registry: values.registry });
       }
-      const start = await startDeviceLogin();
-      console.log(`Open ${start.verification_url}\nand confirm the code ${start.user_code}`);
-      const handle = await finishDeviceLogin(start);
-      console.log(`Signed in as ${handle}.`);
-      // The advisory board comes down right away, so the next session does not have to wait for its own sync.
-      try {
-        const result = await sync();
-        print(result, renderSync(result));
-      } catch (error) {
-        console.log(`Could not download your advisory board yet: ${error instanceof Error ? error.message : String(error)}`);
-        console.log("Run `wellactually sync` to try again. The next session also syncs on its own.");
-      }
+      await login(print);
       return 0;
     }
     case "logout":
