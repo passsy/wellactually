@@ -274,16 +274,30 @@ async function main(): Promise<number> {
       return 0;
     }
     case "install": {
-      const { installed, failed, missing } = install();
+      const results = install();
+      const named = (statuses: string[]) => results.filter((result) => statuses.includes(result.outcome.status)).map((result) => result.host.name).join(", ");
+      const ready = results.filter((result) => ["installed", "updated", "present", "pinned"].includes(result.outcome.status));
+      if (ready.length > 0 && !readConfig().token) {
+        if (values.registry) writeConfig({ ...readConfig(), registry: values.registry });
+        // One sign-in serves every agent: they share ~/.wellactually. A failed one still leaves the plugins installed.
+        console.log("");
+        try {
+          await login(print);
+        } catch (error) {
+          console.log(`Could not sign in: ${error instanceof Error ? error.message : String(error)}. Run \`npx wellactually@latest login\` to try again.`);
+        }
+      }
       console.log("");
-      if (installed.length > 0) console.log(`Installed for ${installed.map((host) => host.name).join(", ")}.`);
-      if (failed.length > 0) console.log(`Could not install for ${failed.map((host) => host.name).join(", ")}; the output above says why.`);
-      if (missing.length > 0) console.log(`Not found on this machine: ${missing.map((host) => host.name).join(", ")}.`);
-      if (installed.length === 0) return 1;
-      // One sign-in serves every agent: they share ~/.wellactually.
-      if (!readConfig().token && !tokenFromEnvironment()) await login(print);
-      for (const host of installed) if (host.then) console.log(`Last step in ${host.name}: ${host.then}.`);
-      return failed.length > 0 ? 1 : 0;
+      if (named(["installed"])) console.log(`Installed for ${named(["installed"])}.`);
+      if (named(["updated"])) console.log(`Updated for ${named(["updated"])}.`);
+      if (named(["present"])) console.log(`Already installed for ${named(["present"])}; it updates itself.`);
+      for (const { host, outcome } of results) {
+        if (outcome.status === "pinned") console.log(`${host.name} keeps ${outcome.entry}, pinned in ${outcome.file}; its runtime still updates itself.`);
+      }
+      if (named(["missing"])) console.log(`Not found on this machine: ${named(["missing"])}.`);
+      if (named(["failed"])) console.error(`Could not install for ${named(["failed"])}; the output above says why.`);
+      for (const { host } of ready) if (host.then) console.log(`Last step in ${host.name}: ${host.then}.`);
+      return ready.length === 0 || named(["failed"]) ? 1 : 0;
     }
     case "login": {
       if (values.registry) {
