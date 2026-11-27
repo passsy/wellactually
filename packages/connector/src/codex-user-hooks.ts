@@ -81,6 +81,7 @@ try {
 const unquote = key => key.split(".").map(part => part.trim().replace(/^"(.*)"$|^'(.*)'$/, "$1$2")).join(".");
 let table = "";
 const settings = new Map();
+const tables = new Set();
 for (const raw of config.split(/\r?\n/)) {
   const line = raw.replace(/\s+#.*$/, "").trim();
   if (!line || line.startsWith("#")) continue;
@@ -91,12 +92,18 @@ for (const raw of config.split(/\r?\n/)) {
   const header = /^\[\s*([^\[\]]+?)\s*\]$/.exec(line);
   if (header) {
     table = unquote(header[1]);
+    tables.add(table);
     continue;
   }
   const pair = /^((?:[A-Za-z0-9_-]+|"[^"]*"|'[^']*')(?:\s*\.\s*(?:[A-Za-z0-9_-]+|"[^"]*"|'[^']*'))*)\s*=\s*(.+)$/.exec(line);
   if (pair) settings.set((table ? table + "." : "") + unquote(pair[1]), pair[2].trim());
 }
-if (settings.get("features.plugins") === "false" || settings.get("plugins.wellactually@wellactually.enabled") === "false") process.exit(0);
+// Codex loads only a plugin it has in config.toml, which plugin add writes; enabled falls back to plugins._default.
+const ID = "plugins.wellactually@wellactually";
+const inline = settings.get(ID);
+const configured = inline !== undefined || tables.has(ID) || [...settings.keys()].some(key => key.startsWith(ID + "."));
+const enabled = settings.get(ID + ".enabled") ?? /\benabled\s*=\s*(true|false)\b/.exec(inline ?? "")?.[1] ?? settings.get("plugins._default.enabled") ?? "true";
+if (settings.get("features.plugins") === "false" || !configured || enabled === "false") process.exit(0);
 
 // Version order as Rust's semver crate: no leading zeros, pre-releases before the release, build metadata after.
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
@@ -158,7 +165,13 @@ if (JSON.stringify(manifest?.hooks) !== '{"hooks":{}}') process.exit(0);
 process.env.PLUGIN_ROOT = root;
 process.env.CLAUDE_PLUGIN_ROOT = root;
 process.argv[1] = entry;
-await import(pathToFileURL(entry).href);
+try {
+  await import(pathToFileURL(entry).href);
+} catch (error) {
+  // Codex removed or replaced that version between the check and the import.
+  if (error?.code === "ERR_MODULE_NOT_FOUND" && !fs.existsSync(entry)) process.exit(0);
+  throw error;
+}
 `;
 
 interface Handler {
@@ -301,7 +314,7 @@ function editHooks(env: NodeJS.ProcessEnv, change: (hooks: Record<string, Group[
  * every other entry where it is. Returns whether hooks.json changed, which
  * means Codex asks the user to trust them.
  */
-export function ensureCodexHooks(env: NodeJS.ProcessEnv = process.env, home = boardHome()): { changed: boolean; file: string } {
+export function ensureCodexHooks(env: NodeJS.ProcessEnv = process.env, home = env.WELLACTUALLY_HOME ? path.resolve(env.WELLACTUALLY_HOME) : boardHome()): { changed: boolean; file: string } {
   const launcher = launcherPath(home);
   let current: string | undefined;
   try {
@@ -318,7 +331,7 @@ export function ensureCodexHooks(env: NodeJS.ProcessEnv = process.env, home = bo
 }
 
 /** Takes our entries out of Codex's hooks.json and removes the launcher, for `wellactually uninstall`. */
-export function removeCodexHooks(env: NodeJS.ProcessEnv = process.env, home = boardHome()): { changed: boolean; file: string } {
+export function removeCodexHooks(env: NodeJS.ProcessEnv = process.env, home = env.WELLACTUALLY_HOME ? path.resolve(env.WELLACTUALLY_HOME) : boardHome()): { changed: boolean; file: string } {
   const result = editHooks(env, (hooks) => reconcile(hooks, {}));
   fs.rmSync(launcherPath(home), { force: true });
   return result;

@@ -9,7 +9,7 @@ let env: NodeJS.ProcessEnv;
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   home = fs.mkdtempSync(path.join(os.tmpdir(), "wa-install-"));
-  env = { CLAUDE_CONFIG_DIR: path.join(home, "claude"), XDG_CONFIG_HOME: path.join(home, "config"), PI_CODING_AGENT_DIR: path.join(home, "pi") };
+  env = { CODEX_HOME: path.join(home, "codex"), WELLACTUALLY_HOME: path.join(home, "wellactually"), CLAUDE_CONFIG_DIR: path.join(home, "claude"), XDG_CONFIG_HOME: path.join(home, "config"), PI_CODING_AGENT_DIR: path.join(home, "pi") };
 });
 afterEach(() => {
   fs.rmSync(home, { recursive: true, force: true });

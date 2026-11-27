@@ -28,7 +28,7 @@ interface Install {
  * tools, where models read it as one rather than as a request.
  */
 export const HOOKS_NEED_REVIEW =
-  "Codex skips Well Actually's hooks until the user trusts them in /hooks (Codex app: Settings > Hooks), so no principle reaches this session. Tell the user so.";
+  "Codex skips Well Actually's hooks until the user trusts them in /hooks (Codex app: Settings > Hooks; in a new session if /hooks does not list them yet), so no principle reaches this session. Tell the user so.";
 
 function file(): string {
   return path.join(boardHome(), "codex-hooks.json");

@@ -74,6 +74,12 @@ test("only a plugin inside Codex's cache counts as installed by Codex", () => {
 /** A Codex plugin cache with these versions, each with a hook that prints which version ran and what it got. */
 function cache(versions: string[]): string {
   const base = path.join(work, "codex", "plugins", "cache", "wellactually", "wellactually");
+  // codex plugin add writes the plugin's table.
+  const config = path.join(work, "codex", "config.toml");
+  if (!fs.existsSync(config)) {
+    fs.mkdirSync(path.dirname(config), { recursive: true });
+    fs.writeFileSync(config, '[plugins."wellactually@wellactually"]\nenabled = true\n');
+  }
   for (const version of versions) {
     fs.mkdirSync(path.join(base, version, "dist"), { recursive: true });
     fs.mkdirSync(path.join(base, version, ".codex-plugin"), { recursive: true });
@@ -195,15 +201,21 @@ test("the launcher orders versions as Codex does, build metadata included", () =
   expect(JSON.parse(launch()).version).toBe("1.0.0+1.2");
 });
 
-test("the launcher does nothing when Codex has plugins off, however config.toml spells it", () => {
+test("the launcher runs only while Codex has the plugin configured and on, however config.toml spells it", () => {
   cache(["1.0.0"]);
   const config = path.join(work, "codex", "config.toml");
   for (const off of ["[features]\nplugins = false\n", "features.plugins = false\n", "[plugins.'wellactually@wellactually']\nenabled = false # off\n", 'plugins."wellactually@wellactually".enabled = false\n']) {
     fs.writeFileSync(config, off);
     expect(launch()).toBe("");
   }
-  fs.writeFileSync(config, "[features]\nplugins = true\n");
-  expect(JSON.parse(launch()).version).toBe("1.0.0");
+  for (const off of ["[features]\nplugins = true\n", '[plugins._default]\nenabled = false\n\n[plugins."wellactually@wellactually"]\n', '[plugins]\n"wellactually@wellactually" = { enabled = false }\n']) {
+    fs.writeFileSync(config, off);
+    expect(launch()).toBe("");
+  }
+  for (const on of ['[features]\nplugins = true\n\n[plugins."wellactually@wellactually"]\nenabled = true\n', '[plugins._default]\nenabled = false\n\n[plugins."wellactually@wellactually"]\nenabled = true\n', '[plugins]\n"wellactually@wellactually" = { enabled = true }\n']) {
+    fs.writeFileSync(config, on);
+    expect(JSON.parse(launch()).version).toBe("1.0.0");
+  }
 });
 
 test("the launcher runs only a version that opted in with an empty hooks list", () => {
